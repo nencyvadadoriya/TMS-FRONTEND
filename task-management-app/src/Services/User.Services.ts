@@ -59,6 +59,12 @@ class AuthServices {
 
             console.log("✅ Register/Create User Response:", res.data);
 
+            const emailSent = typeof res.data?.emailSent === 'boolean' ? res.data.emailSent : undefined;
+
+            if (isAdminCreating && emailSent === false) {
+                toast.error('User created but invitation email could not be sent. Please check email configuration and try again.');
+            }
+
             // Robustly extract user data based on different response structures
             // registerUser returns { result: { user: {...} } }
             // createUser returns { data: { ... } }
@@ -78,7 +84,8 @@ class AuthServices {
                 success: true,
                 message: res.data.message ||
                     (isAdminCreating ? 'User created successfully' : 'Registration successful'),
-                data: userData
+                data: userData,
+                emailSent
             };
 
         } catch (error: any) {
