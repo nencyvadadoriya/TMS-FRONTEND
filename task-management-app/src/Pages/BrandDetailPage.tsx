@@ -60,6 +60,9 @@ const BrandDetailPage: React.FC<BrandDetailPageProps> = ({
     const [brandLoading, setBrandLoading] = useState(true);
     const [selectedTaskForHistory, setSelectedTaskForHistory] = useState<string | null>(null);
 
+    const [historyByTaskId, setHistoryByTaskId] = useState<Record<string, any[]>>({});
+    const [, setHistoryLoadingTaskId] = useState<string | null>(null);
+
     const [localBrand, setLocalBrand] = useState<Brand | null>(null);
     const [tasksFromAPI, setTasksFromAPI] = useState(false);
 
@@ -79,7 +82,6 @@ const BrandDetailPage: React.FC<BrandDetailPageProps> = ({
                 setLocalBrand(foundBrand);
                 setBrandLoading(false);
                 setLoading(false);
-                return;
             }
         }
 
@@ -98,7 +100,9 @@ const BrandDetailPage: React.FC<BrandDetailPageProps> = ({
                     }
                 } catch (error) {
                     console.error('Error fetching brand from API:', error);
-                    toast.error('Failed to load brand details');
+                    const backendMsg = (error as any)?.response?.data?.message || (error as any)?.response?.data?.msg;
+                    const backendErr = (error as any)?.response?.data?.error;
+                    toast.error(backendMsg || backendErr || 'Failed to load brand details');
                 } finally {
                     setBrandLoading(false);
                 }
@@ -174,7 +178,7 @@ const BrandDetailPage: React.FC<BrandDetailPageProps> = ({
             .sort((a: any, b: any) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
     }, [localBrand]);
 
-    const getBrandHistoryDescription = useCallback((item: any): string => {
+     useCallback((item: any): string => {
         const msg = (item?.message || item?.notes || '').toString().trim();
         const field = (item?.field || '').toString().trim();
         const oldValue = item?.oldValue;
@@ -272,6 +276,45 @@ const BrandDetailPage: React.FC<BrandDetailPageProps> = ({
             setLoading(false);
         }
     }, [localBrand, globalTasks, tasksFromAPI]);
+
+    // Fetch full task history on demand (same as All Tasks page)
+    useEffect(() => {
+        const taskId = selectedTaskForHistory;
+        if (!taskId) return;
+
+        // Avoid refetching if we already have it
+        if (Array.isArray(historyByTaskId[taskId]) && historyByTaskId[taskId].length > 0) {
+            return;
+        }
+
+        let cancelled = false;
+        const fetchHistory = async () => {
+            try {
+                setHistoryLoadingTaskId(taskId);
+                const res = await taskService.getTaskHistory(taskId);
+                if (cancelled) return;
+
+                if (res.success) {
+                    setHistoryByTaskId(prev => ({
+                        ...prev,
+                        [taskId]: Array.isArray(res.data) ? res.data : []
+                    }));
+                } else {
+                    toast.error(res.message || 'Failed to fetch history');
+                }
+            } catch (err: any) {
+                if (cancelled) return;
+                toast.error(err?.response?.data?.message || err?.message || 'Failed to fetch history');
+            } finally {
+                if (!cancelled) setHistoryLoadingTaskId(null);
+            }
+        };
+
+        fetchHistory();
+        return () => {
+            cancelled = true;
+        };
+    }, [selectedTaskForHistory, historyByTaskId]);
 
     // Calculate brand statistics
     const brandStats = useMemo(() => {
@@ -374,22 +417,6 @@ const BrandDetailPage: React.FC<BrandDetailPageProps> = ({
                 brandId: localBrand?.id,
                 brandName: localBrand?.name,
             });
-
-            // Add status changes
-            if (task.updatedAt && task.createdAt !== task.updatedAt) {
-                allHistory.push({
-                    id: `task-updated-${task.id}`,
-                    action: 'task_updated',
-                    description: `Task updated: ${task.title}`,
-                    taskId: task.id,
-                    taskTitle: task.title,
-                    taskStatus: task.status,
-                    userName: getAssignedByName(task),
-                    timestamp: task.updatedAt,
-                    brandId: localBrand?.id,
-                    brandName: localBrand?.name,
-                });
-            }
         });
 
         return allHistory.sort((a, b) =>
@@ -421,7 +448,7 @@ const BrandDetailPage: React.FC<BrandDetailPageProps> = ({
                     taskId: task.id,
                     taskTitle: task.title,
                     taskStatus: task.status,
-                    userName: 'System',
+                    userName: getAssignedToName(task),
                     timestamp: task.dueDate,
                     brandId: localBrand?.id,
                     brandName: localBrand?.name,
@@ -431,10 +458,16 @@ const BrandDetailPage: React.FC<BrandDetailPageProps> = ({
             // ignore
         }
 
-        // Add task history
-        if (task.history) {
-            taskHistory.push(...task.history.map(hist => ({
+        // Add task history (prefer fetched history; fallback to task.history)
+        const historyList = (historyByTaskId[selectedTaskForHistory] && Array.isArray(historyByTaskId[selectedTaskForHistory]))
+            ? historyByTaskId[selectedTaskForHistory]
+            : (Array.isArray((task as any).history) ? (task as any).history : []);
+
+        if (historyList.length > 0) {
+            taskHistory.push(...historyList.map((hist: any) => ({
                 ...hist,
+                id: hist?.id || hist?._id,
+                timestamp: hist?.timestamp || hist?.createdAt || hist?.updatedAt,
                 taskId: task.id,
                 taskTitle: task.title,
                 taskStatus: task.status,
@@ -457,26 +490,10 @@ const BrandDetailPage: React.FC<BrandDetailPageProps> = ({
             brandName: localBrand?.name,
         });
 
-        // Add updates
-        if (task.updatedAt && task.createdAt !== task.updatedAt) {
-            taskHistory.push({
-                id: `task-updated-${task.id}`,
-                action: 'task_updated',
-                description: `Task updated: ${task.title}`,
-                taskId: task.id,
-                taskTitle: task.title,
-                taskStatus: task.status,
-                userName: getAssignedByName(task),
-                timestamp: task.updatedAt,
-                brandId: localBrand?.id,
-                brandName: localBrand?.name,
-            });
-        }
-
         return taskHistory.sort((a, b) =>
             new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
         );
-    }, [selectedTaskForHistory, tasks, getAssignedByName, localBrand]);
+    }, [selectedTaskForHistory, tasks, getAssignedByName, localBrand, historyByTaskId, getAssignedToName]);
 
     // Get displayed history based on selection
     const displayedHistory = useMemo(() => {
@@ -965,7 +982,6 @@ const BrandDetailPage: React.FC<BrandDetailPageProps> = ({
                                             const now = new Date();
                                             const dueDate = new Date(task.dueDate);
                                             const isOverdue = task.status !== 'completed' && dueDate < now;
-                                            const overdueDays = isOverdue ? Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
 
                                             // Calculate time taken if completed
                                             const createdTime = task.createdAt ? new Date(task.createdAt).getTime() : null;
@@ -1055,14 +1071,6 @@ const BrandDetailPage: React.FC<BrandDetailPageProps> = ({
                                                                     {new Date(task.dueDate).toLocaleDateString()}
                                                                 </span>
                                                             </div>
-                                                            {isOverdue && (
-                                                                <div className="flex justify-between">
-                                                                    <span className="text-sm text-red-600">Overdue Since:</span>
-                                                                    <span className="text-sm font-medium text-red-600">
-                                                                        {overdueDays} {overdueDays === 1 ? 'day' : 'days'}
-                                                                    </span>
-                                                                </div>
-                                                            )}
                                                             {task.status === 'completed' && completedTime && completedTime > 0 && (
                                                                 <div className="flex justify-between">
                                                                     <span className="text-sm text-green-600">Time Taken:</span>
@@ -1181,62 +1189,92 @@ const BrandDetailPage: React.FC<BrandDetailPageProps> = ({
                                         <div className="mb-6 flex items-center justify-between">
                                             <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                                                 <History className="h-5 w-5" />
-                                                Brand Activity Timeline
+                                                Task Activity History
                                             </h4>
                                             <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1.5 rounded-lg">
-                                                {brandHistory.length} {brandHistory.length === 1 ? 'activity' : 'activities'}
+                                                {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}
                                             </div>
                                         </div>
 
-                                        <div className="space-y-6">
-                                            {brandHistory.length > 0 ? (
-                                                brandHistory.map((item: any, index: number) => (
-                                                    <div key={`${item.id}-${index}`} className="relative pb-6 pl-10">
-                                                        <div className="absolute left-4 top-3 h-6 w-6 rounded-full bg-white border-2 border-blue-500 flex items-center justify-center">
-                                                            {getActionIcon(item.action)}
-                                                        </div>
-                                                        {index < brandHistory.length - 1 && (
-                                                            <div className="absolute left-[27px] top-9 bottom-0 w-0.5 bg-gray-200"></div>
-                                                        )}
+                                        <div className="space-y-8">
+                                            {tasks.map((task) => {
+                                                const taskHist = Array.isArray((task as any)?.history) ? (task as any).history : [];
+                                                const hasHistory = taskHist.length > 0;
 
-                                                        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-sm font-medium text-gray-900">{getActorLabel(item)}</span>
-                                                                    {getActionLabel(item?.action) && (
-                                                                        <>
-                                                                            <span className="text-xs text-gray-500">•</span>
-                                                                            <div className="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-600">
-                                                                                {getActionLabel(item?.action)}
-                                                                            </div>
-                                                                        </>
-                                                                    )}
-                                                                </div>
-                                                                <div className="flex items-center gap-2">
-                                                                    {formatDateTimeSafe(item?.timestamp) && (
-                                                                        <>
-                                                                            <Calendar className="h-3 w-3 text-gray-400" />
-                                                                            <span className="text-xs text-gray-500">
-                                                                                {formatDateTimeSafe(item?.timestamp)}
-                                                                            </span>
-                                                                        </>
-                                                                    )}
-                                                                </div>
+                                                return (
+                                                    <div key={task.id} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                                                        <div className="flex items-center justify-between mb-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className={`w-3 h-3 rounded-full ${task.status === 'completed' ? 'bg-green-500' : task.status === 'in-progress' ? 'bg-blue-500' : 'bg-gray-400'}`}></div>
+                                                                <h5 className="font-semibold text-gray-900">{task.title}</h5>
+                                                                <span className={`px-2 py-1 rounded text-xs font-medium ${task.status === 'completed' ? 'bg-green-100 text-green-600' : task.status === 'in-progress' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'}`}>
+                                                                    {task.status}
+                                                                </span>
                                                             </div>
-
-                                                            {getBrandHistoryDescription(item) && (
-                                                                <p className="text-sm text-gray-700">{getBrandHistoryDescription(item)}</p>
-                                                            )}
+                                                            <div className="text-xs text-gray-500">
+                                                                {hasHistory ? `${taskHist.length} activities` : 'No activity'}
+                                                            </div>
                                                         </div>
+
+                                                        {hasHistory ? (
+                                                            <div className="space-y-4">
+                                                                {taskHist.map((item: any, index: number) => (
+                                                                    <div key={`${item.id}-${index}`} className="relative pb-4 pl-8 border-l-2 border-gray-100 last:border-0">
+                                                                        <div className="absolute left-0 top-1.5 w-3 h-3 rounded-full bg-white border-2 border-blue-400 flex items-center justify-center">
+                                                                            <div className="w-1 h-1 bg-blue-400 rounded-full"></div>
+                                                                        </div>
+
+                                                                        <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                                                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <span className="text-sm font-medium text-gray-900">{getActorLabel(item)}</span>
+                                                                                    {getActionLabel(item?.action) && (
+                                                                                        <>
+                                                                                            <span className="text-xs text-gray-400">•</span>
+                                                                                            <div className={`px-2 py-0.5 rounded text-xs font-medium ${item.action === 'task_created' ? 'bg-green-100 text-green-600' : item.action === 'task_completed' ? 'bg-blue-100 text-blue-600' : item.action === 'overdue' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600'}`}>
+                                                                                                {getActionLabel(item?.action)}
+                                                                                            </div>
+                                                                                        </>
+                                                                                    )}
+                                                                                </div>
+                                                                                <div className="flex items-center gap-1">
+                                                                                    {formatDateTimeSafe(item?.timestamp) && (
+                                                                                        <>
+                                                                                            <Calendar className="h-3 w-3 text-gray-400" />
+                                                                                            <span className="text-xs text-gray-500">
+                                                                                                {formatDateTimeSafe(item?.timestamp)}
+                                                                                            </span>
+                                                                                        </>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+
+                                                                            {getHistoryDescription(item) && (
+                                                                                <p className="text-sm text-gray-700">{getHistoryDescription(item)}</p>
+                                                                            )}
+                                                                            {item.action === 'task_completed' && (
+                                                                                <div className="text-xs text-green-600 mt-1 font-medium">
+                                                                                    ✓ Task was marked as completed
+                                                                                </div>
+                                                                            )}
+                                                                            {item.action === 'status_changed' && (
+                                                                                <div className="text-xs text-blue-600 mt-1">
+                                                                                    Status changed by {item.userName}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="text-center py-8">
+                                                                <History className="h-10 w-10 text-gray-300 mx-auto mb-2" />
+                                                                <p className="text-sm text-gray-500">No activity recorded for this task</p>
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                ))
-                                            ) : (
-                                                <div className="text-center py-12">
-                                                    <History className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                                                    <h4 className="text-lg font-medium text-gray-900 mb-2">No brand history</h4>
-                                                    <p className="text-gray-500">No activity recorded for this brand yet</p>
-                                                </div>
-                                            )}
+                                                );
+                                            })}
                                         </div>
                                     </>
                                 )}
