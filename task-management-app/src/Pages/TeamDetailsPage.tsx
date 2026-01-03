@@ -732,7 +732,7 @@ const TeamDetailsPage: React.FC<TeamDetailsPageProps> = ({
                                             const now = new Date();
                                             const dueDate = new Date(task.dueDate);
                                             const isOverdue = task.status !== 'completed' && dueDate < now;
-                                            const overdueDays = isOverdue ? Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+                                             isOverdue ? Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
 
                                             // Calculate time taken if completed
                                             const createdTime = task.createdAt ? new Date(task.createdAt).getTime() : null;
@@ -805,14 +805,6 @@ const TeamDetailsPage: React.FC<TeamDetailsPageProps> = ({
                                                                     {formatDateDMY(task.dueDate) || ''}
                                                                 </span>
                                                             </div>
-                                                            {isOverdue && (
-                                                                <div className="flex justify-between">
-                                                                    <span className="text-sm text-red-600">Overdue Since:</span>
-                                                                    <span className="text-sm font-medium text-red-600">
-                                                                        {overdueDays} {overdueDays === 1 ? 'day' : 'days'}
-                                                                    </span>
-                                                                </div>
-                                                            )}
                                                         </div>
                                                     </div>
 
