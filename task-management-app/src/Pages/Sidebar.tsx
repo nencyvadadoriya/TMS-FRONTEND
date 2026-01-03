@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   X, LogOut, ListTodo, ChevronLeft, ChevronRight, Menu, Sun, Moon,
-  Users, Home, Calendar, CheckSquare, User, Building
+  Users, Home, Calendar, CheckSquare, User, Building, BarChart3
 } from 'lucide-react';
 import type { UserType } from '../Types/Types';
 
@@ -13,7 +13,7 @@ interface SidebarProps {
   isCollapsed: boolean;
   setIsCollapsed: (collapsed: boolean) => void;
   navigateTo: (page: string) => void;
-  currentView?: 'dashboard' | 'all-tasks' | 'calendar' | 'team' | 'profile' | 'brands' | 'brand-detail';
+  currentView?: 'dashboard' | 'all-tasks' | 'calendar' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'analyze';
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -69,6 +69,13 @@ const Sidebar: React.FC<SidebarProps> = ({
         icon: Calendar,
         current: currentView === 'calendar',
         onClick: () => navigateTo('calendar'),
+        badge: 0
+      },
+      {
+        name: 'Analyze Task',
+        icon: BarChart3,
+        current: currentView === 'analyze',
+        onClick: () => navigateTo('analyze'),
         badge: 0
       }
     ];

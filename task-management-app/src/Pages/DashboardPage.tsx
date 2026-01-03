@@ -34,6 +34,7 @@ import UserProfilePage from './UserProfilePage';
 import BrandsListPage from './BrandsListPage';
 import BrandDetailPage from './BrandDetailPage';
 import AdvancedFilters from './AdvancedFilters';
+import AnalyzePage from './AnalyzePage';
 
 import type {
     Brand,
@@ -124,7 +125,7 @@ const DashboardPage = () => {
 
     const [isCreatingTask, setIsCreatingTask] = useState(false);
     const [isUpdatingTask, setIsUpdatingTask] = useState(false);
-    const [currentView, setCurrentView] = useState<'dashboard' | 'all-tasks' | 'calendar' | 'team' | 'profile' | 'brands' | 'brand-detail'>('dashboard');
+    const [currentView, setCurrentView] = useState<'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail'>('dashboard');
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
     const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -351,11 +352,12 @@ const DashboardPage = () => {
     }, []);
 
     const navigateTo = (page: string) => {
-        const viewMap: Record<string, 'dashboard' | 'all-tasks' | 'calendar' | 'team' | 'profile' | 'brands' | 'brand-detail'> = {
+        const viewMap: Record<string, 'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail'> = {
             'dashboard': 'dashboard',
             'tasks': 'all-tasks',
             'all-tasks': 'all-tasks',
             'calendar': 'calendar',
+            'analyze': 'analyze',
             'team': 'team',
             'profile': 'profile',
             'brands': 'brands',
@@ -365,6 +367,22 @@ const DashboardPage = () => {
         const targetView = viewMap[page];
         if (targetView) {
             setCurrentView(targetView);
+        }
+
+        const routeMap: Partial<Record<string, string>> = {
+            dashboard: routepath.dashboard,
+            tasks: routepath.tasks,
+            'all-tasks': routepath.tasks,
+            calendar: routepath.calendar,
+            analyze: routepath.analyze,
+            team: routepath.team,
+            profile: routepath.profile,
+            brands: routepath.brands,
+        };
+
+        const targetPath = routeMap[page];
+        if (targetPath) {
+            navigate(targetPath);
         }
     };
 
@@ -376,6 +394,10 @@ const DashboardPage = () => {
         }
         if (path === routepath.calendar) {
             setCurrentView('calendar');
+            return;
+        }
+        if (path === routepath.analyze) {
+            setCurrentView('analyze');
             return;
         }
         if (path === routepath.team) {
@@ -2666,6 +2688,11 @@ const DashboardPage = () => {
                                     getAssignedUserInfo={getAssignedUserInfo}
                                     formatDate={formatDate}
                                     isOverdue={isOverdue}
+                                />
+                            ) : currentView === 'analyze' ? (
+                                <AnalyzePage
+                                    tasks={tasks}
+                                    currentUserEmail={currentUser?.email}
                                 />
                             ) : currentView === 'team' ? (
                                 <TeamPage
