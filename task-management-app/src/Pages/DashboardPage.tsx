@@ -388,6 +388,7 @@ const DashboardPage = () => {
 
     useEffect(() => {
         const path = (location.pathname || '').toLowerCase();
+
         if (path === routepath.tasks) {
             setCurrentView('all-tasks');
             return;
@@ -414,6 +415,16 @@ const DashboardPage = () => {
         }
         if (path.startsWith('/brands/')) {
             setCurrentView('brand-detail');
+            try {
+                const rawBrandId = (location.pathname || '').split('/brands/')[1] || '';
+                const brandIdOnly = rawBrandId.split('/')[0] || '';
+                const decoded = decodeURIComponent(brandIdOnly);
+                if (decoded) {
+                    setSelectedBrandId(decoded);
+                }
+            } catch {
+                // ignore
+            }
             return;
         }
         if (path === routepath.dashboard || path === '/') {

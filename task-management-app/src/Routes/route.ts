@@ -60,7 +60,7 @@ export const route = createHashRouter([
             },
             {
                 path: routepath.calendar,
-                lazy: lazyComponent(() => import("../Pages/CalendarView"))
+                lazy: lazyComponent(() => import("../Pages/DashboardPage"))
             },
             {
                 path: routepath.analyze,
@@ -68,7 +68,7 @@ export const route = createHashRouter([
             },
             {
                 path: routepath.team,
-                lazy: lazyComponent(() => import("../Pages/TeamPage"))
+                lazy: lazyComponent(() => import("../Pages/DashboardPage"))
             },
             {
                 path: routepath.profile,
@@ -76,11 +76,11 @@ export const route = createHashRouter([
             },
             {
                 path: routepath.brands,
-                lazy: lazyComponent(() => import("../Pages/BrandsListPage"))
+                lazy: lazyComponent(() => import("../Pages/DashboardPage"))
             },
             {
                 path: routepath.brandDetail,
-                lazy: lazyComponent(() => import("../Pages/BrandDetailPage"))
+                lazy: lazyComponent(() => import("../Pages/DashboardPage"))
             }
         ]
     }

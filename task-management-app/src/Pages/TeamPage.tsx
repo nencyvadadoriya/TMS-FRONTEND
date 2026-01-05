@@ -191,6 +191,10 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
         }, 300);
     }, []);
 
+    const normalizeRole = useCallback((role: unknown) => {
+        return (role || '').toString().trim().toLowerCase();
+    }, []);
+
     const currentUserRole = useMemo(() => {
         return (currentUser?.role || '').toLowerCase();
     }, [currentUser]);
@@ -229,10 +233,6 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
     if (isInitialLoading) {
         return <TeamPageSkeleton />;
     }
-
-    const normalizeRole = useCallback((role: unknown) => {
-        return (role || '').toString().trim().toLowerCase();
-    }, []);
 
     const visibleUsers = useMemo(() => {
         if (!canViewTeamPage) return [];
