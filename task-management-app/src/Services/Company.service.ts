@@ -15,6 +15,16 @@ export const companyService = {
     return response.data;
   },
 
+  async getDeletedCompanies(): Promise<{ success: boolean; data: Company[] }> {
+    const response = await apiClient.get('/companies/admin/deleted');
+    return response.data;
+  },
+
+  async getCompanyHistory(id: string): Promise<{ success: boolean; data: any[] }> {
+    const response = await apiClient.get(`/companies/${id}/history`);
+    return response.data;
+  },
+
   async createCompany(payload: { name: string }): Promise<{ success: boolean; data: Company }> {
     const response = await apiClient.post('/companies', payload);
     return response.data;
@@ -22,6 +32,11 @@ export const companyService = {
 
   async bulkUpsertCompanies(payload: { companies: Array<{ name: string; clientId?: string } | string> }): Promise<{ success: boolean; data: Company[] }> {
     const response = await apiClient.post('/companies/bulk', payload);
+    return response.data;
+  },
+
+  async updateCompany(id: string, payload: { name: string }): Promise<{ success: boolean; data: Company; message?: string }> {
+    const response = await apiClient.put(`/companies/${id}`, payload);
     return response.data;
   },
 

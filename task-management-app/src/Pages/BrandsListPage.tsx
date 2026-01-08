@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Building,
@@ -34,6 +34,9 @@ import { authService } from '../Services/User.Services';
 import { companyService } from '../Services/Company.service';
 import CreateBrandModal from './CreateBrandModal';
 import EditBrandModal from './EditBrandModal';
+import EditCompanyModal from './EditCompanyModal';
+
+import { routepath } from '../Routes/route';
 
 interface BrandsListPageProps {
     isSidebarCollapsed?: boolean;
@@ -66,10 +69,43 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
     tasks: propTasks = [],
 }) => {
     const navigate = useNavigate();
+    const accessDeniedRef = useRef(false);
+
     const role = (currentUser?.role || '').toLowerCase();
-    const isAdmin = role === 'admin';
-    const isManager = role === 'manager';
-    const isAdminOrManager = isAdmin || isManager;
+
+    const hasAccess = useCallback((moduleId: string) => {
+        const perms = (currentUser as any)?.permissions;
+        if (!perms || typeof perms !== 'object') return true;
+        if (Object.keys(perms).length === 0) return true;
+
+        if (typeof (perms as any)[moduleId] === 'undefined') return true;
+        const perm = String((perms as any)[moduleId] || '').trim().toLowerCase();
+        if (['deny', 'no', 'false', '0', 'disabled'].includes(perm)) return false;
+        if (['allow', 'allowed', 'yes', 'true', '1'].includes(perm)) return true;
+        return perm !== 'deny';
+    }, [currentUser]);
+
+    const canViewBrands = useMemo(() => hasAccess('brands_page'), [hasAccess]);
+    const canEditBrand = useMemo(() => hasAccess('brand_edit'), [hasAccess]);
+    const canDeleteBrand = useMemo(() => hasAccess('brand_delete'), [hasAccess]);
+    const canBulkAddCompanies = useMemo(() => hasAccess('company_bulk_add'), [hasAccess]);
+    const canEditCompany = useMemo(() => hasAccess('company_edit'), [hasAccess]);
+    const canDeleteCompany = useMemo(() => hasAccess('company_delete'), [hasAccess]);
+    const canViewBrandsCompaniesReport = useMemo(() => hasAccess('brands_companies_report'), [hasAccess]);
+
+    useEffect(() => {
+        if (!currentUser) return;
+        const name = String((currentUser as any)?.name || '').trim().toLowerCase();
+        const email = String((currentUser as any)?.email || '').trim().toLowerCase();
+        const id = String((currentUser as any)?.id || (currentUser as any)?._id || '').trim();
+        if (!id || !email || name === 'loading...') return;
+        if (!canViewBrands) {
+            if (accessDeniedRef.current) return;
+            accessDeniedRef.current = true;
+            toast.error('Access denied');
+            navigate(routepath.dashboard);
+        }
+    }, [canViewBrands, currentUser, navigate]);
 
     const [apiBrands, setApiBrands] = useState<Brand[]>([]);
     const [deletedBrands, setDeletedBrands] = useState<Brand[]>([]);
@@ -84,6 +120,9 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
     const [allTasks, setAllTasks] = useState<Task[]>([]);
     const [allUsers, setAllUsers] = useState<UserType[]>([]);
     const [companyDocs, setCompanyDocs] = useState<any[]>([]);
+    const [deletedCompanyDocs, setDeletedCompanyDocs] = useState<any[]>([]);
+    const [showEditCompanyModal, setShowEditCompanyModal] = useState(false);
+    const [selectedCompany, setSelectedCompany] = useState<any | null>(null);
     const [showDeletedBrands, setShowDeletedBrands] = useState(false);
     const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
@@ -92,6 +131,70 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         if (safePropTasks.length > 0) return safePropTasks;
         return Array.isArray(allTasks) ? allTasks : [];
     }, [propTasks, allTasks]);
+
+    // FIXED: Updated reportTasks logic to include all tasks for managers and include completed tasks
+    const reportTasks = useMemo(() => {
+        const tasks = Array.isArray(effectiveTasks) ? effectiveTasks : [];
+
+        const normalize = (v: any) => String(v || '').trim().toLowerCase();
+
+        const getEmail = (value: any) => {
+            if (!value) return '';
+            if (typeof value === 'string') return value;
+            if (typeof value === 'object') return value?.email || '';
+            return '';
+        };
+
+        const getId = (value: any) => {
+            if (!value) return '';
+            if (typeof value === 'string') return '';
+            if (typeof value === 'object') return value?.id || value?._id || '';
+            return '';
+        };
+
+        const currentEmail = normalize((currentUser as any)?.email);
+        const currentId = String((currentUser as any)?.id || (currentUser as any)?._id || '').trim();
+
+        const isAssignedToCurrentUser = (t: any) => {
+            if (!currentEmail && !currentId) return false;
+
+            const assignedToRaw = t?.assignedToUser || t?.assignedTo;
+            const email = normalize(getEmail(assignedToRaw));
+            const id = String(getId(assignedToRaw) || '').trim();
+
+            if (currentEmail && email && email === currentEmail) return true;
+            if (currentId && id && id === currentId) return true;
+            if (currentEmail && typeof t?.assignedTo === 'string' && normalize(t.assignedTo) === currentEmail) return true;
+            if (currentId && typeof t?.assignedTo === 'string' && String(t.assignedTo).trim() === currentId) return true;
+            return false;
+        };
+
+        if (role === 'assistant') {
+            // Assistants see tasks assigned to them (including completed)
+            return tasks.filter(isAssignedToCurrentUser);
+        }
+
+        if (role === 'manager') {
+            // Managers see tasks assigned to them (including completed)
+            // Also see tasks where they are the assigner
+            return tasks.filter((t: any) => {
+                // If task is assigned to this manager
+                if (isAssignedToCurrentUser(t)) return true;
+
+                // If manager assigned this task to someone else
+                const assignedByRaw = t?.assignedBy;
+                const byEmail = normalize(getEmail(assignedByRaw));
+                const byId = String(getId(assignedByRaw) || '').trim();
+
+                if (currentEmail && byEmail && byEmail === currentEmail) return true;
+                if (currentId && byId && byId === currentId) return true;
+                return false;
+            });
+        }
+
+        // Admin sees all tasks
+        return tasks;
+    }, [effectiveTasks, currentUser, role]);
 
     const [stats, setStats] = useState<BrandStats>({
         totalBrands: 0,
@@ -121,10 +224,49 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
             }
         }
 
+        if (role === 'manager') {
+            const normalize = (v: any) => String(v || '').trim().toLowerCase();
+            const myId = String((currentUser as any)?.id || (currentUser as any)?._id || '').trim();
+
+            const taskBrandIds = new Set<string>();
+            const taskBrandCompanyKeys = new Set<string>();
+            (Array.isArray(reportTasks) ? reportTasks : []).forEach((t: any) => {
+                const id = String(t?.brandId || t?.brand?._id || t?.brand?.id || '').trim();
+                if (id) taskBrandIds.add(id);
+
+                const brandName = String(
+                    typeof t?.brand === 'string'
+                        ? t.brand
+                        : (t?.brand?.name || t?.brandName || '')
+                ).trim();
+                const companyName = String(t?.companyName || t?.company || t?.company?.name || '').trim();
+
+                if (brandName || companyName) {
+                    taskBrandCompanyKeys.add(`${normalize(brandName)}|${normalize(companyName)}`);
+                }
+            });
+
+            return [...apiBrands].filter((brand: any) => {
+                if (brand?.status === 'deleted' || brand?.status === 'archived') return false;
+
+                const brandId = String(brand?.id || brand?._id || '').trim();
+                if (brandId && taskBrandIds.has(brandId)) return true;
+
+                const brandKey = `${normalize(brand?.name)}|${normalize(brand?.company)}`;
+                if (taskBrandCompanyKeys.has(brandKey)) return true;
+
+                const owner = (brand?.owner && typeof brand.owner === 'object') ? (brand.owner.id || brand.owner._id) : brand?.owner;
+                const ownerId = String(owner || '').trim();
+                if (myId && ownerId && ownerId === myId) return true;
+
+                return false;
+            });
+        }
+
         return [...apiBrands].filter(brand =>
             brand.status !== 'deleted' && brand.status !== 'archived'
         );
-    }, [apiBrands, currentUser, role]);
+    }, [apiBrands, currentUser, role, reportTasks]);
 
     type BrandsPageHistoryItem = BrandHistory & {
         _brandId: string;
@@ -133,10 +275,54 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         _rawTimestamp?: any;
     };
 
+    // FIXED: Updated history logic to include relevant history for managers and assistants
     const recentBrandActivity = useMemo(() => {
         const items: BrandsPageHistoryItem[] = [];
 
-        const sources: any[] = [...(brands || []), ...(deletedBrands || [])];
+        const normalize = (v: any) => String(v || '').trim().toLowerCase();
+
+        const myId = String((currentUser as any)?.id || (currentUser as any)?._id || '').trim();
+        const myEmail = normalize((currentUser as any)?.email);
+
+        const assignedBrandKeys = new Set<string>();
+        (brands || []).forEach((b: any) => {
+            const id = String(b?.id || b?._id || '').trim();
+            if (id) assignedBrandKeys.add(id);
+            assignedBrandKeys.add(`${normalize(b?.name)}|${normalize(b?.company)}`);
+        });
+
+        let sources: any[] = [...(brands || []), ...(deletedBrands || [])];
+
+        // For assistants, only include their assigned brands
+        if (role === 'assistant') {
+            sources = sources.filter((b: any) => {
+                const id = String(b?.id || b?._id || '').trim();
+                if (id && assignedBrandKeys.has(id)) return true;
+                return assignedBrandKeys.has(`${normalize(b?.name)}|${normalize(b?.company)}`);
+            });
+        }
+
+        // For managers, include brands they own and brands from their tasks
+        if (role === 'manager') {
+            const assignedFromTasks = new Set<string>();
+            (reportTasks || []).forEach((t: any) => {
+                const brandId = String(t?.brandId || '').trim();
+                if (brandId) assignedFromTasks.add(brandId);
+                const brandName = String((typeof t?.brand === 'string' ? t.brand : (t?.brand?.name || t?.brandName || '')) || '').trim();
+                const companyName = String(t?.companyName || t?.company || '').trim();
+                if (brandName || companyName) {
+                    assignedFromTasks.add(`${normalize(brandName)}|${normalize(companyName)}`);
+                }
+            });
+
+            const fromAllBrands = [...(apiBrands || []), ...(deletedBrands || [])];
+            sources = fromAllBrands.filter((b: any) => {
+                const id = String(b?.id || b?._id || '').trim();
+                if (id && assignedFromTasks.has(id)) return true;
+                return assignedFromTasks.has(`${normalize(b?.name)}|${normalize(b?.company)}`);
+            });
+        }
+
         const seen = new Set<string>();
 
         sources.forEach((b: any) => {
@@ -167,17 +353,181 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
             return t;
         };
 
-        items.sort((a, b) => toTime(b) - toTime(a));
-        return items.slice(0, 30);
-    }, [brands, deletedBrands]);
+        const roleByEmail = new Map<string, string>();
+        const roleById = new Map<string, string>();
+        (Array.isArray(allUsers) ? allUsers : []).forEach((u: any) => {
+            const email = String(u?.email || '').trim().toLowerCase();
+            const id = String(u?.id || u?._id || '').trim();
+            const r = String(u?.role || '').trim().toLowerCase();
+            if (email) roleByEmail.set(email, r);
+            if (id) roleById.set(id, r);
+        });
+
+        const isTaskHistory = (h: any) => {
+            if (!h) return false;
+            if (h?.isTaskHistory) return true;
+            if (h?.taskTitle) return true;
+            const action = String(h?.action || '').toLowerCase();
+            if (action.includes('task')) return true;
+            return Boolean(h?.metadata && (h.metadata.taskId || h.metadata.assignedTo || h.metadata.assignedBy));
+        };
+
+        const currentEmail = myEmail;
+        const currentId = myId;
+
+        // FIXED: Filter history based on user role and permissions
+        const shouldIncludeHistory = (h: any) => {
+            String(h?.action || '').toLowerCase();
+
+            // Always include non-task history
+            if (!isTaskHistory(h)) return true;
+
+            // For assistants, only include history related to their tasks
+            if (role === 'assistant') {
+                const meta = (h as any)?.metadata || {};
+                const assignedToEmail = normalize(meta?.assignedToEmail || meta?.assignedTo || meta?.assistantEmail || meta?.assigneeEmail || meta?.assignedToUser?.email);
+                const assignedToId = String(meta?.assignedToId || meta?.assigneeId || meta?.assignedToUser?.id || meta?.assignedToUser?._id || '').trim();
+
+                if (currentEmail && assignedToEmail && assignedToEmail === currentEmail) return true;
+                if (currentId && assignedToId && assignedToId === currentId) return true;
+                return false;
+            }
+
+            // For managers, include history for tasks they're involved with
+            if (role === 'manager') {
+                const meta = (h as any)?.metadata || {};
+                const assignedToEmail = normalize(meta?.assignedToEmail || meta?.assignedTo || meta?.assistantEmail || meta?.assigneeEmail || meta?.assignedToUser?.email);
+                const assignedToId = String(meta?.assignedToId || meta?.assigneeId || meta?.assignedToUser?.id || meta?.assignedToUser?._id || '').trim();
+                const assignedByEmail = normalize(meta?.assignedByEmail || meta?.assignedBy || meta?.assignerEmail || meta?.assignedByUser?.email);
+                const assignedById = String(meta?.assignedById || meta?.assignerId || meta?.assignedByUser?.id || meta?.assignedByUser?._id || '').trim();
+
+                // Include if assigned to this manager
+                if (currentEmail && assignedToEmail && assignedToEmail === currentEmail) return true;
+                if (currentId && assignedToId && assignedToId === currentId) return true;
+
+                // Include if assigned by this manager
+                if (currentEmail && assignedByEmail && assignedByEmail === currentEmail) return true;
+                if (currentId && assignedById && assignedById === currentId) return true;
+
+                return false;
+            }
+
+            // Admin sees all history
+            return true;
+        };
+
+        const filtered = items.filter(shouldIncludeHistory);
+        filtered.sort((a, b) => toTime(b) - toTime(a));
+        return filtered.slice(0, 30);
+    }, [brands, apiBrands, deletedBrands, reportTasks, currentUser, role, allUsers]);
+
+    type CompaniesPageHistoryItem = any & {
+        _companyId: string;
+        _companyName: string;
+        _rawTimestamp?: any;
+    };
+
+    // FIXED: Updated company history logic
+    const recentCompanyActivity = useMemo(() => {
+        const items: CompaniesPageHistoryItem[] = [];
+
+        const normalize = (v: any) => String(v || '').trim().toLowerCase();
+        const myId = String((currentUser as any)?.id || (currentUser as any)?._id || '').trim();
+        const myEmail = normalize((currentUser as any)?.email);
+
+        const assignedCompanyNames = new Set<string>();
+        if (role === 'assistant') {
+            (brands || []).forEach((b: any) => {
+                const name = normalize(b?.company);
+                if (name) assignedCompanyNames.add(name);
+            });
+        }
+        if (role === 'manager') {
+            (reportTasks || []).forEach((t: any) => {
+                const name = normalize(t?.companyName || t?.company);
+                if (name) assignedCompanyNames.add(name);
+            });
+        }
+
+        let sources: any[] = [...(companyDocs || []), ...(deletedCompanyDocs || [])];
+        if (role === 'assistant' || role === 'manager') {
+            sources = sources.filter((c: any) => assignedCompanyNames.has(normalize(c?.name)));
+        }
+
+        const seen = new Set<string>();
+
+        sources.forEach((c: any) => {
+            const history = Array.isArray(c?.history) ? c.history : [];
+            const companyId = String(c?.id || c?._id || '').trim();
+            const companyName = String(c?.name || '').trim();
+
+            const dedupeKey = `${companyId}|${companyName.toLowerCase()}|${String(c?.isDeleted || '')}`;
+            if (seen.has(dedupeKey)) return;
+            seen.add(dedupeKey);
+
+            history.forEach((h: any) => {
+                items.push({
+                    ...(h || {}),
+                    _companyId: companyId,
+                    _companyName: companyName,
+                    _rawTimestamp: h?.timestamp || h?.performedAt,
+                });
+            });
+        });
+
+        const toTime = (x: any) => {
+            const raw = x?.timestamp || x?.performedAt || x?._rawTimestamp;
+            const d = raw ? new Date(raw) : null;
+            const t = d && !Number.isNaN(d.getTime()) ? d.getTime() : 0;
+            return t;
+        };
+
+        // FIXED: Filter company history based on user role
+        const shouldIncludeHistory = (h: any) => {
+            const action = String(h?.action || '').toLowerCase();
+            const isTaskHistory = action.includes('task');
+
+            if (!isTaskHistory) return true;
+
+            if (role === 'assistant') {
+                const meta = (h as any)?.metadata || {};
+                const assignedToEmail = normalize(meta?.assignedToEmail || meta?.assignedTo);
+                const assignedToId = String(meta?.assignedToId || meta?.assigneeId || '');
+
+                if (myEmail && assignedToEmail && assignedToEmail === myEmail) return true;
+                if (myId && assignedToId && assignedToId === myId) return true;
+                return false;
+            }
+
+            if (role === 'manager') {
+                const meta = (h as any)?.metadata || {};
+                const assignedToEmail = normalize(meta?.assignedToEmail || meta?.assignedTo);
+                const assignedToId = String(meta?.assignedToId || meta?.assigneeId || '');
+                const assignedByEmail = normalize(meta?.assignedByEmail || meta?.assignedBy);
+                const assignedById = String(meta?.assignedById || meta?.assignerId || '');
+
+                if (myEmail && assignedToEmail && assignedToEmail === myEmail) return true;
+                if (myId && assignedToId && assignedToId === myId) return true;
+                if (myEmail && assignedByEmail && assignedByEmail === myEmail) return true;
+                if (myId && assignedById && assignedById === myId) return true;
+                return false;
+            }
+
+            return true;
+        };
+
+        const filtered = items.filter(shouldIncludeHistory);
+        filtered.sort((a, b) => toTime(b) - toTime(a));
+        return filtered.slice(0, 30);
+    }, [companyDocs, deletedCompanyDocs, brands, reportTasks, currentUser, role]);
 
     const adminDeletedBrands = useMemo(() => {
-        if (!isAdmin) return [];
+        if (!canDeleteBrand) return [];
         const safeDeletedBrands = Array.isArray(deletedBrands) ? deletedBrands : [];
         return [...safeDeletedBrands].filter(brand =>
             brand.status === 'deleted' || brand.status === 'archived'
         );
-    }, [deletedBrands, isAdmin]);
+    }, [canDeleteBrand, deletedBrands]);
 
     const accessibleBrands = useMemo(() => {
         return brands;
@@ -189,7 +539,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         const byBrandId = new Map<string, number>();
         const byBrandCompanyKey = new Map<string, number>();
 
-        (effectiveTasks || []).forEach((task: any) => {
+        (reportTasks || []).forEach((task: any) => {
             const taskBrandId = String(task?.brandId || '').trim();
             if (taskBrandId) {
                 byBrandId.set(taskBrandId, (byBrandId.get(taskBrandId) || 0) + 1);
@@ -218,7 +568,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         });
 
         return counts;
-    }, [accessibleBrands, effectiveTasks]);
+    }, [accessibleBrands, reportTasks]);
 
     const getActiveFilterCount = useCallback(() => {
         let count = 0;
@@ -235,6 +585,31 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         const fromCompaniesApi = (companyDocs || []).map((c: any) => (c?.name || '').toString().trim()).filter(Boolean);
         return [...new Set([...fromBrands, ...fromCompaniesApi])].sort((a, b) => a.localeCompare(b));
     }, [accessibleBrands, companyDocs]);
+
+    const companiesForReport = useMemo(() => {
+        const normalize = (v: any) => String(v || '').trim().toLowerCase();
+        String((currentUser as any)?.id || (currentUser as any)?._id || '').trim();
+
+        const assignedCompanyNames = new Set<string>();
+        if (role === 'assistant') {
+            (brands || []).forEach((b: any) => {
+                const name = normalize(b?.company);
+                if (name) assignedCompanyNames.add(name);
+            });
+        }
+        if (role === 'manager') {
+            (reportTasks || []).forEach((t: any) => {
+                const name = normalize(t?.companyName || t?.company);
+                if (name) assignedCompanyNames.add(name);
+            });
+        }
+
+        let list = Array.isArray(companyDocs) ? [...companyDocs] : [];
+        if (role === 'assistant' || role === 'manager') {
+            list = list.filter((c: any) => assignedCompanyNames.has(normalize(c?.name)));
+        }
+        return list.sort((a: any, b: any) => String(a?.name || '').localeCompare(String(b?.name || '')));
+    }, [companyDocs, brands, reportTasks, currentUser, role]);
 
     const userRoleById = useMemo(() => {
         const map = new Map<string, string>();
@@ -279,41 +654,51 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
     }, [allUsers]);
 
     const adminCreatedBrands = useMemo(() => {
-        if (!isAdmin) return [];
+        if (!canViewBrandsCompaniesReport) return [];
         return (accessibleBrands || []).filter((b: any) => {
             const owner = (b?.owner && typeof b.owner === 'object') ? (b.owner.id || b.owner._id) : b?.owner;
             const role = userRoleById.get(String(owner || ''));
             return role === 'admin';
         });
-    }, [accessibleBrands, isAdmin, userRoleById]);
+    }, [accessibleBrands, canViewBrandsCompaniesReport, userRoleById]);
 
     const managerBrandGroups = useMemo(() => {
-        if (!isAdmin) return [] as Array<{ managerId: string; managerLabel: string; brands: Brand[]; companies: string[] }>;
+        if (!canViewBrandsCompaniesReport) return [] as Array<{ managerId: string; managerLabel: string; brands: Brand[]; companies: string[] }>;
+
+        if (role === 'assistant') return [] as Array<{ managerId: string; managerLabel: string; brands: Brand[]; companies: string[] }>;
+
+        const myId = String((currentUser as any)?.id || (currentUser as any)?._id || '').trim();
+        const currentRole = role;
 
         const groups = new Map<string, { managerId: string; managerLabel: string; brands: Brand[]; companies: string[] }>();
 
         (accessibleBrands || []).forEach((b: any) => {
             const owner = (b?.owner && typeof b.owner === 'object') ? (b.owner.id || b.owner._id) : b?.owner;
             const ownerId = String(owner || '');
-            const role = userRoleById.get(ownerId);
-            if (role !== 'manager') return;
+            if (currentRole === 'manager' && myId && ownerId !== myId) return;
+
+            const ownerRole = userRoleById.get(ownerId);
+            if (ownerRole !== 'manager') return;
 
             const managerLabel = userDisplayById.get(ownerId) || ownerId;
             if (!groups.has(ownerId)) {
                 groups.set(ownerId, { managerId: ownerId, managerLabel, brands: [], companies: [] });
             }
+
             groups.get(ownerId)!.brands.push(b as Brand);
         });
 
         (companyDocs || []).forEach((c: any) => {
             const creatorId = String(c?.createdBy || c?.owner || '');
-            const role = userRoleById.get(creatorId);
-            if (role !== 'manager') return;
+            if (currentRole === 'manager' && myId && creatorId !== myId) return;
+            const creatorRole = userRoleById.get(creatorId);
+            if (creatorRole !== 'manager') return;
 
             const managerLabel = userDisplayById.get(creatorId) || creatorId;
             if (!groups.has(creatorId)) {
                 groups.set(creatorId, { managerId: creatorId, managerLabel, brands: [], companies: [] });
             }
+
             const name = (c?.name || '').toString().trim();
             if (name && !groups.get(creatorId)!.companies.includes(name)) {
                 groups.get(creatorId)!.companies.push(name);
@@ -325,10 +710,10 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
             brands: [...g.brands].sort((a: any, b: any) => (a?.name || '').localeCompare(b?.name || '')),
             companies: [...g.companies].sort((a, b) => a.localeCompare(b)),
         })).sort((a, b) => a.managerLabel.localeCompare(b.managerLabel));
-    }, [accessibleBrands, companyDocs, isAdmin, userDisplayById, userRoleById]);
+    }, [accessibleBrands, companyDocs, canViewBrandsCompaniesReport, currentUser, role, userDisplayById, userRoleById]);
 
     const managerAssistantBrandAssignments = useMemo(() => {
-        if (!isAdmin) return [] as Array<{
+        if (!canViewBrandsCompaniesReport) return [] as Array<{
             managerEmail: string;
             managerLabel: string;
             assistants: Array<{
@@ -338,14 +723,14 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
             }>;
         }>;
 
+        if (role !== 'admin') return [];
+
         const normalize = (v: any) => String(v || '').trim().toLowerCase();
 
         const getEmail = (value: any) => {
             if (!value) return '';
             if (typeof value === 'string') return value;
-            if (typeof value === 'object') {
-                if (value.email) return value.email;
-            }
+            if (typeof value === 'object') return value?.email || '';
             return '';
         };
 
@@ -370,7 +755,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
             }>;
         }>();
 
-        (effectiveTasks || []).forEach((t: any) => {
+        (reportTasks || []).forEach((t: any) => {
             const managerEmail = normalize(getEmail(t?.assignedBy));
             if (!managerEmail) return;
             if (userRoleByEmail.get(managerEmail) !== 'manager') return;
@@ -423,7 +808,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                     .sort((a, b) => a.assistantLabel.localeCompare(b.assistantLabel))
             }))
             .sort((a, b) => a.managerLabel.localeCompare(b.managerLabel));
-    }, [effectiveTasks, isAdmin, userDisplayByEmail, userRoleByEmail]);
+    }, [reportTasks, canViewBrandsCompaniesReport, role, userDisplayByEmail, userRoleByEmail]);
 
     const getBrandMongoId = useCallback((b: any): string => {
         const raw = String(b?._id || b?.id || '').trim();
@@ -434,10 +819,19 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         return /^[a-f\d]{24}$/i.test(fallback) ? fallback : '';
     }, []);
 
+    const getCompanyMongoId = useCallback((c: any): string => {
+        const raw = String(c?._id || c?.id || '').trim();
+        const isObjectId = /^[a-f\d]{24}$/i.test(raw);
+        if (isObjectId && c?._id) return String(c._id);
+        if (isObjectId) return raw;
+        const fallback = String(c?._id || '').trim();
+        return /^[a-f\d]{24}$/i.test(fallback) ? fallback : '';
+    }, []);
+
     const fetchBrands = useCallback(async () => {
         try {
             setIsLoading(true);
-            if (isAdmin) {
+            if (canDeleteBrand) {
                 const [activeRes, deletedRes] = await Promise.all([
                     brandService.getBrands(),
                     brandService.getDeletedBrands()
@@ -474,8 +868,9 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                 } else {
                     setApiBrands([]);
                 }
+                setDeletedBrands([]);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error fetching brands:', error);
             toast.error('Failed to load brands');
             setApiBrands([]);
@@ -483,10 +878,10 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         } finally {
             setInitialLoadComplete(true);
         }
-    }, [isAdmin]);
+    }, [canDeleteBrand]);
 
     const fetchUsersForAdmin = useCallback(async () => {
-        if (!isAdmin) return;
+        if (!canViewBrandsCompaniesReport) return;
         try {
             const response: any = await authService.getAllUsers();
             if (!response) {
@@ -510,10 +905,10 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
             console.error('Error fetching users:', error);
             setAllUsers([]);
         }
-    }, [isAdmin]);
+    }, [canViewBrandsCompaniesReport]);
 
     const fetchCompaniesForAdmin = useCallback(async () => {
-        if (!isAdmin) return;
+        if (!canViewBrandsCompaniesReport && !canBulkAddCompanies) return;
         try {
             const response = await companyService.getCompanies();
             const list = (response && (response as any).data && Array.isArray((response as any).data)) ? (response as any).data : [];
@@ -522,7 +917,19 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
             console.error('Error fetching companies:', error);
             setCompanyDocs([]);
         }
-    }, [isAdmin]);
+    }, [canBulkAddCompanies, canViewBrandsCompaniesReport]);
+
+    const fetchDeletedCompaniesForAdmin = useCallback(async () => {
+        if (!canViewBrandsCompaniesReport) return;
+        try {
+            const response = await companyService.getDeletedCompanies();
+            const list = (response && (response as any).data && Array.isArray((response as any).data)) ? (response as any).data : [];
+            setDeletedCompanyDocs(list);
+        } catch (error) {
+            console.error('Error fetching deleted companies:', error);
+            setDeletedCompanyDocs([]);
+        }
+    }, [canViewBrandsCompaniesReport]);
 
     const fetchTasks = useCallback(async () => {
         if (Array.isArray(propTasks) && propTasks.length > 0) {
@@ -539,7 +946,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
     }, [propTasks]);
 
     const handleDeleteBrand = useCallback(async (brand: Brand) => {
-        if (!isAdminOrManager) {
+        if (!canDeleteBrand) {
             toast.error('Access denied');
             return;
         }
@@ -587,7 +994,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
             console.error('Error deleting brand:', error);
             toast.error(error?.message || 'Failed to delete brand');
         }
-    }, [isAdminOrManager, isAdmin, fetchBrands, getBrandMongoId]);
+    }, [canDeleteBrand, fetchBrands, getBrandMongoId]);
 
     const handleCreateBrand = useCallback(async (brandData: any) => {
         try {
@@ -638,6 +1045,97 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         }
     }, [selectedBrand, fetchBrands, getBrandMongoId]);
 
+    const handleEditCompany = useCallback(async (company: any) => {
+        if (!canEditCompany) {
+            toast.error('Access denied');
+            return;
+        }
+
+        const companyId = getCompanyMongoId(company);
+        if (!companyId) {
+            toast.error('Cannot edit company: missing company id');
+            return;
+        }
+
+        setSelectedCompany(company);
+        setShowEditCompanyModal(true);
+    }, [canEditCompany, getCompanyMongoId]);
+
+    const handleUpdateCompany = useCallback(async (companyData: { name: string }) => {
+        if (!canEditCompany) {
+            toast.error('Access denied');
+            return;
+        }
+        if (!selectedCompany) {
+            toast.error('No company selected');
+            return;
+        }
+
+        const companyId = getCompanyMongoId(selectedCompany);
+        if (!companyId) {
+            toast.error('Cannot update company: missing company id');
+            return;
+        }
+
+        try {
+            const res = await companyService.updateCompany(companyId, { name: String(companyData?.name || '').trim() });
+            if (res?.success) {
+                toast.success('Company updated successfully');
+                setShowEditCompanyModal(false);
+                setSelectedCompany(null);
+                await fetchCompaniesForAdmin();
+            } else {
+                toast.error(res?.message || 'Failed to update company');
+                throw new Error(res?.message || 'Failed to update company');
+            }
+        } catch (error: any) {
+            console.error('Error updating company:', error);
+            const message =
+                error?.response?.data?.message ||
+                error?.message ||
+                'Failed to update company';
+            toast.error(message);
+            throw error;
+        }
+    }, [canEditCompany, fetchCompaniesForAdmin, getCompanyMongoId, selectedCompany]);
+
+    const handleDeleteCompany = useCallback(async (company: any) => {
+        if (!canDeleteCompany) {
+            toast.error('Access denied');
+            return;
+        }
+
+        const companyId = getCompanyMongoId(company);
+        if (!companyId) {
+            toast.error('Cannot delete company: missing company id');
+            return;
+        }
+
+        const name = String(company?.name || 'this company');
+        if (!window.confirm(`Are you sure you want to delete "${name}"?`)) {
+            return;
+        }
+
+        try {
+            const res = await companyService.deleteCompany(companyId);
+            if (res?.success) {
+                toast.success('Company deleted successfully');
+                await fetchCompaniesForAdmin();
+                await fetchDeletedCompaniesForAdmin();
+            } else {
+                toast.error(res?.message || 'Failed to delete company');
+            }
+        } catch (error: any) {
+            console.error('Error deleting company:', error);
+
+            const message =
+                error?.response?.data?.message ||
+                error?.message ||
+                'Failed to delete company';
+            toast.error(message);
+        }
+    }, [canDeleteCompany, fetchCompaniesForAdmin, fetchDeletedCompaniesForAdmin, getCompanyMongoId]);
+
     const getFilteredBrands = useCallback((): Brand[] => {
         let list = Array.isArray(accessibleBrands) ? [...accessibleBrands] : [];
 
@@ -665,7 +1163,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
     }, [accessibleBrands, filters]);
 
     const getDisplayedTasks = useCallback((): Task[] => {
-        const tasks: Task[] = Array.isArray(effectiveTasks) ? effectiveTasks : [];
+        const tasks: Task[] = Array.isArray(reportTasks) ? reportTasks : [];
         if (!taskDisplayType) return [];
 
         const brandsForFilter = getFilteredBrands();
@@ -714,7 +1212,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         }
 
         return [];
-    }, [effectiveTasks, taskDisplayType, getFilteredBrands, getActiveFilterCount, filters.search]);
+    }, [reportTasks, taskDisplayType, getFilteredBrands, getActiveFilterCount, filters.search]);
 
     const resetFilters = useCallback(() => {
         setFilters({
@@ -729,7 +1227,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
 
     const calculateStats = useCallback(() => {
         const safeBrands = Array.isArray(accessibleBrands) ? accessibleBrands : [];
-        const safeTasks = Array.isArray(effectiveTasks) ? effectiveTasks : [];
+        const safeTasks = Array.isArray(reportTasks) ? reportTasks : [];
 
         const totalBrands = safeBrands.length;
         const activeBrands = safeBrands.filter((brand) => brand.status === 'active').length;
@@ -742,7 +1240,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
             totalTasks,
             averageTasksPerBrand: Number(averageTasksPerBrand.toFixed(1)),
         });
-    }, [accessibleBrands, effectiveTasks]);
+    }, [accessibleBrands, reportTasks]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -753,6 +1251,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                     fetchTasks(),
                     fetchUsersForAdmin(),
                     fetchCompaniesForAdmin(),
+                    fetchDeletedCompaniesForAdmin(),
                 ]);
             } catch (error) {
                 console.error('Error fetching data:', error);
@@ -763,7 +1262,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         };
 
         fetchData();
-    }, [fetchBrands, fetchTasks, fetchUsersForAdmin, fetchCompaniesForAdmin]);
+    }, [fetchBrands, fetchTasks, fetchUsersForAdmin, fetchCompaniesForAdmin, fetchDeletedCompaniesForAdmin]);
 
     useEffect(() => {
         if (!isLoading) {
@@ -823,6 +1322,10 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         if (value === null || value === undefined) return '—';
         if (typeof value === 'string') return value.trim() ? value : '—';
         if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+        if (typeof value === 'object') {
+            const name = (value as any)?.name;
+            if (typeof name === 'string' && name.trim()) return name;
+        }
         try {
             return JSON.stringify(value);
         } catch {
@@ -907,8 +1410,8 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
     }, []);
 
     const handleRestoreBrand = useCallback(async (brand: Brand) => {
-        if (!isAdmin) {
-            toast.error('Only admin can restore brands');
+        if (!canDeleteBrand) {
+            toast.error('Access denied');
             return;
         }
 
@@ -939,7 +1442,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
             console.error('Error restoring brand:', error);
             toast.error(error?.message || 'Failed to restore brand');
         }
-    }, [isAdmin, fetchBrands]);
+    }, [canDeleteBrand, fetchBrands]);
 
     const handleBrandClick = useCallback((brandId: string) => {
         if (onSelectBrand) {
@@ -1087,18 +1590,6 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                             <div className="flex items-center gap-3 mb-2">
                                 <Building className="h-8 w-8 text-blue-600" />
                                 <h1 className="text-3xl font-bold text-gray-900">Brands</h1>
-                                {isAdmin && (adminDeletedBrands?.length || 0) > 0 && (
-                                    <button
-                                        onClick={() => setShowDeletedBrands(!showDeletedBrands)}
-                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium ${showDeletedBrands
-                                            ? 'bg-red-100 text-red-700 border border-red-200'
-                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                            }`}
-                                    >
-                                        <History className="h-4 w-4" />
-                                        Deleted Brands ({adminDeletedBrands?.length || 0})
-                                    </button>
-                                )}
                             </div>
                             <p className="text-gray-600">Manage and track all your brands in one place</p>
                         </div>
@@ -1207,7 +1698,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                     </div>
 
                     {/* Deleted Brands Section */}
-                    {isAdmin && showDeletedBrands && (adminDeletedBrands?.length || 0) > 0 && (
+                    {canDeleteBrand && showDeletedBrands && (adminDeletedBrands?.length || 0) > 0 && (
                         <div className="mb-6 bg-white rounded-2xl shadow-sm border border-red-200 p-6">
                             <div className="flex items-center justify-between mb-4">
                                 <div>
@@ -1219,12 +1710,20 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                         These brands have been deleted and are only visible to admins
                                     </p>
                                 </div>
-                                <button
-                                    onClick={() => setShowDeletedBrands(false)}
-                                    className="text-sm text-gray-500 hover:text-gray-700"
-                                >
-                                    Hide Deleted
-                                </button>
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        onClick={() => setShowDeletedBrands(false)}
+                                        className="text-sm text-gray-500 hover:text-gray-700"
+                                    >
+                                        Hide Deleted
+                                    </button>
+                                    <button
+                                        onClick={() => setShowFilters(true)}
+                                        className="text-gray-400 hover:text-gray-600"
+                                    >
+                                        <X className="h-5 w-5" />
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="space-y-3">
@@ -1497,7 +1996,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                                         </p>
                                                     </div>
                                                 </div>
-                                                {isAdmin && (
+                                                {(canEditBrand || canDeleteBrand) && (
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
@@ -1542,7 +2041,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                                     <Eye className="h-4 w-4" />
                                                     View Details
                                                 </button>
-                                                {isAdminOrManager && (
+                                                {canEditBrand && (
                                                     <button
                                                         onClick={(e) => handleEditClick(brand, e)}
                                                         className="px-3 py-2 text-sm font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
@@ -1553,29 +2052,33 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                             </div>
 
                                             {/* Dropdown Menu */}
-                                            {openMenuId === String(brand.id) && isAdmin && (
+                                            {openMenuId === String(brand.id) && (canEditBrand || canDeleteBrand) && (
                                                 <div className="absolute right-6 top-14 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-10">
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleEditClick(brand, e);
-                                                        }}
-                                                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                                                    >
-                                                        <Edit className="h-4 w-4" />
-                                                        Edit Brand
-                                                    </button>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleDeleteBrand(brand);
-                                                            setOpenMenuId(null);
-                                                        }}
-                                                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 flex items-center gap-2"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                        Delete Brand
-                                                    </button>
+                                                    {canEditBrand && (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleEditClick(brand, e);
+                                                            }}
+                                                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                                                        >
+                                                            <Edit className="h-4 w-4" />
+                                                            Edit Brand
+                                                        </button>
+                                                    )}
+                                                    {canDeleteBrand && (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleDeleteBrand(brand);
+                                                                setOpenMenuId(null);
+                                                            }}
+                                                            className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 flex items-center gap-2"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                            Delete Brand
+                                                        </button>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
@@ -1676,7 +2179,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                                                     <Eye className="h-3 w-3" />
                                                                     View
                                                                 </button>
-                                                                {isAdminOrManager && (
+                                                                {canEditBrand && (
                                                                     <button
                                                                         onClick={(e) => handleEditClick(brand, e)}
                                                                         className="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-1"
@@ -1697,7 +2200,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                         )}
 
                         {/* Admin Reports Section - Moved after brands */}
-                        {isAdmin && !showDeletedBrands && (
+                        {canViewBrandsCompaniesReport && !showDeletedBrands && (
                             <div className="mt-8">
                                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                                     <div className="flex items-center justify-between mb-4">
@@ -1709,42 +2212,48 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                        <div className="rounded-xl border border-gray-200 p-5">
-                                            <div className="flex items-center justify-between mb-4">
-                                                <h3 className="text-lg font-semibold text-gray-900">Admin Brands</h3>
-                                                <span className="text-sm text-gray-500">{adminCreatedBrands.length}</span>
-                                            </div>
-
-                                            {adminCreatedBrands.length === 0 ? (
-                                                <div className="text-sm text-gray-500">No admin-created brands found.</div>
-                                            ) : (
-                                                <div className="space-y-2">
-                                                    {adminCreatedBrands.map((b) => (
-                                                        <div key={String(b.id)} className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2">
-                                                            <div className="min-w-0">
-                                                                <div className="text-sm font-medium text-gray-900 truncate">{b.name}</div>
-                                                                <div className="text-xs text-gray-500 truncate">{b.company}</div>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <button
-                                                                    onClick={(e) => handleEditClick(b, e)}
-                                                                    className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
-                                                                >
-                                                                    Edit
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handleDeleteBrand(b)}
-                                                                    className="px-2 py-1 text-xs font-medium bg-red-50 text-red-700 rounded-lg hover:bg-red-100"
-                                                                >
-                                                                    Delete
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    ))}
+                                    <div className={`grid grid-cols-1 ${role === 'admin' ? 'lg:grid-cols-2' : 'lg:grid-cols-1'} gap-6`}>
+                                        {role === 'admin' && (
+                                            <div className="rounded-xl border border-gray-200 p-5">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <h3 className="text-lg font-semibold text-gray-900">Admin Brands</h3>
+                                                    <span className="text-sm text-gray-500">{adminCreatedBrands.length}</span>
                                                 </div>
-                                            )}
-                                        </div>
+
+                                                {adminCreatedBrands.length === 0 ? (
+                                                    <div className="text-sm text-gray-500">No admin-created brands found.</div>
+                                                ) : (
+                                                    <div className="space-y-2">
+                                                        {adminCreatedBrands.map((b) => (
+                                                            <div key={String(b.id)} className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2">
+                                                                <div className="min-w-0">
+                                                                    <div className="text-sm font-medium text-gray-900 truncate">{b.name}</div>
+                                                                    <div className="text-xs text-gray-500 truncate">{b.company}</div>
+                                                                </div>
+                                                                <div className="flex items-center gap-2">
+                                                                    {canEditBrand && (
+                                                                        <button
+                                                                            onClick={(e) => handleEditClick(b, e)}
+                                                                            className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                                                                        >
+                                                                            Edit
+                                                                        </button>
+                                                                    )}
+                                                                    {canDeleteBrand && (
+                                                                        <button
+                                                                            onClick={() => handleDeleteBrand(b)}
+                                                                            className="px-2 py-1 text-xs font-medium bg-red-50 text-red-700 rounded-lg hover:bg-red-100"
+                                                                        >
+                                                                            Delete
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
 
                                         <div className="rounded-xl border border-gray-200 p-5">
                                             <div className="flex items-center justify-between mb-4">
@@ -1759,12 +2268,8 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                                     {managerBrandGroups.map((group) => (
                                                         <div key={group.managerId} className="rounded-lg border border-gray-100 p-4">
                                                             <div className="flex items-center justify-between mb-2">
-                                                                <div className="text-sm font-semibold text-gray-900 truncate">
-                                                                    {group.managerLabel}
-                                                                </div>
-                                                                <div className="text-xs text-gray-500">
-                                                                    {group.brands.length} brands
-                                                                </div>
+                                                                <div className="text-sm font-semibold text-gray-900 truncate">{group.managerLabel}</div>
+                                                                <div className="text-xs text-gray-500">{group.brands.length} brands</div>
                                                             </div>
 
                                                             {group.companies.length > 0 && (
@@ -1792,18 +2297,22 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                                                                 <div className="text-xs text-gray-500 truncate">{b.company}</div>
                                                                             </div>
                                                                             <div className="flex items-center gap-2">
-                                                                                <button
-                                                                                    onClick={(e) => handleEditClick(b, e)}
-                                                                                    className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
-                                                                                >
-                                                                                    Edit
-                                                                                </button>
-                                                                                <button
-                                                                                    onClick={() => handleDeleteBrand(b)}
-                                                                                    className="px-2 py-1 text-xs font-medium bg-red-50 text-red-700 rounded-lg hover:bg-red-100"
-                                                                                >
-                                                                                    Delete
-                                                                                </button>
+                                                                                {canEditBrand && (
+                                                                                    <button
+                                                                                        onClick={(e) => handleEditClick(b, e)}
+                                                                                        className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                                                                                    >
+                                                                                        Edit
+                                                                                    </button>
+                                                                                )}
+                                                                                {canDeleteBrand && (
+                                                                                    <button
+                                                                                        onClick={() => handleDeleteBrand(b)}
+                                                                                        className="px-2 py-1 text-xs font-medium bg-red-50 text-red-700 rounded-lg hover:bg-red-100"
+                                                                                    >
+                                                                                        Delete
+                                                                                    </button>
+                                                                                )}
                                                                             </div>
                                                                         </div>
                                                                     ))}
@@ -1814,6 +2323,75 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                                 </div>
                                             )}
                                         </div>
+                                    </div>
+
+                                    <div className="mt-6 rounded-xl border border-gray-200 p-5">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h3 className="text-lg font-semibold text-gray-900">Companies</h3>
+                                            <span className="text-sm text-gray-500">{companiesForReport.length}</span>
+                                        </div>
+
+                                        {companiesForReport.length === 0 ? (
+                                            <div className="text-sm text-gray-500">No companies found.</div>
+                                        ) : (
+                                            <div className="overflow-x-auto">
+                                                <table className="min-w-full divide-y divide-gray-200">
+                                                    <thead className="bg-gray-50">
+                                                        <tr>
+                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created By</th>
+                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Updated</th>
+                                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="bg-white divide-y divide-gray-100">
+                                                        {companiesForReport.map((c: any) => {
+                                                            const companyId = String(c?.id || c?._id || '');
+                                                            const creatorId = String(c?.createdBy || '');
+                                                            const creatorLabel = creatorId ? (userDisplayById.get(creatorId) || creatorId) : '-';
+
+                                                            return (
+                                                                <tr key={companyId || String(c?.name || '')}>
+                                                                    <td className="px-4 py-3 whitespace-nowrap">
+                                                                        <div className="text-sm font-medium text-gray-900">{String(c?.name || '')}</div>
+                                                                    </td>
+                                                                    <td className="px-4 py-3 whitespace-nowrap">
+                                                                        <div className="text-sm text-gray-700">{creatorLabel}</div>
+                                                                    </td>
+                                                                    <td className="px-4 py-3 whitespace-nowrap">
+                                                                        <div className="text-sm text-gray-600">{formatDateTime(c?.createdAt)}</div>
+                                                                    </td>
+                                                                    <td className="px-4 py-3 whitespace-nowrap">
+                                                                        <div className="text-sm text-gray-600">{formatDateTime(c?.updatedAt)}</div>
+                                                                    </td>
+                                                                    <td className="px-4 py-3 whitespace-nowrap text-right">
+                                                                        <div className="flex items-center justify-end gap-2">
+                                                                            {canEditCompany && (
+                                                                                <button
+                                                                                    onClick={() => handleEditCompany(c)}
+                                                                                    className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                                                                                >
+                                                                                    Edit
+                                                                                </button>
+                                                                            )}
+                                                                            {canDeleteCompany && (
+                                                                                <button
+                                                                                    onClick={() => handleDeleteCompany(c)}
+                                                                                    className="px-2 py-1 text-xs font-medium bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors"
+                                                                                >
+                                                                                    Delete
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="mt-6 rounded-xl border border-gray-200 p-5">
@@ -1864,6 +2442,59 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                                         )}
                                                     </div>
                                                 ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="mt-6 rounded-xl border border-gray-200 p-5">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h3 className="text-lg font-semibold text-gray-900">Company History</h3>
+                                            <span className="text-sm text-gray-500">{recentCompanyActivity.length} recent activities</span>
+                                        </div>
+
+                                        {recentCompanyActivity.length === 0 ? (
+                                            <div className="text-sm text-gray-500">No company activity found.</div>
+                                        ) : (
+                                            <div className="space-y-3">
+                                                {recentCompanyActivity.map((h: any, idx: number) => {
+                                                    const action = String(h?.action || '').toLowerCase();
+                                                    const actor = (h?.userName || h?.userEmail || 'Unknown').toString();
+                                                    const when = h?.timestamp;
+                                                    const field = h?.field;
+                                                    const oldValue = h?.oldValue;
+                                                    const newValue = h?.newValue;
+
+                                                    return (
+                                                        <div key={`${h?._companyId}-${idx}`} className="rounded-lg border border-gray-100 p-3">
+                                                            <div className="flex items-start justify-between gap-3">
+                                                                <div className="flex items-start gap-3 min-w-0">
+                                                                    <div className="mt-0.5">{getHistoryIcon(action)}</div>
+                                                                    <div className="min-w-0">
+                                                                        <div className="text-sm font-medium text-gray-900 truncate">
+                                                                            {h?._companyName || 'Company'}
+                                                                        </div>
+                                                                        <div className="text-xs text-gray-600 mt-0.5">
+                                                                            {(h?.message || '').toString() || action}
+                                                                        </div>
+                                                                        {field !== undefined && (oldValue !== undefined || newValue !== undefined) && (
+                                                                            <div className="text-xs text-gray-500 mt-1">
+                                                                                <span className="font-medium">{String(field)}:</span>{' '}
+                                                                                <span className="text-gray-700">{formatHistoryValue(oldValue)}</span>
+                                                                                <span className="mx-1">→</span>
+                                                                                <span className="text-gray-700">{formatHistoryValue(newValue)}</span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="text-right shrink-0">
+                                                                    <div className="text-xs text-gray-600">{actor}</div>
+                                                                    <div className="text-xs text-gray-500 mt-0.5">{formatDateTime(when)}</div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         )}
                                     </div>
@@ -1985,10 +2616,12 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                                     <div className="flex items-center gap-2">
                                                         <div className={`px-2 py-1 rounded text-xs font-medium ${getTaskStatusColor(task.status)}`}>
                                                             {getTaskStatusIcon(task.status)}
+                                                            <span className="ml-1">{task.status}</span>
                                                         </div>
                                                         {task.priority && (
                                                             <div className={`px-2 py-1 rounded text-xs font-medium ${getTaskPriorityColor(task.priority)}`}>
                                                                 {getTaskPriorityIcon(task.priority)}
+                                                                <span className="ml-1">{task.priority}</span>
                                                             </div>
                                                         )}
                                                     </div>
@@ -2026,6 +2659,16 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                 onClose={() => setShowCreateModal(false)}
                 onCreate={handleCreateBrand}
                 companies={companies}
+            />
+
+            <EditCompanyModal
+                isOpen={showEditCompanyModal}
+                onClose={() => {
+                    setShowEditCompanyModal(false);
+                    setSelectedCompany(null);
+                }}
+                onUpdate={handleUpdateCompany}
+                company={selectedCompany}
             />
 
             {selectedBrand && (

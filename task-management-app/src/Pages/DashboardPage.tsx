@@ -9,6 +9,7 @@ import {
     CheckCircle,
     Clock,
     X,
+    Trash2,
     Grid,
     List,
     Filter,
@@ -33,6 +34,7 @@ import TeamPage from './TeamPage';
 import UserProfilePage from './UserProfilePage';
 import BrandsListPage from './BrandsListPage';
 import BrandDetailPage from './BrandDetailPage';
+import AccessPage from './AccessPage';
 import AdvancedFilters from './AdvancedFilters';
 import AnalyzePage from './AnalyzePage';
 
@@ -125,10 +127,11 @@ const DashboardPage = () => {
 
     const [isCreatingTask, setIsCreatingTask] = useState(false);
     const [isUpdatingTask, setIsUpdatingTask] = useState(false);
-    const [currentView, setCurrentView] = useState<'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail'>('dashboard');
+    const [currentView, setCurrentView] = useState<'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'access'>('dashboard');
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
     const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+    const [isAuthReady, setIsAuthReady] = useState(false);
 
     const [currentUser, setCurrentUser] = useState<UserType>({
         id: '',
@@ -153,11 +156,28 @@ const DashboardPage = () => {
         currentUserEmailRef.current = (currentUser?.email || '').toString();
     }, [currentUser?.email]);
 
-    const isAdmin = useMemo(() => (currentUser?.role || '').toLowerCase() === 'admin', [currentUser?.role]);
-    const isAdminOrManager = useMemo(() => {
-        const role = (currentUser?.role || '').toLowerCase();
-        return role === 'admin' || role === 'manager';
-    }, [currentUser?.role]);
+    const hasAccess = useCallback((moduleId: string) => {
+        if (!isAuthReady) return true;
+        const perms = (currentUser as any)?.permissions;
+        if (!perms || typeof perms !== 'object') return true;
+        if (Object.keys(perms).length === 0) return true;
+        if (typeof (perms as any)[moduleId] === 'undefined') return true;
+        const perm = String((perms as any)[moduleId] || '').trim().toLowerCase();
+        if (['deny', 'no', 'false', '0', 'disabled'].includes(perm)) return false;
+        if (['allow', 'allowed', 'yes', 'true', '1'].includes(perm)) return true;
+        return perm !== 'deny';
+    }, [currentUser, isAuthReady]);
+
+    const canViewAllTasks = useMemo(() => hasAccess('view_all_tasks'), [hasAccess]);
+
+    const canDeleteTasks = useMemo(() => hasAccess('delete_task'), [hasAccess]);
+
+    const canCreateTasks = useMemo(() => hasAccess('create_task'), [hasAccess]);
+
+    const canBulkAddTaskTypes = useMemo(() => hasAccess('task_type_bulk_add'), [hasAccess]);
+    const canBulkAddCompanies = useMemo(() => hasAccess('company_bulk_add'), [hasAccess]);
+    const canBulkAddBrands = useMemo(() => hasAccess('brand_bulk_add'), [hasAccess]);
+    const canCreateBrand = useMemo(() => hasAccess('brand_create'), [hasAccess]);
 
     const handleLogout = useCallback(() => {
         try {
@@ -249,7 +269,7 @@ const DashboardPage = () => {
 
     const availableCompanies = useMemo(() => {
         const role = (currentUser?.role || '').toString().toLowerCase();
-        if (role === 'assistant') {
+        if (role !== 'admin') {
             const fromAllowedBrands = (brands || [])
                 .map(b => (b?.company || (b as any)?.companyName || '').toString().trim())
                 .filter(Boolean);
@@ -352,7 +372,7 @@ const DashboardPage = () => {
     }, []);
 
     const navigateTo = (page: string) => {
-        const viewMap: Record<string, 'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail'> = {
+        const viewMap: Record<string, 'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'access'> = {
             'dashboard': 'dashboard',
             'tasks': 'all-tasks',
             'all-tasks': 'all-tasks',
@@ -361,12 +381,30 @@ const DashboardPage = () => {
             'team': 'team',
             'profile': 'profile',
             'brands': 'brands',
-            'brand-detail': 'brand-detail'
+            'brand-detail': 'brands',
+            'access': 'access'
         };
 
         const targetView = viewMap[page];
-        if (targetView) {
-            setCurrentView(targetView);
+        if (!targetView) return;
+
+        const viewToModule: Record<typeof targetView, string> = {
+            'dashboard': '',
+            'all-tasks': 'tasks_page',
+            'calendar': 'calendar_page',
+            'analyze': 'analyze_page',
+            'team': 'team_page',
+            'profile': 'profile_page',
+            'brands': 'brands_page',
+            'brand-detail': 'brands_page',
+            'access': 'access_management',
+        };
+
+        const moduleId = viewToModule[targetView];
+        if (moduleId && !hasAccess(moduleId)) {
+            toast.error('Access denied');
+            setCurrentView('dashboard');
+            return;
         }
 
         const routeMap: Partial<Record<string, string>> = {
@@ -376,24 +414,61 @@ const DashboardPage = () => {
             calendar: routepath.calendar,
             analyze: routepath.analyze,
             team: routepath.team,
+            access: routepath.access,
             profile: routepath.profile,
             brands: routepath.brands,
         };
 
         const targetPath = routeMap[page];
+        setCurrentView(targetView);
         if (targetPath) {
             navigate(targetPath);
         }
     };
 
     useEffect(() => {
+        if (!isAuthReady) return;
+
         const path = (location.pathname || '').toLowerCase();
 
         if (path === routepath.tasks) {
+            if (!hasAccess('tasks_page')) {
+                toast.error('Access denied');
+                navigate(routepath.dashboard);
+                return;
+            }
+            try {
+                const params = new URLSearchParams(location.search || '');
+                const hasAny = ['status', 'priority', 'assigned', 'date', 'taskType', 'company', 'brand', 'q'].some((k) =>
+                    params.has(k)
+                );
+
+                if (hasAny) {
+                    const nextFilters: FilterState = {
+                        status: params.get('status') || 'all',
+                        priority: params.get('priority') || 'all',
+                        assigned: params.get('assigned') || 'all',
+                        date: params.get('date') || 'all',
+                        taskType: params.get('taskType') || 'all',
+                        company: params.get('company') || 'all',
+                        brand: params.get('brand') || 'all',
+                    };
+
+                    setFilters(nextFilters);
+                    setSearchTerm(params.get('q') || '');
+                }
+            } catch {
+                // ignore
+            }
             setCurrentView('all-tasks');
             return;
         }
         if (path === routepath.calendar) {
+            if (!hasAccess('calendar_page')) {
+                toast.error('Access denied');
+                navigate(routepath.dashboard);
+                return;
+            }
             setCurrentView('calendar');
             return;
         }
@@ -402,18 +477,47 @@ const DashboardPage = () => {
             return;
         }
         if (path === routepath.team) {
+            if (!hasAccess('team_page')) {
+                toast.error('Access denied');
+                navigate(routepath.dashboard);
+                return;
+            }
             setCurrentView('team');
             return;
         }
         if (path === routepath.profile) {
+            if (!hasAccess('profile_page')) {
+                toast.error('Access denied');
+                navigate(routepath.dashboard);
+                return;
+            }
             setCurrentView('profile');
             return;
         }
+        if (path === routepath.access) {
+            if (!hasAccess('access_management')) {
+                toast.error('Access denied');
+                navigate(routepath.dashboard);
+                return;
+            }
+            setCurrentView('access');
+            return;
+        }
         if (path === routepath.brands) {
+            if (!hasAccess('brands_page')) {
+                toast.error('Access denied');
+                navigate(routepath.dashboard);
+                return;
+            }
             setCurrentView('brands');
             return;
         }
         if (path.startsWith('/brands/')) {
+            if (!hasAccess('brands_page')) {
+                toast.error('Access denied');
+                navigate(routepath.dashboard);
+                return;
+            }
             setCurrentView('brand-detail');
             try {
                 const rawBrandId = (location.pathname || '').split('/brands/')[1] || '';
@@ -430,7 +534,7 @@ const DashboardPage = () => {
         if (path === routepath.dashboard || path === '/') {
             setCurrentView('dashboard');
         }
-    }, [location.pathname]);
+    }, [hasAccess, isAuthReady, location.pathname, location.search, currentUser, navigate]);
 
     const isOverdue = useCallback((dueDate: string, status: string) => {
         if (status === 'completed') return false;
@@ -440,6 +544,15 @@ const DashboardPage = () => {
             return false;
         }
     }, []);
+
+    const stripDeletedEmailSuffix = (value: unknown): string => {
+        const raw = (value == null ? '' : String(value)).trim();
+        if (!raw) return '';
+        const marker = '.deleted.';
+        const idx = raw.indexOf(marker);
+        if (idx === -1) return raw;
+        return raw.slice(0, idx).trim();
+    };
 
     const getTaskBorderColor = useCallback((task: Task): string => {
         const isCompleted = task.status === 'completed' || task.completedApproval;
@@ -481,16 +594,55 @@ const DashboardPage = () => {
         [currentUser],
     );
 
+
+    const canEditTask = useCallback((task: Task): boolean => {
+        const normalizeEmailSafe = (v: any): string => {
+            if (!v) return '';
+            if (typeof v === 'string') return stripDeletedEmailSuffix(v).trim().toLowerCase();
+            if (typeof v === 'object' && v !== null) {
+                const email = (v as any).email;
+                if (typeof email === 'string') return stripDeletedEmailSuffix(email).trim().toLowerCase();
+            }
+            return stripDeletedEmailSuffix(v).trim().toLowerCase();
+        };
+
+        const perms = (currentUser as any)?.permissions;
+        const raw = perms && typeof perms === 'object' ? (perms as any).edit_any_task : undefined;
+        const value = typeof raw === 'string' ? raw.toLowerCase() : undefined;
+
+        const myEmail = normalizeEmailSafe(currentUser?.email);
+        const assignedByEmail =
+            normalizeEmailSafe((task as any)?.assignedBy) || normalizeEmailSafe((task as any)?.assignedByUser?.email);
+        const assignedToEmail =
+            normalizeEmailSafe((task as any)?.assignedTo) || normalizeEmailSafe((task as any)?.assignedToUser?.email);
+
+        const isAssigner = Boolean(myEmail && assignedByEmail && myEmail === assignedByEmail);
+        const isAssignee = Boolean(myEmail && assignedToEmail && myEmail === assignedToEmail);
+
+        // Backward-compatible fallback: if permission not present, only assigner can edit.
+        if (typeof value === 'undefined') {
+            return isAssigner;
+        }
+
+        if (value === 'deny') return false;
+        if (value === 'allow') return true;
+        if (value === 'team') return isAssigner || isAssignee;
+        // own
+        return isAssigner;
+    }, [currentUser]);
+
     const canMarkTaskDone = useCallback(
         (task: Task) => {
             if (task.completedApproval) return false;
-            return currentUser?.email ? task.assignedTo === currentUser.email : false;
+            const myEmail = stripDeletedEmailSuffix(currentUser?.email).trim().toLowerCase();
+            const assignedToEmail = stripDeletedEmailSuffix((task as any)?.assignedTo).trim().toLowerCase();
+            return Boolean(myEmail && assignedToEmail && assignedToEmail === myEmail);
         },
         [currentUser],
     );
 
     const handleUpdateUser = useCallback(async (userId: string, updatedData: Partial<UserType>) => {
-        if (currentUser?.role !== 'admin') {
+        if (!hasAccess('user_management')) {
             throw new Error('Only administrators can edit users');
         }
 
@@ -509,17 +661,15 @@ const DashboardPage = () => {
             console.error('Error updating user:', error);
             throw error;
         }
-    }, [currentUser]);
+    }, [currentUser, hasAccess]);
 
     const handleCreateUser = useCallback(async (newUser: Partial<UserType>) => {
-        const role = (currentUser?.role || '').toLowerCase();
-        const isAdminOrManager = role === 'admin' || role === 'manager';
-        if (!isAdminOrManager) {
+        if (!hasAccess('user_management')) {
             throw new Error('You do not have permission to create users');
         }
 
         try {
-            const isManager = role === 'manager';
+            const isManager = (currentUser?.role || '').toLowerCase() === 'manager';
             const payload = {
                 name: newUser.name || '',
                 email: newUser.email || '',
@@ -541,10 +691,10 @@ const DashboardPage = () => {
             console.error('Error creating user:', error);
             throw error;
         }
-    }, [currentUser]);
+    }, [currentUser, hasAccess]);
 
     const handleDeleteUser = useCallback(async (userId: string) => {
-        if (currentUser?.role !== 'admin') {
+        if (!hasAccess('user_management')) {
             throw new Error('Only administrators can delete users');
         }
 
@@ -565,27 +715,32 @@ const DashboardPage = () => {
             console.error('Error deleting user:', error);
             throw error;
         }
-    }, [currentUser]);
+    }, [currentUser, hasAccess]);
 
     const getAssignedUserInfo = useCallback(
         (task: Task): { name: string; email: string } => {
             if (task.assignedToUser?.email) {
+                const email = stripDeletedEmailSuffix(task.assignedToUser.email);
                 return {
                     name: task.assignedToUser.name || 'User',
-                    email: task.assignedToUser.email,
+                    email,
                 };
             }
 
             if (task.assignedTo) {
-                if (typeof task.assignedTo === 'string') return {
-                    name: task.assignedTo.split('@')[0] || 'User',
-                    email: task.assignedTo,
-                };
+                if (typeof task.assignedTo === 'string') {
+                    const email = stripDeletedEmailSuffix(task.assignedTo);
+                    return {
+                        name: (email.split('@')[0] || '').trim() || 'User',
+                        email,
+                    };
+                }
 
                 if (typeof task.assignedTo === 'object' && task.assignedTo !== null) {
+                    const email = stripDeletedEmailSuffix((task.assignedTo as any)?.email);
                     return {
                         name: task.assignedTo.name || 'User',
-                        email: task.assignedTo.email,
+                        email,
                     };
                 }
 
@@ -602,7 +757,6 @@ const DashboardPage = () => {
         },
         [users],
     );
-
     const getAvailableBrands = useCallback(() => {
         const company = newTask.companyName;
         if (!company) return [];
@@ -817,7 +971,7 @@ const DashboardPage = () => {
                 return;
             }
 
-            if (currentUser.role !== 'admin') {
+            if (!hasAccess('task_approval')) {
                 toast.error('Only administrators can approve tasks');
                 return;
             }
@@ -848,7 +1002,7 @@ const DashboardPage = () => {
             console.error('Error in approval:', error);
             toast.error('Failed to process approval');
         }
-    }, [tasks, currentUser, handleAddTaskHistory]);
+    }, [tasks, hasAccess]);
 
     const handleUpdateTaskApproval = useCallback(async (taskId: string, completedApproval: boolean) => {
         try {
@@ -890,7 +1044,7 @@ const DashboardPage = () => {
             console.error('Error updating task approval:', error);
             toast.error('Failed to update approval status');
         }
-    }, [tasks, currentUser, handleAddTaskHistory]);
+    }, [tasks, currentUser, hasAccess]);
 
     const handleFetchTaskHistory = useCallback(async (taskId: string): Promise<TaskHistory[]> => {
         try {
@@ -913,7 +1067,7 @@ const DashboardPage = () => {
         if (!currentUser?.email) return [];
 
         let filtered = tasks.filter((task) => {
-            if (currentUser.role === 'admin') return true;
+            if (canViewAllTasks) return true;
             return task.assignedTo === currentUser.email || task.assignedBy === currentUser.email;
         });
 
@@ -994,23 +1148,23 @@ const DashboardPage = () => {
         }
 
         return filtered;
-    }, [currentUser, filters, isOverdue, searchTerm, selectedStatFilter, tasks]);
+    }, [canViewAllTasks, currentUser, filters, isOverdue, searchTerm, selectedStatFilter, tasks]);
 
     const displayTasks = useMemo(() => getFilteredTasksByStat(), [getFilteredTasksByStat]);
 
     const showListActionsColumn = useMemo(() => {
-        return displayTasks.some((t: Task) => canEditDeleteTask(t));
-    }, [displayTasks, canEditDeleteTask]);
+        return displayTasks.some((t: Task) => canEditTask(t) || (canDeleteTasks && canEditDeleteTask(t)));
+    }, [displayTasks, canEditTask, canDeleteTasks, canEditDeleteTask]);
 
     const stats: StatMeta[] = useMemo(() => {
         const userTasks = tasks.filter(task => {
-            if (currentUser.role === 'admin') return true;
+            if (canViewAllTasks) return true;
             return task.assignedTo === currentUser.email || task.assignedBy === currentUser.email;
         });
 
         const completedTasks = userTasks.filter((t) => t.status === 'completed');
         const pendingTasks = userTasks.filter((t) => t.status !== 'completed');
-        const overdueTasks = userTasks.filter((t) => isOverdue(t.dueDate, t.status));
+        const overdueTasks = userTasks.filter((t) => t.status !== 'completed' && isOverdue(t.dueDate, t.status));
 
         return [
             {
@@ -1054,7 +1208,7 @@ const DashboardPage = () => {
                 bgColor: 'bg-rose-50',
             }
         ];
-    }, [isOverdue, tasks, currentUser]);
+    }, [canViewAllTasks, isOverdue, tasks, currentUser]);
 
     const getPriorityColor = useCallback((priority?: TaskPriority) => {
         switch (priority) {
@@ -1189,7 +1343,7 @@ const DashboardPage = () => {
     }, [formErrors]);
 
     const handleAddTaskTypeClick = useCallback(async () => {
-        if (isAdmin) {
+        if (canBulkAddTaskTypes) {
             setShowBulkTaskTypeModal(true);
             return;
         }
@@ -1212,10 +1366,10 @@ const DashboardPage = () => {
         } catch (error) {
             console.error('Failed to create task type:', error);
         }
-    }, [handleInputChange, isAdmin]);
+    }, [canBulkAddTaskTypes, handleInputChange]);
 
     const handleAddCompanyClick = useCallback(async () => {
-        if (isAdmin) {
+        if (canBulkAddCompanies) {
             setShowBulkCompanyModal(true);
             return;
         }
@@ -1238,10 +1392,14 @@ const DashboardPage = () => {
         } catch (error) {
             console.error('Failed to create company:', error);
         }
-    }, [handleInputChange, isAdmin]);
+    }, [canBulkAddCompanies, handleInputChange]);
 
     const handleAddBrandClick = useCallback(async () => {
-        if (isAdmin) {
+        if (!canCreateBrand) {
+            toast.error('Access denied');
+            return;
+        }
+        if (canBulkAddBrands) {
             setShowBulkBrandModal(true);
             return;
         }
@@ -1253,7 +1411,7 @@ const DashboardPage = () => {
 
         setManagerBrandName('');
         setShowManagerAddBrandModal(true);
-    }, [handleInputChange, isAdmin, newTask.companyName]);
+    }, [canBulkAddBrands, canCreateBrand, newTask.companyName]);
 
     const handleEditInputChange = useCallback((field: keyof EditTaskForm, value: string) => {
         setEditFormData(prev => ({
@@ -1500,7 +1658,7 @@ const DashboardPage = () => {
 
     const fetchBrands = useCallback(async () => {
         try {
-            const response = await brandService.getBrands();
+            const response = await brandService.getAssignedBrands();
             if (response && response.success && Array.isArray(response.data)) {
                 setApiBrands(response.data);
             }
@@ -1538,14 +1696,24 @@ const DashboardPage = () => {
             if (response && response.success && response.data) {
                 const userData: any = response.data;
 
-                setCurrentUser(prev => ({
-                    ...(prev as any),
+                const nextUser = {
                     ...userData,
                     id: userData.id || userData._id || userData.userId || '',
                     name: userData.name || userData.username || 'User',
                     role: userData.role || 'user',
                     email: userData.email || '',
+                };
+
+                setCurrentUser(prev => ({
+                    ...(prev as any),
+                    ...nextUser,
                 }));
+
+                try {
+                    localStorage.setItem('currentUser', JSON.stringify(nextUser));
+                } catch {
+                    // ignore
+                }
                 return;
             }
 
@@ -1557,6 +1725,8 @@ const DashboardPage = () => {
             localStorage.removeItem('token');
             localStorage.removeItem('currentUser');
             navigate('/login');
+        } finally {
+            setIsAuthReady(true);
         }
     }, [navigate]);
 
@@ -1600,8 +1770,8 @@ const DashboardPage = () => {
     }, []);
 
     const handleOpenEditModal = useCallback((task: Task) => {
-        if (!canEditDeleteTask(task)) {
-            toast.error('Only the task creator can edit this task');
+        if (!canEditTask(task)) {
+            toast.error('You do not have permission to edit this task');
             setOpenMenuId(null);
             return;
         }
@@ -1632,7 +1802,7 @@ const DashboardPage = () => {
         setEditFormErrors({});
         setShowEditTaskModal(true);
         setOpenMenuId(null);
-    }, [getAssignedToValue, canEditDeleteTask]);
+    }, [getAssignedToValue, canEditTask]);
 
     const handleSaveTaskFromModal = useCallback(async () => {
         if (!validateForm()) return;
@@ -1754,6 +1924,11 @@ const DashboardPage = () => {
     const handleSaveEditedTask = useCallback(async () => {
         if (!validateEditForm() || !editingTask) return;
 
+        if (!canEditTask(editingTask)) {
+            toast.error('You do not have permission to edit this task');
+            return;
+        }
+
         setIsUpdatingTask(true);
         try {
             const selectedBrandObj = brands.find(b =>
@@ -1837,11 +2012,16 @@ const DashboardPage = () => {
             console.error('Failed to update task status:', error);
             toast.error('Failed to update task');
         }
-    }, [tasks, canMarkTaskDone, updateTaskInState, handleAddTaskHistory, currentUser]);
+    }, [tasks, canMarkTaskDone, updateTaskInState, currentUser]);
 
     const handleDeleteTask = useCallback(async (taskId: string) => {
         const task = tasks.find(t => t.id === taskId);
         if (!task) return;
+
+        if (!canDeleteTasks) {
+            toast.error('You do not have permission to delete tasks');
+            return;
+        }
 
         if (!canEditDeleteTask(task)) {
             toast.error('Only the task creator can delete this task');
@@ -1863,7 +2043,7 @@ const DashboardPage = () => {
             console.error('Failed to delete task:', error);
             toast.error('Failed to delete task');
         }
-    }, [tasks, canEditDeleteTask]);
+    }, [tasks, canEditDeleteTask, canDeleteTasks]);
 
     const handleUpdateTask = useCallback(async (taskId: string, updatedData: Partial<Task>): Promise<Task | null> => {
         const task = tasks.find(t => t.id === taskId);
@@ -1872,8 +2052,8 @@ const DashboardPage = () => {
             return null;
         }
 
-        if (!canEditDeleteTask(task)) {
-            toast.error('Only the task creator can edit this task');
+        if (!canEditTask(task)) {
+            toast.error('You do not have permission to edit this task');
             return null;
         }
 
@@ -1917,7 +2097,7 @@ const DashboardPage = () => {
             toast.error(errorMessage);
             return null;
         }
-    }, [tasks, canEditDeleteTask, updateTaskInState]);
+    }, [tasks, canEditTask, updateTaskInState]);
 
     const handleManagerCreateBrand = useCallback(async () => {
         if (!newTask.companyName) {
@@ -2017,86 +2197,52 @@ const DashboardPage = () => {
                                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
                                         <div>
                                             <div className="flex items-center gap-3 mb-2">
-                                                <div className="h-6 w-16 bg-gray-300 rounded-full"></div>
-                                                <div className="h-6 w-20 bg-gray-300 rounded-full"></div>
-                                            </div>
-                                            <div className="h-4 w-64 bg-gray-300 rounded mb-3"></div>
-                                            <div className="h-4 w-full bg-gray-300 rounded mb-3"></div>
-                                            <div className="h-4 w-2/3 bg-gray-300 rounded"></div>
-                                        </div>
-                                        <div className="flex gap-3">
-                                            <div className="h-10 w-32 bg-gray-300 rounded-xl"></div>
-                                            <div className="h-10 w-32 bg-gray-300 rounded-xl"></div>
-                                            <div className="h-10 w-32 bg-gray-300 rounded-xl"></div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="mb-10">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-                                        {[...Array(4)].map((_, i) => (
-                                            <div key={i} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 animate-pulse">
-                                                <div className="flex items-start justify-between">
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center gap-3 mb-3">
-                                                            <div className="h-12 w-12 bg-gray-300 rounded-xl"></div>
-                                                            <div>
-                                                                <div className="h-4 w-24 bg-gray-400 rounded mb-2"></div>
-                                                                <div className="h-8 w-16 bg-gray-300 rounded"></div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
+                                                <div className="p-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl">
+                                                    <LayoutDashboard className="h-6 w-6 text-white" />
                                                 </div>
+                                                <h1 className="text-3xl font-bold text-gray-900">
+                                                    Dashboard
+                                                </h1>
                                             </div>
-                                        ))}
-                                    </div>
-                                </div>
+                                            <p className="text-gray-600">
+                                                {canViewAllTasks
+                                                    ? `Welcome ${currentUser.name}. Manage all tasks.`
+                                                    : `Welcome back, ${currentUser.name}. Here are your tasks.`
+                                                }
+                                            </p>
+                                        </div>
 
-                                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6 animate-pulse">
-                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                        <div>
-                                            <div className="flex items-center gap-3 mb-2">
-                                                <div className="h-5 w-5 bg-gray-300 rounded"></div>
-                                                <div className="h-6 w-32 bg-gray-400 rounded"></div>
-                                            </div>
-                                            <div className="h-4 w-48 bg-gray-300 rounded"></div>
-                                        </div>
-                                        <div className="flex gap-3">
-                                            <div className="h-8 w-20 bg-gray-300 rounded-lg"></div>
-                                            <div className="h-8 w-20 bg-gray-300 rounded-lg"></div>
+                                        <div className="flex flex-wrap gap-3">
+                                            <button
+                                                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                                                className="inline-flex items-center px-4 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
+                                            >
+                                                <Filter className="mr-2 h-4 w-4" />
+                                                Advanced Filters
+                                                {getActiveFilterCount() > 0 && (
+                                                    <span className="ml-2 bg-blue-100 text-blue-600 text-xs font-semibold px-2 py-0.5 rounded-full">
+                                                        {getActiveFilterCount()}
+                                                    </span>
+                                                )}
+                                            </button>
+                                            <button
+                                                onClick={() => setCurrentView('all-tasks')}
+                                                className="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-xl shadow-sm text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+                                            >
+                                                <ListTodo className="mr-2 h-4 w-4" />
+                                                View All Tasks
+                                            </button>
+                                            {canCreateTasks && (
+                                                <button
+                                                    onClick={() => setShowAddTaskModal(true)}
+                                                    className="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-xl shadow-sm text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700"
+                                                >
+                                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                                    New Task
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {[...Array(6)].map((_, i) => (
-                                        <div key={i} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 animate-pulse">
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2 mb-3">
-                                                        <div className="h-6 w-16 bg-gray-300 rounded-full"></div>
-                                                        <div className="h-6 w-20 bg-gray-300 rounded-full"></div>
-                                                    </div>
-                                                    <div className="h-6 w-3/4 bg-gray-400 rounded mb-3"></div>
-                                                    <div className="h-4 w-full bg-gray-300 rounded mb-3"></div>
-                                                    <div className="h-4 w-2/3 bg-gray-300 rounded"></div>
-                                                </div>
-                                                <div className="h-6 w-6 bg-gray-300 rounded-lg"></div>
-                                            </div>
-                                            <div className="space-y-3 mb-5">
-                                                {[...Array(4)].map((_, j) => (
-                                                    <div key={j} className="flex items-center justify-between">
-                                                        <div className="h-4 w-20 bg-gray-300 rounded"></div>
-                                                        <div className="h-4 w-24 bg-gray-400 rounded"></div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <div className="flex gap-2 pt-4 border-t border-gray-100">
-                                                <div className="flex-1 h-8 bg-gray-300 rounded-lg"></div>
-                                                <div className="w-16 h-8 bg-gray-300 rounded-lg"></div>
-                                            </div>
-                                        </div>
-                                    ))}
                                 </div>
                             </div>
                         </div>
@@ -2111,11 +2257,11 @@ const DashboardPage = () => {
             <Sidebar
                 sidebarOpen={sidebarOpen}
                 setSidebarOpen={setSidebarOpen}
-                navigateTo={navigateTo}
                 currentUser={currentUser}
                 handleLogout={handleLogout}
                 isCollapsed={isSidebarCollapsed}
                 setIsCollapsed={setIsSidebarCollapsed}
+                navigateTo={navigateTo}
                 currentView={currentView}
             />
 
@@ -2148,8 +2294,8 @@ const DashboardPage = () => {
                                                     </h1>
                                                 </div>
                                                 <p className="text-gray-600">
-                                                    {currentUser.role === 'admin'
-                                                        ? `Welcome Admin ${currentUser.name}. Manage all tasks.`
+                                                    {canViewAllTasks
+                                                        ? `Welcome ${currentUser.name}. Manage all tasks.`
                                                         : `Welcome back, ${currentUser.name}. Here are your tasks.`
                                                     }
                                                 </p>
@@ -2175,18 +2321,19 @@ const DashboardPage = () => {
                                                     <ListTodo className="mr-2 h-4 w-4" />
                                                     View All Tasks
                                                 </button>
-                                                <button
-                                                    onClick={() => setShowAddTaskModal(true)}
-                                                    className="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-xl shadow-sm text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700"
-                                                >
-                                                    <PlusCircle className="mr-2 h-4 w-4" />
-                                                    New Task
-                                                </button>
+                                                {canCreateTasks && (
+                                                    <button
+                                                        onClick={() => setShowAddTaskModal(true)}
+                                                        className="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-xl shadow-sm text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700"
+                                                    >
+                                                        <PlusCircle className="mr-2 h-4 w-4" />
+                                                        New Task
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Advanced Filters Component */}
                                     <AdvancedFilters
                                         filters={filters}
                                         availableCompanies={availableCompanies}
@@ -2330,13 +2477,15 @@ const DashboardPage = () => {
                                                             ? 'Try adjusting your filters'
                                                             : 'Get started by creating your first task'}
                                                 </p>
-                                                <button
-                                                    onClick={() => setShowAddTaskModal(true)}
-                                                    className="inline-flex items-center px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 shadow-sm"
-                                                >
-                                                    <PlusCircle className="mr-2 h-5 w-5" />
-                                                    Create New Task
-                                                </button>
+                                                {canCreateTasks && (
+                                                    <button
+                                                        onClick={() => setShowAddTaskModal(true)}
+                                                        className="inline-flex items-center px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 shadow-sm"
+                                                    >
+                                                        <PlusCircle className="mr-2 h-5 w-5" />
+                                                        Create New Task
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     ) : viewMode === 'grid' ? (
@@ -2406,7 +2555,7 @@ const DashboardPage = () => {
                                                                 <span className="font-medium text-gray-900 text-right break-words">
                                                                     {(() => {
                                                                         const info = getAssignedUserInfo(task);
-                                                                        const email = (info as any)?.email ? String((info as any).email) : '';
+                                                                        const email = (info as any)?.email ? stripDeletedEmailSuffix(String((info as any).email)) : '';
                                                                         return email || '—';
                                                                     })()}
                                                                 </span>
@@ -2421,7 +2570,16 @@ const DashboardPage = () => {
                                                                         const assignedByUser: any = (task as any)?.assignedByUser;
                                                                         const assignedBy: any = (task as any)?.assignedBy;
                                                                         const email = (assignedByUser?.email || (typeof assignedBy === 'string' ? assignedBy : assignedBy?.email) || '').toString();
-                                                                        return email || '—';
+                                                                        const name = (assignedByUser?.name || (typeof assignedBy === 'object' ? assignedBy?.name : '') || '').toString();
+                                                                        const match = !name && email
+                                                                            ? (users || []).find((u: any) => (u?.email || '').toLowerCase() === email.toLowerCase())
+                                                                            : null;
+                                                                        const displayName = (name || match?.name || (email ? email.split('@')[0] : '') || email || '—').toString();
+                                                                        return (
+                                                                            <span className="block truncate" title={email}>
+                                                                                {displayName}
+                                                                            </span>
+                                                                        );
                                                                     })()}
                                                                 </span>
                                                             </div>
@@ -2472,7 +2630,7 @@ const DashboardPage = () => {
                                                             >
                                                                 {task.status === 'completed' ? 'Mark Pending' : 'Complete'}
                                                             </button>
-                                                            {canEditDeleteTask(task) && (
+                                                            {(canDeleteTasks && canEditDeleteTask(task)) && (
                                                                 <button
                                                                     onClick={() => handleDeleteTask(task.id)}
                                                                     className="px-3 py-2 text-sm font-medium bg-rose-50 text-rose-700 rounded-lg hover:bg-rose-100 transition-colors"
@@ -2550,11 +2708,11 @@ const DashboardPage = () => {
                                                                     <td className="px-6 py-5 text-sm text-gray-700">
                                                                         {formatDate(task.dueDate)}
                                                                     </td>
-                                                                    <td className="px-6 py-5">
+                                                                 <td className="px-6 py-5">
                                                                         <div className="font-semibold text-gray-900">
                                                                             {(() => {
                                                                                 const info = getAssignedUserInfo(task);
-                                                                                const email = (info as any)?.email ? String((info as any).email) : '';
+                                                                                const email = (info as any)?.email ? stripDeletedEmailSuffix(String((info as any).email)) : '';
                                                                                 const name = (info as any)?.name ? String((info as any).name) : '';
                                                                                 const displayName = (name || (email ? email.split('@')[0] : '') || email || '—').toString();
                                                                                 return (
@@ -2566,11 +2724,11 @@ const DashboardPage = () => {
                                                                         </div>
                                                                     </td>
                                                                     <td className="px-6 py-5">
-                                                                        <div className="font-semibold text-gray-900">
+                                                                       <div className="font-semibold text-gray-900">
                                                                             {(() => {
                                                                                 const assignedByUser: any = (task as any)?.assignedByUser;
                                                                                 const assignedBy: any = (task as any)?.assignedBy;
-                                                                                const email = (assignedByUser?.email || (typeof assignedBy === 'string' ? assignedBy : assignedBy?.email) || '').toString();
+                                                                                const email = stripDeletedEmailSuffix(assignedByUser?.email || (typeof assignedBy === 'string' ? assignedBy : assignedBy?.email) || '').toString();
                                                                                 const name = (assignedByUser?.name || (typeof assignedBy === 'object' ? assignedBy?.name : '') || '').toString();
                                                                                 const match = !name && email
                                                                                     ? (users || []).find((u: any) => (u?.email || '').toLowerCase() === email.toLowerCase())
@@ -2586,7 +2744,7 @@ const DashboardPage = () => {
                                                                     </td>
                                                                     {showListActionsColumn ? (
                                                                         <td className="px-6 py-5 text-right">
-                                                                            {canEditDeleteTask(task) && (
+                                                                            {canEditTask(task) && (
                                                                                 <button
                                                                                     type="button"
                                                                                     onClick={() => handleOpenEditModal(task)}
@@ -2598,6 +2756,16 @@ const DashboardPage = () => {
                                                                                     title={String(task?.status || '').toLowerCase().trim() === 'completed' ? 'Editing not allowed for completed tasks' : 'Edit'}
                                                                                 >
                                                                                     <Edit className="h-4 w-4" />
+                                                                                </button>
+                                                                            )}
+                                                                            {canDeleteTasks && canEditDeleteTask(task) && (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => handleDeleteTask(task.id)}
+                                                                                    className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-gray-500 hover:text-rose-700 hover:bg-rose-50"
+                                                                                    title="Delete"
+                                                                                >
+                                                                                    <Trash2 className="h-4 w-4" />
                                                                                 </button>
                                                                             )}
                                                                         </td>
@@ -2619,11 +2787,11 @@ const DashboardPage = () => {
                                     setDateFilter={(value) => handleFilterChange('date', value)}
                                     assignedFilter={filters.assigned}
                                     setAssignedFilter={(value) => handleFilterChange('assigned', value)}
-                                    // NEW PROPS ADDED
-                                    advancedFilters={filters} // Pass complete filters object
+                                    advancedFilters={filters}
                                     onAdvancedFilterChange={(filterType: string, value: string) =>
                                         handleFilterChange(filterType as keyof FilterState, value)
                                     }
+                                    onResetFilters={resetFilters}
                                     searchTerm={searchTerm}
                                     setSearchTerm={setSearchTerm}
                                     currentUser={currentUser}
@@ -2639,6 +2807,10 @@ const DashboardPage = () => {
                                     setOpenMenuId={setOpenMenuId}
                                     onToggleTaskStatus={handleToggleTaskStatus}
                                     onCreateTask={async () => {
+                                        if (!canCreateTasks) {
+                                            toast.error('You do not have permission to create tasks');
+                                            return undefined;
+                                        }
                                         setShowAddTaskModal(true);
                                         return undefined;
                                     }}
@@ -2653,7 +2825,6 @@ const DashboardPage = () => {
                                     onBulkCreateTasks={handleBulkCreateTasks}
                                     isSidebarCollapsed={isSidebarCollapsed}
                                     brands={brands}
-                                    // EDIT MODAL PROPS
                                     showEditModal={showEditTaskModal}
                                     editingTask={editingTask}
                                     onOpenEditModal={handleOpenEditModal}
@@ -2694,11 +2865,13 @@ const DashboardPage = () => {
                                             toast.error('Failed to update task');
                                         }
                                     }}
-                                    canEditDeleteTask={canEditDeleteTask}
+                                    canEditTask={canEditTask}
+                                    canDeleteTaskForTask={canEditDeleteTask}
                                     canMarkTaskDone={canMarkTaskDone}
                                     getAssignedUserInfo={getAssignedUserInfo}
                                     formatDate={formatDate}
                                     isOverdue={isOverdue}
+                                    canDeleteTask={canDeleteTasks}
                                 />
                             ) : currentView === 'analyze' ? (
                                 <AnalyzePage
@@ -2720,6 +2893,13 @@ const DashboardPage = () => {
                                 <UserProfilePage
                                     user={currentUser}
                                     formatDate={formatDate}
+                                />
+                            ) : currentView === 'access' ? (
+                                <AccessPage
+                                    currentUser={currentUser}
+                                    users={users}
+                                    onAddUser={handleCreateUser}
+                                    onRefreshCurrentUser={fetchCurrentUser}
                                 />
                             ) : currentView === 'brands' ? (
                                 <BrandsListPage
@@ -2822,7 +3002,7 @@ const DashboardPage = () => {
                                     <select
                                         value={newTask.assignedTo}
                                         onChange={e => handleInputChange('assignedTo', e.target.value)}
-                                        className={`w-full px-4 py-3 md:py-3.5 text-sm md:text-base border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.assignedTo ? 'border-red-500' : 'border-gray-300'
+                                        className={`w-full px-4 py-3 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.assignedTo ? 'border-red-500' : 'border-gray-300'
                                             }`}
                                     >
                                         <option value="">Select team member</option>
@@ -2843,13 +3023,13 @@ const DashboardPage = () => {
                                             Company *
                                         </label>
                                         <div className="flex items-center gap-2">
-                                            {isAdminOrManager && (
+                                            {canBulkAddCompanies && (
                                                 <button
                                                     type="button"
                                                     onClick={handleAddCompanyClick}
                                                     className="text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors"
                                                 >
-                                                    {isAdmin ? 'Bulk add' : ''}
+                                                    {canBulkAddCompanies ? 'Bulk add' : ''}
                                                 </button>
                                             )}
                                         </div>
@@ -2877,14 +3057,14 @@ const DashboardPage = () => {
                                         <label className="block text-sm font-medium text-gray-900">
                                             Brand *
                                         </label>
-                                        {isAdminOrManager && (
+                                        {canCreateBrand && (
                                             <button
                                                 type="button"
                                                 onClick={handleAddBrandClick}
                                                 className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
                                             >
                                                 <PlusCircle className="h-3 w-3" />
-                                                {isAdmin ? 'Bulk Add Brands' : 'Add'}
+                                                {canBulkAddBrands ? 'Bulk Add Brands' : 'Add Brand'}
                                             </button>
                                         )}
                                     </div>
@@ -2912,13 +3092,13 @@ const DashboardPage = () => {
                                         <label className="block text-sm font-medium text-gray-900">
                                             Task Type
                                         </label>
-                                        {isAdminOrManager && (
+                                        {canBulkAddTaskTypes && (
                                             <button
                                                 type="button"
                                                 onClick={handleAddTaskTypeClick}
                                                 className="text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors"
                                             >
-                                                {isAdmin ? 'Bulk add' : ''}
+                                                {canBulkAddTaskTypes ? 'Bulk add' : ''}
                                             </button>
                                         )}
                                     </div>
@@ -2944,7 +3124,7 @@ const DashboardPage = () => {
                                             </>
                                         )}
                                     </select>
-                                    {availableTaskTypes.length === 0 && isAdminOrManager && (
+                                    {availableTaskTypes.length === 0 && canBulkAddTaskTypes && (
                                         <p className="mt-1 text-xs text-amber-600">
                                             Add task types to continue
                                         </p>
@@ -3015,6 +3195,7 @@ const DashboardPage = () => {
                     </div>
                 </div>
             )}
+
             {/* Edit Task Modal */}
             {showEditTaskModal && editingTask && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -3167,7 +3348,6 @@ const DashboardPage = () => {
                                         </div>
                                     </div>
 
-                                    {/* Company */}
                                     <div>
                                         <label className="block text-sm font-medium text-gray-900 mb-2">
                                             Company
@@ -3186,7 +3366,6 @@ const DashboardPage = () => {
                                         </select>
                                     </div>
 
-                                    {/* Brand */}
                                     <div>
                                         <label className="block text-sm font-medium text-gray-900 mb-2">
                                             Brand
@@ -3251,7 +3430,7 @@ const DashboardPage = () => {
             )}
 
             {/* Bulk Add Brands Modal */}
-            {isAdmin && showBulkBrandModal && (
+            {canBulkAddBrands && showBulkBrandModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div
                         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -3332,6 +3511,10 @@ const DashboardPage = () => {
                                 <button
                                     type="button"
                                     onClick={async () => {
+                                        if (!canBulkAddBrands) {
+                                            toast.error('Access denied');
+                                            return;
+                                        }
                                         if (!bulkBrandForm.company) {
                                             toast.error('Please select a company');
                                             return;
@@ -3352,50 +3535,31 @@ const DashboardPage = () => {
                                             return;
                                         }
 
-                                        const existingBrandsLower = new Set(
-                                            brands
-                                                .filter(b => b.company === bulkBrandForm.company)
-                                                .map(b => b.name.toLowerCase())
-                                        );
-
-                                        const toCreate = requestedBrands.filter(b => !existingBrandsLower.has(b.toLowerCase()));
-
-                                        if (toCreate.length === 0) {
-                                            toast.error('All brands already exist for this company');
-                                            return;
-                                        }
-
                                         setIsCreatingBulkBrands(true);
                                         try {
-                                            const created: Brand[] = [];
-                                            for (const brandName of toCreate) {
-                                                const res = await brandService.createBrand({
-                                                    name: brandName,
+                                            const res = await brandService.bulkUpsertBrands({
+                                                brands: requestedBrands.map((name) => ({
+                                                    name,
                                                     company: bulkBrandForm.company,
                                                     status: 'active',
-                                                });
+                                                }))
+                                            });
 
-                                                if (res.success && res.data) {
-                                                    created.push(res.data);
-                                                }
-                                            }
-
-                                            if (created.length > 0) {
-                                                setApiBrands(prev => [...prev, ...created]);
+                                            if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+                                                setApiBrands(prev => [...prev, ...(res.data as any)]);
                                                 setBulkBrandForm({ company: '', brandNames: '' });
                                                 setShowBulkBrandModal(false);
-                                                // Emit event to notify other components of brand updates
-                                                const event = new CustomEvent('brandUpdated', { detail: { brands: created } });
+                                                const event = new CustomEvent('brandUpdated', { detail: { brands: res.data } });
                                                 window.dispatchEvent(event);
-                                                // Refresh brands from backend to ensure latest data
                                                 fetchBrands();
-                                                toast.success(`${created.length} brand(s) added successfully!`);
+                                                toast.success(`${res.data.length} brand(s) processed successfully!`);
                                             } else {
                                                 toast.error('Failed to add brands');
                                             }
                                         } catch (err) {
                                             console.error('Error bulk creating brands:', err);
                                             toast.error('Failed to add brands');
+
                                         } finally {
                                             setIsCreatingBulkBrands(false);
                                         }
@@ -3425,7 +3589,7 @@ const DashboardPage = () => {
             )}
 
             {/* Bulk Add Companies Modal */}
-            {isAdmin && showBulkCompanyModal && (
+            {canBulkAddCompanies && showBulkCompanyModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div
                         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -3485,6 +3649,10 @@ const DashboardPage = () => {
                                 <button
                                     type="button"
                                     onClick={async () => {
+                                        if (!canBulkAddCompanies) {
+                                            toast.error('Access denied');
+                                            return;
+                                        }
                                         if (!bulkCompanyNames.trim()) {
                                             toast.error('Please enter company names');
                                             return;
@@ -3546,7 +3714,7 @@ const DashboardPage = () => {
             )}
 
             {/* Bulk Add Task Types Modal */}
-            {isAdmin && showBulkTaskTypeModal && (
+            {canBulkAddTaskTypes && showBulkTaskTypeModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div
                         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -3606,6 +3774,10 @@ const DashboardPage = () => {
                                 <button
                                     type="button"
                                     onClick={async () => {
+                                        if (!canBulkAddTaskTypes) {
+                                            toast.error('Access denied');
+                                            return;
+                                        }
                                         if (!bulkTaskTypeNames.trim()) {
                                             toast.error('Please enter task types');
                                             return;
@@ -3667,7 +3839,7 @@ const DashboardPage = () => {
             )}
 
             {/* Manager Add Brand Modal */}
-            {!isAdmin && showManagerAddBrandModal && (
+            {showManagerAddBrandModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div
                         className="absolute inset-0 bg-black/60"

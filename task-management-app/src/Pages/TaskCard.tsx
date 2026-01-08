@@ -70,12 +70,38 @@ const TaskCard: React.FC<TaskCardProps> = ({
     }
 
     // ✅ FIXED: Check permissions with null checks
-    const isCreator = task.assignedBy === safeCurrentUser.email;
+    const normalizeEmailSafe = (v: any): string => {
+        if (!v) return '';
+        if (typeof v === 'string') return v.trim().toLowerCase();
+        if (typeof v === 'object' && v !== null) {
+            const email = (v as any).email;
+            if (typeof email === 'string') return email.trim().toLowerCase();
+        }
+        return String(v).trim().toLowerCase();
+    };
+
+    const myEmail = normalizeEmailSafe(safeCurrentUser.email);
+    const assignedByEmailForCheck = normalizeEmailSafe((task as any)?.assignedBy) || normalizeEmailSafe((task as any)?.assignedByUser?.email);
+    const isCreator = Boolean(myEmail && assignedByEmailForCheck && myEmail === assignedByEmailForCheck);
+
+    const canDeleteTasks = (() => {
+        const perms = (safeCurrentUser as any)?.permissions;
+        if (!perms || typeof perms !== 'object') return true;
+        if (Object.keys(perms).length === 0) return true;
+        if (typeof (perms as any).delete_task === 'undefined') return true;
+        const perm = String((perms as any).delete_task || '').toLowerCase();
+        return perm !== 'deny';
+    })();
 
     // Delete Task
     const handleDeleteTask = async () => {
         if (!task.id) {
             toast.error('Cannot delete: Task ID is missing');
+            return;
+        }
+
+        if (!canDeleteTasks) {
+            toast.error('You do not have permission to delete tasks');
             return;
         }
 
@@ -216,7 +242,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
                         </button>
                     )}
 
-                    {isCreator && (
+                    {canDeleteTasks && isCreator && (
                         <button
                             onClick={handleDeleteTask}
                             className="p-1 rounded hover:bg-red-50 text-gray-500 hover:text-red-600 transition-colors duration-200"

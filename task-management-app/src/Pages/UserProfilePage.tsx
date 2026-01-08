@@ -162,9 +162,9 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+        <div className="w-full min-h-screen bg-gray-50 p-4 md:p-6">
             {/* Main Container */}
-            <div className="max-w-7xl mx-auto">
+            <div className="w-full">
                 {/* Header Section */}
                 <div className="mb-8">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">

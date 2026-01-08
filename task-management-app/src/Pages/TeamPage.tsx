@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState, type JSX } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Search,
     Users,
@@ -22,6 +23,7 @@ import TeamDetailsPage from './TeamDetailsPage';
 import { TeamPageSkeleton } from '../Components/LoadingSkeletons';
 import { authService } from '../Services/User.Services';
 import { taskService } from '../Services/Task.services';
+import { routepath } from '../Routes/route';
 
 interface TeamPageProps {
     users?: UserType[];
@@ -35,6 +37,9 @@ interface TeamPageProps {
 }
 
 const TeamPage: React.FC<TeamPageProps> = (props) => {
+    const navigate = useNavigate();
+    const accessDeniedRef = useRef(false);
+
     const {
         users: usersProp,
         tasks: tasksProp,
@@ -65,6 +70,30 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
     const [internalTasksLoading, setInternalTasksLoading] = useState(!hasExternalTasks);
     const [internalCurrentUser, setInternalCurrentUser] = useState<UserType | null>(null);
     const [internalCurrentUserLoading, setInternalCurrentUserLoading] = useState(!hasExternalCurrentUser);
+
+    const effectiveCurrentUser = useMemo(() => {
+        return (hasExternalCurrentUser ? (currentUserProp || null) : internalCurrentUser) as any;
+    }, [currentUserProp, hasExternalCurrentUser, internalCurrentUser]);
+
+    useEffect(() => {
+        if (!effectiveCurrentUser) return;
+        const name = String((effectiveCurrentUser as any)?.name || '').trim().toLowerCase();
+        const email = String((effectiveCurrentUser as any)?.email || '').trim().toLowerCase();
+        const id = String((effectiveCurrentUser as any)?.id || (effectiveCurrentUser as any)?._id || '').trim();
+        if (!id || !email || name === 'loading...') return;
+        const role = String((effectiveCurrentUser as any)?.role || '').toLowerCase();
+        if (role === 'admin') return;
+        const perms = (effectiveCurrentUser as any)?.permissions;
+        if (!perms || typeof perms !== 'object') return;
+        if (typeof perms.team_page === 'undefined') return;
+        const teamPermission = String(perms.team_page || '').toLowerCase();
+        if (teamPermission === 'deny') {
+            if (accessDeniedRef.current) return;
+            accessDeniedRef.current = true;
+            toast.error('Access denied');
+            navigate(routepath.dashboard);
+        }
+    }, [effectiveCurrentUser, navigate]);
 
     useEffect(() => {
         const fetchStandaloneCurrentUser = async () => {

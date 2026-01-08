@@ -14,6 +14,12 @@ export const brandService = {
         return response.data;
     },
 
+    // Get brands for task creation dropdown (assigned brands for non-admin; all for admin)
+    async getAssignedBrands(): Promise<{ success: boolean; data: Brand[]; total: number }> {
+        const response = await apiClient.get('/brands/assigned');
+        return response.data;
+    },
+
     // Get only active brands (default behavior)
     async getActiveBrands(params?: {
         search?: string;
@@ -41,6 +47,11 @@ export const brandService = {
     // Create new brand
     async createBrand(brandData: CreateBrandDto): Promise<{ success: boolean; data: Brand }> {
         const response = await apiClient.post('/brands', brandData);
+        return response.data;
+    },
+
+    async bulkUpsertBrands(payload: { brands: Array<CreateBrandDto & { clientId?: string }> }): Promise<{ success: boolean; data: Brand[] }> {
+        const response = await apiClient.post('/brands/bulk', payload);
         return response.data;
     },
 
