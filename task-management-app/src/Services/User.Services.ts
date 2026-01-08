@@ -340,6 +340,7 @@ class AuthServices {
                 managerId: userData.managerId || null,
                 assignedBrandIds: userData.assignedBrandIds || [],
                 assignedBrands: userData.assignedBrands || [],
+                permissions: userData.permissions || {},
                 phone: userData.phone || '',
                 department: userData.department || '',
                 location: userData.location || '',

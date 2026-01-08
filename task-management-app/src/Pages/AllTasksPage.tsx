@@ -205,6 +205,7 @@ interface DesktopTaskItemProps {
   isTaskPermanentlyApproved: (taskId: string) => boolean;
   isTaskAssignee: (task: Task) => boolean;
   isTaskAssigner: (task: Task) => boolean;
+  canEditTask: (task: Task) => boolean;
   onPermanentApproval: (taskId: string, value: boolean) => Promise<void>;
   isUpdatingApproval: boolean;
 }
@@ -770,7 +771,6 @@ const BulkImporter = memo(({
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
-                <option value="urgent">Urgent</option>
               </select>
             </div>
 
@@ -996,7 +996,6 @@ Add user notifications
                               <option value="low">Low</option>
                               <option value="medium">Medium</option>
                               <option value="high">High</option>
-                              <option value="urgent">Urgent</option>
                             </select>
                           </td>
 
@@ -1422,9 +1421,11 @@ const DesktopTaskItem = memo(({
   isTaskCompleted,
   isTaskPermanentlyApproved,
   isTaskAssigner,
+  canEditTask,
   onPermanentApproval,
   isUpdatingApproval
 }: DesktopTaskItemProps) => {
+
   const userInfo = getUserInfoForDisplay(task);
   const assignerInfo = useMemo(() => {
     const assignedByUser: any = (task as any)?.assignedByUser;
@@ -1442,6 +1443,7 @@ const DesktopTaskItem = memo(({
   const isCompleted = isTaskCompleted(task.id);
   const isPermanentlyApproved = isTaskPermanentlyApproved(task.id);
   const userIsAssigner = isTaskAssigner(task);
+  const canEditThisTask = typeof canEditTask === 'function' ? canEditTask(task) : userIsAssigner;
   const isOverdueTask = isOverdue(task.dueDate, task.status);
 
   const taskTypeLabel = (task.taskType || (task as any).type || (task as any).task_type || '').toString();
@@ -1514,7 +1516,7 @@ const DesktopTaskItem = memo(({
               <span className={`text-xs px-1.5 py-0.5 rounded mt-1 w-fit ${task.priority === 'high' ? 'bg-red-100 text-red-800' :
                 task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
                   'bg-green-100 text-green-800'}`}>
-                {task.priority.charAt(0).toUpperCase()}
+                {task.priority}
               </span>
             )}
           </div>
@@ -1571,7 +1573,7 @@ const DesktopTaskItem = memo(({
               </button>
 
               {/* Edit Task */}
-              {userIsAssigner && (
+              {canEditThisTask && (
                 <button
                   onClick={() => onEditTaskClick(task)}
                   disabled={isCompleted}
@@ -2748,6 +2750,23 @@ const AllTasksPage: React.FC<AllTasksPageProps> = ({
     return assigneeEmail.toLowerCase() === currentUserEmail.toLowerCase();
   }, [getEmailByIdInternal, currentUser]);
 
+  const canEditTask = useCallback((task: Task): boolean => {
+    const perms = (currentUser as any)?.permissions;
+    const raw = perms && typeof perms === 'object' ? (perms as any).edit_any_task : undefined;
+    const value = typeof raw === 'string' ? raw.toLowerCase() : undefined;
+
+    // Backward-compatible fallback: if permission not present, only assigner can edit.
+    if (typeof value === 'undefined') {
+      return isTaskAssigner(task);
+    }
+
+    if (value === 'deny') return false;
+    if (value === 'allow') return true;
+    if (value === 'team') return isTaskAssigner(task) || isTaskAssignee(task);
+    // own
+    return isTaskAssigner(task);
+  }, [currentUser, isTaskAssigner, isTaskAssignee]);
+
   const getUserInfoForDisplay = useCallback((task: Task): { name: string; email: string } => {
     if (task.assignedToUser && task.assignedToUser.email) {
       return {
@@ -2981,6 +3000,11 @@ const AllTasksPage: React.FC<AllTasksPageProps> = ({
 
   // ==================== EDIT TASK FUNCTIONS ====================
   const handleOpenEditModal = useCallback((task: Task) => {
+    if (!canEditTask(task)) {
+      toast.error('You do not have permission to edit this task');
+      setOpenMenuId(null);
+      return;
+    }
     if (onOpenEditModal) {
       // Use DashboardPage's edit modal
       onOpenEditModal(task);
@@ -2990,7 +3014,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = ({
       toast.error('Edit functionality not available');
     }
     setOpenMenuId(null);
-  }, [onOpenEditModal]);
+  }, [canEditTask, onOpenEditModal]);
 
   // ==================== BULK IMPORT FUNCTIONS ====================
   const handleOpenBulkImporter = useCallback(() => {
@@ -4025,6 +4049,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = ({
                       isTaskPermanentlyApproved={isTaskPermanentlyApproved}
                       isTaskAssignee={isTaskAssignee}
                       isTaskAssigner={isTaskAssigner}
+                      canEditTask={canEditTask}
                       onPermanentApproval={handlePermanentApproval}
                       isUpdatingApproval={isUpdatingApproval}
                     />

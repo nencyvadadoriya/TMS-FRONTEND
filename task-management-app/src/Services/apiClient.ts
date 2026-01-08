@@ -2,10 +2,11 @@
 import axios from 'axios';
 
 const envBaseUrl = import.meta.env.VITE_API_BASE_URL;
+const isDev = Boolean(import.meta.env.DEV);
 const resolvedBaseUrl =
     (typeof envBaseUrl === 'string' && envBaseUrl.trim().length > 0)
         ? envBaseUrl
-        : 'https://tms-backend-sand.vercel.app/api';
+        : (isDev ? 'http://localhost:9000/api' : 'https://tms-backend-sand.vercel.app/api');
 
 const apiClient = axios.create({
     baseURL: resolvedBaseUrl,

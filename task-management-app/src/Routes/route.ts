@@ -20,6 +20,7 @@ export const routepath = {
     calendar: '/calendar',
     analyze: '/analyze',
     team: '/team',
+    access: '/access',
     profile: '/profile',
     brands: '/brands',
     brandDetail: '/brands/:brandId'
@@ -71,6 +72,10 @@ export const route = createHashRouter([
                 lazy: lazyComponent(() => import("../Pages/DashboardPage"))
             },
             {
+                path: routepath.access,
+                lazy: lazyComponent(() => import("../Pages/DashboardPage"))
+            },
+            {
                 path: routepath.profile,
                 lazy: lazyComponent(() => import("../Pages/DashboardPage"))
             },
@@ -83,5 +88,5 @@ export const route = createHashRouter([
                 lazy: lazyComponent(() => import("../Pages/DashboardPage"))
             }
         ]
-    }
-]);
+    } 
+]);  

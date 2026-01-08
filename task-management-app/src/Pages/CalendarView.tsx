@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, ExternalLink, RefreshCw, MoreVertical, CheckCircle, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -7,6 +7,8 @@ import apiClient from '../Services/apiClient';
 import { taskService } from '../Services/Task.services';
 import { authService } from '../Services/User.Services';
 import { CalendarPageSkeleton } from '../Components/LoadingSkeletons';
+import { useNavigate } from 'react-router-dom';
+import { routepath } from '../Routes/route';
 
 interface CalendarViewProps {
   tasks?: Task[];
@@ -16,6 +18,9 @@ interface CalendarViewProps {
   handleUpdateTask?: (taskId: string, updatedData: Partial<Task>) => Promise<void>;
   refreshTasks?: () => Promise<void>;
   canEditDeleteTask?: (task: Task) => boolean;
+  canEditTask?: (task: Task) => boolean;
+  canDeleteTaskForTask?: (task: Task) => boolean;
+  canDeleteTask?: boolean;
   canMarkTaskDone?: (task: Task) => boolean;
   getAssignedUserInfo?: (task: Task) => { name: string; email: string };
   formatDate?: (dateString: string) => string;
@@ -30,6 +35,9 @@ type StatusFilterMode = 'all' | 'pending' | 'completed' | 'overdue';
 type PriorityFilterMode = 'all' | 'high' | 'medium' | 'low' | 'urgent';
 
 const CalendarView: React.FC<CalendarViewProps> = (props) => {
+  const navigate = useNavigate();
+  const accessDeniedRef = useRef(false);
+
   const {
     tasks: tasksProp,
     currentUser: currentUserProp,
@@ -38,11 +46,22 @@ const CalendarView: React.FC<CalendarViewProps> = (props) => {
     handleUpdateTask,
     refreshTasks,
     canEditDeleteTask = () => false,
+    canEditTask,
+    canDeleteTaskForTask,
+    canDeleteTask = true,
     canMarkTaskDone = () => false,
     getAssignedUserInfo = () => ({ name: '', email: '' }),
     formatDate = (dateString: string) => dateString,
     isOverdue = () => false,
   } = props;
+
+  const canEditTaskEffective = useMemo(() => {
+    return (typeof canEditTask === 'function' ? canEditTask : canEditDeleteTask) as (task: Task) => boolean;
+  }, [canEditDeleteTask, canEditTask]);
+
+  const canDeleteTaskForTaskEffective = useMemo(() => {
+    return (typeof canDeleteTaskForTask === 'function' ? canDeleteTaskForTask : canEditDeleteTask) as (task: Task) => boolean;
+  }, [canEditDeleteTask, canDeleteTaskForTask]);
 
   const hasExternalTasks = typeof tasksProp !== 'undefined';
 
@@ -59,6 +78,30 @@ const CalendarView: React.FC<CalendarViewProps> = (props) => {
   const [internalTasksLoading, setInternalTasksLoading] = useState(!hasExternalTasks);
   const [internalCurrentUser, setInternalCurrentUser] = useState<UserType | null>(null);
   const [internalCurrentUserLoading, setInternalCurrentUserLoading] = useState(!hasExternalCurrentUser);
+
+  const effectiveCurrentUser = useMemo(() => {
+    return (hasExternalCurrentUser ? (currentUserProp || null) : internalCurrentUser) as any;
+  }, [currentUserProp, hasExternalCurrentUser, internalCurrentUser]);
+
+  useEffect(() => {
+    if (!effectiveCurrentUser) return;
+    const name = String((effectiveCurrentUser as any)?.name || '').trim().toLowerCase();
+    const email = String((effectiveCurrentUser as any)?.email || '').trim().toLowerCase();
+    const id = String((effectiveCurrentUser as any)?.id || (effectiveCurrentUser as any)?._id || '').trim();
+    if (!id || !email || name === 'loading...') return;
+    const role = String((effectiveCurrentUser as any)?.role || '').toLowerCase();
+    if (role === 'admin') return;
+    const perms = (effectiveCurrentUser as any)?.permissions;
+    if (!perms || typeof perms !== 'object') return;
+    if (typeof perms.calendar_page === 'undefined') return;
+    const perm = String(perms.calendar_page || '').toLowerCase();
+    if (perm === 'deny') {
+      if (accessDeniedRef.current) return;
+      accessDeniedRef.current = true;
+      toast.error('Access denied');
+      navigate(routepath.dashboard);
+    }
+  }, [effectiveCurrentUser, navigate]);
 
   useEffect(() => {
     const fetchStandaloneTasks = async () => {
@@ -670,6 +713,11 @@ const CalendarView: React.FC<CalendarViewProps> = (props) => {
     if (taskId.startsWith('google-')) {
       return;
     }
+
+    if (!canDeleteTask) {
+      toast.error('You do not have permission to delete tasks');
+      return;
+    }
     if (window.confirm('Are you sure you want to delete this task?')) {
       await handleDeleteTask?.(taskId);
     }
@@ -1222,7 +1270,7 @@ const CalendarView: React.FC<CalendarViewProps> = (props) => {
                                 {Boolean(syncingTaskIds[String(task.id || '').trim()]) ? 'Syncing...' : 'Sync to Google Tasks'}
                               </button>
                               <div className="border-t border-gray-100"></div>
-                              {canEditDeleteTask(task as Task) && (
+                              {canEditTaskEffective(task as Task) && (
                                 <button
                                   onClick={() => {
                                     handleEditTask(task as Task);
@@ -1233,7 +1281,7 @@ const CalendarView: React.FC<CalendarViewProps> = (props) => {
                                   Edit Task
                                 </button>
                               )}
-                              {canEditDeleteTask(task as Task) && (
+                              {canDeleteTask && canDeleteTaskForTaskEffective(task as Task) && (
                                 <button
                                   onClick={() => {
                                     handleDeleteWithConfirmation(task.id);

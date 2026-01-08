@@ -1,19 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import {
   X, LogOut, ListTodo, ChevronLeft, ChevronRight, Menu, Sun, Moon,
-  Users, Home, Calendar, CheckSquare, User, Building, BarChart3
+  Users, Home, Calendar, CheckSquare, User, Building, BarChart3, Shield
 } from 'lucide-react';
 import type { UserType } from '../Types/Types';
 
 interface SidebarProps {
   sidebarOpen: boolean;
+
   setSidebarOpen: (open: boolean) => void;
   currentUser: UserType;
   handleLogout: () => void;
   isCollapsed: boolean;
   setIsCollapsed: (collapsed: boolean) => void;
   navigateTo: (page: string) => void;
-  currentView?: 'dashboard' | 'all-tasks' | 'calendar' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'analyze';
+  currentView?: 'dashboard' | 'all-tasks' | 'calendar' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'analyze' | 'access';
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -28,10 +29,22 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [darkMode, setDarkMode] = useState(false);
 
-  // Check if user is admin
-  const isAdmin = currentUser?.role === 'admin';
-  const isAdminOrManager = currentUser?.role === 'admin' || currentUser?.role === 'manager';
-  const isAssistant = String(currentUser?.role || '').toLowerCase() === 'assistant';
+  const hasAccess = (moduleId: string) => {
+    const perms = (currentUser as any)?.permissions;
+    if (!perms || typeof perms !== 'object') return true;
+    if (Object.keys(perms).length === 0) return true;
+    if (typeof (perms as any)[moduleId] === 'undefined') return true;
+    const perm = String((perms as any)[moduleId] || '').toLowerCase();
+    return perm !== 'deny';
+  };
+
+  const canSeeAccess = hasAccess('access_management');
+  const canSeeTeam = hasAccess('team_page');
+  const canSeeTasks = hasAccess('tasks_page');
+  const canSeeCalendar = hasAccess('calendar_page');
+  const canSeeBrands = hasAccess('brands_page');
+  const canSeeProfile = hasAccess('profile_page');
+  const canSeeAnalyze = hasAccess('reports_analytics');
 
   const getDisplayInitial = () => {
     if (!currentUser) return 'U';
@@ -57,32 +70,44 @@ const Sidebar: React.FC<SidebarProps> = ({
         onClick: () => navigateTo('dashboard'),
         badge: 0
       },
-      {
-        name: 'All Tasks',
-        icon: CheckSquare,
-        current: currentView === 'all-tasks',
-        onClick: () => navigateTo('tasks'),
-        badge:0
-      },
-      {
-        name: 'Calendar',
-        icon: Calendar,
-        current: currentView === 'calendar',
-        onClick: () => navigateTo('calendar'),
-        badge: 0
-      },
-      {
-        name: 'Analyze Task',
-        icon: BarChart3,
-        current: currentView === 'analyze',
-        onClick: () => navigateTo('analyze'),
-        badge: 0
-      }
+      ...(canSeeTasks
+        ? [
+          {
+            name: 'All Tasks',
+            icon: CheckSquare,
+            current: currentView === 'all-tasks',
+            onClick: () => navigateTo('tasks'),
+            badge:0
+          }
+        ]
+        : []),
+      ...(canSeeCalendar
+        ? [
+          {
+            name: 'Calendar',
+            icon: Calendar,
+            current: currentView === 'calendar',
+            onClick: () => navigateTo('calendar'),
+            badge: 0
+          }
+        ]
+        : []),
+      ...(canSeeAnalyze
+        ? [
+          {
+            name: 'Analyze Task',
+            icon: BarChart3,
+            current: currentView === 'analyze',
+            onClick: () => navigateTo('analyze'),
+            badge: 0
+          }
+        ]
+        : [])
     ];
 
     const itemsWithRoleGated = [
       ...baseItems,
-      ...((isAdminOrManager || isAssistant)
+      ...(canSeeBrands
         ? [
           {
             name: 'Brands',
@@ -95,35 +120,41 @@ const Sidebar: React.FC<SidebarProps> = ({
         : [])
     ];
 
-    if (isAdminOrManager) {
-      return [
-        ...itemsWithRoleGated,
-        {
-          name: 'Team',
-          icon: Users,
-          current: currentView === 'team',
-          onClick: () => navigateTo('team'),
-          badge: 0
-        },
-        {
-          name: 'Profile',
-          icon: User,
-          current: currentView === 'profile',
-          onClick: () => navigateTo('profile'),
-          badge: 0
-        }
-      ];
-    }
-    // For user: Dashboard, All Tasks, Calendar, Profile
     return [
       ...itemsWithRoleGated,
-      {
-        name: 'Profile',
-        icon: User,
-        current: currentView === 'profile',
-        onClick: () => navigateTo('profile'),
-        badge: 0
-      }
+      ...(canSeeTeam
+        ? [
+          {
+            name: 'Team',
+            icon: Users,
+            current: currentView === 'team',
+            onClick: () => navigateTo('team'),
+            badge: 0
+          }
+        ]
+        : []),
+      ...(canSeeAccess
+        ? [
+          {
+            name: 'Access',
+            icon: Shield,
+            current: currentView === 'access',
+            onClick: () => navigateTo('access'),
+            badge: 0
+          }
+        ]
+        : []),
+      ...(canSeeProfile
+        ? [
+          {
+            name: 'Profile',
+            icon: User,
+            current: currentView === 'profile',
+            onClick: () => navigateTo('profile'),
+            badge: 0
+          }
+        ]
+        : [])
     ];
   };
 
@@ -223,11 +254,6 @@ const Sidebar: React.FC<SidebarProps> = ({
               <div className="ml-3 flex-1">
                 <p className="text-base font-medium text-gray-700 dark:text-gray-300">
                   {currentUser.name}
-                  {isAdmin && (
-                    <span className="ml-2 text-xs bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100 px-2 py-0.5 rounded-full">
-                      Admin
-                    </span>
-                  )}
                 </p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">{currentUser.email}</p>
                 <div className="flex items-center gap-3 mt-2">
@@ -320,11 +346,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       {currentUser.name}
                     </p>
-                    {isAdmin && (
-                      <span className="ml-2 text-xs bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100 px-2 py-0.5 rounded-full">
-                        Admin
-                      </span>
-                    )}
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400">{currentUser.email}</p>
                   <div className="flex items-center justify-between mt-2">

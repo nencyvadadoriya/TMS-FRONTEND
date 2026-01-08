@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
     ArrowLeft,
@@ -25,6 +25,7 @@ import type { Brand, BrandInvite, UserType, Task } from '../Types/Types';
 import { taskService } from '../Services/Task.services';
 import { brandService } from '../Services/Brand.service';
 import { BrandDetailSkeleton } from '../Components/LoadingSkeletons';
+import { routepath } from '../Routes/route';
 
 interface BrandDetailPageProps {
     brands?: Brand[];
@@ -39,6 +40,7 @@ interface BrandDetailPageProps {
 
 const BrandDetailPage: React.FC<BrandDetailPageProps> = ({
     brands = [],
+    currentUser,
     isSidebarCollapsed = false,
     brandId: brandIdProp,
     onBack,
@@ -46,8 +48,10 @@ const BrandDetailPage: React.FC<BrandDetailPageProps> = ({
     tasks: globalTasks = [],
 }) => {
     const navigate = useNavigate();
+    const accessDeniedRef = React.useRef(false);
     const { brandId: brandIdFromParams } = useParams<{ brandId: string }>();
     const brandId = brandIdProp || brandIdFromParams;
+
     const [activeTab, setActiveTab] = useState<'tasks' | 'history'>('tasks');
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -65,6 +69,28 @@ const BrandDetailPage: React.FC<BrandDetailPageProps> = ({
 
     const [localBrand, setLocalBrand] = useState<Brand | null>(null);
     const [tasksFromAPI, setTasksFromAPI] = useState(false);
+
+    const hasAccess = useCallback((moduleId: string) => {
+        const perms = (currentUser as any)?.permissions;
+        if (!perms || typeof perms !== 'object') return true;
+        if (Object.keys(perms).length === 0) return true;
+        if (typeof (perms as any)[moduleId] === 'undefined') return true;
+        const perm = String((perms as any)[moduleId] || '').toLowerCase();
+        return perm !== 'deny';
+    }, [currentUser]);
+
+    const canViewBrandPage = useMemo(() => hasAccess('brands_page'), [hasAccess]);
+
+    useEffect(() => {
+        if (!currentUser) return;
+
+        if (!canViewBrandPage) {
+            if (accessDeniedRef.current) return;
+            accessDeniedRef.current = true;
+            toast.error('Access denied');
+            navigate(routepath.dashboard);
+        }
+    }, [canViewBrandPage, currentUser, navigate]);
 
     // Get brand from props or API using brandId
     useEffect(() => {
@@ -177,30 +203,6 @@ const BrandDetailPage: React.FC<BrandDetailPageProps> = ({
             })
             .sort((a: any, b: any) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
     }, [localBrand]);
-
-     useCallback((item: any): string => {
-        const msg = (item?.message || item?.notes || '').toString().trim();
-        const field = (item?.field || '').toString().trim();
-        const oldValue = item?.oldValue;
-        const newValue = item?.newValue;
-
-        const formatValue = (v: any) => {
-            if (v === null || v === undefined) return '—';
-            if (typeof v === 'string') return v.trim() ? v : '—';
-            if (typeof v === 'number' || typeof v === 'boolean') return String(v);
-            try {
-                return JSON.stringify(v);
-            } catch {
-                return String(v);
-            }
-        };
-
-        if (field && (oldValue !== undefined || newValue !== undefined)) {
-            const change = `${field}: ${formatValue(oldValue)} → ${formatValue(newValue)}`.trim();
-            return msg ? `${msg} (${change})` : change;
-        }
-        return msg;
-    }, []);
 
     const getActorLabel = useCallback((item: any): string => {
         const name = (item?.userName || '').toString().trim();
