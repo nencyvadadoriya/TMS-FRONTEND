@@ -91,7 +91,94 @@ export const DashboardPageSkeleton: React.FC = () => {
                 </div>
               </div>
 
-              <div className="h-10" />
+              <div className="mb-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                  {[0, 1, 2, 3].map((i) => (
+                    <div key={i} className="bg-white p-6 rounded-2xl shadow-sm border-2 border-transparent">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-3">
+                            <SkeletonBox className="h-12 w-12 rounded-xl" />
+                            <div>
+                              <SkeletonBox className="h-4 w-28 rounded mb-2" />
+                              <div className="flex items-baseline gap-2">
+                                <SkeletonBox className="h-8 w-16 rounded" />
+                                <SkeletonBox className="h-6 w-20 rounded-full" />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <SkeletonBox className="h-3 w-24 rounded" />
+                            <SkeletonBox className="h-5 w-20 rounded-full" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <SkeletonBox className="h-5 w-5 rounded" />
+                      <SkeletonBox className="h-6 w-40 rounded" />
+                      <SkeletonBox className="h-4 w-44 rounded" />
+                    </div>
+                    <SkeletonBox className="h-4 w-72 rounded" />
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center bg-gray-100 rounded-xl p-1">
+                      <SkeletonBox className="h-9 w-9 rounded-lg" />
+                      <SkeletonBox className="h-9 w-9 rounded-lg ml-1" />
+                    </div>
+                    <SkeletonBox className="h-9 w-28 rounded-lg" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[0, 1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-3">
+                          <SkeletonBox className="h-6 w-20 rounded-full" />
+                          <SkeletonBox className="h-6 w-24 rounded-full" />
+                        </div>
+                        <SkeletonBox className="h-5 w-3/4 rounded mb-2" />
+                        <SkeletonBox className="h-4 w-2/3 rounded" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 mb-5">
+                      <div className="flex items-center justify-between gap-4">
+                        <SkeletonBox className="h-4 w-20 rounded" />
+                        <SkeletonBox className="h-4 w-32 rounded" />
+                      </div>
+                      <div className="flex items-center justify-between gap-4">
+                        <SkeletonBox className="h-4 w-20 rounded" />
+                        <SkeletonBox className="h-4 w-28 rounded" />
+                      </div>
+                      <div className="flex items-center justify-between gap-4">
+                        <SkeletonBox className="h-4 w-20 rounded" />
+                        <SkeletonBox className="h-4 w-24 rounded" />
+                      </div>
+                      <div className="flex items-center justify-between gap-4">
+                        <SkeletonBox className="h-4 w-20 rounded" />
+                        <SkeletonBox className="h-6 w-24 rounded-full" />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-4 border-t border-gray-100">
+                      <SkeletonBox className="h-10 flex-1 rounded-lg" />
+                      <SkeletonBox className="h-10 w-20 rounded-lg" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </main>

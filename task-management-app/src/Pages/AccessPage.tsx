@@ -186,8 +186,20 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
     const loadModules = useCallback(async () => {
         try {
             const res = await accessService.getModules();
-            const list = Array.isArray((res as any)?.data) ? (res as any).data : [];
-            const mapped: AccessRow[] = list
+            let list: any[] = [];
+            if (Array.isArray(res)) {
+                list = res as any[];
+            } else if (Array.isArray((res as any)?.data)) {
+                list = (res as any).data;
+            } else if (Array.isArray((res as any)?.modules)) {
+                list = (res as any).modules;
+            } else if (Array.isArray((res as any)?.result)) {
+                list = (res as any).result;
+            } else if ((res as any)?.success && Array.isArray((res as any)?.data)) {
+                list = (res as any).data;
+            }
+
+            const mapped: AccessRow[] = (list || [])
                 .map((m: any) => ({
                     id: String(m?.moduleId || ''),
                     module: String(m?.name || m?.moduleId || ''),
@@ -196,6 +208,19 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
                     assistant: normalizePermission(m?.defaults?.assistant),
                 }))
                 .filter((r: any) => Boolean(r?.id));
+
+            const hasReportsAnalytics = mapped.some((r) => String(r?.id || '').trim().toLowerCase() === 'reports_analytics');
+            if (!hasReportsAnalytics) {
+                const analyzeRow = mapped.find((r) => String(r?.id || '').trim().toLowerCase() === 'analyze_page');
+                mapped.push({
+                    id: 'reports_analytics',
+                    module: 'Reports / Analytics',
+                    admin: analyzeRow?.admin || 'allow',
+                    manager: analyzeRow?.manager || 'deny',
+                    assistant: analyzeRow?.assistant || 'deny',
+                });
+            }
+
             setRows(mapped);
         } catch (e: any) {
             const status = e?.response?.status;

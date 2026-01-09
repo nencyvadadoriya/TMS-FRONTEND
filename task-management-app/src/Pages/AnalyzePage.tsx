@@ -3251,39 +3251,6 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
                                             </select>
                                         </div>
 
-                                        <div>
-                                            <div className="text-xs text-gray-500 mb-1">Date Field</div>
-                                            <select
-                                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-800 bg-white"
-                                                value={newWidgetDateField}
-                                                onChange={(e) => setNewWidgetDateField(e.target.value as any)}
-                                            >
-                                                <option value="createdAt">Created Date</option>
-                                                <option value="dueDate">Due Date</option>
-                                                <option value="completedAt">Completed Date</option>
-                                                <option value="updatedAt">Updated Date</option>
-                                            </select>
-                                        </div>
-
-                                        <div>
-                                            <div className="text-xs text-gray-500 mb-1">Start Date</div>
-                                            <input
-                                                type="date"
-                                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-800 bg-white"
-                                                value={newWidgetStartDate}
-                                                onChange={(e) => setNewWidgetStartDate(e.target.value)}
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <div className="text-xs text-gray-500 mb-1">End Date</div>
-                                            <input
-                                                type="date"
-                                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-800 bg-white"
-                                                value={newWidgetEndDate}
-                                                onChange={(e) => setNewWidgetEndDate(e.target.value)}
-                                            />
-                                        </div>
                                     </div>
                                 </div>
                             </div>
