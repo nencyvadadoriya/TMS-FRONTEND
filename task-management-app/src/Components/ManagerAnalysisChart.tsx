@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as echarts from 'echarts';
+import { Trash2 } from 'lucide-react';
 
 import type { Task } from '../Types/Types';
 
@@ -14,7 +15,13 @@ type ManagerOption = {
     label: string;
 };
 
-const ManagerAnalysisChart = ({ tasks }: { tasks: Task[] }) => {
+type ManagerAnalysisChartProps = {
+    tasks: Task[];
+    canDelete?: boolean;
+    onDelete?: () => void;
+};
+
+const ManagerAnalysisChart = ({ tasks, canDelete = false, onDelete }: ManagerAnalysisChartProps) => {
     const chartRef = useRef<HTMLDivElement | null>(null);
     const chartInstanceRef = useRef<ReturnType<typeof echarts.init> | null>(null);
 
@@ -167,8 +174,6 @@ const ManagerAnalysisChart = ({ tasks }: { tasks: Task[] }) => {
         const countsByAxisAndGroup = new Map<string, Map<string, number>>();
         const groupSet = new Set<string>();
 
-        const managerKeySet = new Set(managerOptions.filter((m) => m.key !== 'all').map((m) => m.key));
-        const hasManagers = managerKeySet.size > 0;
         let considered = 0;
         let withAssignee = 0;
         let withDate = 0;
@@ -177,19 +182,14 @@ const ManagerAnalysisChart = ({ tasks }: { tasks: Task[] }) => {
 
         (tasks || []).forEach((t) => {
             considered += 1;
-            const { key, label, isManager } = getAssigneeInfo(t);
+            const { key, label } = getAssigneeInfo(t);
             if (!key) return;
 
             withAssignee += 1;
 
-            // When role info exists, the "All managers" view should be manager-only.
-            // But when a specific person is selected, always allow their data through
-            // (some APIs send role inconsistently between endpoints).
-            if (isAllManagersView) {
-                if (hasManagers && !isManager) return;
-            } else {
-                if (key !== managerKey) return;
-            }
+            // In "All managers" view, include all assignees and group by manager key.
+            // When a specific manager is selected, only include that manager's tasks.
+            if (!isAllManagersView && key !== managerKey) return;
 
             // Default filter: only include Completed, Pending and Overdue tasks
             const status = normalizeStatus((t as any)?.status);
@@ -399,6 +399,22 @@ const ManagerAnalysisChart = ({ tasks }: { tasks: Task[] }) => {
                             </option>
                         ))}
                     </select>
+                    <button
+                        type="button"
+                        className={`p-2 rounded-lg transition-colors ${
+                            canDelete
+                                ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                                : 'text-gray-300 cursor-not-allowed'
+                        }`}
+                        aria-label={canDelete ? 'Hide chart' : 'Only admins can hide charts'}
+                        disabled={!canDelete}
+                        onClick={() => {
+                            if (!canDelete) return;
+                            onDelete?.();
+                        }}
+                    >
+                        <Trash2 className="h-5 w-5" />
+                    </button>
                 </div>
             </div>
             <div ref={chartRef} className="w-full" style={{ height: 360 }} />
