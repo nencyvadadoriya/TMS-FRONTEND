@@ -422,6 +422,14 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
     const setUserModuleValue = async (userId: string, moduleId: string, value: PermissionValue) => {
         if (!canManageAccess) return;
 
+        const meId = (currentUser?.id || (currentUser as any)?._id || '').toString();
+        if (meId && meId === userId) {
+            const ok = window.confirm(
+                'You are changing your own access permissions. This may affect what you can access in the system. Do you want to continue?'
+            );
+            if (!ok) return;
+        }
+
         setAccess((prev) => {
             const list = Array.isArray(prev) ? [...prev] : [];
             const idx = list.findIndex(a => a.userId === userId && a.moduleId === moduleId);
@@ -438,7 +446,6 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
             await accessService.setUserPermission(userId, moduleId, value);
             await loadUserPermissions(userId);
 
-            const meId = (currentUser?.id || (currentUser as any)?._id || '').toString();
             if (meId && meId === userId && onRefreshCurrentUser) {
                 await onRefreshCurrentUser();
             }
@@ -468,6 +475,14 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
             return;
         }
 
+        const meId = (currentUser?.id || (currentUser as any)?._id || '').toString();
+        if (meId && meId === uid) {
+            const ok = window.confirm(
+                'You are applying a permission template to your own account. This can change multiple permissions and may affect what you can access. Do you want to continue?'
+            );
+            if (!ok) return;
+        }
+
         setApplyingTemplate(true);
         try {
             const overwrite = Boolean(options?.overwrite);
@@ -483,7 +498,6 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
             toast.success(overwrite ? 'Template applied (overwritten)' : 'Template applied');
             await loadUserPermissions(uid);
 
-            const meId = (currentUser?.id || (currentUser as any)?._id || '').toString();
             if (meId && meId === uid && onRefreshCurrentUser) {
                 await onRefreshCurrentUser();
             }
