@@ -2,6 +2,8 @@
 
 import apiClient from "./apiClient";
 
+const isDev = Boolean(import.meta.env.DEV);
+
 const describeAxiosError = (err: any) => {
     const status = err?.response?.status;
     const data = err?.response?.data;
@@ -61,11 +63,11 @@ class TaskService {
 
     async addTask(payload: any) {
         try {
-            console.log('📤 Sending task to API:', payload);
+            if (isDev) console.log('📤 Sending task to API:', payload);
 
             const res = await apiClient.post(this.baseUrl + this.authAddTask, payload);
 
-            console.log('📥 API Response:', res.data);
+            if (isDev) console.log('📥 API Response:', res.data);
 
             const task = res.data.data;
             return {
@@ -110,11 +112,11 @@ class TaskService {
 
     async updateTask(id: string, payload: any) {
         try {
-            console.log('📝 Updating task:', id, payload);
+            if (isDev) console.log('📝 Updating task:', id, payload);
 
             const res = await apiClient.put(this.baseUrl + this.authUpdateTask + `/${id}`, payload);
 
-            console.log('✅ Update response:', res.data);
+            if (isDev) console.log('✅ Update response:', res.data);
 
             const task = res.data.data;
             return {
@@ -136,11 +138,11 @@ class TaskService {
 
     async deleteTask(id: string) {
         try {
-            console.log('Sending DELETE request for task ID:', id);
+            if (isDev) console.log('Sending DELETE request for task ID:', id);
 
             const res = await apiClient.delete(this.baseUrl + this.authDeletedTask + `/${id}`);
 
-            console.log(' DELETE Response:', res.data);
+            if (isDev) console.log(' DELETE Response:', res.data);
 
             return {
                 success: Boolean(res.data.success),
@@ -164,7 +166,7 @@ class TaskService {
 
     async addComment(taskId: string, content: string) {
         try {
-            console.log('💾 Adding comment for task:', taskId, content);
+            if (isDev) console.log('💾 Adding comment for task:', taskId, content);
 
             const payload = {
                 content: content
@@ -173,7 +175,7 @@ class TaskService {
 
             const res = await apiClient.post(this.buildCommentsUrl(taskId), payload);
 
-            console.log('✅ Comment add response:', res.data);
+            if (isDev) console.log('✅ Comment add response:', res.data);
 
             return {
                 success: Boolean(res.data.success),
@@ -194,7 +196,7 @@ class TaskService {
         try {
             const res = await apiClient.get(this.buildCommentsUrl(taskId));
 
-            console.log('✅ Comments fetch response:', res.data);
+            if (isDev) console.log('✅ Comments fetch response:', res.data);
 
             return {
                 success: Boolean(res.data.success),
@@ -213,11 +215,11 @@ class TaskService {
 
     async deleteComment(taskId: string, commentId: string) {
         try {
-            console.log('🗑️ Deleting comment:', commentId, 'for task:', taskId);
+            if (isDev) console.log('🗑️ Deleting comment:', commentId, 'for task:', taskId);
 
             const res = await apiClient.delete(this.buildCommentsUrl(taskId, commentId));
 
-            console.log('✅ Comment delete response:', res.data);
+            if (isDev) console.log('✅ Comment delete response:', res.data);
 
             return {
                 success: Boolean(res.data.success),
@@ -234,7 +236,7 @@ class TaskService {
 
     async getTaskHistory(taskId: string) {
         try {
-            console.log('📜 Fetching history for task:', taskId);
+            if (isDev) console.log('📜 Fetching history for task:', taskId);
             const res = await apiClient.get(this.buildHistoryUrl(taskId));
 
             const entries = (res.data.data || []).map((entry: any) => ({
@@ -242,6 +244,8 @@ class TaskService {
                 id: entry.id || entry._id,
                 timestamp: entry.timestamp || entry.createdAt || new Date().toISOString()
             }));
+
+            if (isDev) console.log('✅ History fetch response:', res.data);
 
             return {
                 success: Boolean(res.data.success),
@@ -260,8 +264,10 @@ class TaskService {
 
     async addTaskHistory(taskId: string, payload: any) {
         try {
-            console.log(' Adding history for task:', taskId);
+            if (isDev) console.log(' Adding history for task:', taskId);
             const res = await apiClient.post(this.buildHistoryUrl(taskId), payload);
+
+            if (isDev) console.log('✅ History add response:', res.data);
 
             return {
                 success: Boolean(res.data.success),

@@ -5,7 +5,7 @@ import { authService } from "../Services/User.Services";
 import type { OtpverifyPayload } from "../Types/Types";
 import toast from "react-hot-toast";
 
-export default function OtpPage() {
+export default function OtpVerifyPage() {
 
     const [email, setEmail] = useState<string>("");
     const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
@@ -15,6 +15,7 @@ export default function OtpPage() {
 
     const inputRefs = useRef<HTMLInputElement[]>([]);
 
+    const isDev = Boolean(import.meta.env.DEV);
 
     const location = useLocation();
     const navigate = useNavigate();
@@ -84,7 +85,7 @@ export default function OtpPage() {
                 setError(data.msg)
               }
             } catch (error) {
-            console.log("somthing went wrong");
+            if (isDev) console.log("somthing went wrong");
                
             }
     };

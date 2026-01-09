@@ -10,6 +10,8 @@ export default function AuthPage() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
 
+  const isDev = Boolean(import.meta.env.DEV);
+
   const [loginData, setLoginData] = useState({
     email: "",
     password: "",
@@ -78,12 +80,12 @@ export default function AuthPage() {
         password: loginData.password.trim(),
       };
 
-      console.log("📤 Login attempt for:", trimmedPayload.email);
+      if (isDev) console.log("📤 Login attempt for:", trimmedPayload.email);
 
       // Type assertion use करें
       const data = await authService.loginUser(trimmedPayload as any);
 
-      console.log("📥 Full API response:", data);
+      if (isDev) console.log("📥 Full API response:", data);
 
       if (!data.error && data.result?.token) {
         toast.success(data.msg || "Login successful!");
@@ -105,13 +107,11 @@ export default function AuthPage() {
             role: apiUser.role || data.result.role
           };
 
-          console.log("💾 Saving user data:", userData);
+          if (isDev) console.log("💾 Saving user data:", userData);
           localStorage.setItem("currentUser", JSON.stringify(userData));
         }
 
-        setTimeout(() => {
-          navigate(routepath.dashboard, { replace: true });
-        }, 500);
+        navigate(routepath.dashboard, { replace: true });
 
       } else {
         const errorMsg = data.msg || "Invalid credentials";

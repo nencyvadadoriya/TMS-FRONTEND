@@ -10,6 +10,7 @@ export default function ForgotPassword() {
   const [loader, setLoader] = useState<boolean>(false);
   const [debugOtp, setDebugOtp] = useState<string | null>(null);
   const navigate = useNavigate();
+  const isDev = Boolean(import.meta.env.DEV);
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -32,7 +33,7 @@ export default function ForgotPassword() {
       setLoader(true);
       const data = await authService.forgetPassword({ email });
       
-      console.log("Response from API:", data); 
+      if (isDev) console.log("Response from API:", data); 
       
       // Check if data exists
       if (!data) {
@@ -70,7 +71,7 @@ export default function ForgotPassword() {
       setLoader(false);
       
     } catch (error) {
-      console.error("Catch block error:", error);
+      if (isDev) console.error("Catch block error:", error);
       setError("Network error. Please check your connection.");
       toast.error("Network error. Please check your connection.");
       setLoader(false);

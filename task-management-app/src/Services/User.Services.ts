@@ -2,6 +2,8 @@ import apiClient from "./apiClient";
 import type { LoginBody, OtpverifyPayload, RegisterUserBody } from "../Types/Types";
 import toast from "react-hot-toast";
 
+const isDev = Boolean(import.meta.env.DEV);
+
 class AuthServices {
     authLoginUrl = "/auth/login";
     authRegisterUrl = "/auth/register"; // Fixed typo: regigster -> register
@@ -21,11 +23,11 @@ class AuthServices {
 
     async loginUser(payload: LoginBody) {
         try {
-            console.log("🔐 Login Request - Email:", payload.email);
+            if (isDev) console.log("🔐 Login Request - Email:", payload.email);
 
             const res = await apiClient.post(this.authLoginUrl, payload);
 
-            console.log("✅ Login Response:", res.data);
+            if (isDev) console.log("✅ Login Response:", res.data);
             return res.data;
         } catch (error: any) {
             console.error("❌ Login Error:", error.response?.data || error.message);
@@ -38,11 +40,13 @@ class AuthServices {
         try {
             const endpoint = isAdminCreating ? this.authCreateUser : this.authRegisterUrl;
 
-            console.log("📝 Register/Create User Request:", {
-                payload,
-                isAdminCreating,
-                endpoint
-            });
+            if (isDev) {
+                console.log("📝 Register/Create User Request:", {
+                    payload,
+                    isAdminCreating,
+                    endpoint
+                });
+            }
 
             // Prepare request payload
             const requestPayload = {
@@ -57,7 +61,7 @@ class AuthServices {
 
             const res = await apiClient.post(endpoint, requestPayload);
 
-            console.log("✅ Register/Create User Response:", res.data);
+            if (isDev) console.log("✅ Register/Create User Response:", res.data);
 
             const emailSent = typeof res.data?.emailSent === 'boolean' ? res.data.emailSent : undefined;
 
@@ -196,7 +200,7 @@ class AuthServices {
 
     async updateUser(userId: string, userData: any) {
         try {
-            console.log('Updating user:', { userId, userData });
+            if (isDev) console.log('Updating user:', { userId, userData });
 
             const token = localStorage.getItem('token');
 
@@ -211,7 +215,7 @@ class AuthServices {
 
             const res = await apiClient.put(`${this.authUpdateUser}/${userId}`, userData);
 
-            console.log('Update user response:', res.data);
+            if (isDev) console.log('Update user response:', res.data);
 
             return {
                 success: true,

@@ -123,7 +123,16 @@ const DashboardPage = () => {
     const usersRef = useRef<UserType[]>([]);
     const [apiBrands, setApiBrands] = useState<Brand[]>([]);
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(() => {
+        try {
+            const token = localStorage.getItem('token');
+            const rawUser = localStorage.getItem('currentUser');
+            return !(token && rawUser);
+        } catch {
+            return true;
+        }
+    });
+    const [tasksLoading, setTasksLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
 
     const [isCreatingTask, setIsCreatingTask] = useState(false);
@@ -152,6 +161,22 @@ const DashboardPage = () => {
     useEffect(() => {
         usersRef.current = users;
     }, [users]);
+
+    useEffect(() => {
+        try {
+            const rawUser = localStorage.getItem('currentUser');
+            if (!rawUser) return;
+            const parsed = JSON.parse(rawUser);
+            if (!parsed || typeof parsed !== 'object') return;
+            setCurrentUser((prev) => ({
+                ...(prev as any),
+                ...(parsed as any),
+            }));
+            setLoading(false);
+        } catch {
+            // ignore
+        }
+    }, []);
 
     useEffect(() => {
         currentUserEmailRef.current = (currentUser?.email || '').toString();
@@ -594,7 +619,6 @@ const DashboardPage = () => {
         },
         [currentUser],
     );
-
 
     const canEditTask = useCallback((task: Task): boolean => {
         const normalizeEmailSafe = (v: any): string => {
@@ -1509,7 +1533,7 @@ const DashboardPage = () => {
     const fetchTasks = useCallback(async () => {
         try {
             const isInitialFetch = !hasFetchedTasksOnceRef.current;
-            if (isInitialFetch) setLoading(true);
+            if (isInitialFetch) setTasksLoading(true);
 
             const response = await taskService.getAllTasks();
             if (response.success && response.data) {
@@ -1620,7 +1644,7 @@ const DashboardPage = () => {
             console.error('Failed to fetch tasks:', error);
             toast.error('Failed to load tasks');
         } finally {
-            setLoading(false);
+            setTasksLoading(false);
         }
     }, []);
 
@@ -1728,6 +1752,7 @@ const DashboardPage = () => {
             navigate('/login');
         } finally {
             setIsAuthReady(true);
+            setLoading(false);
         }
     }, [navigate]);
 
@@ -2245,58 +2270,83 @@ const DashboardPage = () => {
 
                                     <div className="mb-10">
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-                                            {stats.map((stat) => (
-                                                <div
-                                                    key={stat.name}
-                                                    onClick={() => handleStatClick(stat.id)}
-                                                    className={`bg-white p-6 rounded-2xl shadow-sm border-2 cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-1 ${selectedStatFilter === stat.id
-                                                        ? 'border-blue-500 shadow-lg shadow-blue-50'
-                                                        : 'border-transparent hover:border-gray-200'
-                                                        }`}
-                                                >
-                                                    <div className="flex items-start justify-between">
-                                                        <div className="flex-1">
-                                                            <div className="flex items-center gap-3 mb-3">
-                                                                <div className={`p-3 rounded-xl ${stat.bgColor}`}>
-                                                                    <stat.icon className={`h-6 w-6 ${stat.color}`} />
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-sm font-medium text-gray-600">{stat.name}</p>
-                                                                    <div className="flex items-baseline gap-2">
-                                                                        <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
-                                                                        <div className={`flex items-center text-xs font-medium px-2 py-1 rounded-full ${stat.changeType === 'positive'
-                                                                            ? 'bg-emerald-50 text-emerald-700'
-                                                                            : stat.changeType === 'negative'
-                                                                                ? 'bg-rose-50 text-rose-700'
-                                                                                : 'bg-gray-50 text-gray-700'
-                                                                            }`}>
-                                                                            {stat.changeType === 'positive' ? (
-                                                                                <TrendingUp className="h-3 w-3 mr-1" />
-                                                                            ) : stat.changeType === 'negative' ? (
-                                                                                <TrendingDown className="h-3 w-3 mr-1" />
-                                                                            ) : null}
-                                                                            {stat.change}
+                                            {tasksLoading
+                                                ? [...Array(4)].map((_, i) => (
+                                                    <div key={i} className="bg-white p-6 rounded-2xl shadow-sm border-2 border-transparent">
+                                                        <div className="flex items-start justify-between">
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center gap-3 mb-3">
+                                                                    <div className="p-3 rounded-xl bg-gray-100">
+                                                                        <div className="h-6 w-6 bg-gray-200 animate-pulse rounded" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="h-4 w-24 bg-gray-200 animate-pulse rounded mb-2" />
+                                                                        <div className="flex items-baseline gap-2">
+                                                                            <div className="h-8 w-16 bg-gray-200 animate-pulse rounded" />
+                                                                            <div className="h-6 w-20 bg-gray-200 animate-pulse rounded-full" />
                                                                         </div>
                                                                     </div>
                                                                 </div>
-                                                            </div>
-                                                            <div className="flex items-center justify-between">
-                                                                <span className="text-xs text-gray-500">
-                                                                    {stat.id === 'completed' ? 'From last week' :
-                                                                        stat.id === 'overdue' ? 'Needs attention' :
-                                                                            'View details'}
-                                                                </span>
-                                                                <span className={`text-xs font-medium px-2 py-1 rounded-full ${selectedStatFilter === stat.id
-                                                                    ? 'bg-blue-100 text-blue-600'
-                                                                    : 'bg-gray-100 text-gray-600'
-                                                                    }`}>
-                                                                    Click to filter
-                                                                </span>
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="h-3 w-24 bg-gray-200 animate-pulse rounded" />
+                                                                    <div className="h-5 w-20 bg-gray-200 animate-pulse rounded-full" />
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            ))}
+                                                ))
+                                                : stats.map((stat) => (
+                                                    <div
+                                                        key={stat.name}
+                                                        onClick={() => handleStatClick(stat.id)}
+                                                        className={`bg-white p-6 rounded-2xl shadow-sm border-2 cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-1 ${selectedStatFilter === stat.id
+                                                            ? 'border-blue-500 shadow-lg shadow-blue-50'
+                                                            : 'border-transparent hover:border-gray-200'
+                                                            }`}
+                                                    >
+                                                        <div className="flex items-start justify-between">
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center gap-3 mb-3">
+                                                                    <div className={`p-3 rounded-xl ${stat.bgColor}`}>
+                                                                        <stat.icon className={`h-6 w-6 ${stat.color}`} />
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-sm font-medium text-gray-600">{stat.name}</p>
+                                                                        <div className="flex items-baseline gap-2">
+                                                                            <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
+                                                                            <div className={`flex items-center text-xs font-medium px-2 py-1 rounded-full ${stat.changeType === 'positive'
+                                                                                ? 'bg-emerald-50 text-emerald-700'
+                                                                                : stat.changeType === 'negative'
+                                                                                    ? 'bg-rose-50 text-rose-700'
+                                                                                    : 'bg-gray-50 text-gray-700'
+                                                                                }`}>
+                                                                                {stat.changeType === 'positive' ? (
+                                                                                    <TrendingUp className="h-3 w-3 mr-1" />
+                                                                                ) : stat.changeType === 'negative' ? (
+                                                                                    <TrendingDown className="h-3 w-3 mr-1" />
+                                                                                ) : null}
+                                                                                {stat.change}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="text-xs text-gray-500">
+                                                                        {stat.id === 'completed' ? 'From last week' :
+                                                                            stat.id === 'overdue' ? 'Needs attention' :
+                                                                                'View details'}
+                                                                    </span>
+                                                                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${selectedStatFilter === stat.id
+                                                                        ? 'bg-blue-100 text-blue-600'
+                                                                        : 'bg-gray-100 text-gray-600'
+                                                                        }`}>
+                                                                        Click to filter
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
                                         </div>
                                     </div>
 
@@ -2306,14 +2356,16 @@ const DashboardPage = () => {
                                                 <div className="flex items-center gap-3 mb-2">
                                                     <ListTodo className="h-5 w-5 text-blue-600" />
                                                     <h2 className="text-xl font-semibold text-gray-900">
-                                                        {displayTasks.length} Tasks
+                                                        {tasksLoading ? 'Loading tasks...' : `${displayTasks.length} Tasks`}
                                                     </h2>
                                                     <span className="text-sm text-gray-500">
-                                                        • {selectedStatFilter !== 'all' ? `${getActiveFilterCount()} active filter(s)` : 'All tasks'}
+                                                        • {tasksLoading ? 'Fetching data' : (selectedStatFilter !== 'all' ? `${getActiveFilterCount()} active filter(s)` : 'All tasks')}
                                                     </span>
                                                 </div>
                                                 <p className="text-sm text-gray-500">
-                                                    {selectedStatFilter === 'overdue'
+                                                    {tasksLoading
+                                                        ? 'Loading your tasks...'
+                                                        : selectedStatFilter === 'overdue'
                                                         ? 'Tasks that require immediate attention'
                                                         : selectedStatFilter === 'high-priority'
                                                             ? 'High priority tasks requiring focus'
@@ -2357,7 +2409,42 @@ const DashboardPage = () => {
                                         </div>
                                     </div>
 
-                                    {displayTasks.length === 0 ? (
+                                    {tasksLoading ? (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            {[0, 1, 2, 3, 4, 5].map((i) => (
+                                                <div key={i} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
+                                                    <div className="flex justify-between items-start mb-4">
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-2 mb-3">
+                                                                <div className="h-6 w-20 bg-gray-200 animate-pulse rounded-full" />
+                                                                <div className="h-6 w-24 bg-gray-200 animate-pulse rounded-full" />
+                                                            </div>
+                                                            <div className="h-5 w-3/4 bg-gray-200 animate-pulse rounded mb-2" />
+                                                            <div className="h-4 w-2/3 bg-gray-200 animate-pulse rounded" />
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-3 mb-5">
+                                                        <div className="flex items-center justify-between gap-4">
+                                                            <div className="h-4 w-20 bg-gray-200 animate-pulse rounded" />
+                                                            <div className="h-4 w-32 bg-gray-200 animate-pulse rounded" />
+                                                        </div>
+                                                        <div className="flex items-center justify-between gap-4">
+                                                            <div className="h-4 w-20 bg-gray-200 animate-pulse rounded" />
+                                                            <div className="h-4 w-28 bg-gray-200 animate-pulse rounded" />
+                                                        </div>
+                                                        <div className="flex items-center justify-between gap-4">
+                                                            <div className="h-4 w-20 bg-gray-200 animate-pulse rounded" />
+                                                            <div className="h-4 w-24 bg-gray-200 animate-pulse rounded" />
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex gap-2 pt-4 border-t border-gray-100">
+                                                        <div className="h-10 flex-1 bg-gray-200 animate-pulse rounded-lg" />
+                                                        <div className="h-10 w-20 bg-gray-200 animate-pulse rounded-lg" />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : displayTasks.length === 0 ? (
                                         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
                                             <div className="max-w-md mx-auto">
                                                 <div className="p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-2xl inline-flex mb-6">
@@ -2386,165 +2473,143 @@ const DashboardPage = () => {
                                         </div>
                                     ) : viewMode === 'grid' ? (
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                            {displayTasks
-                                                .filter((task: Task) => {
-                                                    if (filters.taskType !== 'all') {
-                                                        const filterType = filters.taskType.toLowerCase();
-                                                        const taskType = (task.taskType || (task as any).type || '').toLowerCase();
-                                                        if (taskType !== filterType) return false;
-                                                    }
-
-                                                    if (filters.company !== 'all') {
-                                                        const filterCompany = filters.company.toLowerCase();
-                                                        const taskCompany = (task.companyName || (task as any).company || '').toLowerCase();
-                                                        if (taskCompany !== filterCompany) return false;
-                                                    }
-
-                                                    if (filters.brand !== 'all') {
-                                                        const filterBrand = filters.brand.toLowerCase();
-                                                        const taskBrand = (task.brand || '').toLowerCase();
-                                                        if (taskBrand !== filterBrand) return false;
-                                                    }
-
-                                                    return true;
-                                                })
-                                                .map((task: Task) => (
-                                                    <div
-                                                        key={task.id}
-                                                        className="group bg-white rounded-2xl shadow-sm border border-gray-200 p-5 hover:shadow-lg transition-all duration-200 hover:-translate-y-1 relative"
-                                                    >
-                                                        <div className="flex justify-between items-start mb-4">
-                                                            <div className="flex-1">
-                                                                <div className="flex items-center gap-2 mb-3">
-                                                                    <span className={`px-3 py-1 text-xs font-medium rounded-full border ${getPriorityColor(task.priority || 'medium')}`}>
-                                                                        <span className="flex items-center gap-1">
-                                                                            <Flag className="h-3 w-3" />
-                                                                            {task.priority}
-                                                                        </span>
+                                            {displayTasks.map((task: Task) => (
+                                                <div
+                                                    key={task.id}
+                                                    className="group bg-white rounded-2xl shadow-sm border border-gray-200 p-5 hover:shadow-lg transition-all duration-200 hover:-translate-y-1 relative"
+                                                >
+                                                    <div className="flex justify-between items-start mb-4">
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-2 mb-3">
+                                                                <span className={`px-3 py-1 text-xs font-medium rounded-full border ${getPriorityColor(task.priority || 'medium')}`}>
+                                                                    <span className="flex items-center gap-1">
+                                                                        <Flag className="h-3 w-3" />
+                                                                        {task.priority}
                                                                     </span>
-                                                                    <span className={`px-3 py-1 text-xs font-medium rounded-full border ${getStatusColor(task.status)}`}>
-                                                                        {task.status}
-                                                                        {task.completedApproval && (
-                                                                            <span className="ml-1 text-blue-500">By Admin</span>
-                                                                        )}
-                                                                    </span>
-                                                                </div>
-                                                                <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
-                                                                    {task.title}
+                                                                </span>
+                                                                <span className={`px-3 py-1 text-xs font-medium rounded-full border ${getStatusColor(task.status)}`}>
+                                                                    {task.status}
                                                                     {task.completedApproval && (
-                                                                        <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full">
-                                                                            Approved
-                                                                        </span>
+                                                                        <span className="ml-1 text-blue-500">By Admin</span>
                                                                     )}
-                                                                </h3>
-                                                                <p className="text-sm text-gray-500 line-clamp-2 mb-3">
-                                                                </p>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="space-y-3 mb-5">
-                                                            <div className="flex items-start justify-between text-sm gap-4">
-                                                                <span className="text-gray-500 flex items-center gap-2 shrink-0">
-                                                                    <UserCheck className="h-4 w-4" />
-                                                                    Assign To
-                                                                </span>
-                                                                <span className="font-medium text-gray-900 text-right break-words">
-                                                                    {(() => {
-                                                                        const info = getAssignedUserInfo(task);
-                                                                        const email = (info as any)?.email ? stripDeletedEmailSuffix(String((info as any).email)) : '';
-                                                                        return email || '—';
-                                                                    })()}
                                                                 </span>
                                                             </div>
-                                                            <div className="flex items-start justify-between text-sm gap-4">
-                                                                <span className="text-gray-500 flex items-center gap-2 shrink-0">
-                                                                    <User className="h-4 w-4" />
-                                                                    Assign By
-                                                                </span>
-                                                                <span className="font-medium text-gray-900 text-right break-words">
-                                                                    {(() => {
-                                                                        const assignedByUser: any = (task as any)?.assignedByUser;
-                                                                        const assignedBy: any = (task as any)?.assignedBy;
-                                                                        const email = (assignedByUser?.email || (typeof assignedBy === 'string' ? assignedBy : assignedBy?.email) || '').toString();
-                                                                        const name = (assignedByUser?.name || (typeof assignedBy === 'object' ? assignedBy?.name : '') || '').toString();
-                                                                        const match = !name && email
-                                                                            ? (users || []).find((u: any) => (u?.email || '').toLowerCase() === email.toLowerCase())
-                                                                            : null;
-                                                                        const displayName = (name || match?.name || (email ? email.split('@')[0] : '') || email || '—').toString();
-                                                                        return (
-                                                                            <span className="block truncate" title={email}>
-                                                                                {displayName}
-                                                                            </span>
-                                                                        );
-                                                                    })()}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center justify-between text-sm">
-                                                                <span className="text-gray-500 flex items-center gap-2">
-                                                                    <CalendarDays className="h-4 w-4" />
-                                                                    Due Date
-                                                                </span>
-                                                                <span className={`font-medium ${isOverdue(task.dueDate, task.status)
-                                                                    ? 'text-rose-600'
-                                                                    : 'text-gray-900'
-                                                                    }`}>
-                                                                    {formatDate(task.dueDate)}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center justify-between text-sm">
-                                                                <span className="text-gray-500 flex items-center gap-2">
-                                                                    <Building className="h-4 w-4" />
-                                                                    Company
-                                                                </span>
-                                                                <span className={`px-2 py-1 text-xs rounded-full border ${getCompanyColor(task.companyName)}`}>
-                                                                    {task.companyName}
-                                                                </span>
-                                                            </div>
-                                                            {task.brand && (
-                                                                <div className="flex items-center justify-between text-sm">
-                                                                    <span className="text-gray-500 flex items-center gap-2">
-                                                                        <Tag className="h-4 w-4" />
-                                                                        Brand
+                                                            <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+                                                                {task.title}
+                                                                {task.completedApproval && (
+                                                                    <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full">
+                                                                        Approved
                                                                     </span>
-                                                                    <span className={`px-2 py-1 text-xs rounded-full border ${getBrandColor(task.brand)}`}>
-                                                                        {task.brand}
-                                                                    </span>
-                                                                </div>
-                                                            )}
+                                                                )}
+                                                            </h3>
+                                                            <p className="text-sm text-gray-500 line-clamp-2 mb-3">
+                                                            </p>
                                                         </div>
+                                                    </div>
 
-                                                        <div className="flex gap-2 pt-4 border-t border-gray-100">
-                                                            <button
-                                                                onClick={() => handleToggleTaskStatus(task.id, task.status)}
-                                                                disabled={!canMarkTaskDone(task)}
-                                                                className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${canMarkTaskDone(task)
-                                                                    ? task.status === 'completed'
-                                                                        ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-                                                                        : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                                                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                                                    }`}
-                                                            >
-                                                                {task.status === 'completed' ? 'Mark Pending' : 'Complete'}
-                                                            </button>
-                                                            {(canDeleteTasks && canEditDeleteTask(task)) && (
-                                                                <button
-                                                                    onClick={() => handleDeleteTask(task.id)}
-                                                                    className="px-3 py-2 text-sm font-medium bg-rose-50 text-rose-700 rounded-lg hover:bg-rose-100 transition-colors"
-                                                                >
-                                                                    Delete
-                                                                </button>
-                                                            )}
-                                                        </div>
-
-                                                        <div className="absolute top-4 right-4">
-                                                            <span className="text-xs text-gray-400 flex items-center gap-1">
-                                                                <Tag className="h-3 w-3" />
-                                                                {task.taskType}
+                                                    <div className="space-y-3 mb-5">
+                                                        <div className="flex items-start justify-between text-sm gap-4">
+                                                            <span className="text-gray-500 flex items-center gap-2 shrink-0">
+                                                                <UserCheck className="h-4 w-4" />
+                                                                Assign To
+                                                            </span>
+                                                            <span className="font-medium text-gray-900 text-right break-words">
+                                                                {(() => {
+                                                                    const info = getAssignedUserInfo(task);
+                                                                    const email = (info as any)?.email ? stripDeletedEmailSuffix(String((info as any).email)) : '';
+                                                                    return email || '—';
+                                                                })()}
                                                             </span>
                                                         </div>
-
+                                                        <div className="flex items-start justify-between text-sm gap-4">
+                                                            <span className="text-gray-500 flex items-center gap-2 shrink-0">
+                                                                <User className="h-4 w-4" />
+                                                                Assign By
+                                                            </span>
+                                                            <span className="font-medium text-gray-900 text-right break-words">
+                                                                {(() => {
+                                                                    const assignedByUser: any = (task as any)?.assignedByUser;
+                                                                    const assignedBy: any = (task as any)?.assignedBy;
+                                                                    const email = (assignedByUser?.email || (typeof assignedBy === 'string' ? assignedBy : assignedBy?.email) || '').toString();
+                                                                    const name = (assignedByUser?.name || (typeof assignedBy === 'object' ? assignedBy?.name : '') || '').toString();
+                                                                    const match = !name && email
+                                                                        ? (users || []).find((u: any) => (u?.email || '').toLowerCase() === email.toLowerCase())
+                                                                        : null;
+                                                                    const displayName = (name || match?.name || (email ? email.split('@')[0] : '') || email || '—').toString();
+                                                                    return (
+                                                                        <span className="block truncate" title={email}>
+                                                                            {displayName}
+                                                                        </span>
+                                                                    );
+                                                                })()}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center justify-between text-sm">
+                                                            <span className="text-gray-500 flex items-center gap-2">
+                                                                <CalendarDays className="h-4 w-4" />
+                                                                Due Date
+                                                            </span>
+                                                            <span className={`font-medium ${isOverdue(task.dueDate, task.status)
+                                                                ? 'text-rose-600'
+                                                                : 'text-gray-900'
+                                                                }`}>
+                                                                {formatDate(task.dueDate)}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center justify-between text-sm">
+                                                            <span className="text-gray-500 flex items-center gap-2">
+                                                                <Building className="h-4 w-4" />
+                                                                Company
+                                                            </span>
+                                                            <span className={`px-2 py-1 text-xs rounded-full border ${getCompanyColor(task.companyName)}`}>
+                                                                {task.companyName}
+                                                            </span>
+                                                        </div>
+                                                        {task.brand && (
+                                                            <div className="flex items-center justify-between text-sm">
+                                                                <span className="text-gray-500 flex items-center gap-2">
+                                                                    <Tag className="h-4 w-4" />
+                                                                    Brand
+                                                                </span>
+                                                                <span className={`px-2 py-1 text-xs rounded-full border ${getBrandColor(task.brand)}`}>
+                                                                    {task.brand}
+                                                                </span>
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                ))}
+
+                                                    <div className="flex gap-2 pt-4 border-t border-gray-100">
+                                                        <button
+                                                            onClick={() => handleToggleTaskStatus(task.id, task.status)}
+                                                            disabled={!canMarkTaskDone(task)}
+                                                            className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${canMarkTaskDone(task)
+                                                                ? task.status === 'completed'
+                                                                    ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                                                                    : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                                                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                                }`}
+                                                        >
+                                                            {task.status === 'completed' ? 'Mark Pending' : 'Complete'}
+                                                        </button>
+                                                        {(canDeleteTasks && canEditDeleteTask(task)) && (
+                                                            <button
+                                                                onClick={() => handleDeleteTask(task.id)}
+                                                                className="px-3 py-2 text-sm font-medium bg-rose-50 text-rose-700 rounded-lg hover:bg-rose-100 transition-colors"
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="absolute top-4 right-4">
+                                                        <span className="text-xs text-gray-400 flex items-center gap-1">
+                                                            <Tag className="h-3 w-3" />
+                                                            {task.taskType}
+                                                        </span>
+                                                    </div>
+
+                                                </div>
+                                            ))}
                                         </div>
                                     ) : viewMode === 'list' ? (
                                         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
@@ -2564,110 +2629,88 @@ const DashboardPage = () => {
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-gray-100">
-                                                        {displayTasks
-                                                            .filter((task: Task) => {
-                                                                if (filters.taskType !== 'all') {
-                                                                    const filterType = filters.taskType.toLowerCase();
-                                                                    const taskType = (task.taskType || (task as any).type || '').toLowerCase();
-                                                                    if (taskType !== filterType) return false;
-                                                                }
-
-                                                                if (filters.company !== 'all') {
-                                                                    const filterCompany = filters.company.toLowerCase();
-                                                                    const taskCompany = (task.companyName || (task as any).company || '').toLowerCase();
-                                                                    if (taskCompany !== filterCompany) return false;
-                                                                }
-
-                                                                if (filters.brand !== 'all') {
-                                                                    const filterBrand = filters.brand.toLowerCase();
-                                                                    const taskBrand = (task.brand || '').toLowerCase();
-                                                                    if (taskBrand !== filterBrand) return false;
-                                                                }
-
-                                                                return true;
-                                                            })
-                                                            .map((task: Task) => (
-                                                                <tr key={task.id} className="hover:bg-gray-50">
-                                                                    <td className="px-6 py-5">
-                                                                        <div className="font-semibold text-gray-900">{task.title}</div>
+                                                        {displayTasks.map((task: Task) => (
+                                                            <tr key={task.id} className="hover:bg-gray-50">
+                                                                <td className="px-6 py-5">
+                                                                    <div className="font-semibold text-gray-900">{task.title}</div>
+                                                                </td>
+                                                                <td className="px-6 py-5">
+                                                                    <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full border ${getStatusColor(task.status)}`}>
+                                                                        {task.status}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-6 py-5">
+                                                                    <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full border ${getPriorityColor(task.priority || 'medium')}`}>
+                                                                        {task.priority || 'medium'}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-6 py-5 text-sm text-gray-700">
+                                                                    {formatDate(task.dueDate)}
+                                                                </td>
+                                                                <td className="px-6 py-5">
+                                                                    <div className="font-semibold text-gray-900">
+                                                                        {(() => {
+                                                                            const info = getAssignedUserInfo(task);
+                                                                            const email = (info as any)?.email ? stripDeletedEmailSuffix(String((info as any).email)) : '';
+                                                                            const name = (info as any)?.name ? String((info as any).name) : '';
+                                                                            const displayName = (name || (email ? email.split('@')[0] : '') || email || '—').toString();
+                                                                            return (
+                                                                                <span className="block truncate" title={email}>
+                                                                                    {displayName}
+                                                                                </span>
+                                                                            );
+                                                                        })()}
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-6 py-5">
+                                                                    <div className="font-semibold text-gray-900">
+                                                                        {(() => {
+                                                                            const assignedByUser: any = (task as any)?.assignedByUser;
+                                                                            const assignedBy: any = (task as any)?.assignedBy;
+                                                                            const email = stripDeletedEmailSuffix(assignedByUser?.email || (typeof assignedBy === 'string' ? assignedBy : assignedBy?.email) || '').toString();
+                                                                            const name = (assignedByUser?.name || (typeof assignedBy === 'object' ? assignedBy?.name : '') || '').toString();
+                                                                            const match = !name && email
+                                                                                ? (users || []).find((u: any) => (u?.email || '').toLowerCase() === email.toLowerCase())
+                                                                                : null;
+                                                                            const displayName = (name || match?.name || (email ? email.split('@')[0] : '') || email || '—').toString();
+                                                                            return (
+                                                                                <span className="block truncate" title={email}>
+                                                                                    {displayName}
+                                                                                </span>
+                                                                            );
+                                                                        })()}
+                                                                    </div>
+                                                                </td>
+                                                                {showListActionsColumn ? (
+                                                                    <td className="px-6 py-5 text-right">
+                                                                        {canEditTask(task) && (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleOpenEditModal(task)}
+                                                                                disabled={String(task?.status || '').toLowerCase().trim() === 'completed'}
+                                                                                className={`inline-flex items-center justify-center w-9 h-9 rounded-lg ${String(task?.status || '').toLowerCase().trim() === 'completed'
+                                                                                    ? 'text-gray-300 cursor-not-allowed'
+                                                                                    : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'
+                                                                                    }`}
+                                                                                title={String(task?.status || '').toLowerCase().trim() === 'completed' ? 'Editing not allowed for completed tasks' : 'Edit'}
+                                                                            >
+                                                                                <Edit className="h-4 w-4" />
+                                                                            </button>
+                                                                        )}
+                                                                        {canDeleteTasks && canEditDeleteTask(task) && (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleDeleteTask(task.id)}
+                                                                                className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-gray-500 hover:text-rose-700 hover:bg-rose-50"
+                                                                                title="Delete"
+                                                                            >
+                                                                                <Trash2 className="h-4 w-4" />
+                                                                            </button>
+                                                                        )}
                                                                     </td>
-                                                                    <td className="px-6 py-5">
-                                                                        <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full border ${getStatusColor(task.status)}`}>
-                                                                            {task.status}
-                                                                        </span>
-                                                                    </td>
-                                                                    <td className="px-6 py-5">
-                                                                        <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full border ${getPriorityColor(task.priority || 'medium')}`}>
-                                                                            {task.priority || 'medium'}
-                                                                        </span>
-                                                                    </td>
-                                                                    <td className="px-6 py-5 text-sm text-gray-700">
-                                                                        {formatDate(task.dueDate)}
-                                                                    </td>
-                                                                 <td className="px-6 py-5">
-                                                                        <div className="font-semibold text-gray-900">
-                                                                            {(() => {
-                                                                                const info = getAssignedUserInfo(task);
-                                                                                const email = (info as any)?.email ? stripDeletedEmailSuffix(String((info as any).email)) : '';
-                                                                                const name = (info as any)?.name ? String((info as any).name) : '';
-                                                                                const displayName = (name || (email ? email.split('@')[0] : '') || email || '—').toString();
-                                                                                return (
-                                                                                    <span className="block truncate" title={email}>
-                                                                                        {displayName}
-                                                                                    </span>
-                                                                                );
-                                                                            })()}
-                                                                        </div>
-                                                                    </td>
-                                                                    <td className="px-6 py-5">
-                                                                       <div className="font-semibold text-gray-900">
-                                                                            {(() => {
-                                                                                const assignedByUser: any = (task as any)?.assignedByUser;
-                                                                                const assignedBy: any = (task as any)?.assignedBy;
-                                                                                const email = stripDeletedEmailSuffix(assignedByUser?.email || (typeof assignedBy === 'string' ? assignedBy : assignedBy?.email) || '').toString();
-                                                                                const name = (assignedByUser?.name || (typeof assignedBy === 'object' ? assignedBy?.name : '') || '').toString();
-                                                                                const match = !name && email
-                                                                                    ? (users || []).find((u: any) => (u?.email || '').toLowerCase() === email.toLowerCase())
-                                                                                    : null;
-                                                                                const displayName = (name || match?.name || (email ? email.split('@')[0] : '') || email || '—').toString();
-                                                                                return (
-                                                                                    <span className="block truncate" title={email}>
-                                                                                        {displayName}
-                                                                                    </span>
-                                                                                );
-                                                                            })()}
-                                                                        </div>
-                                                                    </td>
-                                                                    {showListActionsColumn ? (
-                                                                        <td className="px-6 py-5 text-right">
-                                                                            {canEditTask(task) && (
-                                                                                <button
-                                                                                    type="button"
-                                                                                    onClick={() => handleOpenEditModal(task)}
-                                                                                    disabled={String(task?.status || '').toLowerCase().trim() === 'completed'}
-                                                                                    className={`inline-flex items-center justify-center w-9 h-9 rounded-lg ${String(task?.status || '').toLowerCase().trim() === 'completed'
-                                                                                        ? 'text-gray-300 cursor-not-allowed'
-                                                                                        : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'
-                                                                                        }`}
-                                                                                    title={String(task?.status || '').toLowerCase().trim() === 'completed' ? 'Editing not allowed for completed tasks' : 'Edit'}
-                                                                                >
-                                                                                    <Edit className="h-4 w-4" />
-                                                                                </button>
-                                                                            )}
-                                                                            {canDeleteTasks && canEditDeleteTask(task) && (
-                                                                                <button
-                                                                                    type="button"
-                                                                                    onClick={() => handleDeleteTask(task.id)}
-                                                                                    className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-gray-500 hover:text-rose-700 hover:bg-rose-50"
-                                                                                    title="Delete"
-                                                                                >
-                                                                                    <Trash2 className="h-4 w-4" />
-                                                                                </button>
-                                                                            )}
-                                                                        </td>
-                                                                    ) : null}
-                                                                </tr>
-                                                            ))}
+                                                                ) : null}
+                                                            </tr>
+                                                        ))}
                                                     </tbody>
                                                 </table>
                                             </div>
