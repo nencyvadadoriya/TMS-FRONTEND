@@ -37,6 +37,7 @@ import BrandDetailPage from './BrandDetailPage';
 import AccessPage from './AccessPage';
 import AdvancedFilters from './AdvancedFilters';
 import AnalyzePage from './AnalyzePage';
+import { DashboardPageSkeleton } from '../Components/LoadingSkeletons';
 
 import type {
     Brand,
@@ -2144,112 +2145,7 @@ const DashboardPage = () => {
     }, [handleInputChange, managerBrandName, newTask.companyName]);
 
     if (loading) {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex">
-                <div className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 animate-pulse">
-                    <div className="p-6 border-b border-gray-100">
-                        <div className="flex items-center space-x-3">
-                            <div className="h-8 w-8 bg-gray-300 rounded-lg"></div>
-                            <div className="h-6 w-32 bg-gray-400 rounded"></div>
-                        </div>
-                    </div>
-
-                    <div className="flex-1 p-4 space-y-2">
-                        {[...Array(6)].map((_, i) => (
-                            <div key={i} className="flex items-center space-x-3 p-3 rounded-lg">
-                                <div className="h-5 w-5 bg-gray-300 rounded"></div>
-                                <div className="h-4 w-28 bg-gray-300 rounded"></div>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="p-4 border-t border-gray-100">
-                        <div className="flex items-center space-x-3">
-                            <div className="h-10 w-10 bg-gray-300 rounded-full"></div>
-                            <div className="flex-1">
-                                <div className="h-4 w-24 bg-gray-400 rounded mb-2"></div>
-                                <div className="h-8 w-16 bg-gray-300 rounded"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="flex-1 flex flex-col">
-                    <div className="sticky top-0 z-40 bg-white border-b border-gray-200 animate-pulse">
-                        <div className="px-4 sm:px-6 md:px-8 py-4">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-3">
-                                    <div className="h-8 w-8 bg-gray-300 rounded-full"></div>
-                                    <div className="h-6 w-32 bg-gray-400 rounded"></div>
-                                </div>
-                                <div className="flex items-center space-x-3">
-                                    <div className="h-8 w-48 bg-gray-300 rounded"></div>
-                                    <div className="h-8 w-8 bg-gray-300 rounded-full"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <main className="flex-1 overflow-auto">
-                        <div className="py-8">
-                            <div className="max-w-full mx-auto px-4 sm:px-6 md:px-8">
-                                <div className="mb-10">
-                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-                                        <div>
-                                            <div className="flex items-center gap-3 mb-2">
-                                                <div className="p-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl">
-                                                    <LayoutDashboard className="h-6 w-6 text-white" />
-                                                </div>
-                                                <h1 className="text-3xl font-bold text-gray-900">
-                                                    Dashboard
-                                                </h1>
-                                            </div>
-                                            <p className="text-gray-600">
-                                                {canViewAllTasks
-                                                    ? `Welcome ${currentUser.name}. Manage all tasks.`
-                                                    : `Welcome back, ${currentUser.name}. Here are your tasks.`
-                                                }
-                                            </p>
-                                        </div>
-
-                                        <div className="flex flex-wrap gap-3">
-                                            <button
-                                                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                                                className="inline-flex items-center px-4 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
-                                            >
-                                                <Filter className="mr-2 h-4 w-4" />
-                                                Advanced Filters
-                                                {getActiveFilterCount() > 0 && (
-                                                    <span className="ml-2 bg-blue-100 text-blue-600 text-xs font-semibold px-2 py-0.5 rounded-full">
-                                                        {getActiveFilterCount()}
-                                                    </span>
-                                                )}
-                                            </button>
-                                            <button
-                                                onClick={() => setCurrentView('all-tasks')}
-                                                className="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-xl shadow-sm text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
-                                            >
-                                                <ListTodo className="mr-2 h-4 w-4" />
-                                                View All Tasks
-                                            </button>
-                                            {canCreateTasks && (
-                                                <button
-                                                    onClick={() => setShowAddTaskModal(true)}
-                                                    className="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-xl shadow-sm text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700"
-                                                >
-                                                    <PlusCircle className="mr-2 h-4 w-4" />
-                                                    New Task
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </main>
-                </div>
-            </div>
-        );
+        return <DashboardPageSkeleton />;
     }
 
     return (

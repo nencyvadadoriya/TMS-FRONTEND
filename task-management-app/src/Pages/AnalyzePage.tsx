@@ -1568,9 +1568,11 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
             metrics: newWidgetMetrics,
         });
 
+        const effectiveTitle = (newWidgetTitle || '').toString().trim() || computedTitle;
+
         const option = buildOptionForWidget({
             id: '__preview__',
-            title: computedTitle,
+            title: effectiveTitle,
             chartType: newWidgetChartType,
             xAxis: newWidgetXAxis,
             groupBy: newWidgetGroupBy,
@@ -1589,7 +1591,53 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
                 endDate: newWidgetEndDate,
             },
         });
+
         chart.setOption(option, true);
+        chart.off('click');
+        chart.on('click', (params: any) => {
+            const xValue = (params?.name || '').toString();
+            const seriesName = (params?.seriesName || '').toString();
+
+            const activeMetrics = (Array.isArray(newWidgetMetrics) && newWidgetMetrics.length
+                ? newWidgetMetrics
+                : [newWidgetMetrics || 'count']) as MetricKey[];
+            const hasMultiMetrics = activeMetrics.length > 1;
+
+            const effectiveGroupBy =
+                hasMultiMetrics
+                    ? ('none' as const)
+                    : newWidgetGroupBy === 'none' && (newWidgetChartType === 'stacked_bar' || newWidgetChartType === 'grouped_bar' || newWidgetChartType === 'clustered_bar')
+                        ? ('status' as DimensionKey)
+                        : newWidgetGroupBy;
+
+            const fromX = mapDimensionToFilters(newWidgetXAxis, xValue);
+            const metricKeyFromSeries = hasMultiMetrics
+                ? activeMetrics.find((m) => getMetricLabel(m) === seriesName)
+                : undefined;
+            const fromMetric =
+                metricKeyFromSeries === 'completed' ||
+                    metricKeyFromSeries === 'pending' ||
+                    metricKeyFromSeries === 'in_progress' ||
+                    metricKeyFromSeries === 'on_hold' ||
+                    metricKeyFromSeries === 'cancelled'
+                    ? mapDimensionToFilters('status', getMetricLabel(metricKeyFromSeries))
+                    : metricKeyFromSeries === 'overdue' || metricKeyFromSeries === 'upcoming' || metricKeyFromSeries === 'unscheduled'
+                        ? mapDimensionToFilters('completion_status', getMetricLabel(metricKeyFromSeries))
+                        : {};
+            const fromG =
+                !hasMultiMetrics && effectiveGroupBy !== 'none' && seriesName && seriesName !== 'Tasks'
+                    ? mapDimensionToFilters(effectiveGroupBy, seriesName)
+                    : {};
+            navigateToTasks({
+                q: appendQ(appendQ(fromX.q || '', fromG.q || ''), fromMetric.q || ''),
+                status: fromMetric.status || fromG.status || fromX.status,
+                priority: fromG.priority || fromX.priority,
+                company: fromG.company || fromX.company,
+                brand: fromG.brand || fromX.brand,
+                taskType: fromG.taskType || fromX.taskType,
+                date: fromMetric.date || fromG.date || fromX.date,
+            });
+        });
         requestAnimationFrame(() => chart.resize());
     }, [
         isAddWidgetOpen,
@@ -1663,7 +1711,6 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
                     !hasMultiMetrics && effectiveGroupBy !== 'none' && seriesName && seriesName !== 'Tasks'
                         ? mapDimensionToFilters(effectiveGroupBy, seriesName)
                         : {};
-
                 navigateToTasks({
                     q: appendQ(appendQ(fromX.q || '', fromG.q || ''), fromMetric.q || ''),
                     status: fromMetric.status || fromG.status || fromX.status,
@@ -1842,7 +1889,8 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
         const isPie = chartType === 'pie' || chartType === 'donut';
         const isNumber = chartType === 'number';
         const isLollipop = chartType === 'lollipop';
-        const isLine = chartType === 'line' || chartType === 'burnup' || chartType === 'burndown';
+        const isLine =
+            chartType === 'line' || chartType === 'burnup' || chartType === 'burndown';
         const seriesType: 'bar' | 'line' = isLine ? 'line' : 'bar';
 
         const emptyTitle = hasData
@@ -1918,10 +1966,7 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
                         data: createdByCounts.categories,
                         axisLabel: { rotate: 30 },
                     },
-                    yAxis: {
-                        type: 'value',
-                        minInterval: 1,
-                    },
+                    yAxis: { type: 'value', minInterval: 1 },
                     series: isLollipop
                         ? [
                             {
@@ -2458,11 +2503,11 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
             label: newMetricLabel.trim(), // display label
         };
 
-        setAdditionalMetrics(prev => [...prev, newMetric]);
+        setAdditionalMetrics((prev) => [...prev, newMetric]);
 
         // Also add to newWidgetMetrics if not already there
         if (!newWidgetMetrics.includes(metricName as MetricKey)) {
-            setNewWidgetMetrics(prev => [...prev, metricName as MetricKey]);
+            setNewWidgetMetrics((prev) => [...prev, metricName as MetricKey]);
         }
 
         // Reset and close modal
@@ -2499,7 +2544,7 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
                             setIsAddWidgetOpen(true);
                         }}
                     >
-                        + Add widget
+                        + Add Chart 
                     </button>
                     <label className="text-sm text-gray-500">
                         Charts per row
@@ -2790,7 +2835,13 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
                     <div className="bg-white w-full max-w-6xl h-[80vh] rounded-2xl shadow-lg overflow-hidden flex">
                         <div className="flex-1 p-6 border-r border-gray-200 flex flex-col">
                             <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-xl font-semibold text-gray-900">Add chart</h2>
+                                <input
+                                    type="text"
+                                    className="flex-1 min-w-0 border border-gray-300 rounded-lg px-3 py-2 text-gray-800 bg-white"
+                                    placeholder=" Add Chart Tilte "
+                                    value={newWidgetTitle}
+                                    onChange={(e) => setNewWidgetTitle(e.target.value)}
+                                />
                                 <button
                                     type="button"
                                     className="text-gray-500 hover:text-gray-700"
@@ -2903,13 +2954,6 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
                                                 );
                                             })}
                                         </div>
-                                        <button
-                                            type="button"
-                                            className="mt-2 text-xs text-blue-600 hover:text-blue-700 text-left"
-                                            onClick={() => setShowAddMetricModal(true)}
-                                        >
-                                            + Add metric
-                                        </button>
                                     </div>
                                 </div>
 
@@ -3072,11 +3116,12 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
                                             groupBy: effectiveGroupBy,
                                             metrics: newWidgetMetrics,
                                         });
+                                        const finalTitle = (newWidgetTitle || '').toString().trim() || autoTitle;
                                         setCustomWidgets((prev) => [
                                             ...prev,
                                             {
                                                 id,
-                                                title: autoTitle,
+                                                title: finalTitle,
                                                 chartType: newWidgetChartType,
                                                 xAxis: newWidgetXAxis,
                                                 groupBy: effectiveGroupBy,

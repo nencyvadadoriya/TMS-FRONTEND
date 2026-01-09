@@ -23,6 +23,83 @@ const PageContainer: React.FC<ContainerProps> = ({ children, containerClassName 
   );
 };
 
+export const DashboardPageSkeleton: React.FC = () => {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex">
+      <div className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200">
+        <div className="p-6 border-b border-gray-100">
+          <div className="flex items-center space-x-3">
+            <SkeletonBox className="h-8 w-8 rounded-lg" />
+            <SkeletonBox className="h-6 w-32 rounded" />
+          </div>
+        </div>
+
+        <div className="flex-1 p-4 space-y-2">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="flex items-center space-x-3 p-3 rounded-lg">
+              <SkeletonBox className="h-5 w-5 rounded" />
+              <SkeletonBox className="h-4 w-28 rounded" />
+            </div>
+          ))}
+        </div>
+
+        <div className="p-4 border-t border-gray-100">
+          <div className="flex items-center space-x-3">
+            <SkeletonBox className="h-10 w-10 rounded-full" />
+            <div className="flex-1">
+              <SkeletonBox className="h-4 w-24 rounded mb-2" />
+              <SkeletonBox className="h-8 w-16 rounded" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 flex flex-col">
+        <div className="sticky top-0 z-40 bg-white border-b border-gray-200">
+          <div className="px-4 sm:px-6 md:px-8 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <SkeletonBox className="h-8 w-8 rounded-full" />
+                <SkeletonBox className="h-6 w-32 rounded" />
+              </div>
+              <div className="flex items-center space-x-3">
+                <SkeletonBox className="h-8 w-48 rounded" />
+                <SkeletonBox className="h-8 w-8 rounded-full" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <main className="flex-1 overflow-auto">
+          <div className="py-8">
+            <div className="w-full max-w-full mx-auto px-4 sm:px-6 md:px-8">
+              <div className="mb-10">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+                  <div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <SkeletonBox className="h-10 w-10 rounded-xl" />
+                      <SkeletonBox className="h-8 w-44 rounded" />
+                    </div>
+                    <SkeletonBox className="h-4 w-80 rounded" />
+                  </div>
+
+                  <div className="flex flex-wrap gap-3">
+                    <SkeletonBox className="h-11 w-40 rounded-xl" />
+                    <SkeletonBox className="h-11 w-36 rounded-xl" />
+                    <SkeletonBox className="h-11 w-28 rounded-xl" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="h-10" />
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+};
+
 export const TeamPageSkeleton: React.FC = () => {
   return (
     <PageContainer>

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Check, X as XIcon, Plus, Pencil, Trash2, Shield, UserPlus, Users, ChevronRight, Filter, Search, RefreshCw } from 'lucide-react';
+import { Check, X as XIcon, Pencil, Trash2, Shield, UserPlus, Users, ChevronRight, Filter, Search, RefreshCw, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { UserType } from '../Types/Types';
 import { accessService } from '../Services/Access.Services';
@@ -648,18 +648,6 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
         }
     };
 
-    const openAddModule = () => {
-        if (!canManageAccess) {
-            toast.error('Access denied');
-            return;
-        }
-        setEditingId(null);
-        setFormModule('');
-        setFormAdmin('allow');
-        setFormManager('deny');
-        setFormAssistant('deny');
-        setShowModuleForm(true);
-    };
 
     const onSave = () => {
         if (!canManageAccess) {
@@ -791,16 +779,6 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
                                 >
                                     <UserPlus className="h-4 w-4 mr-2" />
                                     Add User
-                                </button>
-                            )}
-
-                            {canManageAccess && (
-                                <button
-                                    onClick={openAddModule}
-                                    className="inline-flex items-center px-4 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-semibold rounded-xl"
-                                >
-                                    <Plus className="h-4 w-4 mr-2" />
-                                    Add Module
                                 </button>
                             )}
                         </div>
