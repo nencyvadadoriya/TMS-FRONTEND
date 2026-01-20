@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as echarts from 'echarts';
-import { Trash2 } from 'lucide-react';
 import ManagerAnalysisChart from '../Components/ManagerAnalysisChart';
+import { Trash2 } from 'lucide-react';
 
 import type { Task } from '../Types/Types';
 
@@ -104,15 +104,16 @@ const DIMENSION_OPTIONS: { value: DimensionKey; label: string }[] = [
 
 const CUSTOM_WIDGETS_STORAGE_KEY = 'analyze_custom_widgets_v1';
 const HIDDEN_BUILTIN_CHARTS_STORAGE_KEY = 'analyze_hidden_builtin_charts_v1';
+const HIDDEN_CUSTOM_WIDGETS_STORAGE_KEY = 'analyze_hidden_custom_widgets_v1';
 
-const BUILT_IN_CHARTS: { id: string; title: string }[] = [
-    { id: 'created_by', title: 'Assign By' },
-    { id: 'assigned', title: 'Assigned' },
-    { id: 'assigned_to', title: 'Assigned To' },
-    { id: 'completion_trends', title: 'Completion trends' },
-    { id: 'manager_analysis', title: 'Manager analysis' },
-    { id: 'leaderboard', title: 'Leaderboard' },
-    { id: 'status_breakdown', title: 'Status breakdown' },
+const BUILTIN_CHARTS: { key: string; label: string }[] = [
+    { key: 'assign_by', label: 'Assign By' },
+    { key: 'assigned', label: 'Assigned' },
+    { key: 'assigned_to', label: 'Assigned To' },
+    { key: 'completion_trends', label: 'Completion trends' },
+    { key: 'manager_analysis', label: 'Manager analysis' },
+    { key: 'leaderboard', label: 'Leaderboard' },
+    { key: 'status_breakdown', label: 'Status breakdown' },
 ];
 
 type YEntity = 'task' | 'time' | 'time_entry' | 'custom_field' | 'budget' | 'cost' | 'revenue';
@@ -201,12 +202,13 @@ type CustomWidget = {
     };
 };
 
-interface AnalyzePageProps {
+export interface AnalyzePageProps {
     tasks: Task[];
     currentUserEmail?: string;
+    currentUserRole?: string;
 }
 
-const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzePageProps) => {
+const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUserEmailProp, currentUserRole }) => {
     const navigate = useNavigate();
     const chartRef = useRef<HTMLDivElement | null>(null);
     const chartInstanceRef = useRef<ReturnType<typeof echarts.init> | null>(null);
@@ -241,6 +243,8 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
 
     const [customWidgets, setCustomWidgets] = useState<CustomWidget[]>([]);
     const [isAddWidgetOpen, setIsAddWidgetOpen] = useState(false);
+    const [hiddenBuiltinCharts, setHiddenBuiltinCharts] = useState<string[]>([]);
+    const [hiddenCustomWidgetIds, setHiddenCustomWidgetIds] = useState<string[]>([]);
     const [newWidgetTitle, setNewWidgetTitle] = useState('');
     const [newWidgetChartType, setNewWidgetChartType] = useState<ChartType>('bar');
     const [newWidgetXAxis, setNewWidgetXAxis] = useState<DimensionKey>('task_type');
@@ -269,59 +273,6 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
     const [showAddMetricModal, setShowAddMetricModal] = useState(false);
     const [newMetricLabel, setNewMetricLabel] = useState(''); // Only display label
 
-    const isAdmin = useMemo(() => {
-        try {
-            const raw = localStorage.getItem('currentUser');
-            if (!raw) return false;
-            const parsed = JSON.parse(raw);
-            const role = String(parsed?.role || '').trim().toLowerCase();
-            return role === 'admin';
-        } catch {
-            return false;
-        }
-    }, [currentUserEmailProp]);
-
-    const [hiddenBuiltInCharts, setHiddenBuiltInCharts] = useState<string[]>(() => {
-        try {
-            const raw = localStorage.getItem(HIDDEN_BUILTIN_CHARTS_STORAGE_KEY);
-            if (!raw) return [];
-            const parsed = JSON.parse(raw);
-            if (!Array.isArray(parsed)) return [];
-            const allowed = new Set(BUILT_IN_CHARTS.map((c) => c.id));
-            return (parsed as any[])
-                .map((x) => String(x || '').trim())
-                .filter((x) => Boolean(x) && allowed.has(x));
-        } catch {
-            return [];
-        }
-    });
-
-    const hiddenBuiltInChartsSet = useMemo(() => new Set(hiddenBuiltInCharts), [hiddenBuiltInCharts]);
-
-    const isCreatedByHidden = hiddenBuiltInChartsSet.has('created_by');
-    const isAssignedHidden = hiddenBuiltInChartsSet.has('assigned');
-    const isAssignedToHidden = hiddenBuiltInChartsSet.has('assigned_to');
-    const isCompletionTrendsHidden = hiddenBuiltInChartsSet.has('completion_trends');
-    const isManagerAnalysisHidden = hiddenBuiltInChartsSet.has('manager_analysis');
-    const isLeaderboardHidden = hiddenBuiltInChartsSet.has('leaderboard');
-    const isStatusBreakdownHidden = hiddenBuiltInChartsSet.has('status_breakdown');
-
-    useEffect(() => {
-        try {
-            localStorage.setItem(HIDDEN_BUILTIN_CHARTS_STORAGE_KEY, JSON.stringify(hiddenBuiltInCharts));
-        } catch {
-            // ignore
-        }
-    }, [hiddenBuiltInCharts]);
-
-    const toggleBuiltInChartHidden = (chartId: string) => {
-        if (!isAdmin) return;
-        setHiddenBuiltInCharts((prev) => {
-            const exists = prev.includes(chartId);
-            return exists ? prev.filter((x) => x !== chartId) : [...prev, chartId];
-        });
-    };
-
     const getInitialRecommended = () => {
         if (typeof window === 'undefined') return { cols: 2, reason: 'Default' };
         const w = window.innerWidth;
@@ -337,6 +288,23 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
     const [recommendReason, setRecommendReason] = useState<string>(initRec.reason);
     const [userHasChangedChartsPerRow, setUserHasChangedChartsPerRow] = useState(false);
     const gridRef = useRef<HTMLDivElement>(null);
+
+    const isAdminUser = useMemo(() => {
+        return (currentUserRole || '').toString().trim().toLowerCase() === 'admin';
+    }, [currentUserRole]);
+
+    const storageUserKey = useMemo(() => {
+        const raw = (currentUserEmailProp || '').toString().trim().toLowerCase();
+        return raw || 'anonymous';
+    }, [currentUserEmailProp]);
+
+    const hiddenBuiltinStorageKey = useMemo(() => {
+        return `${HIDDEN_BUILTIN_CHARTS_STORAGE_KEY}::${storageUserKey}`;
+    }, [storageUserKey]);
+
+    const hiddenCustomStorageKey = useMemo(() => {
+        return `${HIDDEN_CUSTOM_WIDGETS_STORAGE_KEY}::${storageUserKey}`;
+    }, [storageUserKey]);
 
     const normalizeStatusForFilter = (v: string): string => {
         const s = (v || '').toString().trim().toLowerCase();
@@ -479,6 +447,77 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
         }
     }, [customWidgets]);
 
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem(hiddenBuiltinStorageKey);
+            if (!raw) {
+                setHiddenBuiltinCharts([]);
+                return;
+            }
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) {
+                setHiddenBuiltinCharts([]);
+                return;
+            }
+            setHiddenBuiltinCharts(parsed.map((x: any) => String(x)));
+        } catch {
+            setHiddenBuiltinCharts([]);
+        }
+    }, [hiddenBuiltinStorageKey]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(hiddenBuiltinStorageKey, JSON.stringify(hiddenBuiltinCharts));
+        } catch {
+            // ignore
+        }
+    }, [hiddenBuiltinCharts, hiddenBuiltinStorageKey]);
+
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem(hiddenCustomStorageKey);
+            if (!raw) {
+                setHiddenCustomWidgetIds([]);
+                return;
+            }
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) {
+                setHiddenCustomWidgetIds([]);
+                return;
+            }
+            setHiddenCustomWidgetIds(parsed.map((x: any) => String(x)));
+        } catch {
+            setHiddenCustomWidgetIds([]);
+        }
+    }, [hiddenCustomStorageKey]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(hiddenCustomStorageKey, JSON.stringify(hiddenCustomWidgetIds));
+        } catch {
+            // ignore
+        }
+    }, [hiddenCustomWidgetIds, hiddenCustomStorageKey]);
+
+    const hiddenBuiltinSet = useMemo(() => new Set(hiddenBuiltinCharts), [hiddenBuiltinCharts]);
+    const hiddenCustomWidgetSet = useMemo(() => new Set(hiddenCustomWidgetIds), [hiddenCustomWidgetIds]);
+
+    const toggleBuiltinChart = (chartKey: string) => {
+        if (!isAdminUser) return;
+        setHiddenBuiltinCharts((prev) => {
+            if (prev.includes(chartKey)) return prev.filter((k) => k !== chartKey);
+            return [...prev, chartKey];
+        });
+    };
+
+    const toggleCustomWidgetHidden = (widgetId: string) => {
+        if (!isAdminUser) return;
+        setHiddenCustomWidgetIds((prev) => {
+            if (prev.includes(widgetId)) return prev.filter((id) => id !== widgetId);
+            return [...prev, widgetId];
+        });
+    };
+
     const getEmptyTitle = (hasData: boolean, emptyText: string): echarts.TitleComponentOption | undefined => {
         return hasData
             ? undefined
@@ -519,8 +558,10 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
         const isPie = chartType === 'pie' || chartType === 'donut';
         const isNumber = chartType === 'number';
         const isLollipop = chartType === 'lollipop';
-        const isLine = chartType === 'line' || chartType === 'burnup' || chartType === 'burndown';
+        const isArea = chartType === 'area';
+        const isLine = chartType === 'line' || chartType === 'burnup' || chartType === 'burndown' || isArea;
         const seriesType: 'bar' | 'line' = isLine ? 'line' : 'bar';
+        chartType === 'grouped_bar' || chartType === 'clustered_bar';
         const totalValue = values.reduce((acc, v) => acc + (Number(v) || 0), 0);
 
         if (isNumber) {
@@ -633,6 +674,7 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
                             color: (params: any) => colors?.[params?.dataIndex] || color,
                         },
                         lineStyle: { color, width: 3 },
+                        areaStyle: isArea ? { opacity: 0.25 } : undefined,
                     },
                 ],
         };
@@ -1633,11 +1675,9 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
             metrics: newWidgetMetrics,
         });
 
-        const effectiveTitle = (newWidgetTitle || '').toString().trim() || computedTitle;
-
         const option = buildOptionForWidget({
             id: '__preview__',
-            title: effectiveTitle,
+            title: computedTitle,
             chartType: newWidgetChartType,
             xAxis: newWidgetXAxis,
             groupBy: newWidgetGroupBy,
@@ -1656,53 +1696,7 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
                 endDate: newWidgetEndDate,
             },
         });
-
         chart.setOption(option, true);
-        chart.off('click');
-        chart.on('click', (params: any) => {
-            const xValue = (params?.name || '').toString();
-            const seriesName = (params?.seriesName || '').toString();
-
-            const activeMetrics = (Array.isArray(newWidgetMetrics) && newWidgetMetrics.length
-                ? newWidgetMetrics
-                : [newWidgetMetrics || 'count']) as MetricKey[];
-            const hasMultiMetrics = activeMetrics.length > 1;
-
-            const effectiveGroupBy =
-                hasMultiMetrics
-                    ? ('none' as const)
-                    : newWidgetGroupBy === 'none' && (newWidgetChartType === 'stacked_bar' || newWidgetChartType === 'grouped_bar' || newWidgetChartType === 'clustered_bar')
-                        ? ('status' as DimensionKey)
-                        : newWidgetGroupBy;
-
-            const fromX = mapDimensionToFilters(newWidgetXAxis, xValue);
-            const metricKeyFromSeries = hasMultiMetrics
-                ? activeMetrics.find((m) => getMetricLabel(m) === seriesName)
-                : undefined;
-            const fromMetric =
-                metricKeyFromSeries === 'completed' ||
-                    metricKeyFromSeries === 'pending' ||
-                    metricKeyFromSeries === 'in_progress' ||
-                    metricKeyFromSeries === 'on_hold' ||
-                    metricKeyFromSeries === 'cancelled'
-                    ? mapDimensionToFilters('status', getMetricLabel(metricKeyFromSeries))
-                    : metricKeyFromSeries === 'overdue' || metricKeyFromSeries === 'upcoming' || metricKeyFromSeries === 'unscheduled'
-                        ? mapDimensionToFilters('completion_status', getMetricLabel(metricKeyFromSeries))
-                        : {};
-            const fromG =
-                !hasMultiMetrics && effectiveGroupBy !== 'none' && seriesName && seriesName !== 'Tasks'
-                    ? mapDimensionToFilters(effectiveGroupBy, seriesName)
-                    : {};
-            navigateToTasks({
-                q: appendQ(appendQ(fromX.q || '', fromG.q || ''), fromMetric.q || ''),
-                status: fromMetric.status || fromG.status || fromX.status,
-                priority: fromG.priority || fromX.priority,
-                company: fromG.company || fromX.company,
-                brand: fromG.brand || fromX.brand,
-                taskType: fromG.taskType || fromX.taskType,
-                date: fromMetric.date || fromG.date || fromX.date,
-            });
-        });
         requestAnimationFrame(() => chart.resize());
     }, [
         isAddWidgetOpen,
@@ -1776,6 +1770,7 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
                     !hasMultiMetrics && effectiveGroupBy !== 'none' && seriesName && seriesName !== 'Tasks'
                         ? mapDimensionToFilters(effectiveGroupBy, seriesName)
                         : {};
+
                 navigateToTasks({
                     q: appendQ(appendQ(fromX.q || '', fromG.q || ''), fromMetric.q || ''),
                     status: fromMetric.status || fromG.status || fromX.status,
@@ -1803,7 +1798,6 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
     }, []);
 
     useEffect(() => {
-        if (isCreatedByHidden) return;
         if (!chartRef.current) return;
 
         const dom = chartRef.current;
@@ -1824,10 +1818,9 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
             chart.dispose();
             chartInstanceRef.current = null;
         };
-    }, [isCreatedByHidden]);
+    }, []);
 
     useEffect(() => {
-        if (isLeaderboardHidden) return;
         if (!leaderboardChartRef.current) return;
 
         const dom = leaderboardChartRef.current;
@@ -1848,10 +1841,9 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
             chart.dispose();
             leaderboardChartInstanceRef.current = null;
         };
-    }, [isLeaderboardHidden]);
+    }, []);
 
     useEffect(() => {
-        if (isStatusBreakdownHidden) return;
         if (!performanceChartRef.current) return;
 
         const dom = performanceChartRef.current;
@@ -1872,10 +1864,9 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
             chart.dispose();
             performanceChartInstanceRef.current = null;
         };
-    }, [isStatusBreakdownHidden]);
+    }, []);
 
     useEffect(() => {
-        if (isCompletionTrendsHidden) return;
         if (!trendsChartRef.current) return;
 
         const dom = trendsChartRef.current;
@@ -1896,10 +1887,9 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
             chart.dispose();
             trendsChartInstanceRef.current = null;
         };
-    }, [isCompletionTrendsHidden]);
+    }, []);
 
     useEffect(() => {
-        if (isAssignedToHidden) return;
         if (!assignedToChartRef.current) return;
 
         const dom = assignedToChartRef.current;
@@ -1920,10 +1910,9 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
             chart.dispose();
             assignedToChartInstanceRef.current = null;
         };
-    }, [isAssignedToHidden]);
+    }, []);
 
     useEffect(() => {
-        if (isAssignedHidden) return;
         if (!assignedChartRef.current) return;
 
         const dom = assignedChartRef.current;
@@ -1944,7 +1933,7 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
             chart.dispose();
             assignedChartInstanceRef.current = null;
         };
-    }, [isAssignedHidden]);
+    }, []);
 
     useEffect(() => {
         const chart = chartInstanceRef.current;
@@ -1960,9 +1949,10 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
         const isPie = chartType === 'pie' || chartType === 'donut';
         const isNumber = chartType === 'number';
         const isLollipop = chartType === 'lollipop';
-        const isLine =
-            chartType === 'line' || chartType === 'burnup' || chartType === 'burndown';
+        const isArea = chartType === 'area';
+        const isLine = chartType === 'line' || chartType === 'burnup' || chartType === 'burndown' || isArea;
         const seriesType: 'bar' | 'line' = isLine ? 'line' : 'bar';
+        const isGroupedOrClustered = chartType === 'grouped_bar' || chartType === 'clustered_bar';
 
         const emptyTitle = hasData
             ? undefined
@@ -2037,7 +2027,10 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
                         data: createdByCounts.categories,
                         axisLabel: { rotate: 30 },
                     },
-                    yAxis: { type: 'value', minInterval: 1 },
+                    yAxis: {
+                        type: 'value',
+                        minInterval: 1,
+                    },
                     series: isLollipop
                         ? [
                             {
@@ -2061,11 +2054,14 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
                                 data: createdByCounts.data,
                                 type: seriesType,
                                 stack: chartType === 'stacked_bar' ? 'total' : undefined,
-                                barMaxWidth: 50,
+                                barMaxWidth: seriesType === 'bar' ? (isGroupedOrClustered ? 32 : 50) : undefined,
+                                barGap: seriesType === 'bar' && isGroupedOrClustered ? '15%' : undefined,
+                                barCategoryGap: seriesType === 'bar' && isGroupedOrClustered ? '45%' : undefined,
                                 smooth: seriesType === 'line',
                                 symbolSize: 8,
                                 itemStyle: { color: '#3b82f6' },
                                 lineStyle: { color: '#3b82f6', width: 3 },
+                                areaStyle: isArea ? { opacity: 0.25 } : undefined,
                             },
                         ],
                 };
@@ -2116,8 +2112,10 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
         const isPie = assignedChartType === 'pie' || assignedChartType === 'donut';
         const isNumber = assignedChartType === 'number';
         const isLollipop = assignedChartType === 'lollipop';
-        const isLine = assignedChartType === 'line' || assignedChartType === 'burnup' || assignedChartType === 'burndown';
+        const isArea = assignedChartType === 'area';
+        const isLine = assignedChartType === 'line' || assignedChartType === 'burnup' || assignedChartType === 'burndown' || isArea;
         const seriesType: 'bar' | 'line' = isLine ? 'line' : 'bar';
+        const isGroupedOrClustered = assignedChartType === 'grouped_bar' || assignedChartType === 'clustered_bar';
         const totalAssignments = values.reduce((acc, v) => acc + (Number(v) || 0), 0);
 
         const option: echarts.EChartsOption = isNumber
@@ -2209,13 +2207,16 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
                                 type: seriesType,
                                 data: values,
                                 stack: assignedChartType === 'stacked_bar' ? 'total' : undefined,
-                                barMaxWidth: seriesType === 'bar' ? 50 : undefined,
+                                barMaxWidth: seriesType === 'bar' ? (isGroupedOrClustered ? 32 : 50) : undefined,
+                                barGap: seriesType === 'bar' && isGroupedOrClustered ? '15%' : undefined,
+                                barCategoryGap: seriesType === 'bar' && isGroupedOrClustered ? '45%' : undefined,
                                 smooth: seriesType === 'line',
                                 symbolSize: 10,
                                 itemStyle: {
                                     color: (params: any) => colors[params?.dataIndex] || colors[0],
                                 },
                                 lineStyle: { color: colors[0], width: 3 },
+                                areaStyle: isArea ? { opacity: 0.25 } : undefined,
                                 label: { show: true, position: 'top' },
                             },
                         ],
@@ -2254,9 +2255,11 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
         const isPie = assignedToChartType === 'pie' || assignedToChartType === 'donut';
         const isNumber = assignedToChartType === 'number';
         const isLollipop = assignedToChartType === 'lollipop';
+        const isArea = assignedToChartType === 'area';
         const isLine =
-            assignedToChartType === 'line' || assignedToChartType === 'burnup' || assignedToChartType === 'burndown';
+            assignedToChartType === 'line' || assignedToChartType === 'burnup' || assignedToChartType === 'burndown' || isArea;
         const seriesType: 'bar' | 'line' = isLine ? 'line' : 'bar';
+        const isGroupedOrClustered = assignedToChartType === 'grouped_bar' || assignedToChartType === 'clustered_bar';
 
         const emptyTitle = hasUser
             ? hasData
@@ -2362,11 +2365,14 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
                                 data: assignedToByMeCounts.data,
                                 type: seriesType,
                                 stack: assignedToChartType === 'stacked_bar' ? 'total' : undefined,
-                                barMaxWidth: 50,
+                                barMaxWidth: seriesType === 'bar' ? (isGroupedOrClustered ? 32 : 50) : undefined,
+                                barGap: seriesType === 'bar' && isGroupedOrClustered ? '15%' : undefined,
+                                barCategoryGap: seriesType === 'bar' && isGroupedOrClustered ? '45%' : undefined,
                                 smooth: seriesType === 'line',
                                 symbolSize: 8,
                                 itemStyle: { color: '#8b5cf6' },
                                 lineStyle: { color: '#8b5cf6', width: 3 },
+                                areaStyle: isArea ? { opacity: 0.25 } : undefined,
                             },
                         ],
                 };
@@ -2574,11 +2580,11 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
             label: newMetricLabel.trim(), // display label
         };
 
-        setAdditionalMetrics((prev) => [...prev, newMetric]);
+        setAdditionalMetrics(prev => [...prev, newMetric]);
 
         // Also add to newWidgetMetrics if not already there
         if (!newWidgetMetrics.includes(metricName as MetricKey)) {
-            setNewWidgetMetrics((prev) => [...prev, metricName as MetricKey]);
+            setNewWidgetMetrics(prev => [...prev, metricName as MetricKey]);
         }
 
         // Reset and close modal
@@ -2594,29 +2600,31 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
                     <p className="text-gray-600">Task analytics overview</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button
-                        type="button"
-                        className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 bg-white hover:bg-gray-50"
-                        onClick={() => {
-                            setNewWidgetTitle('');
-                            setNewWidgetChartType('bar');
-                            setNewWidgetXAxis('task_type');
-                            setNewWidgetGroupBy('status');
-                            setNewWidgetMetrics(['count']);
-                            setNewWidgetFilterStatus('all');
-                            setNewWidgetFilterPriority('all');
-                            setNewWidgetFilterAssignee('all');
-                            setNewWidgetFilterTaskType('all');
-                            setNewWidgetFilterCompany('all');
-                            setNewWidgetFilterBrand('all');
-                            setNewWidgetDateField('createdAt');
-                            setNewWidgetStartDate('');
-                            setNewWidgetEndDate('');
-                            setIsAddWidgetOpen(true);
-                        }}
-                    >
-                        + Add Chart 
-                    </button>
+                    {isAdminUser && (
+                        <button
+                            type="button"
+                            className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 bg-white hover:bg-gray-50"
+                            onClick={() => {
+                                setNewWidgetTitle('');
+                                setNewWidgetChartType('bar');
+                                setNewWidgetXAxis('task_type');
+                                setNewWidgetGroupBy('status');
+                                setNewWidgetMetrics(['count']);
+                                setNewWidgetFilterStatus('all');
+                                setNewWidgetFilterPriority('all');
+                                setNewWidgetFilterAssignee('all');
+                                setNewWidgetFilterTaskType('all');
+                                setNewWidgetFilterCompany('all');
+                                setNewWidgetFilterBrand('all');
+                                setNewWidgetDateField('createdAt');
+                                setNewWidgetStartDate('');
+                                setNewWidgetEndDate('');
+                                setIsAddWidgetOpen(true);
+                            }}
+                        >
+                            + Add widget
+                        </button>
+                    )}
                     <label className="text-sm text-gray-500">
                         Charts per row
                         <select
@@ -2639,23 +2647,38 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
                 </div>
             </div>
 
-            {isAdmin && hiddenBuiltInCharts.length > 0 && (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
-                    <div className="text-sm font-medium text-gray-700">Hidden charts</div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                        {hiddenBuiltInCharts.map((id) => {
-                            const title = BUILT_IN_CHARTS.find((c) => c.id === id)?.title || id;
-                            return (
+            {isAdminUser && (hiddenBuiltinCharts.length > 0 || hiddenCustomWidgetIds.length > 0) && (
+                <div className="bg-white border border-gray-200 rounded-xl px-4 py-3">
+                    <div className="text-sm font-medium text-gray-700 mb-2">Hidden charts</div>
+                    <div className="flex flex-wrap gap-2">
+                        {BUILTIN_CHARTS.filter((c) => hiddenBuiltinSet.has(c.key)).map((c) => (
+                            <button
+                                key={c.key}
+                                type="button"
+                                className="text-xs px-3 py-1.5 rounded-full border border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
+                                onClick={() => toggleBuiltinChart(c.key)}
+                            >
+                                Show {c.label}
+                            </button>
+                        ))}
+                        {customWidgets
+                            .filter((w) => hiddenCustomWidgetSet.has(w.id))
+                            .map((w) => (
                                 <button
-                                    key={id}
+                                    key={w.id}
                                     type="button"
-                                    className="inline-flex items-center px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm text-gray-700 hover:bg-gray-50"
-                                    onClick={() => toggleBuiltInChartHidden(id)}
+                                    className="text-xs px-3 py-1.5 rounded-full border border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
+                                    onClick={() => toggleCustomWidgetHidden(w.id)}
                                 >
-                                    Show {title}
+                                    Show{' '}
+                                    {w.title ||
+                                        getAutoWidgetTitle({
+                                            xAxis: w.xAxis,
+                                            groupBy: w.groupBy,
+                                            metrics: (w.metrics && w.metrics.length ? w.metrics : [w.metric || 'count']) as MetricKey[],
+                                        })}
                                 </button>
-                            );
-                        })}
+                            ))}
                     </div>
                 </div>
             )}
@@ -2664,323 +2687,326 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
                 ref={gridRef}
                 className={`grid grid-cols-1 ${chartsPerRow === 2 ? 'lg:grid-cols-2' : chartsPerRow === 3 ? 'lg:grid-cols-3' : chartsPerRow === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-1'} gap-6`}
             >
-                {!isCreatedByHidden && (
+                {!hiddenBuiltinSet.has('assign_by') && (
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg font-semibold text-gray-900">Assign By </h2>
                             <div className="flex items-center gap-3">
-                                <label className="text-sm text-gray-500">
-                                    Chart
-                                    <select
-                                        className="ml-2 border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white"
-                                        value={chartType}
-                                        onChange={(e) => setChartType(e.target.value as ChartType)}
-                                    >
-                                        {CHART_TYPE_OPTIONS.map((o) => (
-                                            <option key={o.value} value={o.value}>
-                                                {o.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
-                                <div className="text-sm text-gray-500">Total: {(tasks || []).length}</div>
-                                <button
-                                    type="button"
-                                    className={`p-2 rounded-lg transition-colors ${
-                                        isAdmin
-                                            ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
-                                            : 'text-gray-300 cursor-not-allowed'
-                                    }`}
-                                    aria-label={isAdmin ? 'Hide chart' : 'Only admins can hide charts'}
-                                    disabled={!isAdmin}
-                                    onClick={() => toggleBuiltInChartHidden('created_by')}
+                            <label className="text-sm text-gray-500">
+                                Chart
+                                <select
+                                    className="ml-2 border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white"
+                                    value={chartType}
+                                    onChange={(e) => setChartType(e.target.value as ChartType)}
                                 >
-                                    <Trash2 className="h-5 w-5" />
-                                </button>
-                            </div>
+                                    {CHART_TYPE_OPTIONS.map((o) => (
+                                        <option key={o.value} value={o.value}>
+                                            {o.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                            <div className="text-sm text-gray-500">Total: {(tasks || []).length}</div>
+                            <button
+                                type="button"
+                                className={`p-2 rounded-lg transition-colors ${
+                                    isAdminUser
+                                        ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                                        : 'text-gray-300 cursor-not-allowed'
+                                }`}
+                                aria-label={isAdminUser ? 'Hide chart' : 'Only admins can hide charts'}
+                                disabled={!isAdminUser}
+                                onClick={() => toggleBuiltinChart('assign_by')}
+                            >
+                                <Trash2 className="h-5 w-5" />
+                            </button>
+                        </div>
                         </div>
                         <div ref={chartRef} className="w-full" style={{ height: 360 }} />
                     </div>
                 )}
 
-                {!isAssignedHidden && (
+                {!hiddenBuiltinSet.has('assigned') && (
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg font-semibold text-gray-900">Assigned</h2>
                             <div className="flex items-center gap-3">
-                                <label className="text-sm text-gray-500">
-                                    Chart
-                                    <select
-                                        className="ml-2 border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white"
-                                        value={assignedChartType}
-                                        onChange={(e) => setAssignedChartType(e.target.value as ChartType)}
-                                    >
-                                        {CHART_TYPE_OPTIONS.map((o) => (
-                                            <option key={o.value} value={o.value}>
-                                                {o.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
-                                <div className="text-sm text-gray-500">Assigned by/to you</div>
-                                <button
-                                    type="button"
-                                    className={`p-2 rounded-lg transition-colors ${
-                                        isAdmin
-                                            ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
-                                            : 'text-gray-300 cursor-not-allowed'
-                                    }`}
-                                    aria-label={isAdmin ? 'Hide chart' : 'Only admins can hide charts'}
-                                    disabled={!isAdmin}
-                                    onClick={() => toggleBuiltInChartHidden('assigned')}
+                            <label className="text-sm text-gray-500">
+                                Chart
+                                <select
+                                    className="ml-2 border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white"
+                                    value={assignedChartType}
+                                    onChange={(e) => setAssignedChartType(e.target.value as ChartType)}
                                 >
-                                    <Trash2 className="h-5 w-5" />
-                                </button>
-                            </div>
+                                    {CHART_TYPE_OPTIONS.map((o) => (
+                                        <option key={o.value} value={o.value}>
+                                            {o.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                            <div className="text-sm text-gray-500">Assigned by/to you</div>
+                            <button
+                                type="button"
+                                className={`p-2 rounded-lg transition-colors ${
+                                    isAdminUser
+                                        ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                                        : 'text-gray-300 cursor-not-allowed'
+                                }`}
+                                aria-label={isAdminUser ? 'Hide chart' : 'Only admins can hide charts'}
+                                disabled={!isAdminUser}
+                                onClick={() => toggleBuiltinChart('assigned')}
+                            >
+                                <Trash2 className="h-5 w-5" />
+                            </button>
+                        </div>
                         </div>
                         <div ref={assignedChartRef} className="w-full" style={{ height: 360 }} />
                     </div>
                 )}
 
-                {!isAssignedToHidden && (
+                {!hiddenBuiltinSet.has('assigned_to') && (
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg font-semibold text-gray-900">Assigned To </h2>
                             <div className="flex items-center gap-3">
-                                <label className="text-sm text-gray-500">
-                                    Chart
-                                    <select
-                                        className="ml-2 border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white"
-                                        value={assignedToChartType}
-                                        onChange={(e) => setAssignedToChartType(e.target.value as ChartType)}
-                                    >
-                                        {CHART_TYPE_OPTIONS.map((o) => (
-                                            <option key={o.value} value={o.value}>
-                                                {o.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
-                                <button
-                                    type="button"
-                                    className={`p-2 rounded-lg transition-colors ${
-                                        isAdmin
-                                            ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
-                                            : 'text-gray-300 cursor-not-allowed'
-                                    }`}
-                                    aria-label={isAdmin ? 'Hide chart' : 'Only admins can hide charts'}
-                                    disabled={!isAdmin}
-                                    onClick={() => toggleBuiltInChartHidden('assigned_to')}
+                            <label className="text-sm text-gray-500">
+                                Chart
+                                <select
+                                    className="ml-2 border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white"
+                                    value={assignedToChartType}
+                                    onChange={(e) => setAssignedToChartType(e.target.value as ChartType)}
                                 >
-                                    <Trash2 className="h-5 w-5" />
-                                </button>
-                            </div>
+                                    {CHART_TYPE_OPTIONS.map((o) => (
+                                        <option key={o.value} value={o.value}>
+                                            {o.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                            <button
+                                type="button"
+                                className={`p-2 rounded-lg transition-colors ${
+                                    isAdminUser
+                                        ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                                        : 'text-gray-300 cursor-not-allowed'
+                                }`}
+                                aria-label={isAdminUser ? 'Hide chart' : 'Only admins can hide charts'}
+                                disabled={!isAdminUser}
+                                onClick={() => toggleBuiltinChart('assigned_to')}
+                            >
+                                <Trash2 className="h-5 w-5" />
+                            </button>
+                        </div>
                         </div>
                         <div ref={assignedToChartRef} className="w-full" style={{ height: 360 }} />
                     </div>
                 )}
 
-                {!isCompletionTrendsHidden && (
+                {!hiddenBuiltinSet.has('completion_trends') && (
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                         <div className="flex items-center justify-between mb-4 gap-3">
                             <h2 className="text-lg font-semibold text-gray-900">Completion trends</h2>
                             <div className="flex items-center gap-2 flex-wrap">
-                                <select
-                                    className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm"
-                                    value={trendsGranularity}
-                                    onChange={(e) => setTrendsGranularity(e.target.value as any)}
-                                >
-                                    <option value="daily">Daily</option>
-                                    <option value="weekly">Weekly</option>
-                                    <option value="monthly">Monthly</option>
-                                </select>
-                                <select
-                                    className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm"
-                                    value={trendsAssignee}
-                                    onChange={(e) => setTrendsAssignee(e.target.value)}
-                                >
-                                    {(trendsOptions.assignees || []).map((a) => (
-                                        <option key={a} value={a}>
-                                            {a === 'all' ? 'All assignees' : a}
-                                        </option>
-                                    ))}
-                                </select>
-                                <select
-                                    className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm"
-                                    value={trendsCompany}
-                                    onChange={(e) => setTrendsCompany(e.target.value)}
-                                >
-                                    {(trendsOptions.companies || []).map((c) => (
-                                        <option key={c} value={c}>
-                                            {c === 'all' ? 'All companies' : c}
-                                        </option>
-                                    ))}
-                                </select>
-                                <select
-                                    className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm"
-                                    value={trendsBrand}
-                                    onChange={(e) => setTrendsBrand(e.target.value)}
-                                >
-                                    {(trendsOptions.brands || []).map((b) => (
-                                        <option key={b} value={b}>
-                                            {b === 'all' ? 'All brands' : b}
-                                        </option>
-                                    ))}
-                                </select>
-                                <input
-                                    type="date"
-                                    className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm"
-                                    value={trendsStartDate}
-                                    onChange={(e) => setTrendsStartDate(e.target.value)}
-                                />
-                                <input
-                                    type="date"
-                                    className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm"
-                                    value={trendsEndDate}
-                                    onChange={(e) => setTrendsEndDate(e.target.value)}
-                                />
-                                <button
-                                    type="button"
-                                    className={`p-2 rounded-lg transition-colors ${
-                                        isAdmin
-                                            ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
-                                            : 'text-gray-300 cursor-not-allowed'
-                                    }`}
-                                    aria-label={isAdmin ? 'Hide chart' : 'Only admins can hide charts'}
-                                    disabled={!isAdmin}
-                                    onClick={() => toggleBuiltInChartHidden('completion_trends')}
-                                >
-                                    <Trash2 className="h-5 w-5" />
-                                </button>
-                            </div>
+                            <select
+                                className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm"
+                                value={trendsGranularity}
+                                onChange={(e) => setTrendsGranularity(e.target.value as any)}
+                            >
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
+                            </select>
+                            <select
+                                className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm"
+                                value={trendsAssignee}
+                                onChange={(e) => setTrendsAssignee(e.target.value)}
+                            >
+                                {(trendsOptions.assignees || []).map((a) => (
+                                    <option key={a} value={a}>
+                                        {a === 'all' ? 'All assignees' : a}
+                                    </option>
+                                ))}
+                            </select>
+                            <select
+                                className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm"
+                                value={trendsCompany}
+                                onChange={(e) => setTrendsCompany(e.target.value)}
+                            >
+                                {(trendsOptions.companies || []).map((c) => (
+                                    <option key={c} value={c}>
+                                        {c === 'all' ? 'All companies' : c}
+                                    </option>
+                                ))}
+                            </select>
+                            <select
+                                className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm"
+                                value={trendsBrand}
+                                onChange={(e) => setTrendsBrand(e.target.value)}
+                            >
+                                {(trendsOptions.brands || []).map((b) => (
+                                    <option key={b} value={b}>
+                                        {b === 'all' ? 'All brands' : b}
+                                    </option>
+                                ))}
+                            </select>
+                            <input
+                                type="date"
+                                className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm"
+                                value={trendsStartDate}
+                                onChange={(e) => setTrendsStartDate(e.target.value)}
+                            />
+                            <input
+                                type="date"
+                                className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm"
+                                value={trendsEndDate}
+                                onChange={(e) => setTrendsEndDate(e.target.value)}
+                            />
+                            <button
+                                type="button"
+                                className={`p-2 rounded-lg transition-colors ${
+                                    isAdminUser
+                                        ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                                        : 'text-gray-300 cursor-not-allowed'
+                                }`}
+                                aria-label={isAdminUser ? 'Hide chart' : 'Only admins can hide charts'}
+                                disabled={!isAdminUser}
+                                onClick={() => toggleBuiltinChart('completion_trends')}
+                            >
+                                <Trash2 className="h-5 w-5" />
+                            </button>
+                        </div>
                         </div>
                         <div ref={trendsChartRef} className="w-full" style={{ height: 360 }} />
                     </div>
                 )}
-                {!isManagerAnalysisHidden && (
+
+                {!hiddenBuiltinSet.has('manager_analysis') && (
                     <ManagerAnalysisChart
                         tasks={tasks}
-                        canDelete={isAdmin}
-                        onDelete={() => toggleBuiltInChartHidden('manager_analysis')}
+                        canDelete={isAdminUser}
+                        onDelete={() => toggleBuiltinChart('manager_analysis')}
                     />
                 )}
 
-                {!isLeaderboardHidden && (
+                {!hiddenBuiltinSet.has('leaderboard') && (
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                         <div className="flex items-center justify-between mb-4 gap-3">
                             <h2 className="text-lg font-semibold text-gray-900">Leaderboard</h2>
                             <div className="flex items-center gap-2 flex-wrap">
-                                <select
-                                    className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm"
-                                    value={leaderboardMetric}
-                                    onChange={(e) => setLeaderboardMetric(e.target.value as any)}
-                                >
-                                    <option value="completed">Completed</option>
-                                    <option value="rate">Completion rate</option>
-                                </select>
-                                <select
-                                    className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm"
-                                    value={leaderboardCompany}
-                                    onChange={(e) => setLeaderboardCompany(e.target.value)}
-                                >
-                                    {(trendsOptions.companies || []).map((c) => (
-                                        <option key={c} value={c}>
-                                            {c === 'all' ? 'All companies' : c}
-                                        </option>
-                                    ))}
-                                </select>
-                                <select
-                                    className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm"
-                                    value={leaderboardBrand}
-                                    onChange={(e) => setLeaderboardBrand(e.target.value)}
-                                >
-                                    {(trendsOptions.brands || []).map((b) => (
-                                        <option key={b} value={b}>
-                                            {b === 'all' ? 'All brands' : b}
-                                        </option>
-                                    ))}
-                                </select>
-                                <input
-                                    type="date"
-                                    className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm"
-                                    value={leaderboardStartDate}
-                                    onChange={(e) => setLeaderboardStartDate(e.target.value)}
-                                />
-                                <input
-                                    type="date"
-                                    className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm"
-                                    value={leaderboardEndDate}
-                                    onChange={(e) => setLeaderboardEndDate(e.target.value)}
-                                />
-                                <input
-                                    type="number"
-                                    min={1}
-                                    className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm w-[80px]"
-                                    value={leaderboardTopN}
-                                    onChange={(e) => setLeaderboardTopN(Number(e.target.value) || 5)}
-                                />
-                                <button
-                                    type="button"
-                                    className={`p-2 rounded-lg transition-colors ${
-                                        isAdmin
-                                            ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
-                                            : 'text-gray-300 cursor-not-allowed'
-                                    }`}
-                                    aria-label={isAdmin ? 'Hide chart' : 'Only admins can hide charts'}
-                                    disabled={!isAdmin}
-                                    onClick={() => toggleBuiltInChartHidden('leaderboard')}
-                                >
-                                    <Trash2 className="h-5 w-5" />
-                                </button>
-                            </div>
+                            <select
+                                className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm"
+                                value={leaderboardMetric}
+                                onChange={(e) => setLeaderboardMetric(e.target.value as any)}
+                            >
+                                <option value="completed">Completed</option>
+                                <option value="rate">Completion rate</option>
+                            </select>
+                            <select
+                                className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm"
+                                value={leaderboardCompany}
+                                onChange={(e) => setLeaderboardCompany(e.target.value)}
+                            >
+                                {(trendsOptions.companies || []).map((c) => (
+                                    <option key={c} value={c}>
+                                        {c === 'all' ? 'All companies' : c}
+                                    </option>
+                                ))}
+                            </select>
+                            <select
+                                className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm"
+                                value={leaderboardBrand}
+                                onChange={(e) => setLeaderboardBrand(e.target.value)}
+                            >
+                                {(trendsOptions.brands || []).map((b) => (
+                                    <option key={b} value={b}>
+                                        {b === 'all' ? 'All brands' : b}
+                                    </option>
+                                ))}
+                            </select>
+                            <input
+                                type="date"
+                                className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm"
+                                value={leaderboardStartDate}
+                                onChange={(e) => setLeaderboardStartDate(e.target.value)}
+                            />
+                            <input
+                                type="date"
+                                className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm"
+                                value={leaderboardEndDate}
+                                onChange={(e) => setLeaderboardEndDate(e.target.value)}
+                            />
+                            <input
+                                type="number"
+                                min={1}
+                                className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm w-[80px]"
+                                value={leaderboardTopN}
+                                onChange={(e) => setLeaderboardTopN(Number(e.target.value) || 5)}
+                            />
+                            <button
+                                type="button"
+                                className={`p-2 rounded-lg transition-colors ${
+                                    isAdminUser
+                                        ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                                        : 'text-gray-300 cursor-not-allowed'
+                                }`}
+                                aria-label={isAdminUser ? 'Hide chart' : 'Only admins can hide charts'}
+                                disabled={!isAdminUser}
+                                onClick={() => toggleBuiltinChart('leaderboard')}
+                            >
+                                <Trash2 className="h-5 w-5" />
+                            </button>
+                        </div>
                         </div>
                         <div ref={leaderboardChartRef} className="w-full" style={{ height: 360 }} />
                     </div>
                 )}
-                {!isStatusBreakdownHidden && (
+
+                {!hiddenBuiltinSet.has('status_breakdown') && (
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                         <div className="flex items-center justify-between mb-4 gap-3">
                             <h2 className="text-lg font-semibold text-gray-900">Status breakdown</h2>
                             <div className="flex items-center gap-2 flex-wrap">
-                                <select
-                                    className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm"
-                                    value={performanceGroupBy}
-                                    onChange={(e) => setPerformanceGroupBy(e.target.value as any)}
-                                >
-                                    <option value="company">Group by Company</option>
-                                    <option value="brand">Group by Brand</option>
-                                </select>
-                                <input
-                                    type="date"
-                                    className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm"
-                                    value={performanceStartDate}
-                                    onChange={(e) => setPerformanceStartDate(e.target.value)}
-                                />
-                                <input
-                                    type="date"
-                                    className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm"
-                                    value={performanceEndDate}
-                                    onChange={(e) => setPerformanceEndDate(e.target.value)}
-                                />
-                                <button
-                                    type="button"
-                                    className={`p-2 rounded-lg transition-colors ${
-                                        isAdmin
-                                            ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
-                                            : 'text-gray-300 cursor-not-allowed'
-                                    }`}
-                                    aria-label={isAdmin ? 'Hide chart' : 'Only admins can hide charts'}
-                                    disabled={!isAdmin}
-                                    onClick={() => toggleBuiltInChartHidden('status_breakdown')}
-                                >
-                                    <Trash2 className="h-5 w-5" />
-                                </button>
-                            </div>
+                            <select
+                                className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm"
+                                value={performanceGroupBy}
+                                onChange={(e) => setPerformanceGroupBy(e.target.value as any)}
+                            >
+                                <option value="company">Group by Company</option>
+                                <option value="brand">Group by Brand</option>
+                            </select>
+                            <input
+                                type="date"
+                                className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm"
+                                value={performanceStartDate}
+                                onChange={(e) => setPerformanceStartDate(e.target.value)}
+                            />
+                            <input
+                                type="date"
+                                className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-sm"
+                                value={performanceEndDate}
+                                onChange={(e) => setPerformanceEndDate(e.target.value)}
+                            />
+                            <button
+                                type="button"
+                                className={`p-2 rounded-lg transition-colors ${
+                                    isAdminUser
+                                        ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                                        : 'text-gray-300 cursor-not-allowed'
+                                }`}
+                                aria-label={isAdminUser ? 'Hide chart' : 'Only admins can hide charts'}
+                                disabled={!isAdminUser}
+                                onClick={() => toggleBuiltinChart('status_breakdown')}
+                            >
+                                <Trash2 className="h-5 w-5" />
+                            </button>
+                        </div>
                         </div>
                         <div ref={performanceChartRef} className="w-full" style={{ height: 360 }} />
                     </div>
                 )}
-                {customWidgets.map((w) => (
+
+                {customWidgets.filter((w) => !hiddenCustomWidgetSet.has(w.id)).map((w) => (
                     <div key={w.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                         <div className="flex items-center justify-between mb-4 gap-3">
                             <h2 className="text-lg font-semibold text-gray-900">
@@ -2994,15 +3020,15 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
                             <button
                                 type="button"
                                 className={`p-2 rounded-lg transition-colors ${
-                                    isAdmin
+                                    isAdminUser
                                         ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
                                         : 'text-gray-300 cursor-not-allowed'
                                 }`}
-                                aria-label={isAdmin ? 'Delete chart' : 'Only admins can delete charts'}
-                                disabled={!isAdmin}
+                                aria-label={isAdminUser ? 'Hide chart' : 'Only admins can hide charts'}
+                                disabled={!isAdminUser}
                                 onClick={() => {
-                                    if (!isAdmin) return;
-                                    setCustomWidgets((prev) => prev.filter((x) => x.id !== w.id));
+                                    if (!isAdminUser) return;
+                                    toggleCustomWidgetHidden(w.id);
                                 }}
                             >
                                 <Trash2 className="h-5 w-5" />
@@ -3020,7 +3046,7 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
                 ))}
             </div>
 
-            {isAddWidgetOpen && (
+            {isAdminUser && isAddWidgetOpen && (
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
                     onMouseDown={(e) => {
@@ -3030,13 +3056,7 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
                     <div className="bg-white w-full max-w-6xl h-[80vh] rounded-2xl shadow-lg overflow-hidden flex">
                         <div className="flex-1 p-6 border-r border-gray-200 flex flex-col">
                             <div className="flex items-center justify-between mb-4">
-                                <input
-                                    type="text"
-                                    className="flex-1 min-w-0 border border-gray-300 rounded-lg px-3 py-2 text-gray-800 bg-white"
-                                    placeholder=" Add Chart Tilte "
-                                    value={newWidgetTitle}
-                                    onChange={(e) => setNewWidgetTitle(e.target.value)}
-                                />
+                                <h2 className="text-xl font-semibold text-gray-900">Add chart</h2>
                                 <button
                                     type="button"
                                     className="text-gray-500 hover:text-gray-700"
@@ -3049,6 +3069,19 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
                         </div>
                         <div className="w-80 p-6 flex flex-col">
                             <div className="flex-1 overflow-auto space-y-4">
+                                <div>
+                                    <div className="text-sm font-medium text-gray-700 mb-1">Chart title</div>
+                                    <input
+                                        type="text"
+                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-800 bg-white"
+                                        placeholder="e.g., Tasks by Status"
+                                        value={newWidgetTitle}
+                                        onChange={(e) => setNewWidgetTitle(e.target.value)}
+                                    />
+                                    <div className="text-xs text-gray-500 mt-1">
+                                        Leave empty to use an auto-generated title.
+                                    </div>
+                                </div>
                                 <div>
                                     <div className="text-sm font-medium text-gray-700 mb-1">Chart type</div>
                                     <select
@@ -3149,6 +3182,13 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
                                                 );
                                             })}
                                         </div>
+                                        <button
+                                            type="button"
+                                            className="mt-2 text-xs text-blue-600 hover:text-blue-700 text-left"
+                                            onClick={() => setShowAddMetricModal(true)}
+                                        >
+                                            + Add metric
+                                        </button>
                                     </div>
                                 </div>
 
@@ -3251,6 +3291,39 @@ const AnalyzePage = ({ tasks, currentUserEmail: currentUserEmailProp }: AnalyzeP
                                             </select>
                                         </div>
 
+                                        <div>
+                                            <div className="text-xs text-gray-500 mb-1">Date Field</div>
+                                            <select
+                                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-800 bg-white"
+                                                value={newWidgetDateField}
+                                                onChange={(e) => setNewWidgetDateField(e.target.value as any)}
+                                            >
+                                                <option value="createdAt">Created Date</option>
+                                                <option value="dueDate">Due Date</option>
+                                                <option value="completedAt">Completed Date</option>
+                                                <option value="updatedAt">Updated Date</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <div className="text-xs text-gray-500 mb-1">Start Date</div>
+                                            <input
+                                                type="date"
+                                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-800 bg-white"
+                                                value={newWidgetStartDate}
+                                                onChange={(e) => setNewWidgetStartDate(e.target.value)}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <div className="text-xs text-gray-500 mb-1">End Date</div>
+                                            <input
+                                                type="date"
+                                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-800 bg-white"
+                                                value={newWidgetEndDate}
+                                                onChange={(e) => setNewWidgetEndDate(e.target.value)}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
