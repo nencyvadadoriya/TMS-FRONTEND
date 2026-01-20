@@ -1356,7 +1356,7 @@ const MobileTaskItem = memo(({
                   <span className="inline-flex items-center gap-1">
                     <User className="h-3 w-3" />
                     <span className="text-gray-400">Assign To</span>
-                    {userInfo.email}
+                    {userInfo.name}
                   </span>
                   <span className="inline-flex items-center gap-1">
                     <UserPlus className="h-3 w-3" />
@@ -1447,35 +1447,34 @@ const DesktopTaskItem = memo(({
   const isOverdueTask = isOverdue(task.dueDate, task.status);
 
   const taskTypeLabel = (task.taskType || (task as any).type || (task as any).task_type || '').toString();
-  const companyLabel = (task.companyName || (task as any).company || '').toString();
   const brandLabel = (task.brand || '').toString();
 
   return (
     <div className={`relative bg-white rounded-lg border-l-4 ${getTaskBorderColor(task)} border shadow-sm hover:shadow-md transition-all duration-200 mb-3`}>
-      <div className="grid grid-cols-12 gap-3 p-4 items-center">
+      <div className="grid grid-cols-12 gap-1 p-3 items-start"> {/* Changed: gap-1 और p-3 */}
         {/* Index Column - Fixed width */}
-        <div className="col-span-1 flex justify-center">
-          <span className="text-sm font-medium text-gray-500 tabular-nums min-w-[30px] text-center">
+        <div className="col-span-1 flex justify-center items-center">
+          <span className="text-sm font-medium text-gray-500 tabular-nums min-w-[20px] text-center">
             {index}
           </span>
         </div>
 
-        {/* Status Checkbox Column - Fixed width */}
-        <div className="col-span-1 flex justify-center">
+        {/* Status Column - Fixed width */}
+        <div className="col-span-1 flex justify-center items-center">
           <button
             onClick={() => onToggleStatus(task.id, task)}
             disabled={isToggling}
-            className={`p-2.5 rounded-lg transition-all ${isCompleted ? 'bg-green-50 text-green-600 hover:bg-green-100' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+            className={`p-1.5 rounded-lg transition-all ${isCompleted ? 'bg-green-50 text-green-600 hover:bg-green-100' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
             title={isCompleted ? 'Mark as pending' : 'Mark as completed'}
           >
             {getTaskStatusIcon(task.id, isCompleted)}
           </button>
         </div>
 
-        {/* Task Title Column - More space */}
-        <div className="col-span-1 min-w-0">
-          <div className="flex flex-col">
-            <h3 className="font-semibold text-gray-900 text-sm truncate" title={task.title}>
+        {/* Task Title Column - INCREASED WIDTH */}
+        <div className="col-span-3 min-w-0 pr-2"> {/* Changed: col-span-3 और pr-2 */}
+          <div className="flex flex-col gap-1">
+            <h3 className="font-semibold text-gray-900 text-sm whitespace-normal break-words leading-tight" title={task.title}>
               {task.title}
             </h3>
             {isOverdueTask && !isCompleted && (
@@ -1487,33 +1486,30 @@ const DesktopTaskItem = memo(({
           </div>
         </div>
 
-        <div className="col-span-2 min-w-0">
-          <div className="flex flex-col">
-            <div className="font-medium text-gray-900 text-sm truncate" title={userInfo.email}>
-              {userInfo.email || '—'}
-            </div>
+        {/* Assign To Column - REDUCED WIDTH */}
+        <div className="col-span-1 min-w-0 flex items-center"> {/* Changed: col-span-1 */}
+          <div className="font-medium text-gray-900 text-sm truncate w-full text-center" title={userInfo.email}>
+            {userInfo.name || '—'}
           </div>
         </div>
 
-        <div className="col-span-2 min-w-0">
-          <div className="flex flex-col">
-            <div className="font-medium text-gray-900 text-sm truncate" title={assignerInfo.email}>
-              {assignerInfo.email || '—'}
-            </div>
+        {/* Assign By Column - REDUCED WIDTH */}
+        <div className="col-span-1 min-w-0 flex items-center"> {/* Changed: col-span-1 */}
+          <div className="font-medium text-gray-900 text-sm truncate w-full text-center" title={assignerInfo.email}>
+            {assignerInfo.name || '—'}
           </div>
         </div>
 
-        {/* Due Date Column */}
-        <div className="col-span-1 min-w-0">
-          <div className="flex flex-col">
+        {/* Due Date Column - OPTIMIZED WIDTH */}
+        <div className="col-span-2 min-w-0 flex items-center"> {/* Changed: col-span-2 */}
+          <div className="flex flex-col w-full">
             <div className={`flex items-center gap-1 ${isOverdueTask && !isCompleted ? 'text-red-600' : 'text-gray-700'}`}>
-              <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
-              <span className="font-medium text-sm truncate">
+              <span className="font-medium text-sm truncate w-full text-center">
                 {formatDate(task.dueDate)}
               </span>
             </div>
             {task.priority && (
-              <span className={`text-xs px-1.5 py-0.5 rounded mt-1 w-fit ${task.priority === 'high' ? 'bg-red-100 text-red-800' :
+              <span className={`text-xs px-1.5 py-0.5 rounded mt-1 w-full text-center truncate ${task.priority === 'high' ? 'bg-red-100 text-red-800' :
                 task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
                   'bg-green-100 text-green-800'}`}>
                 {task.priority}
@@ -1522,42 +1518,41 @@ const DesktopTaskItem = memo(({
           </div>
         </div>
 
-        {/* Task Type Column */}
-        <div className="col-span-1 min-w-0">
-          <div className="bg-gray-50 px-3 py-2 rounded-lg border border-gray-200 h-full flex items-center">
-            <span className="text-xs text-gray-700 font-medium truncate block w-full text-center" title={taskTypeLabel}>
+        {/* Type Column - FIXED WIDTH */}
+        <div className="col-span-1 min-w-0 flex items-center justify-center">
+          <div className="w-full max-w-[100px]">
+            <span className="text-xs text-gray-700 font-medium px-2 py-1 bg-gray-100 rounded-md truncate block w-full text-center" title={taskTypeLabel}>
               {taskTypeLabel || "—"}
             </span>
           </div>
         </div>
 
-        {/* Brand Column */}
-        <div className="col-span-1 min-w-0">
-          <div className="bg-blue-50 px-3 py-2 rounded-lg border border-blue-100 h-full flex items-center">
-            <span className="text-xs text-blue-700 truncate block w-full text-center" title={brandLabel}>
+        {/* Brand Column - FIXED WIDTH */}
+        <div className="col-span-1 min-w-0 flex items-center justify-center">
+          <div className="w-full max-w-[100px]">
+            <span className="text-xs text-blue-700 px-2 py-1 bg-blue-50 rounded-md truncate block w-full text-center" title={brandLabel}>
               {brandLabel || "—"}
             </span>
           </div>
         </div>
 
-        {/* Company Column */}
+        {/* Actions Column - OPTIMIZED */}
         <div className="col-span-1 min-w-0">
-          <div className="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 h-full flex items-center">
-            <span className="text-xs text-purple-700 truncate block w-full text-center" title={companyLabel}>
-              {companyLabel || "—"}
+          <div className="flex flex-col items-end gap-1">
+            {/* Status Badge */}
+            <span className={`text-xs px-2 py-1 rounded-full shrink-0 ${isCompleted ?
+              (isPermanentlyApproved ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                'bg-green-100 text-green-800 border border-green-200') :
+              'bg-gray-100 text-gray-800 border border-gray-200'}`}>
+              {isCompleted ? (isPermanentlyApproved ? 'Approved' : 'Completed') : 'Pending'}
             </span>
-          </div>
-        </div>
 
-        {/* Actions Column - More space */}
-        <div className="col-span-1 min-w-0">
-          <div className="flex flex-col items-end gap-2">
             {/* Action Buttons */}
             <div className="flex items-center gap-1">
               {/* View Comments */}
               <button
                 onClick={() => onOpenCommentSidebar(task)}
-                className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                 title="View comments"
               >
                 <MessageSquare className="h-4 w-4" />
@@ -1566,7 +1561,7 @@ const DesktopTaskItem = memo(({
               {/* View History */}
               <button
                 onClick={() => onOpenHistoryModal(task)}
-                className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                 title="View history"
               >
                 <History className="h-4 w-4" />
@@ -1577,7 +1572,7 @@ const DesktopTaskItem = memo(({
                 <button
                   onClick={() => onEditTaskClick(task)}
                   disabled={isCompleted}
-                  className={`p-1.5 rounded-lg transition-colors ${isCompleted ? 'text-gray-400 cursor-not-allowed' : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'}`}
+                  className={`p-1 rounded-lg transition-colors ${isCompleted ? 'text-gray-400 cursor-not-allowed' : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'}`}
                   title={isCompleted ? "Editing not allowed for completed tasks" : "Edit task"}
                 >
                   <Edit className="h-4 w-4" />
@@ -1588,7 +1583,7 @@ const DesktopTaskItem = memo(({
                 <button
                   onClick={() => onPermanentApproval(task.id, !isPermanentlyApproved)}
                   disabled={isUpdatingApproval}
-                  className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+                  className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
                   title={isPermanentlyApproved ? 'Remove Permanent Approval' : 'Permanently Approve'}
                 >
                   {isUpdatingApproval ? (
@@ -1600,16 +1595,6 @@ const DesktopTaskItem = memo(({
                   )}
                 </button>
               )}
-            </div>
-
-            {/* Status Badge */}
-            <div className="flex justify-end">
-              <span className={`text-xs px-2 py-1 rounded-full ${isCompleted ?
-                (isPermanentlyApproved ? 'bg-blue-100 text-blue-800 border border-blue-200' :
-                  'bg-green-100 text-green-800 border border-green-200') :
-                'bg-gray-100 text-gray-800 border border-gray-200'}`}>
-                {isCompleted ? (isPermanentlyApproved ? ' Permanent' : ' Completed') : 'Pending'}
-              </span>
             </div>
           </div>
         </div>
@@ -3978,13 +3963,12 @@ const AllTasksPage: React.FC<AllTasksPageProps> = ({
             <div className="hidden md:grid grid-cols-12 gap-3 px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 text-sm font-semibold text-gray-700">
               <div className="col-span-1 text-center">#</div>
               <div className="col-span-1 text-center">Status</div>
-              <div className="col-span-1">Task Title</div>
+              <div className="col-span-2">Task Title</div>
               <div className="col-span-2">Assign To</div>
               <div className="col-span-2">Assign By</div>
               <div className="col-span-1">Due Date</div>
               <div className="col-span-1 text-center">Type</div>
               <div className="col-span-1 text-center">Brand</div>
-              <div className="col-span-1 text-center">Company</div>
               <div className="col-span-1 text-right pr-4">Actions</div>
             </div>
 
