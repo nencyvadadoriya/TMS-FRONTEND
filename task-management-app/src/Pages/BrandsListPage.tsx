@@ -89,8 +89,16 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
     const canEditBrand = useMemo(() => hasAccess('brand_edit'), [hasAccess]);
     const canDeleteBrand = useMemo(() => hasAccess('brand_delete'), [hasAccess]);
     const canBulkAddCompanies = useMemo(() => hasAccess('company_bulk_add'), [hasAccess]);
-    const canEditCompany = useMemo(() => hasAccess('company_edit'), [hasAccess]);
-    const canDeleteCompany = useMemo(() => hasAccess('company_delete'), [hasAccess]);
+    const canEditCompany = useMemo(() => {
+        const r = String((currentUser as any)?.role || '').trim().toLowerCase();
+        const roleAllows = r === 'super_admin' || r === 'admin' || r === 'md_manager' || r === 'ob_manager';
+        return roleAllows && hasAccess('company_edit');
+    }, [currentUser, hasAccess]);
+    const canDeleteCompany = useMemo(() => {
+        const r = String((currentUser as any)?.role || '').trim().toLowerCase();
+        const roleAllows = r === 'super_admin' || r === 'admin' || r === 'md_manager' || r === 'ob_manager';
+        return roleAllows && hasAccess('company_delete');
+    }, [currentUser, hasAccess]);
     const canViewBrandsCompaniesReport = useMemo(() => hasAccess('brands_companies_report'), [hasAccess]);
 
     useEffect(() => {

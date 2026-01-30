@@ -79,5 +79,18 @@ export const assignService = {
   }): Promise<{ success: boolean; data: UserBrandTaskTypeMapping }> {
     const response = await apiClient.post('/assign/mappings', payload);
     return response.data;
+  },
+
+  async bulkUpsertUserMappings(payload: {
+    companyName: string;
+    userId: string;
+    mappings: Array<{
+      brandId: string;
+      brandName: string;
+      taskTypeIds: string[];
+    }>;
+  }): Promise<{ success: boolean; data: { matchedCount?: number; modifiedCount?: number; upsertedCount?: number } }> {
+    const response = await apiClient.post('/assign/mappings/bulk', payload);
+    return response.data;
   }
 };

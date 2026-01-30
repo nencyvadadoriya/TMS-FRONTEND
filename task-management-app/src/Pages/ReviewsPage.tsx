@@ -15,7 +15,7 @@ const ReviewsPage = ({ currentUser }: { currentUser: UserType }) => {
 
   const [loading, setLoading] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [filter, setFilter] = useState<ReviewFilter>('pending');
+  const [filter, setFilter] = useState<ReviewFilter>('all');
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [stars, setStars] = useState<number>(5);
@@ -114,15 +114,6 @@ const ReviewsPage = ({ currentUser }: { currentUser: UserType }) => {
               <option value="reviewed">Reviewed</option>
               <option value="all">All</option>
             </select>
-
-            <button
-              type="button"
-              onClick={() => fetchReviews()}
-              disabled={loading}
-              className="px-4 py-2 text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-            >
-              Refresh
-            </button>
           </div>
         </div>
       </div>

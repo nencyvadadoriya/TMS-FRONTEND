@@ -2402,12 +2402,16 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   });
 
   const effectiveAdvancedFilters = advancedFilters || localAdvancedFilters;
-  const handleAdvancedFilterChange = onAdvancedFilterChange || ((filterType: string, value: string) => {
+  const handleAdvancedFilterChange = useCallback((filterType: string, value: string) => {
+    if (onAdvancedFilterChange) {
+      onAdvancedFilterChange(filterType, value);
+      return;
+    }
     setLocalAdvancedFilters(prev => ({
       ...prev,
       [filterType]: value
     }));
-  });
+  }, [onAdvancedFilterChange]);
 
   // Company-Brand mapping state
   const [availableBrands, setAvailableBrands] = useState<string[]>([]);
@@ -2567,6 +2571,61 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     return allowed;
   }, [currentUser, tasks, users]);
 
+  const assistantManagerEmail = useMemo(() => {
+    const role = (currentUser?.role || '').toString().trim().toLowerCase();
+    if (role !== 'assistant') return '';
+    const managerId = ((currentUser as any)?.managerId || '').toString();
+    if (!managerId) return '';
+    const manager = (users || []).find((u: any) => {
+      const id = (u?.id || u?._id || '').toString();
+      return id && id === managerId;
+    });
+    return (manager?.email || '').toString().trim().toLowerCase();
+  }, [currentUser, users]);
+
+  const assistantScopedTasks = useMemo(() => {
+    const role = (currentUser?.role || '').toString().trim().toLowerCase();
+    if (role !== 'assistant') return [] as any[];
+
+    const myEmail = (currentUser?.email || '').toString().trim().toLowerCase();
+    const myId = ((currentUser as any)?.id || (currentUser as any)?._id || '').toString().trim().toLowerCase();
+
+    const isMine = (t: any) => {
+      const assignedTo = t?.assignedTo;
+      const assignedToUser = t?.assignedToUser;
+      const assignedToId =
+        (typeof assignedTo === 'string' ? assignedTo : assignedTo?._id || assignedTo?.id) ||
+        (typeof assignedToUser === 'string' ? assignedToUser : assignedToUser?._id || assignedToUser?.id) ||
+        '';
+      const assignedToEmail =
+        (typeof assignedTo === 'string' && assignedTo.includes('@') ? assignedTo : assignedTo?.email) ||
+        (typeof assignedToUser === 'string' && assignedToUser.includes('@') ? assignedToUser : assignedToUser?.email) ||
+        '';
+
+      if (myId && assignedToId && assignedToId.toString().trim().toLowerCase() === myId) return true;
+      if (myEmail && assignedToEmail && assignedToEmail.toString().trim().toLowerCase() === myEmail) return true;
+      return false;
+    };
+
+    const normalizeAssignerEmail = (t: any) => {
+      const assignedBy = t?.assignedBy;
+      const assignedByUser = t?.assignedByUser;
+      const email =
+        (typeof assignedBy === 'string' && assignedBy.includes('@') ? assignedBy : assignedBy?.email) ||
+        (typeof assignedByUser === 'string' && assignedByUser.includes('@') ? assignedByUser : assignedByUser?.email) ||
+        (typeof assignedBy === 'string' ? assignedBy : '') ||
+        '';
+      return (email || '').toString().trim().toLowerCase();
+    };
+
+    return (tasks || []).filter((t: any) => {
+      if (!isMine(t)) return false;
+      if (!assistantManagerEmail) return true;
+      const assignerEmail = normalizeAssignerEmail(t);
+      return Boolean(assignerEmail && assignerEmail === assistantManagerEmail);
+    });
+  }, [assistantManagerEmail, currentUser, tasks]);
+
   const availableTaskTypes = useMemo(() => {
     const normalizeLabel = (v: unknown) => (v || '').toString().trim();
     const normalizeKey = (v: unknown) => normalizeLabel(v).toLowerCase();
@@ -2719,12 +2778,31 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   }, [allowedTaskTypeKeysForManager, currentUser?.role, normalizeText, restrictTaskTypesForCompany, taskTypeCompanyOverrides, taskTypesByCompanyFromTasks, uniqueLabelsByKey]);
 
   const availableTaskTypesForFilters = useMemo(() => {
+    const role = (currentUser?.role || '').toString().toLowerCase();
+    if (role === 'assistant') {
+      const companyKey = normalizeText(effectiveAdvancedFilters.company);
+      const taskTypesFromTasks = (assistantScopedTasks || [])
+        .filter((t: any) => {
+          if (companyKey === 'all') return true;
+          const taskCompany = normalizeText(t?.companyName || t?.company);
+          return taskCompany === companyKey;
+        })
+        .map((t: any) => (t?.taskType || t?.type || '').toString().trim())
+        .filter(Boolean);
+
+      const fromOverrides = companyKey && companyKey !== 'all'
+        ? (Array.isArray(taskTypeCompanyOverrides?.[companyKey]) ? taskTypeCompanyOverrides[companyKey] : [])
+        : Object.values(taskTypeCompanyOverrides || {}).flatMap((arr) => (Array.isArray(arr) ? arr : []));
+
+      const merged = uniqueLabelsByKey(Array.from(new Set([...(taskTypesFromTasks || []), ...(fromOverrides || [])])));
+      return restrictTaskTypesForCompany(effectiveAdvancedFilters.company, merged.sort((a, b) => a.localeCompare(b)));
+    }
+
     if (effectiveAdvancedFilters.company !== 'all') return getTaskTypesForCompany(effectiveAdvancedFilters.company);
     const fromOverrides = Object.values(taskTypeCompanyOverrides || {}).flatMap((arr) => (Array.isArray(arr) ? arr : []));
     const fromTasks = Array.from(taskTypesByCompanyFromTasks.values()).flatMap((set) => Array.from(set));
     const merged = uniqueLabelsByKey(Array.from(new Set([...availableTaskTypes, ...fromOverrides, ...fromTasks])));
 
-    const role = (currentUser?.role || '').toString().toLowerCase();
     if (role === 'manager') {
       const allowedKeys = allowedTaskTypeKeysForManager;
       return restrictTaskTypesForCompany(effectiveAdvancedFilters.company, merged
@@ -2733,7 +2811,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     }
 
     return restrictTaskTypesForCompany(effectiveAdvancedFilters.company, merged.sort((a, b) => a.localeCompare(b)));
-  }, [allowedTaskTypeKeysForManager, availableTaskTypes, currentUser?.role, effectiveAdvancedFilters.company, getTaskTypesForCompany, restrictTaskTypesForCompany, taskTypeCompanyOverrides, taskTypesByCompanyFromTasks, uniqueLabelsByKey]);
+  }, [allowedTaskTypeKeysForManager, assistantScopedTasks, availableTaskTypes, currentUser?.role, effectiveAdvancedFilters.company, getTaskTypesForCompany, normalizeText, restrictTaskTypesForCompany, taskTypeCompanyOverrides, taskTypesByCompanyFromTasks, uniqueLabelsByKey]);
   const fetchTaskTypes = useCallback(async () => {
     setPageLoading(true);
     try {
@@ -2837,6 +2915,21 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
 
   // ==================== UTILITY FUNCTIONS ====================
   const getBrandsByCompanyInternal = useCallback((companyName: string): string[] => {
+    const role = (currentUser?.role || '').toString().trim().toLowerCase();
+    if (role === 'assistant') {
+      const companyKey = normalizeText(companyName);
+      const items = (assistantScopedTasks || []).filter((t: any) => {
+        if (!companyKey || companyKey === 'all') return true;
+        const taskCompany = normalizeText(t?.companyName || t?.company);
+        return taskCompany === companyKey;
+      });
+
+      const brandsFromTasks = items
+        .map((t: any) => (t?.brand || '').toString().trim())
+        .filter(Boolean);
+      return Array.from(new Set(brandsFromTasks)).sort((a, b) => a.localeCompare(b));
+    }
+
     if (getBrandsByCompany) {
       return getBrandsByCompany(companyName);
     }
@@ -2848,7 +2941,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     }
 
     return COMPANY_BRAND_MAP[companyName.toLowerCase()] || [];
-  }, [COMPANY_BRAND_MAP, getBrandsByCompany]);
+  }, [COMPANY_BRAND_MAP, assistantScopedTasks, currentUser?.role, getBrandsByCompany, normalizeText]);
 
   const getEmailByIdInternal = useCallback((userId: any): string => {
     if (userId && userId.includes('@')) {
@@ -3305,14 +3398,15 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       void refreshTaskTypeCompanyOverrides();
       handleAdvancedFilterChange(filterType, value);
       handleAdvancedFilterChange('brand', 'all');
-      handleAdvancedFilterChange('taskType', 'all');
+      const role = (currentUser?.role || '').toString().trim().toLowerCase();
+      handleAdvancedFilterChange('taskType', role === 'assistant' ? 'other work' : 'all');
 
       const brands = getBrandsByCompanyInternal(value);
       setAvailableBrands(brands);
     } else {
       handleAdvancedFilterChange(filterType as keyof AdvancedFilters, value);
     }
-  }, [getBrandsByCompanyInternal, handleAdvancedFilterChange, refreshTaskTypeCompanyOverrides]);
+  }, [currentUser?.role, getBrandsByCompanyInternal, handleAdvancedFilterChange, refreshTaskTypeCompanyOverrides]);
 
   const applyAdvancedFilters = useCallback(() => {
     if (effectiveAdvancedFilters.status !== 'all') {
@@ -3338,12 +3432,13 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   }, [effectiveAdvancedFilters, setFilter, setAssignedFilter, setDateFilter]);
 
   const resetFilters = useCallback(() => {
+    const role = (currentUser?.role || '').toString().trim().toLowerCase();
     const emptyFilters = {
       status: 'all',
       priority: 'all',
       assigned: 'all',
       date: 'all',
-      taskType: 'all',
+      taskType: role === 'assistant' ? 'other work' : 'all',
       company: 'all',
       brand: 'all'
     };
@@ -3367,8 +3462,21 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     toast.success('All filters cleared');
   }, [setFilter, setAssignedFilter, setDateFilter, setSearchTerm, onAdvancedFilterChange, getBrandsByCompanyInternal]);
 
+  useEffect(() => {
+    const role = (currentUser?.role || '').toString().trim().toLowerCase();
+    if (role !== 'assistant') return;
+    if ((effectiveAdvancedFilters.taskType || '').toString().trim().toLowerCase() !== 'all') return;
+    handleAdvancedFilterChange('taskType', 'other work');
+  }, [currentUser?.role, effectiveAdvancedFilters.taskType, handleAdvancedFilterChange]);
+
   const handleBulkStatusChange = useCallback(async (status: 'completed' | 'pending') => {
     if (selectedTasks.length === 0) return;
+
+    const role = (currentUser?.role || '').toString().trim().toLowerCase();
+    if (role === 'ob_manager') {
+      toast.error('You do not have permission to update task status');
+      return;
+    }
 
     const confirmMessage = status === 'completed'
       ? `Mark ${selectedTasks.length} tasks as completed?`
@@ -3377,15 +3485,24 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     if (!window.confirm(confirmMessage)) return;
 
     try {
+      const desiredStatus = status;
+      const currentStatusForToggle = desiredStatus === 'completed' ? 'pending' : 'completed';
       for (const taskId of selectedTasks) {
         const task = tasks.find(t => t.id === taskId);
         if (task) {
-          await onToggleTaskStatus(taskId, task.status, false);
+          if (!isTaskAssignee(task)) {
+            toast.error('You can only change status for tasks assigned to you');
+            continue;
+          }
+          await onToggleTaskStatus(taskId, currentStatusForToggle, false);
           await addHistoryRecord(
             taskId,
-            `bulk_${status}`,
-            `Task marked as ${status.toUpperCase()} in bulk operation by ${currentUser.role} on ${new Date().toLocaleString()}`,
-            { bulkOperation: true, affectedTasks: selectedTasks.length }
+            status === 'completed' ? 'bulk_completed' : 'bulk_pending',
+            `Bulk updated status to ${status} by ${currentUser.role} (${currentUser.name})`,
+            {
+              bulkOperation: true,
+              affectedTasks: selectedTasks.length
+            }
           );
         }
       }
@@ -3396,14 +3513,18 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       console.error('Error in bulk status change:', error);
       toast.error('Failed to update tasks');
     }
-  }, [selectedTasks, tasks, onToggleTaskStatus, addHistoryRecord, currentUser]);
+  }, [addHistoryRecord, currentUser, isTaskAssignee, onToggleTaskStatus, selectedTasks, tasks]);
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedTasks.length === 0) return;
 
-    if (!window.confirm(`Are you sure you want to delete ${selectedTasks.length} tasks? This action cannot be undone.`)) {
+    const role = (currentUser?.role || '').toString().trim().toLowerCase();
+    if (role === 'ob_manager') {
+      toast.error('You do not have permission to delete tasks');
       return;
     }
+
+    if (!window.confirm(`Delete ${selectedTasks.length} tasks? This action cannot be undone.`)) return;
 
     setBulkDeleting(true);
     try {
@@ -3420,14 +3541,14 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         await onDeleteTask(taskId);
       }
       setSelectedTasks([]);
-      toast.success(`${selectedTasks.length} tasks deleted successfully`);
+      toast.success('Tasks deleted successfully');
     } catch (error) {
       console.error('Error in bulk delete:', error);
       toast.error('Failed to delete selected tasks');
     } finally {
       setBulkDeleting(false);
     }
-  }, [selectedTasks, tasks, addHistoryRecord, currentUser, onDeleteTask]);
+  }, [addHistoryRecord, currentUser, onDeleteTask, selectedTasks, tasks]);
 
   const handlePermanentApproval = useCallback(async (taskId: string, value: boolean) => {
     const task = tasks.find(t => t.id === taskId);
@@ -3931,6 +4052,25 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     let filtered = tasksWithDemoData.filter((task: Task) => {
       const isCompleted = isTaskCompleted(task.id);
 
+      const roleKey = normalizeRole(currentUser?.role);
+      const myEmail = normalizeText(currentUser?.email);
+      const taskTypeKey = normalizeText((task as any)?.taskType || (task as any)?.type || (task as any)?.task_type);
+
+      if (taskTypeKey === 'other work') {
+        // Assistants should be able to see Other Work tasks in All Tasks (same as Dashboard)
+        if (roleKey === 'manager') return false;
+      }
+
+      if (roleKey === 'manager') {
+        const assignedByMe = normalizeText(getAssignerEmail(task)) === myEmail;
+        const assignedToMe = normalizeText(getEmailByIdInternal(task.assignedTo)) === myEmail;
+
+        if (!assignedByMe) {
+          if (!assignedToMe) return false;
+          if (resolveAssignerRole(task) !== 'md_manager') return false;
+        }
+      }
+
       // 🔥 CRITICAL FIX: Handle assigned filter correctly
       if (assignedFilter && assignedFilter !== 'all') {
         if (assignedFilter === 'assigned-to-me' && !isTaskAssignee(task)) {
@@ -4055,6 +4195,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
 
   // ==================== RENDER ====================
   const isObManagerViewOnly = normalizeRole(currentUser?.role) === 'ob_manager';
+  const isAssistantViewOnly = normalizeRole(currentUser?.role) === 'assistant';
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
       {/* Header Section */}
@@ -4078,7 +4219,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
               </p>
             </div>
 
-            {!isObManagerViewOnly && (
+            {!isObManagerViewOnly && !isAssistantViewOnly && (
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
@@ -4107,7 +4248,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
             )}
           </div>
 
-          {!isObManagerViewOnly && (
+          {!isObManagerViewOnly && !isAssistantViewOnly && (
             <>
               {/* Advanced Filters */}
               <AdvancedFiltersPanel
@@ -4154,7 +4295,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                 ? 'Try changing your filters or search term to find what you\'re looking for'
                 : 'Get started by creating your first task or importing tasks in bulk'}
             </p>
-            {!isObManagerViewOnly && (
+            {!isObManagerViewOnly && !isAssistantViewOnly && (
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <button
                   onClick={handleOpenBulkImporter}
@@ -4230,7 +4371,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                       onOpenHistoryModal={handleOpenHistoryModal}
                       showAssignButton={showAssignButton}
                       onAssignClick={handleOpenReassignModal}
-                      disableStatusToggle={isObManagerViewOnly}
+                      disableStatusToggle={isObManagerViewOnly || !isTaskAssignee(task)}
                     />
                   </div>
 
@@ -4259,7 +4400,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                       isUpdatingApproval={isUpdatingApproval}
                       showAssignButton={showAssignButton}
                       onAssignClick={handleOpenReassignModal}
-                      disableStatusToggle={isObManagerViewOnly}
+                      disableStatusToggle={isObManagerViewOnly || !isTaskAssignee(task)}
                     />
                   </div>
                 </div>
@@ -4270,7 +4411,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       </div>
 
       {/* Bulk Import Modal */}
-      {showBulkImporter && !isObManagerViewOnly && (
+      {showBulkImporter && !isObManagerViewOnly && !isAssistantViewOnly && (
         <BulkImporter
           draftTasks={bulkDraftTasks}
           defaults={bulkImportDefaults}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Building, Tag } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -80,6 +80,7 @@ const AssignPage = ({ currentUser }: Props) => {
   const [loadingTaskTypes, setLoadingTaskTypes] = useState(false);
   const [loadingMappings, setLoadingMappings] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
+  const applyInFlightRef = useRef(false);
 
   const [showBulkCompanyModal, setShowBulkCompanyModal] = useState(false);
   const [bulkCompanyNames, setBulkCompanyNames] = useState('');
@@ -585,6 +586,8 @@ const AssignPage = ({ currentUser }: Props) => {
       return;
     }
 
+    if (applyInFlightRef.current) return;
+
     const toAssign = Array.from(selectedBrandIds);
     const toRemove = Array.from(initialAssignedBrandIds).filter((b) => !selectedBrandIds.has(b));
     if (toAssign.length === 0 && toRemove.length === 0) {
@@ -594,6 +597,7 @@ const AssignPage = ({ currentUser }: Props) => {
 
     const selectedTaskIds = Array.from(pendingTaskTypeIds);
 
+    applyInFlightRef.current = true;
     setIsApplying(true);
     try {
       await Promise.all([
@@ -641,6 +645,7 @@ const AssignPage = ({ currentUser }: Props) => {
       toast.error(e?.response?.data?.message || e?.message || 'Failed to apply');
     } finally {
       setIsApplying(false);
+      applyInFlightRef.current = false;
     }
   }, [brands, initialAssignedBrandIds, loadMappings, pendingTaskTypeIds, selectedBrandIds, selectedCompany, selectedUserId]);
 

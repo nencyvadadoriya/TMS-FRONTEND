@@ -243,7 +243,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
     }, []);
 
     const normalizeRole = useCallback((role: unknown) => {
-        return (role || '').toString().trim().toLowerCase();
+        return (role || '').toString().trim().toLowerCase().replace(/[\s-]+/g, '_');
     }, []);
 
     const normalizeText = useCallback((value: unknown) => {
@@ -633,14 +633,19 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
                 const r = normalizeRole(u?.role);
                 if (r === 'assistant') return true;
-
-                // Keep managers scoped to self otherwise
+                if (r === 'manager') return true;
                 return false;
             }).filter(inCompany);
         }
 
         return [];
     }, [canViewTeamPage, currentUser, filterCompany, isCurrentUserAdmin, isCurrentUserMdManager, isCurrentUserManager, isCurrentUserObManager, users, normalizeRole, normalizeText]);
+
+    useEffect(() => {
+        if (!isCurrentUserManager) return;
+        if (filterRole !== 'ob_manager' && filterRole !== 'md_manager') return;
+        setFilterRole('all');
+    }, [filterRole, isCurrentUserManager]);
 
     const companyScopedUsers = useMemo(() => {
         if (!isCurrentUserAdmin) return visibleUsers;
@@ -1277,20 +1282,24 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                                 <div className="text-3xl font-bold text-gray-900">{visibleUsers.length}</div>
                                 <div className="text-sm text-gray-600 mt-1">Total Members</div>
                             </button>
-                            <button
-                                onClick={() => setFilterRole('md_manager')}
-                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'md_manager' ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-indigo-50 hover:border-indigo-100'}`}
-                            >
-                                <div className="text-3xl font-bold text-indigo-700">{visibleUsers.filter(u => normalizeRole(u.role) === 'md_manager').length}</div>
-                                <div className="text-sm text-gray-600 mt-1">MD Manager</div>
-                            </button>
-                            <button
-                                onClick={() => setFilterRole('ob_manager')}
-                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'ob_manager' ? 'bg-violet-50 border-violet-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-violet-50 hover:border-violet-100'}`}
-                            >
-                                <div className="text-3xl font-bold text-violet-700">{visibleUsers.filter(u => normalizeRole(u.role) === 'ob_manager').length}</div>
-                                <div className="text-sm text-gray-600 mt-1">OB Manager</div>
-                            </button>
+                            {!isCurrentUserManager && (
+                                <button
+                                    onClick={() => setFilterRole('md_manager')}
+                                    className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'md_manager' ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-indigo-50 hover:border-indigo-100'}`}
+                                >
+                                    <div className="text-3xl font-bold text-indigo-700">{visibleUsers.filter(u => normalizeRole(u.role) === 'md_manager').length}</div>
+                                    <div className="text-sm text-gray-600 mt-1">MD Manager</div>
+                                </button>
+                            )}
+                            {!isCurrentUserManager && (
+                                <button
+                                    onClick={() => setFilterRole('ob_manager')}
+                                    className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'ob_manager' ? 'bg-violet-50 border-violet-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-violet-50 hover:border-violet-100'}`}
+                                >
+                                    <div className="text-3xl font-bold text-violet-700">{visibleUsers.filter(u => normalizeRole(u.role) === 'ob_manager').length}</div>
+                                    <div className="text-sm text-gray-600 mt-1">OB Manager</div>
+                                </button>
+                            )}
                             <button
                                 onClick={() => setFilterRole('manager')}
                                 className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'manager' ? 'bg-purple-50 border-purple-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-purple-50 hover:border-purple-100'}`}
@@ -1353,20 +1362,24 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                             <div className="text-3xl font-bold text-gray-900">{visibleUsers.length}</div>
                             <div className="text-sm text-gray-600 mt-1">Total Members</div>
                         </button>
-                        <button
-                            onClick={() => setFilterRole('md_manager')}
-                            className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'md_manager' ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-indigo-50 hover:border-indigo-100'}`}
-                        >
-                            <div className="text-3xl font-bold text-indigo-700">{visibleUsers.filter(u => normalizeRole(u.role) === 'md_manager').length}</div>
-                            <div className="text-sm text-gray-600 mt-1">MD Manager</div>
-                        </button>
-                        <button
-                            onClick={() => setFilterRole('ob_manager')}
-                            className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'ob_manager' ? 'bg-violet-50 border-violet-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-violet-50 hover:border-violet-100'}`}
-                        >
-                            <div className="text-3xl font-bold text-violet-700">{visibleUsers.filter(u => normalizeRole(u.role) === 'ob_manager').length}</div>
-                            <div className="text-sm text-gray-600 mt-1">OB Manager</div>
-                        </button>
+                        {!isCurrentUserManager && (
+                            <button
+                                onClick={() => setFilterRole('md_manager')}
+                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'md_manager' ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-indigo-50 hover:border-indigo-100'}`}
+                            >
+                                <div className="text-3xl font-bold text-indigo-700">{visibleUsers.filter(u => normalizeRole(u.role) === 'md_manager').length}</div>
+                                <div className="text-sm text-gray-600 mt-1">MD Manager</div>
+                            </button>
+                        )}
+                        {!isCurrentUserManager && (
+                            <button
+                                onClick={() => setFilterRole('ob_manager')}
+                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'ob_manager' ? 'bg-violet-50 border-violet-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-violet-50 hover:border-violet-100'}`}
+                            >
+                                <div className="text-3xl font-bold text-violet-700">{visibleUsers.filter(u => normalizeRole(u.role) === 'ob_manager').length}</div>
+                                <div className="text-sm text-gray-600 mt-1">OB Manager</div>
+                            </button>
+                        )}
                         <button
                             onClick={() => setFilterRole('manager')}
                             className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'manager' ? 'bg-purple-50 border-purple-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-purple-50 hover:border-purple-100'}`}

@@ -72,6 +72,15 @@ import { routepath } from '../Routes/route';
 import { useAppDispatch, useAppSelector } from '../Store/hooks';
 import { fetchTasks as fetchTasksThunk, selectAllTasks, taskAdded, taskRemoved, taskUpserted, tasksAddedMany } from '../Store/tasksSlice';
 
+ const stripDeletedEmailSuffix = (value: unknown): string => {
+     const raw = (value == null ? '' : String(value)).trim();
+     if (!raw) return '';
+     const marker = '.deleted.';
+     const idx = raw.indexOf(marker);
+     if (idx === -1) return raw;
+     return raw.slice(0, idx).trim();
+ };
+
 interface NewTaskForm {
     title: string;
     assignedTo: string;
@@ -175,6 +184,9 @@ const DashboardPage = () => {
     });
 
     const currentUserEmailRef = useRef<string>('');
+    const userMappingsFetchInFlightRef = useRef<Map<string, Promise<void>>>(new Map());
+    const userMappingsFetchedAtRef = useRef<Map<string, number>>(new Map());
+    const USER_MAPPINGS_TTL_MS = 60_000;
 
     useEffect(() => {
         usersRef.current = users;
@@ -857,7 +869,13 @@ const DashboardPage = () => {
             const email = stripDeletedEmailSuffix(u?.email).trim().toLowerCase();
             return email && email === emailKey;
         });
-        const userId = (userDoc?.id || userDoc?._id || '').toString();
+        let userId = (userDoc?.id || userDoc?._id || '').toString();
+        if (!userId) {
+            const myEmailKey = stripDeletedEmailSuffix(currentUser?.email || '').trim().toLowerCase();
+            if (myEmailKey && myEmailKey === emailKey) {
+                userId = ((currentUser as any)?.id || (currentUser as any)?._id || '').toString();
+            }
+        }
         if (!userId) return [];
 
         const wantedPrefix = `${companyKey}::${userId}::`;
@@ -882,7 +900,7 @@ const DashboardPage = () => {
 
         const labels = ids.map((id) => labelById.get(id) || '').filter(Boolean);
         return [...new Set(labels)].sort((a, b) => a.localeCompare(b));
-    }, [normalizeText, stripDeletedEmailSuffix, taskTypeIdsByCompanyUserBrandKey, taskTypes]);
+    }, [currentUser, normalizeText, taskTypeIdsByCompanyUserBrandKey, taskTypes]);
 
     const getTaskTypesForCompanyUserBrand = useCallback((companyName: string, brandName: string, assignedToEmail: string): string[] => {
         const companyKey = normalizeText(companyName);
@@ -894,7 +912,13 @@ const DashboardPage = () => {
             const email = stripDeletedEmailSuffix(u?.email).trim().toLowerCase();
             return email && email === emailKey;
         });
-        const userId = (userDoc?.id || userDoc?._id || '').toString();
+        let userId = (userDoc?.id || userDoc?._id || '').toString();
+        if (!userId) {
+            const myEmailKey = stripDeletedEmailSuffix(currentUser?.email || '').trim().toLowerCase();
+            if (myEmailKey && myEmailKey === emailKey) {
+                userId = ((currentUser as any)?.id || (currentUser as any)?._id || '').toString();
+            }
+        }
         if (!userId) return [];
 
         const brandDoc: any = (apiBrands || []).find((b: any) => {
@@ -917,7 +941,44 @@ const DashboardPage = () => {
 
         const labels = mappedIds.map((id) => labelById.get(id) || '').filter(Boolean);
         return [...new Set(labels)].sort((a, b) => a.localeCompare(b));
-    }, [apiBrands, normalizeText, stripDeletedEmailSuffix, taskTypeIdsByCompanyUserBrandKey, taskTypes]);
+    }, [apiBrands, currentUser, normalizeText, taskTypeIdsByCompanyUserBrandKey, taskTypes]);
+
+    const assistantManagerEmail = useMemo(() => {
+        const role = (currentUser?.role || '').toString().trim().toLowerCase();
+        if (role !== 'assistant') return '';
+        const managerId = ((currentUser as any)?.managerId || '').toString();
+        if (!managerId) return '';
+        const list: any[] = Array.isArray(usersRef.current) ? (usersRef.current as any[]) : (users as any[]);
+        const manager = (list || []).find((u: any) => {
+            const id = (u?.id || u?._id || '').toString();
+            return id && id === managerId;
+        });
+        return stripDeletedEmailSuffix(manager?.email || '').trim().toLowerCase();
+    }, [currentUser?.role, (currentUser as any)?.managerId, users]);
+
+    const assistantScopedTasks = useMemo(() => {
+        const role = (currentUser?.role || '').toString().trim().toLowerCase();
+        if (role !== 'assistant') return [] as Task[];
+
+        const myEmail = stripDeletedEmailSuffix(currentUser?.email || '').trim().toLowerCase();
+        const normalizeAssignerEmail = (t: any) => {
+            const assignedBy = (t as any)?.assignedBy;
+            const assignedByUser = (t as any)?.assignedByUser;
+            const email =
+                (typeof assignedBy === 'string' && assignedBy.includes('@') ? assignedBy : assignedBy?.email) ||
+                (typeof assignedByUser === 'string' && assignedByUser.includes('@') ? assignedByUser : assignedByUser?.email) ||
+                (typeof assignedBy === 'string' ? assignedBy : '') ||
+                '';
+            return stripDeletedEmailSuffix(email).trim().toLowerCase();
+        };
+
+        return (tasks || []).filter((t: any) => {
+            const assignedToEmail = stripDeletedEmailSuffix((t as any)?.assignedTo || '').trim().toLowerCase();
+            if (!myEmail || assignedToEmail !== myEmail) return false;
+            if (!assistantManagerEmail) return true;
+            return normalizeAssignerEmail(t) === assistantManagerEmail;
+        });
+    }, [assistantManagerEmail, currentUser?.email, currentUser?.role, tasks]);
 
     const availableTaskTypesForFilters = useMemo(() => {
         const brandAssignmentLabel = (taskTypes || []).find((t: any) => {
@@ -935,6 +996,29 @@ const DashboardPage = () => {
 
         const role = (currentUser?.role || '').toString().toLowerCase();
         const isPersonScoped = role === 'assistant' || role === 'sbm' || role === 'rm' || role === 'am';
+
+        if (role === 'assistant') {
+            const companyKey = normalizeText(filters.company === 'all' ? '' : filters.company);
+            const brandKey = normalizeText(filters.brand === 'all' ? '' : filters.brand);
+
+            const filtered = (assistantScopedTasks || [])
+                .filter((t: any) => {
+                    if (companyKey) {
+                        const taskCompany = normalizeText((t as any)?.companyName || (t as any)?.company);
+                        if (taskCompany !== companyKey) return false;
+                    }
+                    if (brandKey) {
+                        const taskBrand = normalizeText((t as any)?.brand || '');
+                        if (taskBrand !== brandKey) return false;
+                    }
+                    return true;
+                })
+                .map((t: any) => String((t as any)?.taskType || (t as any)?.type || '').trim())
+                .filter(Boolean);
+
+            const merged = ensureBrandAssignment(Array.from(new Set(filtered)));
+            return restrictTaskTypesForCompany(filters.company, merged.sort((a, b) => a.localeCompare(b)));
+        }
 
         if (filters.company !== 'all' && filters.brand !== 'all') {
             if (isPersonScoped) {
@@ -960,35 +1044,45 @@ const DashboardPage = () => {
         }
 
         return restrictTaskTypesForCompany(filters.company, merged.sort((a, b) => a.localeCompare(b)));
-    }, [allowedTaskTypeKeysForManager, availableTaskTypes, currentUser?.email, currentUser?.role, filters.brand, filters.company, getTaskTypesForCompany, getTaskTypesForCompanyBrand, getTaskTypesForCompanyUser, getTaskTypesForCompanyUserBrand, restrictTaskTypesForCompany, taskTypeCompanyOverrides, taskTypes, taskTypesByCompanyFromTasks]);
+    }, [allowedTaskTypeKeysForManager, assistantScopedTasks, availableTaskTypes, currentUser?.email, currentUser?.role, filters.brand, filters.company, getTaskTypesForCompany, getTaskTypesForCompanyBrand, getTaskTypesForCompanyUser, getTaskTypesForCompanyUserBrand, normalizeText, restrictTaskTypesForCompany, taskTypeCompanyOverrides, taskTypes, taskTypesByCompanyFromTasks]);
 
     const availableTaskTypesForNewTask = useMemo(() => {
         if (!newTask.companyName) return [];
         const company = newTask.companyName;
         const baseCompany = () => restrictTaskTypesForCompany(company, getTaskTypesForCompany(company));
 
-        if (newTask.assignedTo && newTask.brand) {
-            const specific = restrictTaskTypesForCompany(company, getTaskTypesForCompanyUserBrand(company, newTask.brand, newTask.assignedTo));
-            if (specific.length > 0) return specific;
+        const role = String((currentUser as any)?.role || '').toString().trim().toLowerCase();
+        const ensureManagerOtherWork = (list: string[]) => {
+            if (role !== 'manager') return list;
+            const normalized = (list || []).map((t) => (t || '').toString().trim().toLowerCase());
+            if (normalized.includes('other work')) return list;
+            return [...(list || []), 'Other Work'];
+        };
+
+        const effectiveEmail = (newTask.assignedTo || currentUser?.email || '').toString();
+
+        if (effectiveEmail && newTask.brand) {
+            const specific = restrictTaskTypesForCompany(company, getTaskTypesForCompanyUserBrand(company, newTask.brand, effectiveEmail));
+            if (specific.length > 0) return ensureManagerOtherWork(specific);
             const brandLevel = restrictTaskTypesForCompany(company, getTaskTypesForCompanyBrand(company, newTask.brand));
-            if (brandLevel.length > 0) return brandLevel;
-            return baseCompany();
+            if (brandLevel.length > 0) return ensureManagerOtherWork(brandLevel);
+            return ensureManagerOtherWork(baseCompany());
         }
 
-        if (newTask.assignedTo) {
-            const userLevel = restrictTaskTypesForCompany(company, getTaskTypesForCompanyUser(company, newTask.assignedTo));
-            if (userLevel.length > 0) return userLevel;
-            return baseCompany();
+        if (effectiveEmail) {
+            const userLevel = restrictTaskTypesForCompany(company, getTaskTypesForCompanyUser(company, effectiveEmail));
+            if (userLevel.length > 0) return ensureManagerOtherWork(userLevel);
+            return ensureManagerOtherWork(baseCompany());
         }
 
         if (newTask.brand) {
             const brandLevel = restrictTaskTypesForCompany(company, getTaskTypesForCompanyBrand(company, newTask.brand));
-            if (brandLevel.length > 0) return brandLevel;
-            return baseCompany();
+            if (brandLevel.length > 0) return ensureManagerOtherWork(brandLevel);
+            return ensureManagerOtherWork(baseCompany());
         }
 
-        return baseCompany();
-    }, [getTaskTypesForCompany, getTaskTypesForCompanyBrand, getTaskTypesForCompanyUser, getTaskTypesForCompanyUserBrand, newTask.assignedTo, newTask.brand, newTask.companyName, restrictTaskTypesForCompany]);
+        return ensureManagerOtherWork(baseCompany());
+    }, [currentUser, currentUser?.email, getTaskTypesForCompany, getTaskTypesForCompanyBrand, getTaskTypesForCompanyUser, getTaskTypesForCompanyUserBrand, newTask.assignedTo, newTask.brand, newTask.companyName, restrictTaskTypesForCompany]);
 
     const availableTaskTypesForEditTask = useMemo(() => {
         if (!editFormData.companyName) return availableTaskTypesForFilters;
@@ -1047,7 +1141,13 @@ const DashboardPage = () => {
                 const uEmail = stripDeletedEmailSuffix(u?.email).trim().toLowerCase();
                 return uEmail && uEmail === email;
             });
-            const userId = (userDoc?.id || userDoc?._id || '').toString();
+            let userId = (userDoc?.id || userDoc?._id || '').toString();
+            if (!userId) {
+                const myEmailKey = stripDeletedEmailSuffix(currentUser?.email || '').trim().toLowerCase();
+                if (myEmailKey && myEmailKey === email) {
+                    userId = ((currentUser as any)?.id || (currentUser as any)?._id || '').toString();
+                }
+            }
             if (!userId) return;
 
             const res = await assignService.getUserMappings({ companyName: company, userId });
@@ -1111,7 +1211,33 @@ const DashboardPage = () => {
         } catch {
             // ignore
         }
-    }, [normalizeText, stripDeletedEmailSuffix]);
+    }, [currentUser, normalizeText]);
+
+    const fetchUserBrandTaskTypeMappingsCached = useCallback(async (companyName: string, assignedToEmail: string) => {
+        const companyKey = normalizeText(companyName);
+        const emailKey = stripDeletedEmailSuffix(assignedToEmail).trim().toLowerCase();
+        if (!companyKey || !emailKey) return;
+
+        const cacheKey = `${companyKey}::${emailKey}`;
+        const now = Date.now();
+        const lastAt = userMappingsFetchedAtRef.current.get(cacheKey) || 0;
+        if (lastAt && now - lastAt < USER_MAPPINGS_TTL_MS) return;
+
+        const inFlight = userMappingsFetchInFlightRef.current.get(cacheKey);
+        if (inFlight) return inFlight;
+
+        const p = (async () => {
+            try {
+                await fetchUserBrandTaskTypeMappings(companyName, assignedToEmail);
+                userMappingsFetchedAtRef.current.set(cacheKey, Date.now());
+            } finally {
+                userMappingsFetchInFlightRef.current.delete(cacheKey);
+            }
+        })();
+
+        userMappingsFetchInFlightRef.current.set(cacheKey, p);
+        return p;
+    }, [fetchUserBrandTaskTypeMappings, normalizeText]);
 
     useEffect(() => {
         const role = (currentUser?.role || '').toString().toLowerCase();
@@ -1124,8 +1250,8 @@ const DashboardPage = () => {
         const email = stripDeletedEmailSuffix(currentUser?.email || '').trim().toLowerCase();
         if (!email) return;
 
-        void fetchUserBrandTaskTypeMappings(company, email);
-    }, [currentUser?.email, currentUser?.role, fetchUserBrandTaskTypeMappings, filters.company]);
+        void fetchUserBrandTaskTypeMappingsCached(company, email);
+    }, [currentUser?.email, currentUser?.role, fetchUserBrandTaskTypeMappingsCached, filters.company]);
 
     useEffect(() => {
         const handler = (e: any) => {
@@ -1143,19 +1269,28 @@ const DashboardPage = () => {
 
     useEffect(() => {
         if (!newTask.companyName || !newTask.assignedTo) return;
-        void fetchUserBrandTaskTypeMappings(newTask.companyName, newTask.assignedTo);
-    }, [fetchUserBrandTaskTypeMappings, newTask.assignedTo, newTask.companyName]);
+        void fetchUserBrandTaskTypeMappingsCached(newTask.companyName, newTask.assignedTo);
+    }, [fetchUserBrandTaskTypeMappingsCached, newTask.assignedTo, newTask.companyName]);
+
+    useEffect(() => {
+        if (!showAddTaskModal) return;
+        if (!newTask.companyName) return;
+        const email = stripDeletedEmailSuffix(currentUser?.email || '').trim().toLowerCase();
+        if (!email) return;
+        void fetchUserBrandTaskTypeMappingsCached(newTask.companyName, email);
+    }, [currentUser?.email, fetchUserBrandTaskTypeMappingsCached, newTask.companyName, showAddTaskModal]);
 
     useEffect(() => {
         if (!showEditTaskModal) return;
         if (!editFormData.companyName || !editFormData.assignedTo) return;
-        void fetchUserBrandTaskTypeMappings(editFormData.companyName, editFormData.assignedTo);
-    }, [editFormData.assignedTo, editFormData.companyName, fetchUserBrandTaskTypeMappings, showEditTaskModal]);
+        void fetchUserBrandTaskTypeMappingsCached(editFormData.companyName, editFormData.assignedTo);
+    }, [editFormData.assignedTo, editFormData.companyName, fetchUserBrandTaskTypeMappingsCached, showEditTaskModal]);
 
     useEffect(() => {
         if (filters.company === 'all' || filters.brand === 'all') return;
         void fetchCompanyBrandTaskTypeMapping(filters.company, filters.brand);
     }, [fetchCompanyBrandTaskTypeMapping, filters.brand, filters.company]);
+
     const availableBrands = useMemo(() => {
         const getCompanyName = (b: any): string => {
             const raw = b?.company ?? b?.companyName;
@@ -1170,6 +1305,20 @@ const DashboardPage = () => {
             return String(b?.name || b?.brandName || b?.brand || '').trim();
         };
 
+        const role = (currentUser?.role || '').toString().trim().toLowerCase();
+        if (role === 'assistant') {
+            const companyKey = normalizeText(filters.company === 'all' ? '' : filters.company);
+            const taskBrands = (assistantScopedTasks || [])
+                .filter((t: any) => {
+                    if (!companyKey) return true;
+                    const taskCompany = normalizeText((t as any)?.companyName || (t as any)?.company);
+                    return taskCompany === companyKey;
+                })
+                .map((t: any) => String((t as any)?.brand || '').trim())
+                .filter(Boolean);
+            return Array.from(new Set(taskBrands)).sort((a, b) => a.localeCompare(b));
+        }
+
         if (filters.company === 'all') {
             return brands
                 .map((brand: any) => getBrandName(brand))
@@ -1182,7 +1331,7 @@ const DashboardPage = () => {
             .map((brand: any) => getBrandName(brand))
             .filter(Boolean)
             .sort();
-    }, [brands, filters.company, normalizeText]);
+    }, [assistantScopedTasks, brands, currentUser?.role, filters.company, normalizeText]);
 
     const formatDate = useCallback((dateString: string) => {
         try {
@@ -1428,17 +1577,6 @@ const DashboardPage = () => {
         }
     }, []);
 
-    function stripDeletedEmailSuffix(value: unknown): string {
-        const raw = (value == null ? '' : String(value)).trim();
-        if (!raw) return '';
-        const marker = '.deleted.';
-        const idx = raw.indexOf(marker);
-        if (idx === -1) return raw;
-        return raw.slice(0, idx).trim();
-    }
-
-
-
     const getTaskBorderColor = useCallback((task: Task): string => {
         const isCompleted = task.status === 'completed' || task.completedApproval;
 
@@ -1507,6 +1645,8 @@ const DashboardPage = () => {
     const canMarkTaskDone = useCallback(
         (task: Task) => {
             if (task.completedApproval) return false;
+            const role = String((currentUser as any)?.role || '').trim().toLowerCase();
+            if (role === 'ob_manager') return false;
             const myEmail = stripDeletedEmailSuffix(currentUser?.email).trim().toLowerCase();
             const assignedToEmail = stripDeletedEmailSuffix((task as any)?.assignedTo).trim().toLowerCase();
             return Boolean(myEmail && assignedToEmail && assignedToEmail === myEmail);
@@ -2061,7 +2201,22 @@ const DashboardPage = () => {
     const getFilteredTasksByStat = useCallback(() => {
         if (!currentUser?.email) return [];
 
+        const role = String((currentUser as any)?.role || '').trim().toLowerCase();
+        const myEmail = (currentUser.email || '').toString().trim().toLowerCase();
+        const normalizeTaskTypeKey = (t: any) => String(t?.taskType || t?.type || '').trim().toLowerCase();
+        const isOtherWorkTask = (t: any) => normalizeTaskTypeKey(t) === 'other work';
+        const resolveAssignerRole = (t: any) => String((t as any)?.assignedByUser?.role || (t as any)?.assignedBy?.role || '').trim().toLowerCase();
+
         let filtered = tasks.filter((task) => {
+            if (role === 'manager') {
+                if (isOtherWorkTask(task)) return false;
+                const assignedToMe = String(task.assignedTo || '').trim().toLowerCase() === myEmail;
+                const assignedByMe = String(task.assignedBy || '').trim().toLowerCase() === myEmail;
+                if (assignedByMe) return true;
+                if (!assignedToMe) return false;
+                return resolveAssignerRole(task) === 'md_manager';
+            }
+
             if (canViewAllTasks) return true;
             return task.assignedTo === currentUser.email || task.assignedBy === currentUser.email;
         });
@@ -2200,7 +2355,22 @@ const DashboardPage = () => {
     const baseFilteredTasks = useMemo(() => {
         if (!currentUser?.email) return [];
 
+        const role = String((currentUser as any)?.role || '').trim().toLowerCase();
+        const myEmail = (currentUser.email || '').toString().trim().toLowerCase();
+        const normalizeTaskTypeKey = (t: any) => String(t?.taskType || t?.type || '').trim().toLowerCase();
+        const isOtherWorkTask = (t: any) => normalizeTaskTypeKey(t) === 'other work';
+        const resolveAssignerRole = (t: any) => String((t as any)?.assignedByUser?.role || (t as any)?.assignedBy?.role || '').trim().toLowerCase();
+
         let filtered = tasks.filter((task) => {
+            if (role === 'manager') {
+                if (isOtherWorkTask(task)) return false;
+                const assignedToMe = String(task.assignedTo || '').trim().toLowerCase() === myEmail;
+                const assignedByMe = String(task.assignedBy || '').trim().toLowerCase() === myEmail;
+                if (assignedByMe) return true;
+                if (!assignedToMe) return false;
+                return resolveAssignerRole(task) === 'md_manager';
+            }
+
             if (canViewAllTasks) return true;
             return task.assignedTo === currentUser.email || task.assignedBy === currentUser.email;
         });
@@ -3071,12 +3241,12 @@ const DashboardPage = () => {
                     return id && id === userId;
                 });
                 const email = stripDeletedEmailSuffix(userDoc?.email).trim().toLowerCase();
-                if (email) await fetchUserBrandTaskTypeMappings(companyName, email);
+                if (email) await fetchUserBrandTaskTypeMappingsCached(companyName, email);
             })();
         };
         window.addEventListener('assignmentsApplied', handler as any);
         return () => window.removeEventListener('assignmentsApplied', handler as any);
-    }, [ensureBrandsLoaded, ensureTaskTypesLoaded, ensureUsersLoaded, fetchUserBrandTaskTypeMappings, stripDeletedEmailSuffix]);
+    }, [ensureBrandsLoaded, ensureTaskTypesLoaded, ensureUsersLoaded, fetchUserBrandTaskTypeMappingsCached]);
 
     const fetchCurrentUser = useCallback(async () => {
         try {

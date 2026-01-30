@@ -7,6 +7,7 @@ import { taskService } from '../Services/Task.services';
 type ReviewStateByTaskId = Record<string, { stars: number; comment: string } | undefined>;
 
 const normalizeEmail = (v: unknown) => String(v || '').trim().toLowerCase();
+const normalizeText = (v: unknown) => String(v || '').trim().toLowerCase();
 
 const OtherWorkPage = ({ currentUser, tasks, onRefreshTasks }: { currentUser: UserType; tasks: Task[]; onRefreshTasks: () => Promise<void> | void }) => {
   const myEmail = useMemo(() => normalizeEmail(currentUser?.email), [currentUser?.email]);
@@ -19,7 +20,8 @@ const OtherWorkPage = ({ currentUser, tasks, onRefreshTasks }: { currentUser: Us
     return (tasks || []).filter((t: any) => {
       const assignedBy = normalizeEmail(t?.assignedByUser?.email || t?.assignedBy);
       const obManagerEmail = normalizeEmail(t?.obManagerEmail);
-      return assignedBy === myEmail && Boolean(obManagerEmail);
+      const taskTypeKey = normalizeText(t?.taskType || t?.type);
+      return assignedBy === myEmail && Boolean(obManagerEmail) && taskTypeKey === 'other work';
     });
   }, [tasks, myEmail]);
 
