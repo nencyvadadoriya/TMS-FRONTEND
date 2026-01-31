@@ -2024,9 +2024,6 @@ const ReassignModal = memo(({
   if (!showReassignModal || !reassignTask) return null;
 
   const role = (currentUser?.role || '').toString().trim().toLowerCase();
-  const normalizeEmail = (v: unknown) => String(v || '').trim().toLowerCase();
-  const normalizeText = (v: unknown) => String(v || '').trim().toLowerCase();
-  const normalizeCompanyKey = (v: unknown) => normalizeText(v).replace(/\s+/g, '');
   const normalizeRole = (v: unknown) => String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
   const isAssistantRole = (v: unknown) => {
     const r = normalizeRole(v);
@@ -4199,7 +4196,6 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
 
       const roleKey = normalizeRole(currentUser?.role);
       const myEmail = normalizeText(currentUser?.email);
-      const taskTypeKey = normalizeText((task as any)?.taskType || (task as any)?.type || (task as any)?.task_type);
 
       if (roleKey === 'manager') {
         const assignedByMe = normalizeText(getAssignerEmail(task)) === myEmail;
