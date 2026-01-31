@@ -266,6 +266,26 @@ export default function AuthPage() {
                   Forgot Password?
                 </Link>
               </div>
+              <div className="mt-4 text-[11px] text-gray-500 text-center flex flex-col gap-1">
+                <span>
+                  By logging in you agree to our
+                </span>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <Link
+                    to={routepath.termsAndConditions}
+                    className="text-blue-600 hover:text-blue-800 font-medium underline-offset-2 hover:underline"
+                  >
+                    Terms &amp; Conditions
+                  </Link>
+                  <span className="text-gray-400">•</span>
+                  <Link
+                    to={routepath.privacyPolicy}
+                    className="text-blue-600 hover:text-blue-800 font-medium underline-offset-2 hover:underline"
+                  >
+                    Privacy Policy
+                  </Link>
+                </div>
+              </div>
             </div>
           </form>
         </div>
