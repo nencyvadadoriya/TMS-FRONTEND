@@ -34,6 +34,7 @@ import { useMemo, useCallback, useState, useEffect, memo } from 'react';
 import { taskTypeService, type TaskTypeItem } from '../Services/TaskType.service';
 import { companyTaskTypeService } from '../Services/CompanyTaskType.service';
 import { companyService } from '../Services/Company.service';
+import { assignService } from '../Services/Assign.service';
 import { TasksPageSkeleton } from '../Components/LoadingSkeletons';
 import AdvancedFiltersPanel from './AdvancedFilters';
 
@@ -408,6 +409,7 @@ BulkActions.displayName = 'BulkActions';
 const BulkImporter = memo(({
   draftTasks = [],
   defaults,
+  currentUser,
   users = [],
   companyBrandMap,
   availableTaskTypes,
@@ -421,6 +423,7 @@ const BulkImporter = memo(({
 }: {
   draftTasks?: BulkTaskDraft[];
   defaults: BulkImportDefaults;
+  currentUser?: UserType;
   users?: UserType[];
   companyBrandMap: Record<string, string[]>;
   availableTaskTypes: string[];
@@ -433,6 +436,57 @@ const BulkImporter = memo(({
   getBrandsByCompany?: (companyName: string) => string[];
 }) => {
   const [bulkTaskInput, setBulkTaskInput] = useState<string>('');
+
+  const assignerUsers = useMemo(() => {
+    const normalizeRole = (v: unknown) => String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+    const normalizeCompany = (v: unknown) => String(v || '').trim().toLowerCase();
+    const normalizeEmail = (v: unknown) => String(v || '').trim().toLowerCase();
+    const toId = (u: any) => String(u?.id || u?._id || '').trim();
+
+    const role = normalizeRole((currentUser as any)?.role);
+    const baseUsers = Array.isArray(users) ? users : [];
+
+    const modalCompanyKey = normalizeCompany(defaults.companyName);
+    const userCompanyKey = normalizeCompany((currentUser as any)?.companyName || (currentUser as any)?.company);
+    const targetCompanyKey = (() => {
+      if (role === 'admin' || role === 'super_admin') return modalCompanyKey;
+      return modalCompanyKey || userCompanyKey;
+    })();
+
+    const filterByCompany = (list: any[]) => {
+      if (!targetCompanyKey) {
+        if (role === 'admin' || role === 'super_admin') return list;
+        return list.filter((u: any) => normalizeCompany(u?.companyName || u?.company) === userCompanyKey);
+      }
+      return list.filter((u: any) => normalizeCompany(u?.companyName || u?.company) === targetCompanyKey);
+    };
+
+    // For MD Manager bulk import: allow assigning to Managers/OB Managers in company + all MD Managers, including self.
+    if (role === 'md_manager') {
+      const requesterId = toId(currentUser);
+      const myEmail = normalizeEmail((currentUser as any)?.email);
+
+      const selfUser = baseUsers.find((u: any) => {
+        const id = toId(u);
+        const email = normalizeEmail(u?.email);
+        return (requesterId && id === requesterId) || (myEmail && email === myEmail);
+      }) || (currentUser as any);
+
+      const mdManagers = baseUsers.filter((u: any) => normalizeRole(u?.role) === 'md_manager');
+      const managersAndObManagers = filterByCompany(baseUsers.filter((u: any) => {
+        const r = normalizeRole(u?.role);
+        return r === 'manager' || r === 'ob_manager';
+      }));
+
+      const candidates = [...mdManagers, selfUser, ...managersAndObManagers]
+        .filter((u: any) => Boolean(String(u?.email || '').trim()));
+
+      return Array.from(new Map(candidates.map((u: any) => [toId(u) || normalizeEmail(u?.email) || String(u?.email || ''), u])).values());
+    }
+
+    // Default behavior: use provided list as-is (it is usually already role-scoped by parent)
+    return (baseUsers || []).filter((u: any) => Boolean(String(u?.email || '').trim()));
+  }, [currentUser, defaults.companyName, users]);
 
   // Get today's date in YYYY-MM-DD format
   const today = useMemo(() => {
@@ -680,9 +734,9 @@ const BulkImporter = memo(({
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               >
                 <option value="">Select assigner</option>
-                {users.map(user => (
-                  <option key={user.id || user.email} value={user.email}>
-                    {user.name} ({user.email})
+                {assignerUsers.map((user: any) => (
+                  <option key={user.id || user._id || user.email} value={user.email}>
+                    {String(user.email || '').trim()}
                   </option>
                 ))}
               </select>
@@ -936,9 +990,9 @@ Add user notifications
                               className={`w-full px-3 py-2 border ${draft.errors.some(e => e.includes('Assigner') || e.includes('email')) ? 'border-red-300' : 'border-gray-200'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white`}
                             >
                               <option value="">Select assigner</option>
-                              {users.map(user => (
-                                <option key={user.id || user.email} value={user.email}>
-                                  {user.name} ({user.email})
+                              {assignerUsers.map((user: any) => (
+                                <option key={user.id || user._id || user.email} value={user.email}>
+                                  {String(user.email || '').trim()}
                                 </option>
                               ))}
                             </select>
@@ -1970,6 +2024,9 @@ const ReassignModal = memo(({
   if (!showReassignModal || !reassignTask) return null;
 
   const role = (currentUser?.role || '').toString().trim().toLowerCase();
+  const normalizeEmail = (v: unknown) => String(v || '').trim().toLowerCase();
+  const normalizeText = (v: unknown) => String(v || '').trim().toLowerCase();
+  const normalizeCompanyKey = (v: unknown) => normalizeText(v).replace(/\s+/g, '');
   const normalizeRole = (v: unknown) => String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
   const isAssistantRole = (v: unknown) => {
     const r = normalizeRole(v);
@@ -2422,9 +2479,20 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     return (value == null ? '' : String(value)).trim().toLowerCase();
   }, []);
 
+  const normalizeEmail = useCallback((value: unknown): string => {
+    return normalizeText(value);
+  }, [normalizeText]);
+
+  const normalizeCompanyKey = useCallback((value: unknown): string => {
+    return normalizeText(value).replace(/\s+/g, '');
+  }, [normalizeText]);
+
   const restrictTaskTypesForCompany = useCallback((companyName: unknown, list: string[]): string[] => {
     const companyKey = normalizeText(companyName);
-    if (companyKey === SPEED_E_COM_COMPANY_KEY) return [...SPEED_E_COM_FIXED_TASK_TYPES];
+    if (companyKey === SPEED_E_COM_COMPANY_KEY) {
+      if (Array.isArray(list) && list.length > 0) return list;
+      return [...SPEED_E_COM_FIXED_TASK_TYPES];
+    }
 
     const currentUserCompanyKey = normalizeText((currentUser as any)?.companyName || (currentUser as any)?.company);
     if (!companyKey && currentUserCompanyKey === SPEED_E_COM_COMPANY_KEY) return [...SPEED_E_COM_FIXED_TASK_TYPES];
@@ -2432,6 +2500,48 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
 
     return list;
   }, [currentUser, normalizeText]);
+
+  const [userMappings, setUserMappings] = useState<any[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const role = (currentUser?.role || '').toString().trim().toLowerCase();
+    if (role !== 'sbm' && role !== 'rm' && role !== 'am' && role !== 'ar') {
+      setUserMappings([]);
+      return;
+    }
+
+    const selectedCompany = (effectiveAdvancedFilters.company || '').toString().trim();
+    const fallbackCompany = ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
+    const companyName = selectedCompany && selectedCompany !== 'all' ? selectedCompany : fallbackCompany;
+    if (!companyName) {
+      setUserMappings([]);
+      return;
+    }
+
+    const myEmail = normalizeEmail(currentUser?.email);
+    const byEmail = (users || []).find((u: any) => normalizeEmail(u?.email) === myEmail);
+    const userId = (byEmail?.id || byEmail?._id || (currentUser as any)?.id || (currentUser as any)?._id || '').toString();
+    if (!userId) {
+      setUserMappings([]);
+      return;
+    }
+
+    (async () => {
+      try {
+        const res = await assignService.getUserMappings({ companyName, userId });
+        const next = res?.success && Array.isArray(res.data) ? res.data : [];
+        if (!cancelled) setUserMappings(next);
+      } catch {
+        if (!cancelled) setUserMappings([]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser, effectiveAdvancedFilters.company, normalizeEmail, users]);
 
   const [taskTypeCompanyOverrides, setTaskTypeCompanyOverrides] = useState<Record<string, string[]>>({});
 
@@ -2762,9 +2872,30 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     if (!companyKey) return [];
     const fromTasks = Array.from(taskTypesByCompanyFromTasks.get(companyKey) || []);
     const fromOverrides = Array.isArray(taskTypeCompanyOverrides?.[companyKey]) ? taskTypeCompanyOverrides[companyKey] : [];
-    const merged = uniqueLabelsByKey(Array.from(new Set([...fromOverrides, ...fromTasks])));
-
     const role = (currentUser?.role || '').toString().toLowerCase();
+    const mappingCompanyKey = normalizeCompanyKey(companyName);
+    const taskTypeNameById = new Map(
+      (taskTypes || []).map((t: any) => [String(t?._id || t?.id || ''), String(t?.name || '').trim()])
+    );
+    const fromMappings = (role === 'sbm' || role === 'rm' || role === 'am' || role === 'ar')
+      ? (userMappings || [])
+        .filter((m: any) => normalizeCompanyKey(m?.companyName) === mappingCompanyKey)
+        .flatMap((m: any) => {
+          if (Array.isArray(m?.taskTypes) && m.taskTypes.length > 0) {
+            return m.taskTypes.map((t: any) => (t?.name || '').toString().trim());
+          }
+          if (Array.isArray(m?.taskTypeIds) && m.taskTypeIds.length > 0) {
+            return m.taskTypeIds
+              .map((id: any) => taskTypeNameById.get(String(id)) || '')
+              .filter(Boolean);
+          }
+          return [];
+        })
+        .filter(Boolean)
+      : [];
+
+    const merged = uniqueLabelsByKey(Array.from(new Set([...fromOverrides, ...fromTasks, ...fromMappings])));
+
     if (role === 'manager') {
       const managerDefaultTypeLabels = ['Other Work', 'Trubbleshot'];
       const mergedWithDefaults = uniqueLabelsByKey(Array.from(new Set([...merged, ...managerDefaultTypeLabels])));
@@ -2775,7 +2906,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     }
 
     return restrictTaskTypesForCompany(companyName, merged.sort((a, b) => a.localeCompare(b)));
-  }, [allowedTaskTypeKeysForManager, currentUser?.role, normalizeText, restrictTaskTypesForCompany, taskTypeCompanyOverrides, taskTypesByCompanyFromTasks, uniqueLabelsByKey]);
+  }, [allowedTaskTypeKeysForManager, currentUser?.role, normalizeText, restrictTaskTypesForCompany, taskTypeCompanyOverrides, taskTypes, taskTypesByCompanyFromTasks, uniqueLabelsByKey, userMappings]);
 
   const availableTaskTypesForFilters = useMemo(() => {
     const role = (currentUser?.role || '').toString().toLowerCase();
@@ -2916,6 +3047,20 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   // ==================== UTILITY FUNCTIONS ====================
   const getBrandsByCompanyInternal = useCallback((companyName: string): string[] => {
     const role = (currentUser?.role || '').toString().trim().toLowerCase();
+    if (role === 'sbm' || role === 'rm' || role === 'am' || role === 'ar') {
+      const companyKey = normalizeCompanyKey(companyName);
+      const fromMappings = (userMappings || [])
+        .filter((m: any) => {
+          if (!companyKey || companyName === 'all') return true;
+          return normalizeCompanyKey(m?.companyName) === companyKey;
+        })
+        .map((m: any) => (m?.brandName || '').toString().trim())
+        .filter(Boolean);
+      if (fromMappings.length > 0) {
+        return Array.from(new Set(fromMappings)).sort((a, b) => a.localeCompare(b));
+      }
+    }
+
     if (role === 'assistant') {
       const companyKey = normalizeText(companyName);
       const items = (assistantScopedTasks || []).filter((t: any) => {
@@ -2941,7 +3086,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     }
 
     return COMPANY_BRAND_MAP[companyName.toLowerCase()] || [];
-  }, [COMPANY_BRAND_MAP, assistantScopedTasks, currentUser?.role, getBrandsByCompany, normalizeText]);
+  }, [COMPANY_BRAND_MAP, assistantScopedTasks, currentUser?.role, getBrandsByCompany, normalizeText, userMappings]);
 
   const getEmailByIdInternal = useCallback((userId: any): string => {
     if (userId && userId.includes('@')) {
@@ -4056,11 +4201,6 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       const myEmail = normalizeText(currentUser?.email);
       const taskTypeKey = normalizeText((task as any)?.taskType || (task as any)?.type || (task as any)?.task_type);
 
-      if (taskTypeKey === 'other work') {
-        // Assistants should be able to see Other Work tasks in All Tasks (same as Dashboard)
-        if (roleKey === 'manager') return false;
-      }
-
       if (roleKey === 'manager') {
         const assignedByMe = normalizeText(getAssignerEmail(task)) === myEmail;
         const assignedToMe = normalizeText(getEmailByIdInternal(task.assignedTo)) === myEmail;
@@ -4116,9 +4256,9 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
 
       // Company Filter
       if (effectiveAdvancedFilters.company !== 'all') {
-        const filterCompany = effectiveAdvancedFilters.company.toLowerCase();
-        const taskCompany = ((task as any).companyName || (task as any).company || '').toString().toLowerCase();
-        if (taskCompany !== filterCompany) return false;
+        const filterCompanyKey = normalizeCompanyKey(effectiveAdvancedFilters.company);
+        const taskCompanyKey = normalizeCompanyKey((task as any).companyName || (task as any).company || '');
+        if (taskCompanyKey !== filterCompanyKey) return false;
       }
 
       // Brand Filter
@@ -4415,6 +4555,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         <BulkImporter
           draftTasks={bulkDraftTasks}
           defaults={bulkImportDefaults}
+          currentUser={currentUser}
           users={users}
           companyBrandMap={COMPANY_BRAND_MAP}
           availableTaskTypes={availableTaskTypesForBulk}

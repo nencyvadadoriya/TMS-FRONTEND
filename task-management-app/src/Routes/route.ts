@@ -11,11 +11,14 @@ const lazyComponent = <T extends { default: any }>(
 };
 
 export const routepath = {
+    home: '/',
     login: '/login',
     dashboard: '/dashboard',
     forgetPassword: '/forgetPassword',
     verifyOtp: '/verifyOtp',
     changePassword: '/changePassword',
+    privacyPolicy: '/privacy-policy',
+    termsAndConditions: '/terms-and-conditions',
     tasks: '/tasks',
     calendar: '/calendar',
     analyze: '/analyze',
@@ -37,11 +40,19 @@ export const route = createHashRouter([
         children: [
             {
                 index: true,
-                lazy: lazyComponent(() => import("../Pages/LoginPage"))
+                lazy: lazyComponent(() => import("../Pages/HomePage"))
             },
             {
                 path: routepath.login,
                 lazy: lazyComponent(() => import("../Pages/LoginPage"))
+            },
+            {
+                path: routepath.privacyPolicy,
+                lazy: lazyComponent(() => import("../Pages/PrivacyPolicyPage"))
+            },
+            {
+                path: routepath.termsAndConditions,
+                lazy: lazyComponent(() => import("../Pages/TermsAndConditionsPage"))
             },
             {
                 path: routepath.dashboard,

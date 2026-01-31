@@ -12,6 +12,8 @@ export default function App() {
   const publicAuthPaths = useMemo(() => {
     return new Set<string>([
       '/',
+      routepath.privacyPolicy,
+      routepath.termsAndConditions,
       routepath.login,
       routepath.forgetPassword,
       routepath.verifyOtp,
@@ -25,7 +27,18 @@ export default function App() {
     return <Navigate to={routepath.login} replace />;
   }
 
-  if (token && isPublicAuthPath) {
+  const authOnlyPaths = useMemo(() => {
+    return new Set<string>([
+      routepath.login,
+      routepath.forgetPassword,
+      routepath.verifyOtp,
+      routepath.changePassword,
+    ]);
+  }, []);
+
+  const isAuthOnlyPath = authOnlyPaths.has(pathname);
+
+  if (token && isAuthOnlyPath) {
     return <Navigate to={routepath.dashboard} replace />;
   }
 

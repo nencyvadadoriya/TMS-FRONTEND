@@ -125,7 +125,7 @@ const AddTaskModal = ({
                 <option value="">Select team member</option>
                 {users.map((user) => (
                   <option key={user.id} value={user.email}>
-                    {user.name} ({user.email})
+                    {String(user.email || '').trim()}
                   </option>
                 ))}
               </select>

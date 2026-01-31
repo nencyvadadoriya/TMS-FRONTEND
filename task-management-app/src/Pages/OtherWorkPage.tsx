@@ -19,9 +19,14 @@ const OtherWorkPage = ({ currentUser, tasks, onRefreshTasks }: { currentUser: Us
     if (!myEmail) return [];
     return (tasks || []).filter((t: any) => {
       const assignedBy = normalizeEmail(t?.assignedByUser?.email || t?.assignedBy);
+      const assignedTo = normalizeEmail(t?.assignedToUser?.email || t?.assignedTo);
       const obManagerEmail = normalizeEmail(t?.obManagerEmail);
       const taskTypeKey = normalizeText(t?.taskType || t?.type);
-      return assignedBy === myEmail && Boolean(obManagerEmail) && taskTypeKey === 'other work';
+      if (assignedBy !== myEmail) return false;
+      if (taskTypeKey !== 'other work') return false;
+
+      // Include tasks routed to OB Manager OR tasks assigned back to the creator (self-assigned).
+      return Boolean(obManagerEmail) || assignedTo === myEmail;
     });
   }, [tasks, myEmail]);
 

@@ -187,6 +187,7 @@ const DashboardPage = () => {
     const userMappingsFetchInFlightRef = useRef<Map<string, Promise<void>>>(new Map());
     const userMappingsFetchedAtRef = useRef<Map<string, number>>(new Map());
     const USER_MAPPINGS_TTL_MS = 60_000;
+    const TASKS_AUTO_REFRESH_MS = 15_000;
 
     useEffect(() => {
         usersRef.current = users;
@@ -200,7 +201,7 @@ const DashboardPage = () => {
         const role = String((currentUser as any)?.role || '').trim().toLowerCase();
         if (moduleId === 'user_management') return role === 'super_admin' || role === 'admin';
         if (role === 'super_admin' || role === 'admin') return true;
-        if (['sbm', 'rm', 'am'].includes(role) && moduleId === 'create_task') return true;
+        if (['sbm', 'rm', 'am', 'ar'].includes(role) && moduleId === 'create_task') return true;
         if (!isAuthReady) return true;
         const perms = (currentUser as any)?.permissions;
         if (!perms || typeof perms !== 'object') return true;
@@ -245,7 +246,7 @@ const DashboardPage = () => {
         };
 
         const normalizeRole = (value: unknown): string => {
-            return (value == null ? '' : String(value)).trim().toLowerCase();
+            return (value == null ? '' : String(value)).trim().toLowerCase().replace(/[\s-]+/g, '_');
         };
 
         const modalCompanyKey = normalizeCompany(newTask.companyName);
@@ -273,12 +274,31 @@ const DashboardPage = () => {
             });
         };
 
+        const toId = (u: any): string => {
+            return String(u?.id || u?._id || '').trim();
+        };
+
         const baseUsers = users || [];
 
         // MD Manager: show Managers of same company
         if (role === 'md_manager') {
-            const byRole = baseUsers.filter((u: any) => normalizeRole(u?.role) === 'manager');
-            return filterByCompany(byRole);
+            const requesterId = toId(currentUser);
+            const myEmail = String((currentUser as any)?.email || '').trim().toLowerCase();
+
+            const selfUser = (baseUsers || []).find((u: any) => {
+                const id = toId(u);
+                const email = String((u as any)?.email || '').trim().toLowerCase();
+                return (requesterId && id === requesterId) || (myEmail && email === myEmail);
+            }) || (currentUser as any);
+
+            const mdManagers = baseUsers.filter((u: any) => normalizeRole(u?.role) === 'md_manager');
+            const managersAndObManagers = filterByCompany(baseUsers.filter((u: any) => {
+                const r = normalizeRole(u?.role);
+                return r === 'manager' || r === 'ob_manager';
+            }));
+
+            const candidates = [...mdManagers, selfUser, ...managersAndObManagers];
+            return Array.from(new Map(candidates.map((u: any) => [toId(u) || String(u?.email || ''), u])).values());
         }
 
         // Manager: show Managers + OB Managers of same company
@@ -297,7 +317,73 @@ const DashboardPage = () => {
         }
 
         // Speed E Com specific: SBM / RM / AM can assign to each other within same company
-        if (role === 'sbm' || role === 'rm' || role === 'am') {
+        if (role === 'sbm' || role === 'rm' || role === 'am' || role === 'ar') {
+            const requesterId = toId(currentUser);
+            const requesterManagerId = String((currentUser as any)?.managerId || '').trim();
+
+            const adminUsers = baseUsers.filter((u: any) => {
+                const r = normalizeRole(u?.role);
+                return r === 'admin' || r === 'super_admin';
+            });
+
+            if (role === 'rm') {
+                const selfUser = (baseUsers || []).find((u: any) => {
+                    const id = toId(u);
+                    const email = String((u as any)?.email || '').trim().toLowerCase();
+                    const myEmail = String((currentUser as any)?.email || '').trim().toLowerCase();
+                    return (requesterId && id === requesterId) || (myEmail && email === myEmail);
+                }) || (currentUser as any);
+
+                const amUsers = baseUsers.filter((u: any) => {
+                    const r = normalizeRole(u?.role);
+                    const mid = String((u as any)?.managerId || '').trim();
+                    return r === 'am' && requesterId && mid === requesterId;
+                });
+
+                const sbmUser = baseUsers.filter((u: any) => {
+                    const r = normalizeRole(u?.role);
+                    return r === 'sbm' && requesterManagerId && toId(u) === requesterManagerId;
+                });
+
+                const candidates = [...adminUsers, selfUser, ...amUsers, ...sbmUser];
+                const visible = candidates.filter((u: any) => {
+                    const r = normalizeRole(u?.role);
+                    if (r === 'admin' || r === 'super_admin') return true;
+                    return filterByCompany([u]).length > 0;
+                });
+                return Array.from(new Map(visible.map((u: any) => [toId(u) || String(u?.email || ''), u])).values());
+            }
+
+            if (role === 'am') {
+                const selfUser = (baseUsers || []).find((u: any) => {
+                    const id = toId(u);
+                    const email = String((u as any)?.email || '').trim().toLowerCase();
+                    const myEmail = String((currentUser as any)?.email || '').trim().toLowerCase();
+                    return (requesterId && id === requesterId) || (myEmail && email === myEmail);
+                }) || (currentUser as any);
+
+                const rmUser = baseUsers.filter((u: any) => {
+                    const r = normalizeRole(u?.role);
+                    return r === 'rm' && requesterManagerId && toId(u) === requesterManagerId;
+                });
+
+                const rm = rmUser.length > 0 ? rmUser[0] : null;
+                const sbmId = rm ? String((rm as any)?.managerId || '').trim() : '';
+                const sbmUser = baseUsers.filter((u: any) => {
+                    const r = normalizeRole(u?.role);
+                    return r === 'sbm' && sbmId && toId(u) === sbmId;
+                });
+
+                const candidates = [...adminUsers, selfUser, ...rmUser, ...sbmUser];
+                const visible = candidates.filter((u: any) => {
+                    const r = normalizeRole(u?.role);
+                    if (r === 'admin' || r === 'super_admin') return true;
+                    return filterByCompany([u]).length > 0;
+                });
+                return Array.from(new Map(visible.map((u: any) => [toId(u) || String(u?.email || ''), u])).values());
+            }
+
+            // SBM: keep existing behavior (SBM/RM/AM within same company)
             const byRole = baseUsers.filter((u: any) => {
                 const r = normalizeRole(u?.role);
                 return r === 'sbm' || r === 'rm' || r === 'am';
@@ -401,20 +487,33 @@ const DashboardPage = () => {
         return (value == null ? '' : String(value)).trim().toLowerCase();
     }, []);
 
+    const normalizeCompanyKey = useCallback((value: unknown): string => {
+        return normalizeText(value).replace(/\s+/g, '');
+    }, [normalizeText]);
+
     const SPEED_E_COM_COMPANY_NAME = 'Speed E Com';
-    const SPEED_E_COM_COMPANY_KEY = 'speed e com';
+    const SPEED_E_COM_COMPANY_KEY = 'speedecom';
     const SPEED_E_COM_FIXED_TASK_TYPES = ['Meeting Pending', 'CP Pending', 'Recharge Negative'];
 
     const restrictTaskTypesForCompany = useCallback((companyName: unknown, list: string[]): string[] => {
-        const companyKey = normalizeText(companyName);
-        if (companyKey === SPEED_E_COM_COMPANY_KEY) return [...SPEED_E_COM_FIXED_TASK_TYPES];
+        const companyKey = normalizeCompanyKey(companyName);
+        if (companyKey === SPEED_E_COM_COMPANY_KEY) {
+            const safe = Array.isArray(list) ? list.filter(Boolean) : [];
+            return safe.length > 0 ? safe : [...SPEED_E_COM_FIXED_TASK_TYPES];
+        }
 
-        const currentUserCompanyKey = normalizeText((currentUser as any)?.companyName || (currentUser as any)?.company);
-        if (!companyKey && currentUserCompanyKey === SPEED_E_COM_COMPANY_KEY) return [...SPEED_E_COM_FIXED_TASK_TYPES];
-        if (companyKey === 'all' && currentUserCompanyKey === SPEED_E_COM_COMPANY_KEY) return [...SPEED_E_COM_FIXED_TASK_TYPES];
+        const currentUserCompanyKey = normalizeCompanyKey((currentUser as any)?.companyName || (currentUser as any)?.company);
+        if (!companyKey && currentUserCompanyKey === SPEED_E_COM_COMPANY_KEY) {
+            const safe = Array.isArray(list) ? list.filter(Boolean) : [];
+            return safe.length > 0 ? safe : [...SPEED_E_COM_FIXED_TASK_TYPES];
+        }
+        if (companyKey === 'all' && currentUserCompanyKey === SPEED_E_COM_COMPANY_KEY) {
+            const safe = Array.isArray(list) ? list.filter(Boolean) : [];
+            return safe.length > 0 ? safe : [...SPEED_E_COM_FIXED_TASK_TYPES];
+        }
 
         return list;
-    }, [currentUser, normalizeText]);
+    }, [currentUser, normalizeCompanyKey]);
 
     const [taskTypeCompanyOverrides, setTaskTypeCompanyOverrides] = useState<Record<string, string[]>>({});
 
@@ -482,13 +581,26 @@ const DashboardPage = () => {
     }, [normalizeText]);
 
     const availableCompanies = useMemo(() => {
+        const resolveFromCompanyList = (raw: string) => {
+            const input = (raw || '').toString().trim();
+            if (!input) return '';
+            const key = input.replace(/\s+/g, '').toLowerCase();
+            const match = (companies || []).find((c: any) => {
+                const name = String(c?.name || '').trim();
+                if (!name) return false;
+                return name.replace(/\s+/g, '').toLowerCase() === key;
+            });
+            return (match?.name || input).toString().trim();
+        };
+
         const role = (currentUser?.role || '').toString().toLowerCase();
         if (role === 'md_manager' || role === 'ob_manager') {
             const fromCompanies = (companies || []).map(c => (c?.name || '').toString().trim()).filter(Boolean);
             return [...new Set(fromCompanies)].filter(Boolean).sort();
         }
         if (role === 'manager' || role === 'assistant') {
-            const only = ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
+            const onlyRaw = ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
+            const only = resolveFromCompanyList(onlyRaw);
             if (only) return [only];
             return [MD_IMPEX_COMPANY_NAME];
         }
@@ -497,17 +609,18 @@ const DashboardPage = () => {
             if (fromCompanies.length > 0) {
                 return [...new Set(fromCompanies)].filter(Boolean).sort();
             }
-            const only = ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
+            const onlyRaw = ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
+            const only = resolveFromCompanyList(onlyRaw);
             if (only) return [only];
             return [SPEED_E_COM_COMPANY_NAME];
         }
-        if (role === 'rm' || role === 'am') {
-            const only = (currentUser as any)?.companyName;
-            const name = (only || '').toString().trim();
+        if (role === 'rm' || role === 'am' || role === 'ar') {
+            const onlyRaw = ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
+            const name = resolveFromCompanyList(onlyRaw);
             if (name) return [name];
             return [SPEED_E_COM_COMPANY_NAME];
         }
-        const needsCompanyList = role === 'admin' || role === 'super_admin' || role === 'sbm' || role === 'rm' || role === 'am';
+        const needsCompanyList = role === 'admin' || role === 'super_admin' || role === 'sbm' || role === 'rm' || role === 'am' || role === 'ar';
 
         const fromCompanies = (companies || []).map(c => (c?.name || '').toString().trim()).filter(Boolean);
         if (needsCompanyList && fromCompanies.length > 0) {
@@ -523,7 +636,15 @@ const DashboardPage = () => {
 
         const uniqueCompanies = [...new Set(brands.map((brand: any) => getBrandCompanyNameSafe(brand)))];
         return uniqueCompanies.filter(Boolean).sort();
-    }, [MD_IMPEX_COMPANY_NAME, SPEED_E_COM_COMPANY_NAME, brands, companies, currentUser?.role]);
+    }, [
+        MD_IMPEX_COMPANY_NAME,
+        SPEED_E_COM_COMPANY_NAME,
+        brands,
+        companies,
+        currentUser?.role,
+        (currentUser as any)?.company,
+        (currentUser as any)?.companyName
+    ]);
 
     useEffect(() => {
         const role = (currentUser?.role || '').toString().toLowerCase();
@@ -551,6 +672,30 @@ const DashboardPage = () => {
             return { ...prev, companyName: defaultCompany };
         });
     }, [MD_IMPEX_COMPANY_NAME, availableCompanies, (currentUser as any)?.company, (currentUser as any)?.companyName, currentUser?.role]);
+
+    useEffect(() => {
+        const role = (currentUser?.role || '').toString().toLowerCase();
+        if (role !== 'rm' && role !== 'am' && role !== 'ar') return;
+
+        const rawCompany = ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
+        const rawKey = rawCompany.replace(/\s+/g, '').toLowerCase();
+        const match = (companies || []).find((c: any) => {
+            const name = String(c?.name || '').trim();
+            if (!name) return false;
+            return name.replace(/\s+/g, '').toLowerCase() === rawKey;
+        });
+        const resolvedCompany = (match?.name || rawCompany).toString().trim();
+        const defaultCompany = resolvedCompany || SPEED_E_COM_COMPANY_NAME;
+        const allowedSet = new Set((availableCompanies || []).map((c) => (c || '').toString().trim()));
+
+        setNewTask((prev) => {
+            const current = (prev?.companyName || '').toString().trim();
+            if (current && (allowedSet.size === 0 || allowedSet.has(current))) {
+                return prev;
+            }
+            return { ...prev, companyName: defaultCompany };
+        });
+    }, [SPEED_E_COM_COMPANY_NAME, availableCompanies, companies, (currentUser as any)?.company, (currentUser as any)?.companyName, currentUser?.role]);
 
     useEffect(() => {
         if (!showBulkBrandModal) return;
@@ -835,14 +980,14 @@ const DashboardPage = () => {
     }
 
     const getTaskTypesForCompanyBrand = useCallback((companyName: string, brandName: string): string[] => {
-        const companyKey = normalizeText(companyName);
+        const companyKey = normalizeCompanyKey(companyName);
         const brandKey = (brandName || '').toString().trim();
         if (!companyKey || !brandKey) return [];
 
         const brandDoc: any = (apiBrands || []).find((b: any) => {
             const bCompany = getBrandCompanyNameSafe(b);
             const bName = getBrandNameSafe(b);
-            return normalizeText(bCompany) === companyKey && normalizeText(bName) === normalizeText(brandKey);
+            return normalizeCompanyKey(bCompany) === companyKey && normalizeText(bName) === normalizeText(brandKey);
         });
 
         const brandId = (brandDoc?.id || brandDoc?._id || '').toString();
@@ -858,10 +1003,10 @@ const DashboardPage = () => {
 
         const labels = mappedIds.map((id) => labelById.get(id) || '').filter(Boolean);
         return [...new Set(labels)].sort((a, b) => a.localeCompare(b));
-    }, [apiBrands, normalizeText, taskTypeIdsByBrandId, taskTypes]);
+    }, [apiBrands, normalizeCompanyKey, normalizeText, taskTypeIdsByBrandId, taskTypes]);
 
     const getTaskTypesForCompanyUser = useCallback((companyName: string, assignedToEmail: string): string[] => {
-        const companyKey = normalizeText(companyName);
+        const companyKey = normalizeCompanyKey(companyName);
         const emailKey = stripDeletedEmailSuffix(assignedToEmail).trim().toLowerCase();
         if (!companyKey || !emailKey) return [];
 
@@ -900,10 +1045,10 @@ const DashboardPage = () => {
 
         const labels = ids.map((id) => labelById.get(id) || '').filter(Boolean);
         return [...new Set(labels)].sort((a, b) => a.localeCompare(b));
-    }, [currentUser, normalizeText, taskTypeIdsByCompanyUserBrandKey, taskTypes]);
+    }, [currentUser, normalizeCompanyKey, taskTypeIdsByCompanyUserBrandKey, taskTypes]);
 
     const getTaskTypesForCompanyUserBrand = useCallback((companyName: string, brandName: string, assignedToEmail: string): string[] => {
-        const companyKey = normalizeText(companyName);
+        const companyKey = normalizeCompanyKey(companyName);
         const brandKey = (brandName || '').toString().trim();
         const emailKey = stripDeletedEmailSuffix(assignedToEmail).trim().toLowerCase();
         if (!companyKey || !brandKey || !emailKey) return [];
@@ -941,7 +1086,7 @@ const DashboardPage = () => {
 
         const labels = mappedIds.map((id) => labelById.get(id) || '').filter(Boolean);
         return [...new Set(labels)].sort((a, b) => a.localeCompare(b));
-    }, [apiBrands, currentUser, normalizeText, taskTypeIdsByCompanyUserBrandKey, taskTypes]);
+    }, [apiBrands, currentUser, normalizeCompanyKey, normalizeText, taskTypeIdsByCompanyUserBrandKey, taskTypes]);
 
     const assistantManagerEmail = useMemo(() => {
         const role = (currentUser?.role || '').toString().trim().toLowerCase();
@@ -995,7 +1140,7 @@ const DashboardPage = () => {
         };
 
         const role = (currentUser?.role || '').toString().toLowerCase();
-        const isPersonScoped = role === 'assistant' || role === 'sbm' || role === 'rm' || role === 'am';
+        const isPersonScoped = role === 'assistant' || role === 'sbm' || role === 'rm' || role === 'am' || role === 'ar';
 
         if (role === 'assistant') {
             const companyKey = normalizeText(filters.company === 'all' ? '' : filters.company);
@@ -1059,7 +1204,7 @@ const DashboardPage = () => {
             return [...(list || []), 'Other Work'];
         };
 
-        const effectiveEmail = (newTask.assignedTo || currentUser?.email || '').toString();
+        const effectiveEmail = (currentUser?.email || newTask.assignedTo || '').toString();
 
         if (effectiveEmail && newTask.brand) {
             const specific = restrictTaskTypesForCompany(company, getTaskTypesForCompanyUserBrand(company, newTask.brand, effectiveEmail));
@@ -1082,7 +1227,7 @@ const DashboardPage = () => {
         }
 
         return ensureManagerOtherWork(baseCompany());
-    }, [currentUser, currentUser?.email, getTaskTypesForCompany, getTaskTypesForCompanyBrand, getTaskTypesForCompanyUser, getTaskTypesForCompanyUserBrand, newTask.assignedTo, newTask.brand, newTask.companyName, restrictTaskTypesForCompany]);
+    }, [currentUser, currentUser?.email, getTaskTypesForCompany, getTaskTypesForCompanyBrand, getTaskTypesForCompanyUser, getTaskTypesForCompanyUserBrand, newTask.brand, newTask.companyName, restrictTaskTypesForCompany]);
 
     const availableTaskTypesForEditTask = useMemo(() => {
         if (!editFormData.companyName) return availableTaskTypesForFilters;
@@ -1115,7 +1260,7 @@ const DashboardPage = () => {
             const brandDoc: any = (apiBrands || []).find((b: any) => {
                 const bCompany = getBrandCompanyNameSafe(b);
                 const bName = getBrandNameSafe(b);
-                return normalizeText(bCompany) === normalizeText(company) && normalizeText(bName) === normalizeText(brand);
+                return normalizeCompanyKey(bCompany) === normalizeCompanyKey(company) && normalizeText(bName) === normalizeText(brand);
             });
             const brandId = (brandDoc?.id || brandDoc?._id || '').toString();
             if (!brandId) return;
@@ -1129,7 +1274,7 @@ const DashboardPage = () => {
         } catch {
             // ignore
         }
-    }, [apiBrands, normalizeText]);
+    }, [apiBrands, normalizeCompanyKey, normalizeText]);
 
     const fetchUserBrandTaskTypeMappings = useCallback(async (companyName: string, assignedToEmail: string) => {
         try {
@@ -1158,7 +1303,7 @@ const DashboardPage = () => {
                 const brandId = (m?.brandId || '').toString();
                 if (!brandId) return;
                 const ids = Array.isArray(m?.taskTypeIds) ? m.taskTypeIds.map((x: any) => (x || '').toString()).filter(Boolean) : [];
-                const key = `${normalizeText(company)}::${userId}::${brandId}`;
+                const key = `${normalizeCompanyKey(m?.companyName || company)}::${userId}::${brandId}`;
                 next[key] = ids;
 
                 const tts = Array.isArray(m?.taskTypes) ? m.taskTypes : [];
@@ -1204,17 +1349,17 @@ const DashboardPage = () => {
 
             setTaskTypeIdsByCompanyUserBrandKey((prev) => ({ ...prev, ...next }));
             setBrandNamesByCompanyUserKey((prev) => {
-                const cuKey = `${normalizeText(company)}::${userId}`;
+                const cuKey = `${normalizeCompanyKey(res?.data?.[0]?.companyName || company)}::${userId}`;
                 const sorted = Array.from(brandNames).filter(Boolean).sort((a, b) => a.localeCompare(b));
                 return { ...prev, [cuKey]: sorted };
             });
         } catch {
             // ignore
         }
-    }, [currentUser, normalizeText]);
+    }, [currentUser, normalizeCompanyKey]);
 
     const fetchUserBrandTaskTypeMappingsCached = useCallback(async (companyName: string, assignedToEmail: string) => {
-        const companyKey = normalizeText(companyName);
+        const companyKey = normalizeCompanyKey(companyName);
         const emailKey = stripDeletedEmailSuffix(assignedToEmail).trim().toLowerCase();
         if (!companyKey || !emailKey) return;
 
@@ -1237,11 +1382,11 @@ const DashboardPage = () => {
 
         userMappingsFetchInFlightRef.current.set(cacheKey, p);
         return p;
-    }, [fetchUserBrandTaskTypeMappings, normalizeText]);
+    }, [fetchUserBrandTaskTypeMappings, normalizeCompanyKey]);
 
     useEffect(() => {
         const role = (currentUser?.role || '').toString().toLowerCase();
-        const isPersonScoped = role === 'assistant' || role === 'sbm' || role === 'rm' || role === 'am';
+        const isPersonScoped = role === 'assistant' || role === 'sbm' || role === 'rm' || role === 'am' || role === 'ar';
         if (!isPersonScoped) return;
 
         const company = (filters.company || '').toString().trim();
@@ -1268,9 +1413,11 @@ const DashboardPage = () => {
     }, [fetchCompanyBrandTaskTypeMapping, newTask.brand, newTask.companyName]);
 
     useEffect(() => {
-        if (!newTask.companyName || !newTask.assignedTo) return;
-        void fetchUserBrandTaskTypeMappingsCached(newTask.companyName, newTask.assignedTo);
-    }, [fetchUserBrandTaskTypeMappingsCached, newTask.assignedTo, newTask.companyName]);
+        if (!newTask.companyName) return;
+        const email = stripDeletedEmailSuffix(currentUser?.email || '').trim().toLowerCase();
+        if (!email) return;
+        void fetchUserBrandTaskTypeMappingsCached(newTask.companyName, email);
+    }, [currentUser?.email, fetchUserBrandTaskTypeMappingsCached, newTask.companyName]);
 
     useEffect(() => {
         if (!showAddTaskModal) return;
@@ -1823,31 +1970,37 @@ const DashboardPage = () => {
     const getAvailableBrands = useCallback(() => {
         const company = newTask.companyName;
         if (!company) return [];
-        const companyKey = normalizeText(company);
+        const companyKey = normalizeCompanyKey(company);
 
-        const email = stripDeletedEmailSuffix(newTask.assignedTo).trim().toLowerCase();
+        const email = stripDeletedEmailSuffix(currentUser?.email || '').trim().toLowerCase();
         if (email) {
             const userDoc: any = (usersRef.current || []).find((u: any) => {
                 const uEmail = stripDeletedEmailSuffix(u?.email).trim().toLowerCase();
                 return uEmail && uEmail === email;
             });
-            const userId = (userDoc?.id || userDoc?._id || '').toString();
+            let userId = (userDoc?.id || userDoc?._id || '').toString();
+            if (!userId) {
+                const myEmailKey = stripDeletedEmailSuffix(currentUser?.email || '').trim().toLowerCase();
+                if (myEmailKey && myEmailKey === email) {
+                    userId = ((currentUser as any)?.id || (currentUser as any)?._id || '').toString();
+                }
+            }
             const cuKey = `${companyKey}::${userId}`;
             const assigned = Array.isArray(brandNamesByCompanyUserKey[cuKey]) ? brandNamesByCompanyUserKey[cuKey] : [];
             if (assigned.length > 0) return assigned;
         }
 
         return brands
-            .filter(brand => normalizeText(getBrandCompanyNameSafe(brand)) === companyKey)
+            .filter(brand => normalizeCompanyKey(getBrandCompanyNameSafe(brand)) === companyKey)
             .map(brand => (brand.name || '').toString().trim())
             .filter(Boolean)
             .sort();
-    }, [brandNamesByCompanyUserKey, brands, newTask.assignedTo, newTask.companyName, normalizeText, stripDeletedEmailSuffix]);
+    }, [brandNamesByCompanyUserKey, brands, currentUser?.email, newTask.companyName, normalizeCompanyKey, stripDeletedEmailSuffix]);
 
     const getEditFormAvailableBrands = useCallback(() => {
         const company = editFormData.companyName;
         if (!company) return [];
-        const companyKey = normalizeText(company);
+        const companyKey = normalizeCompanyKey(company);
 
         const email = stripDeletedEmailSuffix(editFormData.assignedTo).trim().toLowerCase();
         if (email) {
@@ -1862,11 +2015,11 @@ const DashboardPage = () => {
         }
 
         return brands
-            .filter(brand => normalizeText(getBrandCompanyNameSafe(brand)) === companyKey)
+            .filter(brand => normalizeCompanyKey(getBrandCompanyNameSafe(brand)) === companyKey)
             .map(brand => (brand.name || '').toString().trim())
             .filter(Boolean)
             .sort();
-    }, [brandNamesByCompanyUserKey, brands, editFormData.assignedTo, editFormData.companyName, normalizeText, stripDeletedEmailSuffix]);
+    }, [brandNamesByCompanyUserKey, brands, editFormData.assignedTo, editFormData.companyName, normalizeCompanyKey, stripDeletedEmailSuffix]);
 
     const handleSaveComment = useCallback(async (taskId: string, comment: string): Promise<CommentType> => {
         try {
@@ -2246,10 +2399,10 @@ const DashboardPage = () => {
         }
 
         if (filters.company !== 'all') {
-            const filterCompany = filters.company.toLowerCase();
+            const filterCompanyKey = normalizeCompanyKey(filters.company);
             filtered = filtered.filter((task) => {
-                const taskCompany = (task.companyName || (task as any).company || '').toLowerCase();
-                return taskCompany === filterCompany;
+                const taskCompany = (task.companyName || (task as any).company || '');
+                return normalizeCompanyKey(taskCompany) === filterCompanyKey;
             });
         }
 
@@ -2298,7 +2451,7 @@ const DashboardPage = () => {
         }
 
         return filtered;
-    }, [canViewAllTasks, currentUser, filters, isOverdue, searchTerm, selectedStatFilter, tasks]);
+    }, [canViewAllTasks, currentUser, filters, isOverdue, normalizeCompanyKey, searchTerm, selectedStatFilter, tasks]);
 
     const displayTasks = useMemo(() => getFilteredTasksByStat(), [getFilteredTasksByStat]);
 
@@ -2392,10 +2545,10 @@ const DashboardPage = () => {
         }
 
         if (filters.company !== 'all') {
-            const filterCompany = filters.company.toLowerCase();
+            const filterCompanyKey = normalizeCompanyKey(filters.company);
             filtered = filtered.filter((task) => {
-                const taskCompany = (task.companyName || (task as any).company || '').toLowerCase();
-                return taskCompany === filterCompany;
+                const taskCompany = (task.companyName || (task as any).company || '');
+                return normalizeCompanyKey(taskCompany) === filterCompanyKey;
             });
         }
 
@@ -2439,7 +2592,7 @@ const DashboardPage = () => {
         }
 
         return filtered;
-    }, [canViewAllTasks, currentUser, filters, isOverdue, searchTerm, tasks]);
+    }, [canViewAllTasks, currentUser, filters, isOverdue, normalizeCompanyKey, searchTerm, tasks]);
 
     const stats: StatMeta[] = useMemo(() => {
         const completedTasks = baseFilteredTasks.filter((t) => t.status === 'completed');
@@ -2626,13 +2779,6 @@ const DashboardPage = () => {
                 ...prev,
                 brand: '',
                 taskType: '',
-            }));
-        }
-
-        if (field === 'assignedTo') {
-            setNewTask(prev => ({
-                ...prev,
-                brand: '',
             }));
         }
     }, [formErrors]);
@@ -2976,12 +3122,14 @@ const DashboardPage = () => {
         return Object.keys(errors).length === 0;
     }, [editFormData]);
 
-    const fetchTasks = useCallback(async () => {
+    const fetchTasks = useCallback(async (options?: { force?: boolean }) => {
         try {
             const isInitialFetch = !hasFetchedTasksOnceRef.current && tasks.length === 0;
             if (isInitialFetch) setLoading(true);
 
-            const action = await dispatch(fetchTasksThunk());
+            const action = await dispatch(
+                fetchTasksThunk(options?.force ? { force: true } : undefined)
+            );
             const incoming = fetchTasksThunk.fulfilled.match(action)
                 ? action.payload
                 : (action as any)?.meta?.condition
@@ -3330,6 +3478,21 @@ const DashboardPage = () => {
     }, [companies, currentUser?.role]);
 
     useEffect(() => {
+        if (!currentUser?.email) return;
+
+        const intervalId = window.setInterval(() => {
+            fetchTasks({ force: true }).catch(() => {
+                // Errors are already logged inside fetchTasks / service
+                return;
+            });
+        }, TASKS_AUTO_REFRESH_MS);
+
+        return () => {
+            window.clearInterval(intervalId);
+        };
+    }, [currentUser?.email, fetchTasks]);
+
+    useEffect(() => {
         const role = (currentUser?.role || '').toString().toLowerCase();
         if (role === 'sbm') {
             const defaultCompany = (availableCompanies[0] || SPEED_E_COM_COMPANY_NAME || '').toString().trim() || SPEED_E_COM_COMPANY_NAME;
@@ -3380,10 +3543,12 @@ const DashboardPage = () => {
         const needsBrands =
             currentView === 'brands' ||
             currentView === 'brand-detail' ||
+            currentView === 'all-tasks' ||
             showAddTaskModal ||
             showEditTaskModal ||
             showBulkBrandModal ||
-            showManagerAddBrandModal;
+            showManagerAddBrandModal ||
+            showAdvancedFilters;
 
         const needsTaskTypes =
             showAddTaskModal ||

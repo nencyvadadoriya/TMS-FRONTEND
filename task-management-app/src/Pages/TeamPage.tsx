@@ -1279,7 +1279,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                                 onClick={() => setFilterRole('all')}
                                 className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'all' ? 'bg-blue-50 border-blue-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-blue-50 hover:border-blue-100'}`}
                             >
-                                <div className="text-3xl font-bold text-gray-900">{visibleUsers.length}</div>
+                                <div className="text-3xl font-bold text-gray-900">{companyScopedUsers.length}</div>
                                 <div className="text-sm text-gray-600 mt-1">Total Members</div>
                             </button>
                             {!isCurrentUserManager && (
@@ -1287,7 +1287,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                                     onClick={() => setFilterRole('md_manager')}
                                     className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'md_manager' ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-indigo-50 hover:border-indigo-100'}`}
                                 >
-                                    <div className="text-3xl font-bold text-indigo-700">{visibleUsers.filter(u => normalizeRole(u.role) === 'md_manager').length}</div>
+                                    <div className="text-3xl font-bold text-indigo-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'md_manager').length}</div>
                                     <div className="text-sm text-gray-600 mt-1">MD Manager</div>
                                 </button>
                             )}
@@ -1296,7 +1296,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                                     onClick={() => setFilterRole('ob_manager')}
                                     className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'ob_manager' ? 'bg-violet-50 border-violet-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-violet-50 hover:border-violet-100'}`}
                                 >
-                                    <div className="text-3xl font-bold text-violet-700">{visibleUsers.filter(u => normalizeRole(u.role) === 'ob_manager').length}</div>
+                                    <div className="text-3xl font-bold text-violet-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'ob_manager').length}</div>
                                     <div className="text-sm text-gray-600 mt-1">OB Manager</div>
                                 </button>
                             )}
@@ -1304,14 +1304,14 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                                 onClick={() => setFilterRole('manager')}
                                 className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'manager' ? 'bg-purple-50 border-purple-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-purple-50 hover:border-purple-100'}`}
                             >
-                                <div className="text-3xl font-bold text-purple-700">{visibleUsers.filter(u => normalizeRole(u.role) === 'manager').length}</div>
+                                <div className="text-3xl font-bold text-purple-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'manager').length}</div>
                                 <div className="text-sm text-gray-600 mt-1">Managers</div>
                             </button>
                             <button
                                 onClick={() => setFilterRole('assistant')}
                                 className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'assistant' ? 'bg-green-50 border-green-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-green-50 hover:border-green-100'}`}
                             >
-                                <div className="text-3xl font-bold text-green-700">{visibleUsers.filter(u => normalizeRole(u.role) === 'assistant').length}</div>
+                                <div className="text-3xl font-bold text-green-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'assistant').length}</div>
                                 <div className="text-sm text-gray-600 mt-1">Assistants</div>
                             </button>
                         </div>
@@ -1325,28 +1325,28 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                                 onClick={() => setFilterRole('all')}
                                 className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'all' ? 'bg-blue-50 border-blue-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-blue-50 hover:border-blue-100'}`}
                             >
-                                <div className="text-3xl font-bold text-gray-900">{visibleUsers.length}</div>
+                                <div className="text-3xl font-bold text-gray-900">{companyScopedUsers.length}</div>
                                 <div className="text-sm text-gray-600 mt-1">Total Members</div>
                             </button>
                             <button
                                 onClick={() => setFilterRole('sbm')}
                                 className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'sbm' ? 'bg-amber-50 border-amber-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-amber-50 hover:border-amber-100'}`}
                             >
-                                <div className="text-3xl font-bold text-amber-700">{visibleUsers.filter(u => normalizeRole(u.role) === 'sbm').length}</div>
+                                <div className="text-3xl font-bold text-amber-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'sbm').length}</div>
                                 <div className="text-sm text-gray-600 mt-1">SBM</div>
                             </button>
                             <button
                                 onClick={() => setFilterRole('rm')}
                                 className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'rm' ? 'bg-cyan-50 border-cyan-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-cyan-50 hover:border-cyan-100'}`}
                             >
-                                <div className="text-3xl font-bold text-cyan-700">{visibleUsers.filter(u => normalizeRole(u.role) === 'rm').length}</div>
+                                <div className="text-3xl font-bold text-cyan-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'rm').length}</div>
                                 <div className="text-sm text-gray-600 mt-1">RM</div>
                             </button>
                             <button
                                 onClick={() => setFilterRole('am')}
                                 className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'am' ? 'bg-emerald-50 border-emerald-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-emerald-50 hover:border-emerald-100'}`}
                             >
-                                <div className="text-3xl font-bold text-emerald-700">{visibleUsers.filter(u => normalizeRole(u.role) === 'am').length}</div>
+                                <div className="text-3xl font-bold text-emerald-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'am').length}</div>
                                 <div className="text-sm text-gray-600 mt-1">AM</div>
                             </button>
                         </div>
