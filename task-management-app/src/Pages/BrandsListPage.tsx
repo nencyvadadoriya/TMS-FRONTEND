@@ -591,8 +591,17 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
     const companies = useMemo(() => {
         const fromBrands = (accessibleBrands || []).map(brand => (brand.company || '').toString().trim()).filter(Boolean);
         const fromCompaniesApi = (companyDocs || []).map((c: any) => (c?.name || '').toString().trim()).filter(Boolean);
-        return [...new Set([...fromBrands, ...fromCompaniesApi])].sort((a, b) => a.localeCompare(b));
-    }, [accessibleBrands, companyDocs]);
+        const list = [...new Set([...fromBrands, ...fromCompaniesApi])].sort((a, b) => a.localeCompare(b));
+
+        if (role !== 'sbm') return list;
+
+        const raw = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim();
+        const rawKey = raw.replace(/\s+/g, '').toLowerCase();
+        const match = list.find((c) => String(c || '').trim().replace(/\s+/g, '').toLowerCase() === rawKey);
+        if (match) return [match];
+        if (raw) return [raw];
+        return list.slice(0, 1);
+    }, [accessibleBrands, companyDocs, currentUser, role]);
 
     const companiesForReport = useMemo(() => {
         const normalize = (v: any) => String(v || '').trim().toLowerCase();

@@ -72,14 +72,14 @@ import { routepath } from '../Routes/route';
 import { useAppDispatch, useAppSelector } from '../Store/hooks';
 import { fetchTasks as fetchTasksThunk, selectAllTasks, taskAdded, taskRemoved, taskUpserted, tasksAddedMany } from '../Store/tasksSlice';
 
- const stripDeletedEmailSuffix = (value: unknown): string => {
-     const raw = (value == null ? '' : String(value)).trim();
-     if (!raw) return '';
-     const marker = '.deleted.';
-     const idx = raw.indexOf(marker);
-     if (idx === -1) return raw;
-     return raw.slice(0, idx).trim();
- };
+const stripDeletedEmailSuffix = (value: unknown): string => {
+    const raw = (value == null ? '' : String(value)).trim();
+    if (!raw) return '';
+    const marker = '.deleted.';
+    const idx = raw.indexOf(marker);
+    if (idx === -1) return raw;
+    return raw.slice(0, idx).trim();
+};
 
 interface NewTaskForm {
     title: string;
@@ -152,7 +152,7 @@ const DashboardPage = () => {
     const usersFetchedAtRef = useRef<number | null>(null);
     const brandsFetchedAtRef = useRef<number | null>(null);
     const companiesFetchedAtRef = useRef<number | null>(null);
-   const taskTypesFetchedAtRef = useRef<number | null>(null);
+    const taskTypesFetchedAtRef = useRef<number | null>(null);
     const usersFetchInFlightRef = useRef<Promise<void> | null>(null);
     const brandsFetchInFlightRef = useRef<Promise<void> | null>(null);
     const companiesFetchInFlightRef = useRef<Promise<void> | null>(null);
@@ -680,6 +680,17 @@ const DashboardPage = () => {
         (currentUser as any)?.company,
         (currentUser as any)?.companyName
     ]);
+
+    const availableCompaniesForSbm = useMemo(() => {
+        if (!isSbmRole) return availableCompanies;
+
+        const onlyRaw = ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
+        const onlyKey = onlyRaw.replace(/\s+/g, '').toLowerCase();
+        const match = (availableCompanies || []).find((c) => String(c || '').trim().replace(/\s+/g, '').toLowerCase() === onlyKey);
+        if (match) return [match];
+        if (onlyRaw) return [onlyRaw];
+        return (availableCompanies || []).slice(0, 1);
+    }, [availableCompanies, currentUser, isSbmRole]);
 
     useEffect(() => {
         const role = (currentUser?.role || '').toString().toLowerCase();
@@ -3638,7 +3649,7 @@ const DashboardPage = () => {
     useEffect(() => {
         const role = (currentUser?.role || '').toString().toLowerCase();
         if (role === 'sbm') {
-            const defaultCompany = (availableCompanies[0] || SPEED_E_COM_COMPANY_NAME || '').toString().trim() || SPEED_E_COM_COMPANY_NAME;
+            const defaultCompany = (availableCompaniesForSbm[0] || SPEED_E_COM_COMPANY_NAME || '').toString().trim() || SPEED_E_COM_COMPANY_NAME;
             setNewTask(prev => {
                 const current = (prev?.companyName || '').toString().trim();
                 if (current) return prev;
@@ -3653,12 +3664,12 @@ const DashboardPage = () => {
             if (current) return prev;
             return { ...prev, companyName: SPEED_E_COM_COMPANY_NAME };
         });
-    }, [SPEED_E_COM_COMPANY_NAME, availableCompanies, currentUser?.role]);
+    }, [SPEED_E_COM_COMPANY_NAME, availableCompaniesForSbm, currentUser?.role]);
 
     useEffect(() => {
         const role = (currentUser?.role || '').toString().toLowerCase();
         if (role === 'sbm') {
-            const defaultCompany = (availableCompanies[0] || SPEED_E_COM_COMPANY_NAME || '').toString().trim() || SPEED_E_COM_COMPANY_NAME;
+            const defaultCompany = (availableCompaniesForSbm[0] || SPEED_E_COM_COMPANY_NAME || '').toString().trim() || SPEED_E_COM_COMPANY_NAME;
             setFilters(prev => {
                 const current = (prev?.company || '').toString().trim();
                 if (current && current !== 'all') return prev;
@@ -3673,7 +3684,7 @@ const DashboardPage = () => {
             if (current && current !== 'all') return prev;
             return { ...prev, company: SPEED_E_COM_COMPANY_NAME };
         });
-    }, [SPEED_E_COM_COMPANY_NAME, availableCompanies, currentUser?.role]);
+    }, [SPEED_E_COM_COMPANY_NAME, availableCompaniesForSbm, currentUser?.role]);
 
     useEffect(() => {
         const needsUsers =
@@ -4876,7 +4887,7 @@ const DashboardPage = () => {
                 formErrors={formErrors}
                 onChange={handleInputChange}
                 users={usersForAddTaskModal}
-                availableCompanies={availableCompanies}
+                availableCompanies={availableCompaniesForSbm}
                 canBulkAddCompanies={canBulkAddCompanies}
                 onBulkAddCompanies={handleAddCompanyClick}
                 canCreateBrand={canCreateBrand}
@@ -4915,7 +4926,7 @@ const DashboardPage = () => {
                 onClose={() => setShowBulkBrandModal(false)}
                 bulkBrandForm={bulkBrandForm}
                 setBulkBrandForm={(next) => setBulkBrandForm(next)}
-                availableCompanies={availableCompanies}
+                availableCompanies={availableCompaniesForSbm}
                 companyUsers={companyUsers}
                 currentUserRole={(currentUser as any)?.role}
                 onSubmit={handleSubmitBulkBrands}
@@ -4941,7 +4952,7 @@ const DashboardPage = () => {
                 setBulkTaskTypeCompany={(next) => setBulkTaskTypeCompany(next)}
                 bulkTaskTypeNames={bulkTaskTypeNames}
                 setBulkTaskTypeNames={(next) => setBulkTaskTypeNames(next)}
-                availableCompanies={availableCompanies}
+                availableCompanies={availableCompaniesForSbm}
                 onSubmit={handleSubmitBulkTaskTypes}
                 isSubmitting={isCreatingBulkTaskTypes}
             />

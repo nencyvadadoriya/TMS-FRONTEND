@@ -484,9 +484,50 @@ const BulkImporter = memo(({
       return Array.from(new Map(candidates.map((u: any) => [toId(u) || normalizeEmail(u?.email) || String(u?.email || ''), u])).values());
     }
 
+    // Speed E Com roles: SBM should see RM/AM + Admin/SuperAdmin + self (company-scoped)
+    if (role === 'sbm') {
+      const requesterId = toId(currentUser);
+      const myEmail = normalizeEmail((currentUser as any)?.email);
+
+      const selfUser = baseUsers.find((u: any) => {
+        const id = toId(u);
+        const email = normalizeEmail(u?.email);
+        return (requesterId && id === requesterId) || (myEmail && email === myEmail);
+      }) || (currentUser as any);
+
+      const adminUsers = baseUsers.filter((u: any) => {
+        const r = normalizeRole(u?.role);
+        return r === 'admin' || r === 'super_admin';
+      });
+
+      const rmAmUsers = filterByCompany(baseUsers.filter((u: any) => {
+        const r = normalizeRole(u?.role);
+        return r === 'rm' || r === 'am' || r === 'ar';
+      }));
+
+      const candidates = [...adminUsers, selfUser, ...rmAmUsers]
+        .filter((u: any) => Boolean(String(u?.email || '').trim()));
+
+      return Array.from(new Map(candidates.map((u: any) => [toId(u) || normalizeEmail(u?.email) || String(u?.email || ''), u])).values());
+    }
+
     // Default behavior: use provided list as-is (it is usually already role-scoped by parent)
     return (baseUsers || []).filter((u: any) => Boolean(String(u?.email || '').trim()));
   }, [currentUser, defaults.companyName, users]);
+
+  const availableCompanyOptions = useMemo(() => {
+    const role = String((currentUser as any)?.role || '').trim().toLowerCase();
+    const keys = Object.keys(companyBrandMap || {});
+    if (role === 'sbm' || role === 'rm' || role === 'am') {
+      const preferred = String(defaults.companyName || '').trim();
+      if (preferred) return keys.filter((k) => String(k).trim() === preferred);
+      const userCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase().replace(/\s+/g, '');
+      const match = keys.find((k) => String(k).trim().toLowerCase().replace(/\s+/g, '') === userCompany);
+      if (match) return [match];
+      return keys.slice(0, 1);
+    }
+    return keys;
+  }, [companyBrandMap, currentUser, defaults.companyName]);
 
   // Get today's date in YYYY-MM-DD format
   const today = useMemo(() => {
@@ -758,9 +799,10 @@ const BulkImporter = memo(({
                 value={defaults.companyName}
                 onChange={(e) => handleCompanyChange(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                disabled={availableCompanyOptions.length === 1}
               >
                 <option value="">Select company</option>
-                {Object.keys(companyBrandMap).map(company => (
+                {availableCompanyOptions.map(company => (
                   <option key={company} value={company}>
                     {company.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                   </option>
@@ -3029,9 +3071,11 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     setBulkImportDefaults((prev) => {
       const current = (prev?.companyName || '').toString().trim();
       if (current) return prev;
-      return { ...prev, companyName: SPEED_E_COM_COMPANY_KEY };
+      const raw = ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
+      const normalized = raw ? raw.toLowerCase() : '';
+      return { ...prev, companyName: normalized || SPEED_E_COM_COMPANY_KEY };
     });
-  }, [currentUser?.role]);
+  }, [currentUser]);
   const [bulkDraftTasks, setBulkDraftTasks] = useState<BulkTaskDraft[]>([]);
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
   const [bulkCreateSummary, setBulkCreateSummary] = useState<BulkCreateResult | null>(null);

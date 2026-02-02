@@ -42,6 +42,11 @@ const AssignPage = ({ currentUser }: Props) => {
   const canCreateBrand = useMemo(() => hasAccess('brand_create'), [hasAccess]);
   const canBulkAddTaskTypes = useMemo(() => hasAccess('task_type_bulk_add'), [hasAccess]);
 
+  const isSbmRole = useMemo(() => {
+    const r = String((currentUser as any)?.role || '').trim().toLowerCase();
+    return r === 'sbm';
+  }, [currentUser]);
+
   const [companies, setCompanies] = useState<Company[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [taskTypes, setTaskTypes] = useState<TaskTypeItem[]>([]);
@@ -113,11 +118,20 @@ const AssignPage = ({ currentUser }: Props) => {
   const [isCreatingManagerBrand, setIsCreatingManagerBrand] = useState(false);
 
   const companyOptions = useMemo(() => {
-    return (companies || [])
+    const list = (companies || [])
       .map((c: any) => String(c?.name || '').trim())
       .filter(Boolean)
       .sort((a, b) => a.localeCompare(b));
-  }, [companies]);
+
+    if (!isSbmRole) return list;
+
+    const onlyRaw = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim();
+    const onlyKey = normalizeCompanyKey(onlyRaw);
+    const match = list.find((c) => normalizeCompanyKey(c) === onlyKey);
+    if (match) return [match];
+    if (onlyRaw) return [onlyRaw];
+    return list.slice(0, 1);
+  }, [companies, currentUser, isSbmRole]);
 
   const loadCompanies = useCallback(async () => {
     setLoadingCompanies(true);
@@ -310,6 +324,18 @@ const AssignPage = ({ currentUser }: Props) => {
     void loadCompanies();
     void loadTaskTypes();
   }, [canOpen, loadCompanies, loadTaskTypes]);
+
+  useEffect(() => {
+    if (!canOpen) return;
+    if (!isSbmRole) return;
+    if (!selectedCompany && (companyOptions || []).length === 1) {
+      const only = String(companyOptions[0] || '').trim();
+      if (!only) return;
+      setSelectedCompany(only);
+      setBulkBrandForm((prev) => ({ ...prev, company: only }));
+      setBulkTaskTypeCompany(only);
+    }
+  }, [canOpen, companyOptions, isSbmRole, selectedCompany]);
 
   useEffect(() => {
     if (!canOpen) return;
@@ -987,14 +1013,16 @@ const AssignPage = ({ currentUser }: Props) => {
             </div>
 
             <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleAddCompanyClick}
-                className="inline-flex items-center px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-semibold rounded-xl"
-              >
-                <Building className="h-4 w-4 mr-2" />
-                Add Company
-              </button>
+              {!isSbmRole && (
+                <button
+                  type="button"
+                  onClick={handleAddCompanyClick}
+                  className="inline-flex items-center px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-semibold rounded-xl"
+                >
+                  <Building className="h-4 w-4 mr-2" />
+                  Add Company
+                </button>
+              )}
 
               <button
                 type="button"
@@ -1242,7 +1270,7 @@ const AssignPage = ({ currentUser }: Props) => {
                   value={selectedCompany}
                   onChange={(e) => setSelectedCompany(e.target.value)}
                   className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  disabled={loadingCompanies}
+                  disabled={loadingCompanies || companyOptions.length === 1}
                 >
                   <option value="">Select company</option>
                   {companyOptions.map((c) => (
