@@ -228,6 +228,11 @@ const DashboardPage = () => {
     const canBulkAddBrands = useMemo(() => hasAccess('brand_bulk_add'), [hasAccess]);
     const canCreateBrand = useMemo(() => hasAccess('brand_create'), [hasAccess]);
 
+    const isSbmRole = useMemo(() => {
+        const r = String((currentUser as any)?.role || '').trim().toLowerCase();
+        return r === 'sbm';
+    }, [currentUser]);
+
     const [newTask, setNewTask] = useState<NewTaskForm>({
         title: '',
         assignedTo: '',
@@ -437,7 +442,14 @@ const DashboardPage = () => {
 
     const [formErrors, setFormErrors] = useState<Record<string, string>>({});
     const [editFormErrors, setEditFormErrors] = useState<Record<string, string>>({});
-    const [bulkBrandForm, setBulkBrandForm] = useState({ company: '', brandNames: '' });
+    const [bulkBrandForm, setBulkBrandForm] = useState<{
+        company: string;
+        brandNames: string;
+        groupNumber?: string;
+        groupName?: string;
+        rmEmail?: string;
+        amEmail?: string;
+    }>({ company: '', brandNames: '' });
     const [isCreatingBulkBrands, setIsCreatingBulkBrands] = useState(false);
     const [showBulkCompanyModal, setShowBulkCompanyModal] = useState(false);
     const [bulkCompanyNames, setBulkCompanyNames] = useState('');
@@ -449,6 +461,29 @@ const DashboardPage = () => {
 
     const [companies, setCompanies] = useState<Company[]>([]);
     const [taskTypes, setTaskTypes] = useState<TaskTypeItem[]>([]);
+
+    const [companyUsers, setCompanyUsers] = useState<any[]>([]);
+    const loadUsersForCompany = useCallback(async (companyName: string) => {
+        const company = (companyName || '').toString().trim();
+        if (!company) {
+            setCompanyUsers([]);
+            return;
+        }
+        try {
+            const res = await assignService.getCompanyUsers({ companyName: company });
+            if (res?.success && Array.isArray(res.data)) setCompanyUsers(res.data as any);
+            else setCompanyUsers([]);
+        } catch {
+            setCompanyUsers([]);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!showBulkBrandModal) return;
+        const company = (bulkBrandForm.company || '').toString().trim();
+        if (!company) return;
+        void loadUsersForCompany(company);
+    }, [bulkBrandForm.company, loadUsersForCompany, showBulkBrandModal]);
     const [filters, setFilters] = useState<FilterState>({
         status: 'all',
         priority: 'all',
@@ -1967,10 +2002,26 @@ const DashboardPage = () => {
         },
         [users],
     );
-    const getAvailableBrands = useCallback(() => {
+    const getAvailableBrandOptions = useCallback((): Array<{ value: string; label: string }> => {
         const company = newTask.companyName;
         if (!company) return [];
         const companyKey = normalizeCompanyKey(company);
+
+        const byNameKey = new Map<string, { value: string; label: string }>();
+        const addOption = (plainName: string) => {
+            const name = (plainName || '').toString().trim();
+            if (!name) return;
+            const key = name.toLowerCase();
+            if (byNameKey.has(key)) return;
+
+            const brandDoc: any = (brands || []).find((b: any) => (
+                normalizeCompanyKey(getBrandCompanyNameSafe(b)) === companyKey &&
+                normalizeText(getBrandNameSafe(b)) === normalizeText(name)
+            ));
+            const groupNumber = String((brandDoc as any)?.groupNumber || '').trim();
+            const label = groupNumber ? `${groupNumber} - ${name}` : name;
+            byNameKey.set(key, { value: name, label });
+        };
 
         const email = stripDeletedEmailSuffix(currentUser?.email || '').trim().toLowerCase();
         if (email) {
@@ -1987,20 +2038,41 @@ const DashboardPage = () => {
             }
             const cuKey = `${companyKey}::${userId}`;
             const assigned = Array.isArray(brandNamesByCompanyUserKey[cuKey]) ? brandNamesByCompanyUserKey[cuKey] : [];
-            if (assigned.length > 0) return assigned;
+            if (assigned.length > 0) {
+                assigned.forEach(addOption);
+                return Array.from(byNameKey.values()).sort((a, b) => a.label.localeCompare(b.label));
+            }
         }
 
-        return brands
+        (brands || [])
             .filter(brand => normalizeCompanyKey(getBrandCompanyNameSafe(brand)) === companyKey)
             .map(brand => (brand.name || '').toString().trim())
             .filter(Boolean)
-            .sort();
-    }, [brandNamesByCompanyUserKey, brands, currentUser?.email, newTask.companyName, normalizeCompanyKey, stripDeletedEmailSuffix]);
+            .forEach(addOption);
 
-    const getEditFormAvailableBrands = useCallback(() => {
+        return Array.from(byNameKey.values()).sort((a, b) => a.label.localeCompare(b.label));
+    }, [brandNamesByCompanyUserKey, brands, currentUser?.email, getBrandCompanyNameSafe, getBrandNameSafe, newTask.companyName, normalizeCompanyKey, normalizeText, stripDeletedEmailSuffix]);
+
+    const getEditFormBrandOptions = useCallback((): Array<{ value: string; label: string }> => {
         const company = editFormData.companyName;
         if (!company) return [];
         const companyKey = normalizeCompanyKey(company);
+
+        const byNameKey = new Map<string, { value: string; label: string }>();
+        const addOption = (plainName: string) => {
+            const name = (plainName || '').toString().trim();
+            if (!name) return;
+            const key = name.toLowerCase();
+            if (byNameKey.has(key)) return;
+
+            const brandDoc: any = (brands || []).find((b: any) => (
+                normalizeCompanyKey(getBrandCompanyNameSafe(b)) === companyKey &&
+                normalizeText(getBrandNameSafe(b)) === normalizeText(name)
+            ));
+            const groupNumber = String((brandDoc as any)?.groupNumber || '').trim();
+            const label = groupNumber ? `${groupNumber} - ${name}` : name;
+            byNameKey.set(key, { value: name, label });
+        };
 
         const email = stripDeletedEmailSuffix(editFormData.assignedTo).trim().toLowerCase();
         if (email) {
@@ -2011,15 +2083,41 @@ const DashboardPage = () => {
             const userId = (userDoc?.id || userDoc?._id || '').toString();
             const cuKey = `${companyKey}::${userId}`;
             const assigned = Array.isArray(brandNamesByCompanyUserKey[cuKey]) ? brandNamesByCompanyUserKey[cuKey] : [];
-            if (assigned.length > 0) return assigned;
+            if (assigned.length > 0) {
+                assigned.forEach(addOption);
+                return Array.from(byNameKey.values()).sort((a, b) => a.label.localeCompare(b.label));
+            }
         }
 
-        return brands
+        (brands || [])
             .filter(brand => normalizeCompanyKey(getBrandCompanyNameSafe(brand)) === companyKey)
             .map(brand => (brand.name || '').toString().trim())
             .filter(Boolean)
-            .sort();
-    }, [brandNamesByCompanyUserKey, brands, editFormData.assignedTo, editFormData.companyName, normalizeCompanyKey, stripDeletedEmailSuffix]);
+            .forEach(addOption);
+
+        return Array.from(byNameKey.values()).sort((a, b) => a.label.localeCompare(b.label));
+    }, [brandNamesByCompanyUserKey, brands, editFormData.assignedTo, editFormData.companyName, getBrandCompanyNameSafe, getBrandNameSafe, normalizeCompanyKey, normalizeText, stripDeletedEmailSuffix]);
+
+    const formatBrandWithGroupNumber = useCallback((task: any): string => {
+        const plain = String(task?.brand || '').trim();
+        if (!plain) return '';
+
+        const company = String(task?.companyName || task?.company || '').trim();
+
+        const brandId = (task?.brandId || '').toString().trim();
+        const byId = brandId
+            ? (brands || []).find((b: any) => String(b?.id || b?._id || '').toString() === brandId)
+            : null;
+        const byCompanyName = !byId
+            ? (brands || []).find((b: any) => (
+                normalizeText(getBrandNameSafe(b)) === normalizeText(plain) &&
+                normalizeCompanyKey(getBrandCompanyNameSafe(b)) === normalizeCompanyKey(company)
+            ))
+            : null;
+        const brandDoc: any = byId || byCompanyName;
+        const groupNumber = String(brandDoc?.groupNumber || '').trim();
+        return groupNumber ? `${groupNumber} - ${plain}` : plain;
+    }, [brands, getBrandCompanyNameSafe, getBrandNameSafe, normalizeCompanyKey, normalizeText]);
 
     const handleSaveComment = useCallback(async (taskId: string, comment: string): Promise<CommentType> => {
         try {
@@ -2865,12 +2963,13 @@ const DashboardPage = () => {
     }, [canBulkAddCompanies, handleInputChange]);
 
     const handleAddBrandClick = useCallback(async () => {
-        if (!canCreateBrand) {
-            toast.error('Access denied');
-            return;
-        }
         if (canBulkAddBrands) {
             setShowBulkBrandModal(true);
+            return;
+        }
+
+        if (!canCreateBrand) {
+            toast.error('Access denied');
             return;
         }
 
@@ -2893,34 +2992,78 @@ const DashboardPage = () => {
             return;
         }
 
-        if (!bulkBrandForm.brandNames.trim()) {
-            toast.error('Please enter brand names');
-            return;
-        }
+        const companyKey = (bulkBrandForm.company || '').toString().trim().toLowerCase().replace(/\s+/g, '');
+        const isSpeedEcomCompany = companyKey === 'speedecom';
+        const splitLines = (text: string) => (text || '').split(/\r?\n/).map((l) => l.trim());
+        const trimEndEmpty = (list: string[]) => {
+            let end = list.length;
+            while (end > 0 && !list[end - 1]) end -= 1;
+            return list.slice(0, end);
+        };
 
-        const requestedBrands = bulkBrandForm.brandNames
-            .split(/\r?\n|,/)
-            .map(s => s.trim())
-            .filter(Boolean);
+        const requestedBrands = isSpeedEcomCompany
+            ? (() => {
+                const groupNumbers = trimEndEmpty(splitLines((bulkBrandForm.groupNumber || '') as string));
+                const brandNames = trimEndEmpty(splitLines((bulkBrandForm.groupName || '') as string));
 
-        if (requestedBrands.length === 0) {
-            toast.error('No valid brand names provided');
-            return;
-        }
+                if (groupNumbers.length === 0 || brandNames.length === 0) {
+                    toast.error('Please paste group numbers and brand names');
+                    return [] as Array<{ brandName: string; groupNumber: string }>;
+                }
+                if (groupNumbers.length !== brandNames.length) {
+                    toast.error('Group Numbers and Brand Names rows count must match');
+                    return [] as Array<{ brandName: string; groupNumber: string }>;
+                }
+
+                const rows: Array<{ brandName: string; groupNumber: string }> = [];
+                for (let i = 0; i < brandNames.length; i += 1) {
+                    const groupNumber = groupNumbers[i] || '';
+                    const brandName = brandNames[i] || '';
+                    if (!groupNumber && !brandName) continue;
+                    if (!groupNumber || !brandName) {
+                        toast.error(`Row ${i + 1}: Group Number and Brand Name are required`);
+                        return [];
+                    }
+                    rows.push({ brandName, groupNumber });
+                }
+                return rows;
+            })()
+            : (() => {
+                const raw = (bulkBrandForm.brandNames || '').trim();
+                if (!raw) {
+                    toast.error('Please enter brand names');
+                    return [] as Array<{ brandName: string; groupNumber: string }>;
+                }
+                return raw
+                    .split(/\r?\n|,/)
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                    .map((name) => ({ brandName: name, groupNumber: '' }));
+            })();
+
+        if (requestedBrands.length === 0) return;
 
         setIsCreatingBulkBrands(true);
         try {
             const res = await brandService.bulkUpsertBrands({
-                brands: requestedBrands.map((name) => ({
-                    name,
+                brands: requestedBrands.map((row: any) => ({
+                    name: row.brandName,
                     company: bulkBrandForm.company,
                     status: 'active',
+                    ...(isSpeedEcomCompany
+                        ? {
+                            groupNumber: row.groupNumber,
+                            groupName: row.brandName,
+                            rmEmail: bulkBrandForm.rmEmail,
+                            amEmail: bulkBrandForm.amEmail,
+                        }
+                        : {}),
                 }))
             });
 
             if (res.success && Array.isArray(res.data) && res.data.length > 0) {
                 setApiBrands(prev => [...prev, ...(res.data as any)]);
-                setBulkBrandForm({ company: '', brandNames: '' });
+                setBulkBrandForm({ company: '', brandNames: '', groupNumber: '', groupName: '', rmEmail: '', amEmail: '' });
                 setShowBulkBrandModal(false);
                 const event = new CustomEvent('brandUpdated', { detail: { brands: res.data } });
                 window.dispatchEvent(event);
@@ -2935,7 +3078,7 @@ const DashboardPage = () => {
         } finally {
             setIsCreatingBulkBrands(false);
         }
-    }, [bulkBrandForm.brandNames, bulkBrandForm.company, canBulkAddBrands]);
+    }, [bulkBrandForm.amEmail, bulkBrandForm.brandNames, bulkBrandForm.company, bulkBrandForm.groupName, bulkBrandForm.groupNumber, bulkBrandForm.rmEmail, canBulkAddBrands]);
 
     const handleSubmitBulkCompanies = useCallback(async () => {
         if (!canBulkAddCompanies) {
@@ -4371,7 +4514,7 @@ const DashboardPage = () => {
                                                                     Brand
                                                                 </span>
                                                                 <span className={`px-2 py-1 text-xs rounded-full border ${getBrandColor(task.brand)}`}>
-                                                                    {task.brand}
+                                                                    {formatBrandWithGroupNumber(task)}
                                                                 </span>
                                                             </div>
                                                         )}
@@ -4739,13 +4882,13 @@ const DashboardPage = () => {
                 canCreateBrand={canCreateBrand}
                 canBulkAddBrands={canBulkAddBrands}
                 onAddBrand={handleAddBrandClick}
-                getAvailableBrands={getAvailableBrands}
+                getAvailableBrandOptions={getAvailableBrandOptions}
                 canBulkAddTaskTypes={canBulkAddTaskTypes}
                 onBulkAddTaskTypes={handleAddTaskTypeClick}
                 availableTaskTypesForNewTask={availableTaskTypesForNewTask}
                 onSubmit={handleSaveTaskFromModal}
                 isSubmitting={isCreatingTask}
-                isSbmUser={String((currentUser as any)?.role || '').trim().toLowerCase() === 'sbm'}
+                isSbmUser={isSbmRole}
                 showCompanyDropdownIcon={(() => {
                     const r = String((currentUser as any)?.role || '').trim().toLowerCase();
                     return r === 'admin' || r === 'super_admin';
@@ -4762,7 +4905,7 @@ const DashboardPage = () => {
                 users={users}
                 availableTaskTypesForEditTask={availableTaskTypesForEditTask}
                 availableCompanies={availableCompanies}
-                getEditFormAvailableBrands={getEditFormAvailableBrands}
+                getEditFormBrandOptions={getEditFormBrandOptions}
                 onSubmit={handleSaveEditedTask}
                 isSubmitting={isUpdatingTask}
             />
@@ -4773,6 +4916,8 @@ const DashboardPage = () => {
                 bulkBrandForm={bulkBrandForm}
                 setBulkBrandForm={(next) => setBulkBrandForm(next)}
                 availableCompanies={availableCompanies}
+                companyUsers={companyUsers}
+                currentUserRole={(currentUser as any)?.role}
                 onSubmit={handleSubmitBulkBrands}
                 isSubmitting={isCreatingBulkBrands}
             />

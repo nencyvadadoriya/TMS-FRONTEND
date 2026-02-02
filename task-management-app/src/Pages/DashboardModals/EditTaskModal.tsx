@@ -28,7 +28,7 @@ type Props = {
   users: UserType[];
   availableTaskTypesForEditTask: string[];
   availableCompanies: string[];
-  getEditFormAvailableBrands: () => string[];
+  getEditFormBrandOptions: () => Array<{ value: string; label: string }>;
 
   onSubmit: () => void;
   isSubmitting: boolean;
@@ -44,7 +44,7 @@ const EditTaskModal = ({
   users,
   availableTaskTypesForEditTask,
   availableCompanies,
-  getEditFormAvailableBrands,
+  getEditFormBrandOptions,
   onSubmit,
   isSubmitting,
 }: Props) => {
@@ -195,9 +195,9 @@ const EditTaskModal = ({
                   disabled={!editFormData.companyName}
                 >
                   <option value="">Select a brand</option>
-                  {getEditFormAvailableBrands().map((brand) => (
-                    <option key={brand} value={brand}>
-                      {brand}
+                  {getEditFormBrandOptions().map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
                     </option>
                   ))}
                 </select>

@@ -6,6 +6,7 @@ export type AssignUserItem = {
   email: string;
   role: string;
   companyName: string;
+  managerId?: string;
 };
 
 export type UserBrandTaskTypeMapping = {

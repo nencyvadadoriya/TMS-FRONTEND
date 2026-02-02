@@ -3,6 +3,18 @@ import { Tag, X } from 'lucide-react';
 type BulkBrandForm = {
   company: string;
   brandNames: string;
+  groupNumber?: string;
+  groupName?: string;
+  rmEmail?: string;
+  amEmail?: string;
+};
+
+type CompanyUser = {
+  id: string | number;
+  name: string;
+  email: string;
+  role?: string;
+  managerId?: string;
 };
 
 type Props = {
@@ -14,6 +26,10 @@ type Props = {
 
   availableCompanies: string[];
 
+  companyUsers?: CompanyUser[];
+
+  currentUserRole?: string;
+
   onSubmit: () => void;
   isSubmitting: boolean;
 };
@@ -24,10 +40,59 @@ const BulkAddBrandsModal = ({
   bulkBrandForm,
   setBulkBrandForm,
   availableCompanies,
+  companyUsers,
+  currentUserRole,
   onSubmit,
   isSubmitting,
 }: Props) => {
   if (!open) return null;
+
+  const normalizedRole = (currentUserRole || '').toString().trim().toLowerCase();
+  const canUseGroupFields =
+    normalizedRole === 'admin' || normalizedRole === 'super_admin' || normalizedRole === 'abm' || normalizedRole === 'sbm';
+  const companyKey = (bulkBrandForm.company || '').toString().trim().toLowerCase().replace(/\s+/g, '');
+  const isSpeedEcomCompany = companyKey === 'speedecom';
+  const showGroupFields = canUseGroupFields && isSpeedEcomCompany;
+
+  const normalizeUserRole = (v: unknown) => (v || '').toString().trim().toLowerCase();
+  const safeUsers = Array.isArray(companyUsers) ? companyUsers : [];
+
+  const rmUsers = safeUsers.filter((u) => normalizeUserRole(u.role) === 'rm');
+  const allAmUsers = safeUsers.filter((u) => {
+    const r = normalizeUserRole(u.role);
+    return r === 'am' || r === 'ar';
+  });
+
+  const selectedRm = rmUsers.find((u) => (u.email || '').toString().trim().toLowerCase() === (bulkBrandForm.rmEmail || '').toString().trim().toLowerCase());
+  const selectedRmId = selectedRm?.id ? selectedRm.id.toString() : '';
+  const filteredAmUsers = selectedRmId
+    ? allAmUsers.filter((u) => (u.managerId || '').toString() === selectedRmId)
+    : allAmUsers;
+
+  const handleRmChange = (rmEmail: string) => {
+    const nextRm = (rmEmail || '').toString();
+    const nextRmUser = rmUsers.find((u) => (u.email || '').toString().trim().toLowerCase() === nextRm.trim().toLowerCase());
+    const nextRmId = nextRmUser?.id ? nextRmUser.id.toString() : '';
+    const nextFiltered = nextRmId
+      ? allAmUsers.filter((u) => (u.managerId || '').toString() === nextRmId)
+      : allAmUsers;
+
+    const currentAm = (bulkBrandForm.amEmail || '').toString().trim().toLowerCase();
+    const stillValid = nextFiltered.some((u) => (u.email || '').toString().trim().toLowerCase() === currentAm);
+    const nextAm = stillValid
+      ? bulkBrandForm.amEmail
+      : nextFiltered.length === 1
+        ? nextFiltered[0].email
+        : nextFiltered.length > 0
+          ? nextFiltered[0].email
+          : '';
+
+    setBulkBrandForm({
+      ...bulkBrandForm,
+      rmEmail: rmEmail,
+      amEmail: nextAm,
+    });
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -70,16 +135,121 @@ const BulkAddBrandsModal = ({
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">Brand Names *</label>
-              <textarea
-                placeholder="Enter brand names (comma or new line separated)\nExample:\nBrand 1, Brand 2, Brand 3\nor\nBrand 1\nBrand 2\nBrand 3"
-                className="w-full px-4 py-3 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 min-h-[150px]"
-                value={bulkBrandForm.brandNames}
-                onChange={(e) => setBulkBrandForm({ ...bulkBrandForm, brandNames: e.target.value })}
-              />
-              <p className="mt-1 text-xs text-gray-500">Separate brand names with commas or new lines</p>
-            </div>
+            {showGroupFields && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 mb-2">Paste (Group Number + Brand Name) *</label>
+                  <textarea
+                    placeholder="Paste 2 columns from Excel (Group Number and Brand Name)\nExample:\nG-01\tBrand A\nG-02\tBrand B"
+                    className="w-full px-4 py-3 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 min-h-[110px]"
+                    value={bulkBrandForm.brandNames}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      const lines = raw.split(/\r?\n/);
+                      const groupNumbers: string[] = [];
+                      const brandNames: string[] = [];
+
+                      lines.forEach((line) => {
+                        const trimmed = (line || '').trim();
+                        if (!trimmed) return;
+
+                        let parts: string[] = [];
+                        if (trimmed.includes('\t')) {
+                          parts = trimmed.split('\t');
+                        } else if (trimmed.includes('|')) {
+                          parts = trimmed.split('|');
+                        } else if (trimmed.includes(',')) {
+                          parts = trimmed.split(',');
+                        } else {
+                          parts = [trimmed];
+                        }
+
+                        const g = (parts[0] || '').trim();
+                        const b = (parts[1] || '').trim();
+                        if (!g && !b) return;
+                        groupNumbers.push(g);
+                        brandNames.push(b);
+                      });
+
+                      setBulkBrandForm({
+                        ...bulkBrandForm,
+                        brandNames: raw,
+                        groupNumber: groupNumbers.join('\n'),
+                        groupName: brandNames.join('\n'),
+                      });
+                    }}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Paste rows like: GroupNumber[TAB]BrandName. Also supports | or comma.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-900 mb-2">Group Numbers *</label>
+                    <textarea
+                      placeholder="Paste Group Number column here\nExample:\nG-01\nG-02\nG-03"
+                      className="w-full px-4 py-3 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 min-h-[150px]"
+                      value={bulkBrandForm.groupNumber || ''}
+                      onChange={(e) => setBulkBrandForm({ ...bulkBrandForm, groupNumber: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-900 mb-2">Brand Names *</label>
+                    <textarea
+                      placeholder="Paste Brand Name column here\nExample:\nBrand A\nBrand B\nBrand C"
+                      className="w-full px-4 py-3 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 min-h-[150px]"
+                      value={bulkBrandForm.groupName || ''}
+                      onChange={(e) => setBulkBrandForm({ ...bulkBrandForm, groupName: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-900 mb-2">RM Email</label>
+                    <select
+                      value={bulkBrandForm.rmEmail || ''}
+                      onChange={(e) => handleRmChange(e.target.value)}
+                      className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                    >
+                      <option value="">Select RM</option>
+                      {rmUsers.map((u) => (
+                        <option key={u.id} value={u.email}>
+                          {u.name || u.email} ({u.email})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-900 mb-2">AM Email</label>
+                    <select
+                      value={bulkBrandForm.amEmail || ''}
+                      onChange={(e) => setBulkBrandForm({ ...bulkBrandForm, amEmail: e.target.value })}
+                      className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                    >
+                      <option value="">Select AM</option>
+                      {filteredAmUsers.map((u) => (
+                        <option key={u.id} value={u.email}>
+                          {u.name || u.email} ({u.email})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {!showGroupFields && (
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">Brand Names *</label>
+                <textarea
+                  placeholder="Enter brand names (comma or new line separated)\nExample:\nBrand 1, Brand 2, Brand 3\nor\nBrand 1\nBrand 2\nBrand 3"
+                  className="w-full px-4 py-3 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 min-h-[150px]"
+                  value={bulkBrandForm.brandNames}
+                  onChange={(e) => setBulkBrandForm({ ...bulkBrandForm, brandNames: e.target.value })}
+                />
+                <p className="mt-1 text-xs text-gray-500">Separate brand names with commas or new lines</p>
+              </div>
+            )}
           </div>
         </div>
 

@@ -31,7 +31,7 @@ type Props = {
   canCreateBrand: boolean;
   canBulkAddBrands: boolean;
   onAddBrand: () => void;
-  getAvailableBrands: () => string[];
+  getAvailableBrandOptions: () => Array<{ value: string; label: string }>;
 
   canBulkAddTaskTypes: boolean;
   onBulkAddTaskTypes: () => void | Promise<void>;
@@ -56,7 +56,7 @@ const AddTaskModal = ({
   canCreateBrand,
   canBulkAddBrands,
   onAddBrand,
-  getAvailableBrands,
+  getAvailableBrandOptions,
   canBulkAddTaskTypes,
   onBulkAddTaskTypes,
   availableTaskTypesForNewTask,
@@ -193,9 +193,9 @@ const AddTaskModal = ({
                 disabled={!newTask.companyName}
               >
                 <option value="">Select a brand</option>
-                {getAvailableBrands().map((brand) => (
-                  <option key={brand} value={brand}>
-                    {brand}
+                {getAvailableBrandOptions().map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
                   </option>
                 ))}
               </select>

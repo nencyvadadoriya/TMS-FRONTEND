@@ -22,6 +22,7 @@ type Props = {
 };
 
 const normalizeText = (v: unknown) => (v == null ? '' : String(v)).trim();
+const normalizeCompanyKey = (v: unknown) => normalizeText(v).toLowerCase().replace(/\s+/g, '');
 
 const AssignPage = ({ currentUser }: Props) => {
   const hasAccess = useCallback((moduleId: string) => {
@@ -49,6 +50,11 @@ const AssignPage = ({ currentUser }: Props) => {
   const isAdminUser = useMemo(() => {
     const r = String((currentUser as any)?.role || '').toLowerCase();
     return r === 'admin' || r === 'super_admin';
+  }, [currentUser]);
+
+  const canUseBulkBrandGroupFields = useMemo(() => {
+    const r = String((currentUser as any)?.role || '').toLowerCase();
+    return r === 'admin' || r === 'super_admin' || r === 'abm' || r === 'sbm';
   }, [currentUser]);
 
   const [mdManagers, setMdManagers] = useState<UserType[]>([]);
@@ -87,7 +93,14 @@ const AssignPage = ({ currentUser }: Props) => {
   const [isCreatingBulkCompanies, setIsCreatingBulkCompanies] = useState(false);
 
   const [showBulkBrandModal, setShowBulkBrandModal] = useState(false);
-  const [bulkBrandForm, setBulkBrandForm] = useState({ company: '', brandNames: '' });
+  const [bulkBrandForm, setBulkBrandForm] = useState<{
+    company: string;
+    brandNames: string;
+    groupNumber?: string;
+    groupName?: string;
+    rmEmail?: string;
+    amEmail?: string;
+  }>({ company: '', brandNames: '' });
   const [isCreatingBulkBrands, setIsCreatingBulkBrands] = useState(false);
 
   const [showBulkTaskTypeModal, setShowBulkTaskTypeModal] = useState(false);
@@ -397,6 +410,13 @@ const AssignPage = ({ currentUser }: Props) => {
     return () => window.removeEventListener('brandUpdated', handler as any);
   }, [loadBrandsForCompany, loadCompanies, loadTaskTypes, selectedCompany]);
 
+  useEffect(() => {
+    if (!showBulkBrandModal) return;
+    const company = normalizeText(bulkBrandForm.company);
+    if (!company) return;
+    void loadUsersForCompany(company);
+  }, [bulkBrandForm.company, loadUsersForCompany, showBulkBrandModal]);
+
   const selectedUser = useMemo(() => {
     const uid = normalizeText(selectedUserId);
     return (companyUsers || []).find((u) => String(u.id || '').trim() === uid) || null;
@@ -524,10 +544,13 @@ const AssignPage = ({ currentUser }: Props) => {
 
   const brandOptions = useMemo(() => {
     return (brands || [])
-      .map((b: any) => ({
-        id: String(b?.id || b?._id || '').trim(),
-        name: String(b?.name || '').trim()
-      }))
+      .map((b: any) => {
+        const id = String(b?.id || b?._id || '').trim();
+        const baseName = String(b?.name || '').trim();
+        const groupNumber = String((b as any)?.groupNumber || '').trim();
+        const label = groupNumber ? `${groupNumber} - ${baseName}` : baseName;
+        return { id, name: label };
+      })
       .filter((b) => Boolean(b.id) && Boolean(b.name))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [brands]);
@@ -671,8 +694,8 @@ const AssignPage = ({ currentUser }: Props) => {
   }, [canBulkAddCompanies, loadCompanies]);
 
   const handleAddBrandClick = useCallback(async () => {
-    if (!canCreateBrand) {
-      toast.error('Access denied');
+    if (canBulkAddBrands) {
+      setShowBulkBrandModal(true);
       return;
     }
 
@@ -681,8 +704,8 @@ const AssignPage = ({ currentUser }: Props) => {
       return;
     }
 
-    if (canBulkAddBrands) {
-      setShowBulkBrandModal(true);
+    if (!canCreateBrand) {
+      toast.error('Access denied');
       return;
     }
 
@@ -760,34 +783,87 @@ const AssignPage = ({ currentUser }: Props) => {
       return;
     }
 
-    if (!bulkBrandForm.brandNames.trim()) {
-      toast.error('Please enter brand names');
-      return;
-    }
+    const companyKey = normalizeCompanyKey(bulkBrandForm.company);
+    const isSpeedEcomCompany = companyKey === 'speedecom';
+    const isSpeedEcomBulkMode = Boolean(canUseBulkBrandGroupFields && isSpeedEcomCompany);
 
-    const requestedBrands = bulkBrandForm.brandNames
-      .split(/\r?\n|,/)
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const splitLines = (text: string) => (text || '').split(/\r?\n/).map((l) => l.trim());
+    const trimEndEmpty = (list: string[]) => {
+      let end = list.length;
+      while (end > 0 && !list[end - 1]) end -= 1;
+      return list.slice(0, end);
+    };
 
-    if (requestedBrands.length === 0) {
-      toast.error('No valid brand names provided');
-      return;
-    }
+    const requestedBrands = isSpeedEcomBulkMode
+      ? (() => {
+          const groupNumbers = trimEndEmpty(splitLines(bulkBrandForm.groupNumber || ''));
+          const brandNames = trimEndEmpty(splitLines(bulkBrandForm.groupName || ''));
+
+          if (groupNumbers.length === 0 || brandNames.length === 0) {
+            toast.error('Please paste group numbers and brand names');
+            return [] as Array<{ brandName: string; groupNumber: string }>;
+          }
+          if (groupNumbers.length !== brandNames.length) {
+            toast.error('Group Numbers and Brand Names rows count must match');
+            return [] as Array<{ brandName: string; groupNumber: string }>;
+          }
+
+          const rows: Array<{ brandName: string; groupNumber: string }> = [];
+          for (let i = 0; i < brandNames.length; i += 1) {
+            const groupNumber = groupNumbers[i] || '';
+            const brandName = brandNames[i] || '';
+            if (!groupNumber && !brandName) continue;
+            if (!groupNumber || !brandName) {
+              toast.error(`Row ${i + 1}: Group Number and Brand Name are required`);
+              return [];
+            }
+            rows.push({ brandName, groupNumber });
+          }
+          return rows;
+        })()
+      : (() => {
+          const raw = (bulkBrandForm.brandNames || '').trim();
+          if (!raw) {
+            toast.error('Please enter brand names');
+            return [] as Array<{ brandName: string; groupNumber: string }>;
+          }
+          return raw
+            .split(/\r?\n|,/)
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .map((name) => ({ brandName: name, groupNumber: '' }));
+        })();
+
+    if (requestedBrands.length === 0) return;
 
     setIsCreatingBulkBrands(true);
     try {
       const res = await brandService.bulkUpsertBrands({
-        brands: requestedBrands.map((name) => ({
-          name,
+        brands: requestedBrands.map((row: any) => ({
+          name: row.brandName,
           company: bulkBrandForm.company,
-          status: 'active'
+          status: 'active',
+          ...(isSpeedEcomBulkMode
+            ? {
+                groupNumber: row.groupNumber,
+                groupName: row.brandName,
+                rmEmail: bulkBrandForm.rmEmail,
+                amEmail: bulkBrandForm.amEmail,
+              }
+            : {}),
         }))
       });
 
       if (res?.success) {
         setShowBulkBrandModal(false);
-        setBulkBrandForm((prev) => ({ ...prev, brandNames: '' }));
+        setBulkBrandForm((prev) => ({
+          ...prev,
+          brandNames: '',
+          groupNumber: '',
+          groupName: '',
+          rmEmail: '',
+          amEmail: ''
+        }));
         toast.success('Brands added');
         void loadBrandsForCompany(selectedCompany);
         try {
@@ -804,7 +880,7 @@ const AssignPage = ({ currentUser }: Props) => {
     } finally {
       setIsCreatingBulkBrands(false);
     }
-  }, [bulkBrandForm.brandNames, bulkBrandForm.company, canBulkAddBrands, loadBrandsForCompany, selectedCompany]);
+  }, [bulkBrandForm.amEmail, bulkBrandForm.brandNames, bulkBrandForm.company, bulkBrandForm.groupName, bulkBrandForm.groupNumber, bulkBrandForm.rmEmail, canBulkAddBrands, canUseBulkBrandGroupFields, loadBrandsForCompany, selectedCompany]);
 
   const handleSubmitBulkTaskTypes = useCallback(async () => {
     if (!canBulkAddTaskTypes) {
@@ -1313,6 +1389,8 @@ const AssignPage = ({ currentUser }: Props) => {
         bulkBrandForm={bulkBrandForm}
         setBulkBrandForm={(next) => setBulkBrandForm(next)}
         availableCompanies={companyOptions}
+        companyUsers={companyUsers}
+        currentUserRole={(currentUser as any)?.role}
         onSubmit={handleSubmitBulkBrands}
         isSubmitting={isCreatingBulkBrands}
       />

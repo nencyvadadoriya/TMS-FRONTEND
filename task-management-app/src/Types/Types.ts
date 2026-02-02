@@ -13,6 +13,10 @@ export interface Brand {
     logo?: string;
     company: string;
     category?: string;
+    groupNumber?: string;
+    groupName?: string;
+    rmName?: string;
+    amName?: string;
     website?: string;
     status: BrandStatus;
     createdAt: string;
@@ -31,6 +35,10 @@ export interface CreateBrandDto {
     status?: 'active' | 'inactive' | 'archived';
     website?: string;
     logo?: string;
+    groupNumber?: string;
+    groupName?: string;
+    rmEmail?: string;
+    amEmail?: string;
 }
 
 export interface UpdateBrandDto {
@@ -39,6 +47,10 @@ export interface UpdateBrandDto {
     status?: 'active' | 'inactive' | 'archived' | 'deleted';
     website?: string;
     logo?: string;
+    groupNumber?: string;
+    groupName?: string;
+    rmEmail?: string;
+    amEmail?: string;
 }
 
 export interface BrandCollaborator {
