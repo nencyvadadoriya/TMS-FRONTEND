@@ -8,6 +8,19 @@ type ReviewFilter = 'pending' | 'reviewed' | 'all';
 
 const normalizeRole = (v: unknown) => String(v || '').trim().toLowerCase();
 
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+const monthKeyOfDate = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+
+const performanceLevelForAvg = (avgStars: number) => {
+  const v = Number(avgStars);
+  if (!Number.isFinite(v)) return '—';
+  if (v >= 4.5) return 'Excellent';
+  if (v >= 4.0) return 'Very Good';
+  if (v >= 3.0) return 'Good';
+  return 'Improve';
+};
+
 const ReviewsPage = ({ currentUser }: { currentUser: UserType }) => {
   const role = useMemo(() => normalizeRole(currentUser?.role), [currentUser?.role]);
   const canSubmit = false;
@@ -16,6 +29,10 @@ const ReviewsPage = ({ currentUser }: { currentUser: UserType }) => {
   const [loading, setLoading] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filter, setFilter] = useState<ReviewFilter>('all');
+
+  const [month, setMonth] = useState<string>(() => monthKeyOfDate(new Date()));
+
+  const [reviewedTasks, setReviewedTasks] = useState<Task[]>([]);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [stars, setStars] = useState<number>(5);
@@ -46,6 +63,127 @@ const ReviewsPage = ({ currentUser }: { currentUser: UserType }) => {
   useEffect(() => {
     void fetchReviews();
   }, [fetchReviews]);
+
+  const fetchReviewedForSummary = useCallback(async () => {
+    if (!canView) return;
+
+    try {
+      const res = await taskService.getTaskReviews({ reviewed: true });
+      if (res.success) {
+        setReviewedTasks(res.data || []);
+      }
+    } catch {
+      return;
+    }
+  }, [canView]);
+
+  useEffect(() => {
+    void fetchReviewedForSummary();
+  }, [fetchReviewedForSummary]);
+
+  const monthlySummary = useMemo(() => {
+    const parseMonth = (value: string) => {
+      const [y, m] = String(value || '').split('-').map((x) => Number(x));
+      if (!Number.isFinite(y) || !Number.isFinite(m) || y < 1970 || m < 1 || m > 12) return null;
+      const start = new Date(y, m - 1, 1, 0, 0, 0, 0);
+      const endExclusive = new Date(y, m, 1, 0, 0, 0, 0);
+      return { start, endExclusive };
+    };
+
+    const monthRange = parseMonth(month);
+    const reviewed = (reviewedTasks || []).filter((t) => {
+      const stars = (t as any).reviewStars;
+      const reviewedAtRaw = (t as any).reviewedAt;
+      if (stars == null) return false;
+      if (!reviewedAtRaw) return false;
+      if (!monthRange) return true;
+      const reviewedAt = new Date(reviewedAtRaw);
+      if (Number.isNaN(reviewedAt.getTime())) return false;
+      return reviewedAt >= monthRange.start && reviewedAt < monthRange.endExclusive;
+    });
+
+    const byAssignee = new Map<string, {
+      email: string;
+      name: string;
+      total: number;
+      starSum: number;
+      stars: Record<number, number>;
+    }>();
+
+    reviewed.forEach((t) => {
+      const assignedToUser = (t as any)?.assignedToUser;
+      const email = String(
+        assignedToUser?.email
+        || (typeof t.assignedTo === 'string' ? t.assignedTo : (t.assignedTo as any)?.email)
+        || ''
+      ).trim().toLowerCase();
+      if (!email) return;
+
+      const name = String(assignedToUser?.name || email);
+      const starsValue = Number((t as any).reviewStars);
+      if (!Number.isFinite(starsValue) || starsValue < 1 || starsValue > 5) return;
+
+      const existing = byAssignee.get(email) || {
+        email,
+        name,
+        total: 0,
+        starSum: 0,
+        stars: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } as Record<number, number>
+      };
+
+      existing.total += 1;
+      existing.starSum += starsValue;
+      existing.stars[starsValue] = (existing.stars[starsValue] || 0) + 1;
+      byAssignee.set(email, existing);
+    });
+
+    const rows = Array.from(byAssignee.values());
+    const totalReviews = rows.reduce((sum, r) => sum + r.total, 0);
+    const toPct = (n: number, d: number) => (d > 0 ? (n / d) * 100 : 0);
+    const formatPct = (v: number) => `${v.toFixed(1)}%`;
+    const formatStars = (v: number) => `${v.toFixed(1)}`;
+
+    const mapped = rows
+      .map((r) => {
+        const sharePct = toPct(r.total, totalReviews);
+        const avgStars = r.total > 0 ? (r.starSum / r.total) : 0;
+        const ratingPct = toPct(r.starSum, r.total * 5);
+        const performance = performanceLevelForAvg(avgStars);
+        const starPct = {
+          5: toPct(r.stars[5] || 0, r.total),
+          4: toPct(r.stars[4] || 0, r.total),
+          3: toPct(r.stars[3] || 0, r.total),
+          2: toPct(r.stars[2] || 0, r.total),
+          1: toPct(r.stars[1] || 0, r.total),
+        };
+        return {
+          ...r,
+          sharePct,
+          sharePctLabel: formatPct(sharePct),
+          avgStars,
+          avgStarsLabel: formatStars(avgStars),
+          ratingPct,
+          ratingPctLabel: formatPct(ratingPct),
+          performance,
+          starPct,
+          starPctLabel: {
+            5: formatPct(starPct[5]),
+            4: formatPct(starPct[4]),
+            3: formatPct(starPct[3]),
+            2: formatPct(starPct[2]),
+            1: formatPct(starPct[1]),
+          }
+        };
+      })
+      .sort((a, b) => (b.sharePct - a.sharePct) || (b.total - a.total) || a.name.localeCompare(b.name));
+
+    const topEmail = mapped[0]?.email || null;
+    return {
+      totalReviews,
+      rows: mapped,
+      topEmail,
+    };
+  }, [month, reviewedTasks]);
 
   const startEdit = (t: Task) => {
     setEditingId(t.id);
@@ -104,6 +242,13 @@ const ReviewsPage = ({ currentUser }: { currentUser: UserType }) => {
           </div>
 
           <div className="flex items-center gap-2">
+            <input
+              type="month"
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              disabled={loading}
+            />
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value as ReviewFilter)}
@@ -115,6 +260,71 @@ const ReviewsPage = ({ currentUser }: { currentUser: UserType }) => {
               <option value="all">All</option>
             </select>
           </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="px-6 py-5 border-b border-gray-100">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+            <div>
+              <div className="text-sm font-semibold text-gray-900">Monthly summary (person-wise)</div>
+              <div className="text-xs text-gray-500 mt-1">Only reviewed tasks are included (based on reviewed date).</div>
+            </div>
+            <div className="text-sm text-gray-700">Total reviews: <span className="font-semibold">{monthlySummary.totalReviews}</span></div>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
+            <thead className="bg-gray-50">
+              <tr className="text-left text-sm font-semibold text-gray-700">
+                <th className="px-6 py-4">Assistance</th>
+                <th className="px-6 py-4">Reviews</th>
+                <th className="px-6 py-4">Total Stars</th>
+                <th className="px-6 py-4">Avg</th>
+                <th className="px-6 py-4">Rating %</th>
+                <th className="px-6 py-4">Performance</th>
+                <th className="px-6 py-4">Share %</th>
+                <th className="px-6 py-4">5★</th>
+                <th className="px-6 py-4">4★</th>
+                <th className="px-6 py-4">3★</th>
+                <th className="px-6 py-4">2★</th>
+                <th className="px-6 py-4">1★</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {monthlySummary.rows.map((r) => {
+                const isTop = monthlySummary.topEmail && monthlySummary.topEmail === r.email;
+                return (
+                  <tr key={r.email} className={isTop ? 'bg-blue-50' : 'hover:bg-gray-50'}>
+                    <td className="px-6 py-5">
+                      <div className="font-semibold text-gray-900">{r.name}</div>
+                      <div className="text-xs text-gray-500 mt-1">{r.email}</div>
+                    </td>
+                    <td className="px-6 py-5 text-sm text-gray-700">{r.total}</td>
+                    <td className="px-6 py-5 text-sm text-gray-700">{r.starSum}</td>
+                    <td className="px-6 py-5 text-sm text-gray-700">{r.avgStarsLabel}/5</td>
+                    <td className="px-6 py-5 text-sm text-gray-700">{r.ratingPctLabel}</td>
+                    <td className="px-6 py-5 text-sm text-gray-700">{r.performance}</td>
+                    <td className="px-6 py-5 text-sm text-gray-700">{r.sharePctLabel}</td>
+                    <td className="px-6 py-5 text-sm text-gray-700">{r.stars[5] || 0} <span className="text-xs text-gray-500">({r.starPctLabel[5]})</span></td>
+                    <td className="px-6 py-5 text-sm text-gray-700">{r.stars[4] || 0} <span className="text-xs text-gray-500">({r.starPctLabel[4]})</span></td>
+                    <td className="px-6 py-5 text-sm text-gray-700">{r.stars[3] || 0} <span className="text-xs text-gray-500">({r.starPctLabel[3]})</span></td>
+                    <td className="px-6 py-5 text-sm text-gray-700">{r.stars[2] || 0} <span className="text-xs text-gray-500">({r.starPctLabel[2]})</span></td>
+                    <td className="px-6 py-5 text-sm text-gray-700">{r.stars[1] || 0} <span className="text-xs text-gray-500">({r.starPctLabel[1]})</span></td>
+                  </tr>
+                );
+              })}
+
+              {monthlySummary.rows.length === 0 && (
+                <tr>
+                  <td className="px-6 py-8 text-sm text-gray-500" colSpan={12}>
+                    {loading ? 'Loading…' : 'No reviewed tasks found for selected month'}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
