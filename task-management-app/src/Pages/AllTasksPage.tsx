@@ -933,7 +933,7 @@ Update documentation
 Test mobile responsiveness
 Add user notifications
 ..."
-                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-h-[80px]"
+                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-h-20"
                 rows={3}
               />
               <div className="flex flex-col gap-2">
@@ -1403,7 +1403,7 @@ const DesktopTaskItem = memo(({
       <div className="grid grid-cols-12 gap-1 p-3 items-start"> {/* Changed: gap-1 और p-3 */}
         {/* Index Column - Fixed width */}
         <div className="col-span-1 flex justify-center items-center">
-          <span className="text-sm font-medium text-gray-500 tabular-nums min-w-[20px] text-center">
+          <span className="text-sm font-medium text-gray-500 tabular-nums min-w-5 text-center">
             {index}
           </span>
         </div>
@@ -1432,7 +1432,7 @@ const DesktopTaskItem = memo(({
         {/* Task Title Column - INCREASED WIDTH */}
         <div className="col-span-3 min-w-0 pr-2"> {/* Changed: col-span-3 और pr-2 */}
           <div className="flex flex-col gap-1">
-            <h3 className="font-semibold text-gray-900 text-sm whitespace-normal break-words leading-tight" title={task.title}>
+            <h3 className="font-semibold text-gray-900 text-sm whitespace-normal wrap-break-word leading-tight" title={task.title}>
               {task.title}
             </h3>
             {isOverdueTask && !isCompleted && (
@@ -1737,7 +1737,7 @@ const CommentSidebar = memo(({
                       value={newComment}
                       onChange={(e) => onSetNewComment(e.target.value)}
                       placeholder="Type your comment here..."
-                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[80px] resize-none"
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-20 resize-none"
                       rows={3}
                     />
                   </div>
@@ -4532,7 +4532,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   const isObManagerViewOnly = normalizeRole(currentUser?.role) === 'ob_manager';
   const isAssistantViewOnly = normalizeRole(currentUser?.role) === 'assistant';
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-linear-to-b from-gray-50 to-gray-100">
       {/* Header Section */}
       <div className="bg-white shadow-lg border-b">
         <div className="px-4 py-6 sm:px-6 lg:px-8">
@@ -4642,7 +4642,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                 </button>
                 <button
                   onClick={handleCreateTaskWithHistory}
-                  className="inline-flex items-center px-5 py-3 border border-transparent rounded-xl shadow-sm text-base font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transition-all"
+                  className="inline-flex items-center px-5 py-3 border border-transparent rounded-xl shadow-sm text-base font-medium text-white bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transition-all"
                 >
                   <Plus className="h-5 w-5 mr-2" />
                   Create New Task
@@ -4653,7 +4653,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         ) : (
           <div className="space-y-4">
             {/* Table Header - Desktop */}
-            <div className="hidden md:grid grid-cols-12 gap-3 px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 text-sm font-semibold text-gray-700">
+            <div className="hidden md:grid grid-cols-12 gap-3 px-6 py-4 bg-linear-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 text-sm font-semibold text-gray-700">
               <div className="col-span-1 text-center">#</div>
               <div className="col-span-1 text-center">Status</div>
               <div className="col-span-2">Task Title</div>
@@ -4716,7 +4716,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                   {/* Desktop View */}
                   <div className="hidden md:block">
                     <DesktopTaskItem
-                      index={displayIndex}
+                      index={(currentPageSafe - 1) * TASKS_PER_PAGE + idx + 1}
                       task={task}
                       isToggling={isToggling}
                       brandLabel={brandLabel}

@@ -24,6 +24,8 @@ type Props = {
 const normalizeText = (v: unknown) => (v == null ? '' : String(v)).trim();
 const normalizeCompanyKey = (v: unknown) => normalizeText(v).toLowerCase().replace(/\s+/g, '');
 
+const SPEED_E_COM_FIXED_TASK_TYPES = ['Meeting Pending', 'CP Pending', 'Recharge Negative'];
+
 const AssignPage = ({ currentUser }: Props) => {
   const hasAccess = useCallback((moduleId: string) => {
     const perms = (currentUser as any)?.permissions;
@@ -922,6 +924,147 @@ const AssignPage = ({ currentUser }: Props) => {
       });
 
       if (res?.success) {
+        // If RM/AM are selected for Speed Ecom bulk mode, also assign created brands to those users
+        if (isSpeedEcomBulkMode && (bulkBrandForm.rmEmail || bulkBrandForm.amEmail)) {
+          try {
+            const createdBrands = (res.data || []) as any[];
+            const normalizeEmailSafe = (v: unknown): string => String(v || '').trim().toLowerCase();
+
+            let safeUsers = Array.isArray(companyUsers) ? companyUsers : [];
+            try {
+              const usersRes = await assignService.getCompanyUsers({ companyName: bulkBrandForm.company });
+              if (usersRes?.success && Array.isArray(usersRes.data)) safeUsers = usersRes.data as any;
+            } catch {
+              // ignore - fallback to state
+            }
+            const findUserIdByEmail = (emailRaw: unknown): string => {
+              const target = normalizeEmailSafe(emailRaw);
+              if (!target) return '';
+              const user = safeUsers.find((u: any) => normalizeEmailSafe(u?.email) === target);
+              return (user?.id || user?._id || '').toString();
+            };
+
+            const companyTaskTypesRes = await companyBrandTaskTypeService.getCompanyTaskTypes({
+              companyName: bulkBrandForm.company
+            });
+            const allowedTaskTypeIds = (companyTaskTypesRes?.data?.taskTypes || [])
+              .map((t: any) => String(t?.id || t?._id || '').trim())
+              .filter(Boolean);
+
+            const resolveTaskTypeIdsByNames = (typesList: any[], names: string[]): string[] => {
+              const nameKeys = new Set((names || []).map((n) => normalizeText(n).toLowerCase()).filter(Boolean));
+              if (nameKeys.size === 0) return [];
+              const safe = Array.isArray(typesList) ? typesList : [];
+              return safe
+                .map((t: any) => ({
+                  id: String(t?.id || t?._id || '').trim(),
+                  nameKey: normalizeText(t?.name).toLowerCase(),
+                }))
+                .filter((t: any) => Boolean(t.id) && Boolean(t.nameKey) && nameKeys.has(t.nameKey))
+                .map((t: any) => t.id);
+            };
+
+            let fallbackTaskTypeIds: string[] = [];
+            if (allowedTaskTypeIds.length === 0) {
+              fallbackTaskTypeIds = resolveTaskTypeIdsByNames(taskTypes as any, SPEED_E_COM_FIXED_TASK_TYPES);
+              if (fallbackTaskTypeIds.length === 0) {
+                try {
+                  const taskTypesRes = await taskTypeService.getTaskTypes();
+                  if (taskTypesRes?.success && Array.isArray(taskTypesRes.data)) {
+                    fallbackTaskTypeIds = resolveTaskTypeIdsByNames(taskTypesRes.data as any, SPEED_E_COM_FIXED_TASK_TYPES);
+                  }
+                } catch {
+                  // ignore
+                }
+              }
+            }
+
+            const defaultTaskTypeIds = allowedTaskTypeIds.length > 0 ? allowedTaskTypeIds : fallbackTaskTypeIds;
+            if (defaultTaskTypeIds.length === 0) {
+              toast.error('Brands added, but task types not loaded yet. Please refresh and try again.');
+              throw new Error('No taskTypeIds resolved for assignment');
+            }
+
+            const mappings = createdBrands
+              .map((b: any) => {
+                const brandId = String(b?.id || b?._id || '').trim();
+                const brandName = String(b?.name || b?.brandName || '').trim();
+                if (!brandId || !brandName) return null;
+                return {
+                  brandId,
+                  brandName,
+                  taskTypeIds: defaultTaskTypeIds,
+                };
+              })
+              .filter(Boolean) as Array<{
+                brandId: string;
+                brandName: string;
+                taskTypeIds: string[];
+              }>;
+
+            if (mappings.length > 0) {
+              const tasks: Promise<any>[] = [];
+              const assignedUserIds: string[] = [];
+
+              const rmUserId = findUserIdByEmail(bulkBrandForm.rmEmail);
+              if (bulkBrandForm.rmEmail && !rmUserId) {
+                toast.error('Brands added, but selected RM was not found for this company');
+              }
+              if (rmUserId) {
+                tasks.push(
+                  assignService.bulkUpsertUserMappings({
+                    companyName: bulkBrandForm.company,
+                    userId: rmUserId,
+                    mappings,
+                  })
+                );
+                assignedUserIds.push(rmUserId);
+              }
+
+              const amUserId = findUserIdByEmail(bulkBrandForm.amEmail);
+              if (bulkBrandForm.amEmail && !amUserId) {
+                toast.error('Brands added, but selected AM was not found for this company');
+              }
+              if (amUserId) {
+                tasks.push(
+                  assignService.bulkUpsertUserMappings({
+                    companyName: bulkBrandForm.company,
+                    userId: amUserId,
+                    mappings,
+                  })
+                );
+                assignedUserIds.push(amUserId);
+              }
+
+              if (tasks.length > 0) {
+                await Promise.all(tasks);
+                toast.success('Assigned to selected RM/AM');
+
+                // Notify other parts of the app that assignments have changed
+                try {
+                  assignedUserIds.forEach((uid) => {
+                    const event = new CustomEvent('assignmentsApplied', {
+                      detail: {
+                        companyName: bulkBrandForm.company,
+                        userId: uid,
+                        brandIds: mappings.map((m) => m.brandId),
+                        taskTypeIds: defaultTaskTypeIds,
+                      },
+                    });
+                    window.dispatchEvent(event);
+                  });
+                } catch {
+                  // ignore event dispatch failures
+                }
+              }
+            }
+          } catch (assignError) {
+            console.error('Error assigning brands to RM/AM:', assignError);
+            const msg = (assignError as any)?.response?.data?.message || (assignError as any)?.message;
+            toast.error(msg || 'Brands added, but failed to assign to RM/AM');
+          }
+        }
+
         setShowBulkBrandModal(false);
         setBulkBrandForm((prev) => ({
           ...prev,
@@ -947,7 +1090,7 @@ const AssignPage = ({ currentUser }: Props) => {
     } finally {
       setIsCreatingBulkBrands(false);
     }
-  }, [brands, bulkBrandForm.amEmail, bulkBrandForm.brandNames, bulkBrandForm.company, bulkBrandForm.groupName, bulkBrandForm.groupNumber, bulkBrandForm.rmEmail, canBulkAddBrands, canUseBulkBrandGroupFields, loadBrandsForCompany, normalizeCompanyKey, selectedCompany]);
+  }, [brands, bulkBrandForm.amEmail, bulkBrandForm.brandNames, bulkBrandForm.company, bulkBrandForm.groupName, bulkBrandForm.groupNumber, bulkBrandForm.rmEmail, canBulkAddBrands, canUseBulkBrandGroupFields, companyAllowedTaskTypeIds, companyUsers, loadBrandsForCompany, normalizeCompanyKey, selectedCompany]);
 
   const handleSubmitBulkTaskTypes = useCallback(async () => {
     if (!canBulkAddTaskTypes) {
