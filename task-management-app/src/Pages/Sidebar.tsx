@@ -34,7 +34,9 @@ const Sidebar: React.FC<SidebarProps> = ({
     if (!perms || typeof perms !== 'object') return true;
     if (Object.keys(perms).length === 0) return true;
     if (typeof (perms as any)[moduleId] === 'undefined') return true;
-    const perm = String((perms as any)[moduleId] || '').toLowerCase();
+    const perm = String((perms as any)[moduleId] || '').trim().toLowerCase();
+    if (['deny', 'no', 'false', '0', 'disabled'].includes(perm)) return false;
+    if (['allow', 'allowed', 'yes', 'true', '1'].includes(perm)) return true;
     return perm !== 'deny';
   };
 
@@ -46,7 +48,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const canSeeProfile = hasAccess('profile_page');
   const canSeeAnalyze = hasAccess('reports_analytics');
   const canSeeAssignPage = hasAccess('assign_page');
-  const canSeeReviews = hasAccess('reviews_page') && String((currentUser as any)?.role || '').trim().toLowerCase() === 'ob_manager';
+  const canSeeReviews = hasAccess('reviews_page');
   const canSeeOtherWork = hasAccess('other_work_page');
 
   const getDisplayInitial = () => {

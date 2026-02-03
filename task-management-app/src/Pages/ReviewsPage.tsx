@@ -24,7 +24,17 @@ const performanceLevelForAvg = (avgStars: number) => {
 const ReviewsPage = ({ currentUser }: { currentUser: UserType }) => {
   const role = useMemo(() => normalizeRole(currentUser?.role), [currentUser?.role]);
   const canSubmit = false;
-  const canView = role === 'ob_manager';
+  const canView = useMemo(() => {
+    if (role === 'admin' || role === 'super_admin') return true;
+    const perms = (currentUser as any)?.permissions;
+    if (!perms || typeof perms !== 'object') return true;
+    if (Object.keys(perms).length === 0) return true;
+    if (typeof (perms as any).reviews_page === 'undefined') return true;
+    const perm = String((perms as any).reviews_page || '').trim().toLowerCase();
+    if (['deny', 'no', 'false', '0', 'disabled'].includes(perm)) return false;
+    if (['allow', 'allowed', 'yes', 'true', '1'].includes(perm)) return true;
+    return perm !== 'deny';
+  }, [currentUser, role]);
 
   const [loading, setLoading] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -118,6 +128,7 @@ const ReviewsPage = ({ currentUser }: { currentUser: UserType }) => {
         || ''
       ).trim().toLowerCase();
       if (!email) return;
+      if (email.includes('.deleted.')) return;
 
       const name = String(assignedToUser?.name || email);
       const starsValue = Number((t as any).reviewStars);
@@ -349,8 +360,10 @@ const ReviewsPage = ({ currentUser }: { currentUser: UserType }) => {
                 const isReviewed = reviewedStars != null;
                 const isEditing = editingId === t.id;
 
-                const assigneeEmail = (t as any)?.assignedToUser?.email || (typeof t.assignedTo === 'string' ? t.assignedTo : (t.assignedTo as any)?.email) || '';
-                const creatorEmail = (t as any)?.assignedByUser?.email || (typeof t.assignedBy === 'string' ? t.assignedBy : (t.assignedBy as any)?.email) || '';
+                const assigneeEmailRaw = (t as any)?.assignedToUser?.email || (typeof t.assignedTo === 'string' ? t.assignedTo : (t.assignedTo as any)?.email) || '';
+                const creatorEmailRaw = (t as any)?.assignedByUser?.email || (typeof t.assignedBy === 'string' ? t.assignedBy : (t.assignedBy as any)?.email) || '';
+                const assigneeEmail = String(assigneeEmailRaw || '').split('.deleted.')[0];
+                const creatorEmail = String(creatorEmailRaw || '').split('.deleted.')[0];
                 const reviewComment = String((t as any).reviewComment || '').trim();
 
                 return (
