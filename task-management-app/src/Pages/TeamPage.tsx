@@ -272,10 +272,12 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
     useEffect(() => {
         if (isCurrentUserAdmin) return;
+        const role = (currentUserRole || '').toString().trim().toLowerCase();
+        if (role === 'sbm' || role === 'rm' || role === 'am') return;
         if (filterRole === 'sbm' || filterRole === 'rm' || filterRole === 'am') {
             setFilterRole('all');
         }
-    }, [filterRole, isCurrentUserAdmin]);
+    }, [currentUserRole, filterRole, isCurrentUserAdmin]);
 
     const isCurrentUserSuperAdmin = useMemo(() => {
         return currentUserRole === 'super_admin';
@@ -293,13 +295,46 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
         return currentUserRole === 'ob_manager';
     }, [currentUserRole]);
 
+    const isCurrentUserSbm = useMemo(() => {
+        return currentUserRole === 'sbm';
+    }, [currentUserRole]);
+
+    const isCurrentUserRm = useMemo(() => {
+        return currentUserRole === 'rm';
+    }, [currentUserRole]);
+
+    const isCurrentUserAm = useMemo(() => {
+        return currentUserRole === 'am';
+    }, [currentUserRole]);
+
     const currentUserIdValue = useMemo(() => {
         return (currentUser?.id || (currentUser as any)?._id || '').toString();
     }, [currentUser]);
 
     const canViewTeamPage = useMemo(() => {
-        return isCurrentUserAdmin || isCurrentUserMdManager || isCurrentUserObManager || isCurrentUserManager;
-    }, [isCurrentUserAdmin, isCurrentUserMdManager, isCurrentUserObManager, isCurrentUserManager]);
+        return isCurrentUserAdmin
+            || isCurrentUserMdManager
+            || isCurrentUserObManager
+            || isCurrentUserManager
+            || isCurrentUserSbm
+            || isCurrentUserRm
+            || isCurrentUserAm;
+    }, [isCurrentUserAdmin, isCurrentUserAm, isCurrentUserMdManager, isCurrentUserObManager, isCurrentUserManager, isCurrentUserRm, isCurrentUserSbm]);
+
+    useEffect(() => {
+        if (!canViewTeamPage) return;
+        if (isCurrentUserAdmin) return;
+
+        const userCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim();
+        if (!userCompany) return;
+
+        const currentKey = normalizeText(filterCompany === 'all' ? '' : filterCompany);
+        const desiredKey = normalizeText(userCompany);
+        if (!desiredKey) return;
+        if (currentKey === desiredKey) return;
+
+        setFilterCompany(userCompany);
+    }, [canViewTeamPage, currentUser, filterCompany, isCurrentUserAdmin, normalizeText]);
 
     const canManageUsers = useMemo(() => {
         return isCurrentUserAdmin || isCurrentUserMdManager || isCurrentUserObManager;
@@ -463,7 +498,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
         setCompaniesLoading(true);
         try {
             const role = normalizeRole(currentUserRole);
-            const needsAllowedCompanies = role === 'md_manager' || role === 'ob_manager' || role === 'manager' || role === 'assistant';
+            const needsAllowedCompanies = role === 'md_manager' || role === 'ob_manager' || role === 'manager' || role === 'assistant' || role === 'sbm' || role === 'rm' || role === 'am';
             const res = needsAllowedCompanies
                 ? await companyService.getAllowedCompanies()
                 : await companyService.getCompanies();
@@ -587,7 +622,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
         const companyKey = normalizeText(filterCompany);
         const inCompany = (u: any) => {
             if (filterCompany === 'all') return true;
-            return normalizeText(u?.companyName || '') === companyKey;
+            return normalizeText(u?.companyName || u?.company || '') === companyKey;
         };
 
         if (isCurrentUserAdmin) return (users || []).filter(inCompany);
@@ -638,8 +673,63 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
             }).filter(inCompany);
         }
 
+        if (isCurrentUserSbm) {
+            const myId = (currentUser?.id || (currentUser as any)?._id || '').toString();
+            const rmUsers = (users || []).filter((u: any) => normalizeRole(u?.role) === 'rm' && (u?.managerId || '').toString() === myId);
+            const rmIds = new Set(rmUsers.map((u: any) => (u?.id || (u as any)?._id || '').toString()).filter(Boolean));
+            const amUsers = (users || []).filter((u: any) => normalizeRole(u?.role) === 'am' && rmIds.has((u?.managerId || '').toString()));
+            const self = (users || []).find((u: any) => {
+                const uid = (u?.id || (u as any)?._id || '').toString();
+                return uid && myId && uid === myId;
+            }) || (currentUser as any);
+
+            const list = [self, ...rmUsers, ...amUsers].filter(Boolean);
+            const uniq = Array.from(new Map(list.map((u: any) => [String((u?.id || u?._id || '')), u])).values());
+            return uniq.filter(inCompany);
+        }
+
+        if (isCurrentUserRm) {
+            const myId = (currentUser?.id || (currentUser as any)?._id || '').toString();
+            const sbmId = (currentUser as any)?.managerId?.toString() || '';
+            const sbmUser = (users || []).find((u: any) => {
+                const uid = (u?.id || (u as any)?._id || '').toString();
+                return uid && sbmId && uid === sbmId;
+            });
+            const amUsers = (users || []).filter((u: any) => normalizeRole(u?.role) === 'am' && (u?.managerId || '').toString() === myId);
+            const self = (users || []).find((u: any) => {
+                const uid = (u?.id || (u as any)?._id || '').toString();
+                return uid && myId && uid === myId;
+            }) || (currentUser as any);
+
+            const list = [sbmUser, self, ...amUsers].filter(Boolean);
+            const uniq = Array.from(new Map(list.map((u: any) => [String((u?.id || u?._id || '')), u])).values());
+            return uniq.filter(inCompany);
+        }
+
+        if (isCurrentUserAm) {
+            const myId = (currentUser?.id || (currentUser as any)?._id || '').toString();
+            const rmId = (currentUser as any)?.managerId?.toString() || '';
+            const rmUser = (users || []).find((u: any) => {
+                const uid = (u?.id || (u as any)?._id || '').toString();
+                return uid && rmId && uid === rmId;
+            });
+            const sbmId = (rmUser as any)?.managerId?.toString() || '';
+            const sbmUser = (users || []).find((u: any) => {
+                const uid = (u?.id || (u as any)?._id || '').toString();
+                return uid && sbmId && uid === sbmId;
+            });
+            const self = (users || []).find((u: any) => {
+                const uid = (u?.id || (u as any)?._id || '').toString();
+                return uid && myId && uid === myId;
+            }) || (currentUser as any);
+
+            const list = [sbmUser, rmUser, self].filter(Boolean);
+            const uniq = Array.from(new Map(list.map((u: any) => [String((u?.id || u?._id || '')), u])).values());
+            return uniq.filter(inCompany);
+        }
+
         return [];
-    }, [canViewTeamPage, currentUser, filterCompany, isCurrentUserAdmin, isCurrentUserMdManager, isCurrentUserManager, isCurrentUserObManager, users, normalizeRole, normalizeText]);
+    }, [canViewTeamPage, currentUser, filterCompany, isCurrentUserAdmin, isCurrentUserAm, isCurrentUserMdManager, isCurrentUserManager, isCurrentUserObManager, isCurrentUserRm, isCurrentUserSbm, users, normalizeRole, normalizeText]);
 
     useEffect(() => {
         if (!isCurrentUserManager) return;
@@ -648,8 +738,6 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
     }, [filterRole, isCurrentUserManager]);
 
     const companyScopedUsers = useMemo(() => {
-        if (!isCurrentUserAdmin) return visibleUsers;
-
         const selectedCompanyKey = normalizeText(filterCompany === 'all' ? '' : filterCompany);
         const isMdImpexSelected = selectedCompanyKey.includes('impex') || selectedCompanyKey === normalizeText(MD_IMPEX_COMPANY_NAME);
         const isSpeedEComSelected = selectedCompanyKey.includes('speed') && (selectedCompanyKey.includes('com') || selectedCompanyKey.includes('eom'));
@@ -665,13 +753,13 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
         }
 
         return visibleUsers;
-    }, [MD_IMPEX_COMPANY_NAME, SPEED_E_COM_COMPANY_NAME, filterCompany, isCurrentUserAdmin, normalizeRole, normalizeText, visibleUsers]);
+    }, [MD_IMPEX_COMPANY_NAME, SPEED_E_COM_COMPANY_NAME, filterCompany, normalizeRole, normalizeText, visibleUsers]);
 
     // Filter users based on clicked stat
     const getFilteredUsersByRole = useMemo(() => {
         if (filterRole === 'all') return companyScopedUsers;
         if (filterRole === 'super_admin') return companyScopedUsers.filter(u => normalizeRole(u.role) === 'super_admin');
-        if (filterRole === 'admin') return companyScopedUsers.filter(u => normalizeRole(u.role) === 'admin'); 
+        if (filterRole === 'admin') return companyScopedUsers.filter(u => normalizeRole(u.role) === 'admin');
         if (filterRole === 'md_manager') return companyScopedUsers.filter(u => normalizeRole(u.role) === 'md_manager');
         if (filterRole === 'ob_manager') return companyScopedUsers.filter(u => normalizeRole(u.role) === 'ob_manager');
         if (filterRole === 'manager') return companyScopedUsers.filter(u => normalizeRole(u.role) === 'manager');
@@ -963,7 +1051,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
     // Add user function
     const handleAddClick = () => {
-        if (!canViewTeamPage) {
+        if (!canManageUsers && !canManageUsersAsManager) {
             toast.error('You do not have permission to add users');
             return;
         }
@@ -996,7 +1084,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
     };
 
     const handleSaveNewUser = async () => {
-        if (!canViewTeamPage) {
+        if (!canManageUsers && !canManageUsersAsManager) {
             toast.error('You do not have permission to add users');
             return;
         }
@@ -1255,13 +1343,15 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                                 ))}
                             </select>
                         )}
-                        <button
-                            onClick={handleAddClick}
-                            className="inline-flex items-center px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
-                        >
-                            <UserPlus className="h-4 w-4 mr-2" />
-                            Add User
-                        </button>
+                        {(canManageUsers || canManageUsersAsManager) && (
+                            <button
+                                onClick={handleAddClick}
+                                className="inline-flex items-center px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                            >
+                                <UserPlus className="h-4 w-4 mr-2" />
+                                Add User
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -1348,6 +1438,87 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                             >
                                 <div className="text-3xl font-bold text-emerald-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'am').length}</div>
                                 <div className="text-sm text-gray-600 mt-1">AM</div>
+                            </button>
+                        </div>
+                    );
+                }
+
+                if (isSpeedEComSelected) {
+                    return (
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <button
+                                onClick={() => setFilterRole('all')}
+                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'all' ? 'bg-blue-50 border-blue-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-blue-50 hover:border-blue-100'}`}
+                            >
+                                <div className="text-3xl font-bold text-gray-900">{companyScopedUsers.length}</div>
+                                <div className="text-sm text-gray-600 mt-1">Total Members</div>
+                            </button>
+                            <button
+                                onClick={() => setFilterRole('sbm')}
+                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'sbm' ? 'bg-amber-50 border-amber-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-amber-50 hover:border-amber-100'}`}
+                            >
+                                <div className="text-3xl font-bold text-amber-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'sbm').length}</div>
+                                <div className="text-sm text-gray-600 mt-1">SBM</div>
+                            </button>
+                            <button
+                                onClick={() => setFilterRole('rm')}
+                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'rm' ? 'bg-cyan-50 border-cyan-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-cyan-50 hover:border-cyan-100'}`}
+                            >
+                                <div className="text-3xl font-bold text-cyan-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'rm').length}</div>
+                                <div className="text-sm text-gray-600 mt-1">RM</div>
+                            </button>
+                            <button
+                                onClick={() => setFilterRole('am')}
+                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'am' ? 'bg-emerald-50 border-emerald-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-emerald-50 hover:border-emerald-100'}`}
+                            >
+                                <div className="text-3xl font-bold text-emerald-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'am').length}</div>
+                                <div className="text-sm text-gray-600 mt-1">AM</div>
+                            </button>
+                        </div>
+                    );
+                }
+
+                if (isMdImpexSelected) {
+                    return (
+                        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-4">
+                            <button
+                                onClick={() => setFilterRole('all')}
+                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'all' ? 'bg-blue-50 border-blue-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-blue-50 hover:border-blue-100'}`}
+                            >
+                                <div className="text-3xl font-bold text-gray-900">{companyScopedUsers.length}</div>
+                                <div className="text-sm text-gray-600 mt-1">Total Members</div>
+                            </button>
+                            {!isCurrentUserManager && (
+                                <button
+                                    onClick={() => setFilterRole('md_manager')}
+                                    className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'md_manager' ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-indigo-50 hover:border-indigo-100'}`}
+                                >
+                                    <div className="text-3xl font-bold text-indigo-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'md_manager').length}</div>
+                                    <div className="text-sm text-gray-600 mt-1">MD Manager</div>
+                                </button>
+                            )}
+                            {!isCurrentUserManager && (
+                                <button
+                                    onClick={() => setFilterRole('ob_manager')}
+                                    className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'ob_manager' ? 'bg-violet-50 border-violet-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-violet-50 hover:border-violet-100'}`}
+                                >
+                                    <div className="text-3xl font-bold text-violet-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'ob_manager').length}</div>
+                                    <div className="text-sm text-gray-600 mt-1">OB Manager</div>
+                                </button>
+                            )}
+                            <button
+                                onClick={() => setFilterRole('manager')}
+                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'manager' ? 'bg-purple-50 border-purple-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-purple-50 hover:border-purple-100'}`}
+                            >
+                                <div className="text-3xl font-bold text-purple-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'manager').length}</div>
+                                <div className="text-sm text-gray-600 mt-1">Managers</div>
+                            </button>
+                            <button
+                                onClick={() => setFilterRole('assistant')}
+                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'assistant' ? 'bg-green-50 border-green-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-green-50 hover:border-green-100'}`}
+                            >
+                                <div className="text-3xl font-bold text-green-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'assistant').length}</div>
+                                <div className="text-sm text-gray-600 mt-1">Assistants</div>
                             </button>
                         </div>
                     );

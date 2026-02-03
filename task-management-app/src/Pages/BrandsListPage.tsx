@@ -62,6 +62,8 @@ interface BrandStats {
 
 type TaskDisplayType = 'all' | 'total-brands' | 'active-brands' | 'total-tasks' | null;
 
+const BRANDS_PER_PAGE = 20;
+
 const BrandsListPage: React.FC<BrandsListPageProps> = ({
     isSidebarCollapsed = false,
     onSelectBrand,
@@ -133,6 +135,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
     const [selectedCompany, setSelectedCompany] = useState<any | null>(null);
     const [showDeletedBrands, setShowDeletedBrands] = useState(false);
     const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
 
     const effectiveTasks = useMemo(() => {
         const safePropTasks = Array.isArray(propTasks) ? propTasks : [];
@@ -316,8 +319,9 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
             (reportTasks || []).forEach((t: any) => {
                 const brandId = String(t?.brandId || '').trim();
                 if (brandId) assignedFromTasks.add(brandId);
-                const brandName = String((typeof t?.brand === 'string' ? t.brand : (t?.brand?.name || t?.brandName || '')) || '').trim();
+                const brandName = String(t?.brandName || t?.brand || '').trim();
                 const companyName = String(t?.companyName || t?.company || '').trim();
+
                 if (brandName || companyName) {
                     assignedFromTasks.add(`${normalize(brandName)}|${normalize(companyName)}`);
                 }
@@ -365,7 +369,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         const roleById = new Map<string, string>();
         (Array.isArray(allUsers) ? allUsers : []).forEach((u: any) => {
             const email = String(u?.email || '').trim().toLowerCase();
-            const id = String(u?.id || u?._id || '').trim();
+            const id = String(u?.id || u?._id || '');
             const r = String(u?.role || '').trim().toLowerCase();
             if (email) roleByEmail.set(email, r);
             if (id) roleById.set(id, r);
@@ -1194,6 +1198,55 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         return list;
     }, [accessibleBrands, filters]);
 
+    const getBrandLabelForFilter = (brandName: string): string => {
+        const name = String(brandName || '').trim();
+        if (!name) return '';
+
+        const candidate = (accessibleBrands || []).find((b: any) => {
+            const n = String(b?.name || '').trim().toLowerCase();
+            if (n !== name.toLowerCase()) return false;
+
+            // If company filter is active, prefer the brand in that company
+            if (filters.company !== 'all') {
+                return String(b?.company || '').trim() === String(filters.company || '').trim();
+            }
+
+            return true;
+        });
+
+        if (!candidate) return name;
+
+        const company = String((candidate as any).company || '').trim();
+        const groupNumber = String((candidate as any).groupNumber || '').trim();
+
+        // Your logic: only prepend groupNumber for speed Ecom
+        if (company === 'speed Ecom' && groupNumber) {
+            return `${groupNumber} - ${name}`;
+        }
+
+        return name;
+    };
+
+    const filteredBrands = getFilteredBrands();
+    const totalBrands = filteredBrands.length;
+    const totalPages = Math.max(1, Math.ceil(totalBrands / BRANDS_PER_PAGE));
+    const currentPageSafe = Math.min(currentPage, totalPages);
+
+    const paginatedBrands = useMemo(() => {
+        if (!filteredBrands.length) return [] as Brand[];
+        const startIndex = (currentPageSafe - 1) * BRANDS_PER_PAGE;
+        const endIndex = startIndex + BRANDS_PER_PAGE;
+        return filteredBrands.slice(startIndex, endIndex);
+    }, [filteredBrands, currentPageSafe]);
+
+    const startItemIndex = totalBrands === 0 ? 0 : (currentPageSafe - 1) * BRANDS_PER_PAGE + 1;
+    const endItemIndex = totalBrands === 0 ? 0 : Math.min(startItemIndex + BRANDS_PER_PAGE - 1, totalBrands);
+
+    useEffect(() => {
+        // Reset to first page when filters or brand set change
+        setCurrentPage(1);
+    }, [filters, accessibleBrands]);
+
     const getDisplayedTasks = useCallback((): Task[] => {
         const tasks: Task[] = Array.isArray(reportTasks) ? reportTasks : [];
         if (!taskDisplayType) return [];
@@ -1531,8 +1584,6 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         `;
     }, [isSidebarCollapsed]);
 
-    const filteredBrands = getFilteredBrands();
-
     // Loading Skeleton Component
     const LoadingSkeleton = () => (
         <div className="min-h-screen bg-gray-50">
@@ -1850,7 +1901,9 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
 
                         <div className="flex items-center gap-3">
                             <div className="text-sm text-gray-500">
-                                Showing {filteredBrands.length} of {accessibleBrands.length} brands
+                                {filteredBrands.length === 0
+                                    ? 'No brands to display'
+                                    : `Showing ${startItemIndex}-${endItemIndex} of ${filteredBrands.length} brands`}
                             </div>
                             <div className="flex items-center bg-gray-100 rounded-lg p-1">
                                 <button
@@ -1955,9 +2008,9 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                         className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                     >
                                         <option value="all">All Brands</option>
-                                        {availableBrandsForFilter.map(brandName => (
+                                        {availableBrandsForFilter.map((brandName) => (
                                             <option key={brandName} value={brandName}>
-                                                {brandName}
+                                                {getBrandLabelForFilter(brandName)}
                                             </option>
                                         ))}
                                     </select>
@@ -1995,7 +2048,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                         ) : viewMode === 'grid' ? (
                             // Grid View
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {filteredBrands.map((brand) => {
+                                {paginatedBrands.map((brand) => {
                                     const taskCount = brandTaskCounts.get(String(brand.id)) || 0;
                                     return (
                                         <div
@@ -2015,7 +2068,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                                     <div>
                                                         <div className="flex items-center gap-2">
                                                             <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                                                                {brand.name}
+                                                                {brand.company == "speed Ecom" ? brand.groupNumber + " - " + brand.name : brand.name}
                                                             </h3>
                                                             {isNewBrand(brand) && (
                                                                 <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full animate-pulse">
@@ -2142,7 +2195,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                             </tr>
                                         </thead>
                                         <tbody className="bg-white divide-y divide-gray-200">
-                                            {filteredBrands.map((brand) => {
+                                            {paginatedBrands.map((brand) => {
                                                 const taskCount = brandTaskCounts.get(String(brand.id)) || 0;
                                                 return (
                                                     <tr
@@ -2227,6 +2280,36 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                             })}
                                         </tbody>
                                     </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Pagination Controls for Brands */}
+                        {filteredBrands.length > 0 && (
+                            <div className="flex flex-col md:flex-row items-center justify-between gap-3 pt-4">
+                                <div className="text-sm text-gray-500">
+                                    {`Showing ${startItemIndex}-${endItemIndex} of ${filteredBrands.length} brands`}
+                                </div>
+                                <div className="inline-flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                                        disabled={currentPageSafe === 1}
+                                        className="px-3 py-1.5 text-sm rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Previous
+                                    </button>
+                                    <span className="text-sm text-gray-600">
+                                        Page {currentPageSafe} of {totalPages}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                                        disabled={currentPageSafe === totalPages}
+                                        className="px-3 py-1.5 text-sm rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Next
+                                    </button>
                                 </div>
                             </div>
                         )}

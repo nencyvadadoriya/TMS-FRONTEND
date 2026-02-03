@@ -128,7 +128,9 @@ type AccessPageProps = {
 const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, onRefreshCurrentUser }) => {
 
     const accessPermission = ((currentUser as any)?.permissions?.access_management || 'deny').toString().toLowerCase();
-    const canOpenAccessPage = accessPermission !== 'deny';
+    const currentRole = normalizeRole((currentUser as any)?.role);
+    const isAdminUser = currentRole === 'admin' || currentRole === 'super_admin';
+    const canOpenAccessPage = isAdminUser && accessPermission !== 'deny';
 
     if (!canOpenAccessPage) {
         return (
@@ -394,7 +396,7 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
         return groups;
     }, [filteredRows]);
 
-    const canManageAccess = canOpenAccessPage;
+    const canManageAccess = isAdminUser && canOpenAccessPage;
 
     const selectedUser = useMemo(() => {
         const uid = selectedUserId.toString();
@@ -825,28 +827,47 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
                 </div>
 
                 <div className="mb-8 bg-white rounded-2xl border border-gray-200 shadow-lg overflow-hidden">
+                    <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-indigo-50 via-white to-transparent">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div>
+                                <p className="text-xs font-semibold tracking-wide text-indigo-600 uppercase">Role &amp; User Selection</p>
+                                <p className="text-sm text-gray-600 mt-1">Choose a role template and target user to quickly apply permission presets.</p>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                                <Shield className="h-4 w-4 text-indigo-500" />
+                                {selectedUser && (
+                                    <span className="hidden sm:inline">
+                                        Applying to <span className="font-semibold text-gray-800">{selectedUser.name || selectedUser.email || 'Selected user'}</span>
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="p-6">
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                             <div className="lg:col-span-4">
-                                <label className="block text-sm font-semibold text-gray-900 flex items-center gap-2 mb-2">
+                                <label className="block text-sm font-semibold text-gray-900 flex items-center gap-2 mb-1">
                                     <Filter className="h-4 w-4 text-indigo-600" />
                                     Select Role Template
                                 </label>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                    {(roles.length > 0 ? roles : [{ key: 'admin', name: 'Administrator' }, { key: 'manager', name: 'Manager' }, { key: 'assistant', name: 'Assistant' }]).map((r) => {
-                                        const key = normalizeRole(r.key);
-                                        const isCore = key === 'admin' || key === 'manager' || key === 'assistant';
-                                        return (
-                                            <div key={r.key}>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setSelectedRoleTemplate(r.key)}
-                                                    className={`relative w-full px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${canManageAccess && !isCore ? 'pr-16' : ''} ${normalizeRole(selectedRoleTemplate) === normalizeRole(r.key)
-                                                        ? 'bg-indigo-100 text-indigo-700 border-2 border-indigo-300'
-                                                        : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-                                                        }`}
-                                                >
-                                                    <span className="capitalize  ">{(r.name || r.key)}</span>
+                                <p className="text-xs text-gray-500 mb-3">Step 1: Pick a base role whose permissions you want to start from.</p>
+                                <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/80 p-3">
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                        {(roles.length > 0 ? roles : [{ key: 'admin', name: 'Administrator' }, { key: 'manager', name: 'Manager' }, { key: 'assistant', name: 'Assistant' }]).map((r) => {
+                                            const key = normalizeRole(r.key);
+                                            const isCore = key === 'admin' || key === 'manager' || key === 'assistant';
+                                            return (
+                                                <div key={r.key}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setSelectedRoleTemplate(r.key)}
+                                                        className={`group relative w-full px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${canManageAccess && !isCore ? 'pr-16' : ''} ${normalizeRole(selectedRoleTemplate) === normalizeRole(r.key)
+                                                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 border border-indigo-600'
+                                                            : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-indigo-200'
+                                                            }`}
+                                                    >
+                                                        <span className="capitalize  ">{(r.name || r.key)}</span>
 
                                                     {canManageAccess && !isCore && (
                                                         <span className="absolute top-1 right-1 flex items-center gap-1">
@@ -880,50 +901,54 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
                                             </div>
                                         );
                                     })}
+                                    </div>
                                 </div>
                             </div>
 
                             <div className="lg:col-span-8">
-                                <label className="block text-sm font-semibold text-gray-900 flex items-center gap-2 mb-2">
+                                <label className="block text-sm font-semibold text-gray-900 flex items-center gap-2 mb-1">
                                     <Users className="h-4 w-4 text-indigo-600" />
                                     Select User
                                 </label>
-                                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                                    <div className="relative flex-1">
-                                        <ChevronRight className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-indigo-600" />
-                                        <select
-                                            value={selectedUserId}
-                                            onChange={(e) => setSelectedUserId(e.target.value)}
-                                            className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                                        >
-                                            {filteredUsersByRole.map(u => {
-                                                const uid = (u.id || (u as any)._id || '').toString();
-                                                return (
-                                                    <option key={uid} value={uid}>
-                                                        {u.name || 'User'} ({u.email || '-'})
-                                                    </option>
-                                                );
-                                            })}
-                                        </select>
-                                    </div>
-
-                                    {canManageAccess && (
-                                        <div className="flex items-center gap-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => applyTemplateToSelectedUser({ overwrite: false })}
-                                                disabled={applyingTemplate || !selectedUser}
-                                                className={`inline-flex items-center justify-center px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${applyingTemplate || !selectedUser
-                                                    ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
-                                                    : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm'
-                                                    }`}
+                                <p className="text-xs text-gray-500 mb-3">Step 2: Select the user who should receive these permissions and apply the template.</p>
+                                <div className="rounded-2xl border border-gray-100 bg-gray-50/80 p-3">
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                                        <div className="relative flex-1">
+                                            <ChevronRight className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-indigo-600" />
+                                            <select
+                                                value={selectedUserId}
+                                                onChange={(e) => setSelectedUserId(e.target.value)}
+                                                className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                             >
-                                                {applyingTemplate ? (
-                                                    <span className="flex items-center gap-2"><RefreshCw className="h-4 w-4 animate-spin" />Applying...</span>
-                                                ) : 'Apply'}
-                                            </button>
+                                                {filteredUsersByRole.map(u => {
+                                                    const uid = (u.id || (u as any)._id || '').toString();
+                                                    return (
+                                                        <option key={uid} value={uid}>
+                                                            {u.name || 'User'} ({u.email || '-'})
+                                                        </option>
+                                                    );
+                                                })}
+                                            </select>
                                         </div>
-                                    )}
+
+                                        {canManageAccess && (
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => applyTemplateToSelectedUser({ overwrite: false })}
+                                                    disabled={applyingTemplate || !selectedUser}
+                                                    className={`inline-flex items-center justify-center px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${applyingTemplate || !selectedUser
+                                                        ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+                                                        : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm shadow-indigo-200'
+                                                        }`}
+                                                >
+                                                    {applyingTemplate ? (
+                                                        <span className="flex items-center gap-2"><RefreshCw className="h-4 w-4 animate-spin" />Applying...</span>
+                                                    ) : 'Apply'}
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>

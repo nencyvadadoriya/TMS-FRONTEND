@@ -1171,6 +1171,80 @@ const DashboardPage = () => {
         });
     }, [assistantManagerEmail, currentUser?.email, currentUser?.role, tasks]);
 
+    const availableBrands = useMemo(() => {
+        const getCompanyName = (b: any): string => {
+            const raw = b?.company ?? b?.companyName;
+            if (typeof raw === 'string') return raw;
+            if (raw && typeof raw === 'object') {
+                return String(raw?.name || raw?.companyName || raw?.title || '').trim();
+            }
+            return '';
+        };
+
+        const getBrandName = (b: any): string => {
+            return String(b?.name || b?.brandName || b?.brand || '').trim();
+        };
+
+        const role = (currentUser?.role || '').toString().trim().toLowerCase();
+        if (role === 'assistant') {
+            const companyKey = normalizeText(filters.company === 'all' ? '' : filters.company);
+            const taskBrands = (assistantScopedTasks || [])
+                .filter((t: any) => {
+                    if (!companyKey) return true;
+                    const taskCompany = normalizeText((t as any)?.companyName || (t as any)?.company);
+                    return taskCompany === companyKey;
+                })
+                .map((t: any) => String((t as any)?.brand || '').trim())
+                .filter(Boolean);
+            return Array.from(new Set(taskBrands)).sort((a, b) => a.localeCompare(b));
+        }
+
+        if (filters.company === 'all') {
+            return brands
+                .map((brand: any) => getBrandName(brand))
+                .filter(Boolean)
+                .sort();
+        }
+
+        const companyKey = normalizeText(filters.company);
+        return brands
+            .filter((brand: any) => normalizeText(getCompanyName(brand)) === companyKey)
+            .map((brand: any) => getBrandName(brand))
+            .filter(Boolean)
+            .sort();
+    }, [assistantScopedTasks, brands, currentUser?.role, filters.company, normalizeText]);
+
+    const getBrandLabelForFilter = useCallback((brandName: string): string => {
+        const plain = String(brandName || '').trim();
+        if (!plain) return '';
+
+        const normalizedName = normalizeText(plain);
+        const companyFilterKey = normalizeCompanyKey(filters.company === 'all' ? '' : filters.company);
+
+        let candidates = (brands || []).filter((b: any) =>
+            normalizeText(getBrandNameSafe(b)) === normalizedName
+        );
+
+        if (companyFilterKey && companyFilterKey !== 'all') {
+            const byCompany = candidates.filter((b: any) =>
+                normalizeCompanyKey(getBrandCompanyNameSafe(b)) === companyFilterKey
+            );
+            if (byCompany.length) candidates = byCompany;
+        }
+
+        if (!candidates.length) return plain;
+
+        const brandDoc: any = candidates[0];
+        const companyKey = normalizeCompanyKey(getBrandCompanyNameSafe(brandDoc));
+        const groupNumber = String(brandDoc?.groupNumber || '').trim();
+
+        if (companyKey === SPEED_E_COM_COMPANY_KEY && groupNumber) {
+            return `${groupNumber} - ${plain}`;
+        }
+
+        return plain;
+    }, [brands, filters.company, normalizeCompanyKey, normalizeText]);
+
     const availableTaskTypesForFilters = useMemo(() => {
         const brandAssignmentLabel = (taskTypes || []).find((t: any) => {
             const name = (t?.name || '').toString().trim().toLowerCase();
@@ -1479,52 +1553,6 @@ const DashboardPage = () => {
         void fetchUserBrandTaskTypeMappingsCached(editFormData.companyName, editFormData.assignedTo);
     }, [editFormData.assignedTo, editFormData.companyName, fetchUserBrandTaskTypeMappingsCached, showEditTaskModal]);
 
-    useEffect(() => {
-        if (filters.company === 'all' || filters.brand === 'all') return;
-        void fetchCompanyBrandTaskTypeMapping(filters.company, filters.brand);
-    }, [fetchCompanyBrandTaskTypeMapping, filters.brand, filters.company]);
-
-    const availableBrands = useMemo(() => {
-        const getCompanyName = (b: any): string => {
-            const raw = b?.company ?? b?.companyName;
-            if (typeof raw === 'string') return raw;
-            if (raw && typeof raw === 'object') {
-                return String(raw?.name || raw?.companyName || raw?.title || '').trim();
-            }
-            return '';
-        };
-
-        const getBrandName = (b: any): string => {
-            return String(b?.name || b?.brandName || b?.brand || '').trim();
-        };
-
-        const role = (currentUser?.role || '').toString().trim().toLowerCase();
-        if (role === 'assistant') {
-            const companyKey = normalizeText(filters.company === 'all' ? '' : filters.company);
-            const taskBrands = (assistantScopedTasks || [])
-                .filter((t: any) => {
-                    if (!companyKey) return true;
-                    const taskCompany = normalizeText((t as any)?.companyName || (t as any)?.company);
-                    return taskCompany === companyKey;
-                })
-                .map((t: any) => String((t as any)?.brand || '').trim())
-                .filter(Boolean);
-            return Array.from(new Set(taskBrands)).sort((a, b) => a.localeCompare(b));
-        }
-
-        if (filters.company === 'all') {
-            return brands
-                .map((brand: any) => getBrandName(brand))
-                .filter(Boolean)
-                .sort();
-        }
-        const companyKey = normalizeText(filters.company);
-        return brands
-            .filter((brand: any) => normalizeText(getCompanyName(brand)) === companyKey)
-            .map((brand: any) => getBrandName(brand))
-            .filter(Boolean)
-            .sort();
-    }, [assistantScopedTasks, brands, currentUser?.role, filters.company, normalizeText]);
 
     const formatDate = useCallback((dateString: string) => {
         try {
@@ -4152,6 +4180,26 @@ const DashboardPage = () => {
             return;
         }
 
+        const company = (newTask.companyName || '').toString().trim();
+        const normalizedCompany = normalizeText(company);
+        const normalizedName = normalizeText(name);
+
+        const existingBrands = Array.isArray(apiBrands) ? apiBrands : [];
+        const hasDuplicate = existingBrands.some((b: any) => {
+            const bCompany = normalizeText((b?.company || b?.companyName || '') as string);
+            if (bCompany !== normalizedCompany) return false;
+
+            const bName = normalizeText((b?.name || b?.brandName || b?.brand || '') as string);
+            return bName === normalizedName;
+        });
+
+        if (hasDuplicate) {
+            const confirmed = window.confirm(`Brand "${name}" already exists for company "${company}". Do you still want to use it?`);
+            if (!confirmed) {
+                return;
+            }
+        }
+
         setIsCreatingManagerBrand(true);
         try {
             const res = await brandService.createBrand({
@@ -4182,7 +4230,7 @@ const DashboardPage = () => {
         } finally {
             setIsCreatingManagerBrand(false);
         }
-    }, [handleInputChange, managerBrandName, newTask.companyName]);
+    }, [apiBrands, handleInputChange, managerBrandName, newTask.companyName, normalizeText]);
 
     if (loading) {
         return <DashboardPageSkeleton />;
@@ -4252,7 +4300,7 @@ const DashboardPage = () => {
                                                 </button>
                                                 <button
                                                     onClick={() => setCurrentView('all-tasks')}
-                                                    className="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-xl shadow-sm text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+                                                    className="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-xl shadow-sm text-white bg-linear-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
                                                 >
                                                     <ListTodo className="mr-2 h-4 w-4" />
                                                     View All Tasks
@@ -4275,6 +4323,7 @@ const DashboardPage = () => {
                                         availableCompanies={availableCompanies}
                                         availableTaskTypes={availableTaskTypesForFilters}
                                         availableBrands={availableBrands}
+                                        getBrandLabel={getBrandLabelForFilter}
                                         users={users}
                                         currentUser={currentUser}
                                         onFilterChange={handleAdvancedFilterChange}
@@ -4506,7 +4555,7 @@ const DashboardPage = () => {
                                                                 ? 'text-rose-600'
                                                                 : 'text-gray-900'
                                                                 }`}>
-                                                                {formatDate(task.dueDate)}
+                                                                {   (task.dueDate)}
                                                             </span>
                                                         </div>
                                                         <div className="flex items-center justify-between text-sm">

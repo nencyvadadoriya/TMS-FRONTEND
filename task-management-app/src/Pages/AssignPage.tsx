@@ -862,6 +862,47 @@ const AssignPage = ({ currentUser }: Props) => {
 
     if (requestedBrands.length === 0) return;
 
+    const existingBrands = Array.isArray(brands) ? brands : [];
+    if (existingBrands.length > 0) {
+      const company = (bulkBrandForm.company || '').toString().trim();
+      const companyKeyForCompare = normalizeCompanyKey(company);
+      const duplicateMessages: string[] = [];
+
+      requestedBrands.forEach((row, index) => {
+        const brandName = (row.brandName || '').toString().trim();
+        const groupNumber = (row.groupNumber || '').toString().trim();
+        const nameKey = normalizeText(brandName).toLowerCase();
+        const groupKey = normalizeText(groupNumber).toLowerCase();
+
+        if (!nameKey && !groupKey) return;
+
+        const match = existingBrands.find((b: any) => {
+          const bCompanyKey = normalizeCompanyKey((b?.company || b?.companyName || '') as string);
+          if (bCompanyKey !== companyKeyForCompare) return false;
+
+          const bNameKey = normalizeText((b?.name || b?.brandName || b?.brand || '') as string).toLowerCase();
+          const bGroupKey = normalizeText((b?.groupNumber || '') as string).toLowerCase();
+
+          const nameMatches = nameKey && bNameKey === nameKey;
+          const groupMatches = groupKey && bGroupKey === groupKey;
+          return nameMatches || groupMatches;
+        });
+
+        if (match) {
+          const label = groupNumber ? `${groupNumber} - ${brandName}` : brandName || '(Unnamed Brand)';
+          duplicateMessages.push(`Row ${index + 1}: ${label} already exists for ${company}`);
+        }
+      });
+
+      if (duplicateMessages.length > 0) {
+        const message = `${duplicateMessages.join('\n')}\n\nDo you still want to proceed and upsert these brands?`;
+        const confirmed = window.confirm(message);
+        if (!confirmed) {
+          return;
+        }
+      }
+    }
+
     setIsCreatingBulkBrands(true);
     try {
       const res = await brandService.bulkUpsertBrands({
@@ -906,7 +947,7 @@ const AssignPage = ({ currentUser }: Props) => {
     } finally {
       setIsCreatingBulkBrands(false);
     }
-  }, [bulkBrandForm.amEmail, bulkBrandForm.brandNames, bulkBrandForm.company, bulkBrandForm.groupName, bulkBrandForm.groupNumber, bulkBrandForm.rmEmail, canBulkAddBrands, canUseBulkBrandGroupFields, loadBrandsForCompany, selectedCompany]);
+  }, [brands, bulkBrandForm.amEmail, bulkBrandForm.brandNames, bulkBrandForm.company, bulkBrandForm.groupName, bulkBrandForm.groupNumber, bulkBrandForm.rmEmail, canBulkAddBrands, canUseBulkBrandGroupFields, loadBrandsForCompany, normalizeCompanyKey, selectedCompany]);
 
   const handleSubmitBulkTaskTypes = useCallback(async () => {
     if (!canBulkAddTaskTypes) {
@@ -964,6 +1005,26 @@ const AssignPage = ({ currentUser }: Props) => {
       return;
     }
 
+    const company = (selectedCompany || '').toString().trim();
+    const companyKeyForCompare = normalizeCompanyKey(company);
+    const normalizedName = normalizeText(name).toLowerCase();
+
+    const existingBrands = Array.isArray(brands) ? brands : [];
+    const hasDuplicate = existingBrands.some((b: any) => {
+      const bCompanyKey = normalizeCompanyKey((b?.company || b?.companyName || '') as string);
+      if (bCompanyKey !== companyKeyForCompare) return false;
+
+      const bNameKey = normalizeText((b?.name || b?.brandName || b?.brand || '') as string).toLowerCase();
+      return bNameKey === normalizedName;
+    });
+
+    if (hasDuplicate) {
+      const confirmed = window.confirm(`Brand "${name}" already exists for company "${company}". Do you still want to use it?`);
+      if (!confirmed) {
+        return;
+      }
+    }
+
     setIsCreatingManagerBrand(true);
     try {
       const res = await brandService.createBrand({ name, company: selectedCompany, status: 'active' });
@@ -986,7 +1047,7 @@ const AssignPage = ({ currentUser }: Props) => {
     } finally {
       setIsCreatingManagerBrand(false);
     }
-  }, [loadBrandsForCompany, managerBrandName, selectedCompany]);
+  }, [brands, loadBrandsForCompany, managerBrandName, normalizeCompanyKey, selectedCompany]);
 
   if (!canOpen) {
     return (

@@ -14,6 +14,7 @@ interface AdvancedFiltersProps {
     availableCompanies: string[];
     availableTaskTypes: string[];
     availableBrands: string[];
+    getBrandLabel?: (brandName: string) => string;
     users?: Array<{ id: string; name: string; email: string }>;
     currentUser?: { email: string; role: string };
     onFilterChange: (filterType: string, value: string) => void;
@@ -28,6 +29,7 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
     availableCompanies: _availableCompanies,
     availableTaskTypes,
     availableBrands,
+    getBrandLabel,
     onFilterChange,
     onResetFilters,
     onApplyFilters,
@@ -48,6 +50,14 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             .filter(Boolean)
             .map(word => word.charAt(0).toUpperCase() + word.slice(1))
             .join(' ');
+    };
+
+    const formatBrandOptionLabel = (brand: string) => {
+        if (typeof getBrandLabel === 'function') {
+            const label = getBrandLabel(brand);
+            if (label) return label;
+        }
+        return formatLabel(brand);
     };
 
     // Calculate active filter count
@@ -193,7 +203,7 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                         </option>
                         {availableBrands.map(brand => (
                             <option key={brand} value={brand}>
-                                {formatLabel(brand)}
+                                {formatBrandOptionLabel(brand)}
                             </option>
                         ))}
                     </select>

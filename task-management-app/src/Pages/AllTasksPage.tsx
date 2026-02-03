@@ -40,6 +40,7 @@ import AdvancedFiltersPanel from './AdvancedFilters';
 
 const SPEED_E_COM_COMPANY_KEY = 'speed e com';
 const SPEED_E_COM_FIXED_TASK_TYPES = ['Meeting Pending', 'CP Pending', 'Recharge Negative'];
+const TASKS_PER_PAGE = 20;
 
 // ==================== TYPES ====================
 interface AllTasksPageProps {
@@ -201,6 +202,7 @@ interface DesktopTaskItemProps {
   index: number;
   task: Task;
   isToggling: boolean;
+  brandLabel: string;
   currentUser: UserType;
   formatDate: (date: string) => string;
   isOverdue: (dueDate: string, status: string) => boolean;
@@ -1331,6 +1333,7 @@ const DesktopTaskItem = memo(({
   index,
   task,
   isToggling,
+  brandLabel,
   formatDate,
   isOverdue,
   getTaskBorderColor,
@@ -1372,7 +1375,6 @@ const DesktopTaskItem = memo(({
   const isOverdueTask = isOverdue(task.dueDate, task.status);
 
   const taskTypeLabel = (task.taskType || (task as any).type || (task as any).task_type || '').toString();
-  const brandLabel = (task.brand || '').toString();
 
   return (
     <div className={`relative bg-white rounded-lg border-l-4 ${getTaskBorderColor(task)} border shadow-sm hover:shadow-md transition-all duration-200 mb-3`}>
@@ -1557,6 +1559,7 @@ const CommentSidebar = memo(({
   currentUser,
   formatDate,
   isOverdue,
+  getBrandLabel,
   onCloseSidebar,
   onSetNewComment,
   onSaveComment,
@@ -1574,6 +1577,7 @@ const CommentSidebar = memo(({
   const userInfo = getUserInfoForDisplay(selectedTask);
   const isCompleted = isTaskCompleted(selectedTask.id);
   const [activeTab, setActiveTab] = useState<'details' | 'permanent-history'>('details');
+  const brandLabel = typeof getBrandLabel === 'function' ? getBrandLabel(selectedTask) : '';
 
   return (
     <div className="fixed inset-0 z-50">
@@ -1682,11 +1686,11 @@ const CommentSidebar = memo(({
                       </div>
                     )}
 
-                    {selectedTask.brand && (
+                    {brandLabel && (
                       <div>
                         <div className="text-xs font-medium text-gray-500 mb-1">Brand</div>
                         <div className="text-sm text-gray-900">
-                          {selectedTask.brand}
+                          {brandLabel}
                         </div>
                       </div>
                     )}
@@ -2485,6 +2489,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [isLoading,] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Use DashboardPage's filters if provided, otherwise use local state
   const [localAdvancedFilters, setLocalAdvancedFilters] = useState<AdvancedFilters>({
@@ -2525,6 +2530,65 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   const normalizeCompanyKey = useCallback((value: unknown): string => {
     return normalizeText(value).replace(/\s+/g, '');
   }, [normalizeText]);
+
+  const formatBrandWithGroupNumber = useCallback((task: any): string => {
+    const plain = String(
+      typeof task?.brand === 'string'
+        ? task.brand
+        : (task?.brand?.name || task?.brandName || '')
+    ).trim();
+    if (!plain) return '';
+
+    const company = String(task?.companyName || task?.company || task?.company?.name || '').trim();
+    const brandId = String(task?.brandId || task?.brand?._id || task?.brand?.id || '').trim();
+
+    const byId = brandId
+      ? (brands || []).find((b: any) => String(b?.id || b?._id || '').trim() === brandId)
+      : null;
+
+    const byCompanyName = !byId
+      ? (brands || []).find((b: any) => (
+        normalizeText(String(b?.name || '').trim()) === normalizeText(plain) &&
+        normalizeCompanyKey(b?.company) === normalizeCompanyKey(company)
+      ))
+      : null;
+
+    const brandDoc: any = byId || byCompanyName;
+    const groupNumber = String(brandDoc?.groupNumber || '').trim();
+    return groupNumber ? `${groupNumber} - ${plain}` : plain;
+  }, [brands, normalizeCompanyKey, normalizeText]);
+
+  const getBrandLabelForFilter = useCallback((brandName: string): string => {
+    const plain = String(brandName || '').trim();
+    if (!plain) return '';
+
+    const normalizedName = normalizeText(plain);
+    const companyFilter = String(effectiveAdvancedFilters.company || '').trim();
+    const companyKeyFilter = normalizeCompanyKey(companyFilter || '');
+
+    let candidates = (brands || []).filter((b: any) =>
+      normalizeText(String(b?.name || '').trim()) === normalizedName
+    );
+
+    if (companyKeyFilter && companyKeyFilter !== 'all') {
+      const byCompany = candidates.filter((b: any) =>
+        normalizeCompanyKey(b?.company) === companyKeyFilter
+      );
+      if (byCompany.length) candidates = byCompany;
+    }
+
+    if (!candidates.length) return plain;
+
+    const brandDoc: any = candidates[0];
+    const company = String(brandDoc?.company || brandDoc?.companyName || '').trim();
+    const groupNumber = String(brandDoc?.groupNumber || '').trim();
+
+    if (company === 'speed Ecom' && groupNumber) {
+      return `${groupNumber} - ${plain}`;
+    }
+
+    return plain;
+  }, [brands, effectiveAdvancedFilters.company, normalizeCompanyKey, normalizeText]);
 
   const restrictTaskTypesForCompany = useCallback((companyName: unknown, list: string[]): string[] => {
     const companyKey = normalizeText(companyName);
@@ -3655,6 +3719,11 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     handleAdvancedFilterChange('taskType', 'other work');
   }, [currentUser?.role, effectiveAdvancedFilters.taskType, handleAdvancedFilterChange]);
 
+  useEffect(() => {
+    // Reset to first page when core filters or search term change
+    setCurrentPage(1);
+  }, [filter, dateFilter, assignedFilter, searchTerm, effectiveAdvancedFilters]);
+
   const handleBulkStatusChange = useCallback(async (status: 'completed' | 'pending') => {
     if (selectedTasks.length === 0) return;
 
@@ -4369,6 +4438,20 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     getAssignerEmail
   ]);
 
+  const totalTasks = filteredTasks.length;
+  const totalPages = Math.max(1, Math.ceil(totalTasks / TASKS_PER_PAGE));
+  const currentPageSafe = Math.min(currentPage, totalPages);
+
+  const paginatedTasks = useMemo(() => {
+    if (!filteredTasks.length) return [] as Task[];
+    const startIndex = (currentPageSafe - 1) * TASKS_PER_PAGE;
+    const endIndex = startIndex + TASKS_PER_PAGE;
+    return filteredTasks.slice(startIndex, endIndex);
+  }, [filteredTasks, currentPageSafe]);
+
+  const startItemIndex = totalTasks === 0 ? 0 : (currentPageSafe - 1) * TASKS_PER_PAGE + 1;
+  const endItemIndex = totalTasks === 0 ? 0 : Math.min(startItemIndex + TASKS_PER_PAGE - 1, totalTasks);
+
   if (pageLoading) {
     return <TasksPageSkeleton />;
   }
@@ -4436,6 +4519,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                 availableCompanies={Object.keys(COMPANY_BRAND_MAP).sort((a, b) => a.localeCompare(b))}
                 availableTaskTypes={availableTaskTypesForFilters}
                 availableBrands={availableBrands}
+                getBrandLabel={getBrandLabelForFilter}
                 onFilterChange={handleFilterChange}
                 onResetFilters={resetFilters}
                 onApplyFilters={applyAdvancedFilters}
@@ -4510,13 +4594,17 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
             </div>
 
             {/* Task List */}
-            {filteredTasks.map((task, idx) => {
+            {paginatedTasks.map((task, idx) => {
               const isToggling = togglingStatusTasks.includes(task.id);
               const isDeleting = deletingTasks.includes(task.id);
               const isApproving = approvingTasks.includes(task.id);
               const isUpdatingApproval = updatingApproval.includes(task.id);
 
+              const brandLabel = formatBrandWithGroupNumber(task);
+
               const showAssignButton = normalizeRole(currentUser?.role) === 'ob_manager' && (resolveAssignerRole(task) === 'manager' || resolveAssignerRole(task) === 'md_manager');
+
+              const displayIndex = (currentPageSafe - 1) * TASKS_PER_PAGE + idx + 1;
 
               return (
                 <div key={`${task.id}-${idx}`}>
@@ -4558,9 +4646,10 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                   {/* Desktop View */}
                   <div className="hidden md:block">
                     <DesktopTaskItem
-                      index={idx + 1}
+                      index={displayIndex}
                       task={task}
                       isToggling={isToggling}
+                      brandLabel={brandLabel}
                       currentUser={currentUser}
                       formatDate={formatDate}
                       isOverdue={isOverdue}
@@ -4586,6 +4675,35 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                 </div>
               );
             })}
+            {/* Pagination Controls */}
+            {totalTasks > 0 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4">
+                <div className="text-sm text-gray-600">
+                  {`Showing ${startItemIndex}-${endItemIndex} of ${totalTasks} tasks`}
+                </div>
+                <div className="inline-flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={currentPageSafe === 1}
+                    className="px-3 py-1.5 text-sm rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-sm text-gray-600">
+                    Page {currentPageSafe} of {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    disabled={currentPageSafe === totalPages}
+                    className="px-3 py-1.5 text-sm rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -4621,6 +4739,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         currentUser={currentUser}
         formatDate={formatDate}
         isOverdue={isOverdue}
+        getBrandLabel={formatBrandWithGroupNumber}
         onCloseSidebar={handleCloseCommentSidebar}
         onSetNewComment={setNewComment}
         onSaveComment={handleSaveComment}
