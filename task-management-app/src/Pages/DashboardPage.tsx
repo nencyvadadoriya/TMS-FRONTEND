@@ -263,6 +263,7 @@ const DashboardPage = () => {
                 || ''
             ).trim().toLowerCase();
             if (!email) return;
+            if (email.includes('.deleted.')) return;
             const name = String(assignedToUser?.name || email);
             const starsValue = Number((t as any).reviewStars);
             if (!Number.isFinite(starsValue) || starsValue < 1 || starsValue > 5) return;
