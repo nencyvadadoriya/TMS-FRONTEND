@@ -424,7 +424,7 @@ const DashboardPage = () => {
             const mdManagers = baseUsers.filter((u: any) => normalizeRole(u?.role) === 'md_manager');
             const managersAndObManagersAndAssistants = filterByCompany(baseUsers.filter((u: any) => {
                 const r = normalizeRole(u?.role);
-                return r === 'manager' || r === 'ob_manager' || r === 'assistant';
+                return r === 'manager' || r === 'ob_manager' || r === 'assistant' || r === 'sub_assistance';
             }));
 
             const candidates = [...mdManagers, selfUser, ...managersAndObManagersAndAssistants];
@@ -435,7 +435,7 @@ const DashboardPage = () => {
         if (role === 'manager') {
             const byRole = baseUsers.filter((u: any) => {
                 const r = normalizeRole(u?.role);
-                return r === 'manager' || r === 'ob_manager' || r === 'assistant';
+                return r === 'manager' || r === 'ob_manager' || r === 'assistant' || r === 'sub_assistance';
             });
 
             const scoped = filterByCompany(byRole);
@@ -450,7 +450,12 @@ const DashboardPage = () => {
                 role: 'manager'
             } as any);
 
-            const withoutObManagers = (scoped || []).filter((u: any) => normalizeRole((u as any)?.role) !== 'ob_manager');
+            const assistantsAnyCompany = baseUsers.filter((u: any) => {
+                const r = normalizeRole(u?.role);
+                return r === 'assistant' || r === 'sub_assistance';
+            });
+
+            const withoutObManagers = [...(scoped || []), ...(assistantsAnyCompany || [])].filter((u: any) => normalizeRole((u as any)?.role) !== 'ob_manager');
             const merged = [...withoutObManagers, keyuriUser].filter((u: any) => Boolean(String((u as any)?.email || '').trim()));
             return Array.from(new Map(merged.map((u: any) => [String((u as any)?.email || '').trim().toLowerCase(), u])).values());
         }
@@ -2035,7 +2040,7 @@ const DashboardPage = () => {
             if (requesterRole === 'md_manager') {
                 if (targetRole !== 'manager' && targetRole !== 'assistant') throw new Error('You do not have permission to create users');
             } else if (requesterRole === 'ob_manager') {
-                if (targetRole !== 'assistant') throw new Error('You do not have permission to create users');
+                if (targetRole !== 'assistant' && targetRole !== 'sub_assistance') throw new Error('You do not have permission to create users');
             } else if (requesterRole === 'manager') {
                 if (targetRole !== 'assistant') throw new Error('You do not have permission to create users');
             } else {
@@ -2079,11 +2084,11 @@ const DashboardPage = () => {
             const targetRole = (target?.role || '').toString().trim().toLowerCase();
 
             if (requesterRole === 'md_manager') {
-                if (targetRole !== 'manager' && targetRole !== 'assistant') throw new Error('Only administrators can delete users');
+                if (targetRole !== 'manager' && targetRole !== 'assistant' && targetRole !== 'sub_assistance') throw new Error('Only administrators can delete users');
             } else if (requesterRole === 'ob_manager') {
-                if (targetRole !== 'assistant') throw new Error('Only administrators can delete users');
+                if (targetRole !== 'assistant' && targetRole !== 'sub_assistance') throw new Error('Only administrators can delete users');
             } else if (requesterRole === 'manager') {
-                if (targetRole !== 'assistant') throw new Error('Only administrators can delete users');
+                if (targetRole !== 'assistant' && targetRole !== 'sub_assistance') throw new Error('Only administrators can delete users');
             } else {
                 throw new Error('Only administrators can delete users');
             }
@@ -4472,30 +4477,28 @@ const DashboardPage = () => {
                                         </div>
                                     </div>
 
-                                    {employeeOfTheMonth && (
-                                        <>
-                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-                                                <div>
-                                                    <h2 className="text-sm font-semibold text-gray-900">Employee of the Month</h2>
-                                                    <p className="text-xs text-gray-500">Based on manager reviews (month wise)</p>
-                                                </div>
-                                                <input
-                                                    type="month"
-                                                    value={reviewsMonth}
-                                                    onChange={(e) => setReviewsMonth(e.target.value)}
-                                                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
-                                                />
+                                    <>
+                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+                                            <div>
+                                                <h2 className="text-sm font-semibold text-gray-900">Employee of the Month</h2>
+                                                <p className="text-xs text-gray-500">Based on manager reviews (month wise)</p>
                                             </div>
-                                            <EmployeeOfTheMonthCard
-                                                name={employeeOfTheMonth.name}
-                                                rating={employeeOfTheMonth.rating}
-                                                performance={employeeOfTheMonth.performance}
-                                                avg={employeeOfTheMonth.avg}
-                                                photoUrl={employeeOfTheMonth.photoUrl}
-                                                summaryRows={employeeOfTheMonth.summaryRows}
+                                            <input
+                                                type="month"
+                                                value={reviewsMonth}
+                                                onChange={(e) => setReviewsMonth(e.target.value)}
+                                                className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
                                             />
-                                        </>
-                                    )}
+                                        </div>
+                                        <EmployeeOfTheMonthCard
+                                            name={employeeOfTheMonth?.name || 'Not any yet'}
+                                            rating={employeeOfTheMonth?.rating || 0}
+                                            performance={employeeOfTheMonth?.performance || 'Not any yet'}
+                                            avg={employeeOfTheMonth?.avg || 'Not any yet'}
+                                            photoUrl={employeeOfTheMonth?.photoUrl}
+                                            summaryRows={employeeOfTheMonth?.summaryRows}
+                                        />
+                                    </>
 
                                     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
                                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

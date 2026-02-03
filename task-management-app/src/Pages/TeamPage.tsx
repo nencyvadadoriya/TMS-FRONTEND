@@ -24,8 +24,6 @@ import TeamDetailsPage from './TeamDetailsPage';
 import { TeamPageSkeleton } from '../Components/LoadingSkeletons';
 import { authService } from '../Services/User.Services';
 import { taskService } from '../Services/Task.services';
-import { accessService } from '../Services/Access.Services';
-import { companyService, type Company } from '../Services/Company.service';
 import { routepath } from '../Routes/route';
 
 interface TeamPageProps {
@@ -224,11 +222,6 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
     const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
     const [, setIsLoadingDetails] = useState(false);
 
-    const [availableRoles, setAvailableRoles] = useState<RoleItem[]>([]);
-    const [rolesLoading, setRolesLoading] = useState(false);
-    const [companies, setCompanies] = useState<Company[]>([]);
-    const [companiesLoading, setCompaniesLoading] = useState(false);
-
     const [addAdminId, setAddAdminId] = useState<string>('');
     const [addSbmId, setAddSbmId] = useState<string>('');
     const [addRmId, setAddRmId] = useState<string>('');
@@ -243,7 +236,12 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
     }, []);
 
     const normalizeRole = useCallback((role: unknown) => {
-        return (role || '').toString().trim().toLowerCase().replace(/[\s-]+/g, '_');
+        const r = (role || '').toString().trim().toLowerCase().replace(/[\s-]+/g, '_');
+        if (r === 'sub_assistence') return 'sub_assistance';
+        if (r === 'sub_assist') return 'sub_assistance';
+        if (r === 'sub_assistant') return 'sub_assistance';
+        if (r === 'sub_assistants') return 'sub_assistance';
+        return r;
     }, []);
 
     const normalizeText = useCallback((value: unknown) => {
@@ -261,6 +259,38 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
     const currentUserRole = useMemo(() => {
         return (currentUser?.role || '').toLowerCase();
     }, [currentUser]);
+
+    const selectedAddRoleKey = useMemo(() => {
+        return normalizeRole(newUser.role);
+    }, [newUser.role, normalizeRole]);
+
+    const roleOptionsForAddModal = useMemo<RoleItem[]>(() => {
+        const requester = normalizeRole(currentUserRole);
+
+        if (requester === 'super_admin') return [{ key: 'admin', name: 'Admin' }];
+        if (requester === 'admin') {
+            return [
+                { key: 'md_manager', name: 'MD Manager' },
+                { key: 'ob_manager', name: 'OB Manager' },
+                { key: 'manager', name: 'Manager' },
+                { key: 'assistant', name: 'Assistant' },
+                { key: 'sub_assistance', name: 'Sub Assistance' },
+            ];
+        }
+        if (requester === 'ob_manager') {
+            return [
+                { key: 'assistant', name: 'Assistant' },
+                { key: 'sub_assistance', name: 'Sub Assistance' },
+            ];
+        }
+        if (requester === 'manager') {
+            return [
+                { key: 'assistant', name: 'Assistant' },
+                { key: 'sub_assistance', name: 'Sub Assistance' },
+            ];
+        }
+        return [{ key: 'assistant', name: 'Assistant' }];
+    }, [currentUserRole, normalizeRole]);
 
     const isCurrentUserAdmin = useMemo(() => {
         return isAdminLikeRole(currentUserRole);
@@ -316,21 +346,33 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
         if (isCurrentUserAdmin) return true;
 
         if (isCurrentUserMdManager) {
-            const r = normalizeRole(target?.role);
-            if (r === 'manager') return true;
-            if (r !== 'assistant') return false;
-            return true;
+            const myId = (currentUser?.id || (currentUser as any)?._id || '').toString();
+            return (users || []).some(u => {
+                const uid = (u?.id || (u as any)?._id || '').toString();
+                if (uid && myId && uid === myId) return true;
+
+                if (normalizeRole(u?.role) === 'manager') {
+                    return (u as any)?.managerId?.toString() === myId;
+                }
+
+                const r = normalizeRole(u?.role);
+                if (r === 'assistant' || r === 'sub_assistance') return true;
+
+                if (normalizeRole(u?.role) === 'ob_manager') return true;
+
+                return false;
+            });
         }
 
         if (isCurrentUserObManager) {
             const targetRole = normalizeRole(target?.role);
-            if (targetRole !== 'assistant') return false;
+            if (targetRole !== 'assistant' && targetRole !== 'sub_assistance') return false;
             return true;
         }
 
         if (isCurrentUserManager) {
             const targetRole = normalizeRole(target?.role);
-            if (targetRole !== 'assistant') return false;
+            if (targetRole !== 'assistant' && targetRole !== 'sub_assistance') return false;
             return true;
         }
 
@@ -391,127 +433,6 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
         return chain;
     }, [usersById]);
 
-    const selectedAddRoleKey = useMemo(() => {
-        return normalizeRole(newUser.role);
-    }, [newUser.role, normalizeRole]);
-
-    const canAssignRole = useCallback((roleKey: string) => {
-        const requester = normalizeRole(currentUserRole);
-        const target = normalizeRole(roleKey);
-        if (!target) return false;
-
-        if (target === 'super_admin') return false;
-        if (requester === 'super_admin') return true;
-        if (requester === 'admin') return target !== 'admin' && target !== 'super_admin';
-        if (requester === 'md_manager') return target === 'manager' || target === 'assistant';
-        if (requester === 'ob_manager') return target === 'assistant';
-        if (requester === 'manager') return target === 'assistant';
-        if (requester === 'sbm') return target === 'rm';
-        if (requester === 'rm') return target === 'am';
-        return false;
-    }, [currentUserRole, normalizeRole]);
-
-    const loadRoles = useCallback(async () => {
-        setRolesLoading(true);
-        try {
-            const res = await accessService.getRoles();
-            const list = Array.isArray((res as any)?.data) ? (res as any).data : Array.isArray(res) ? (res as any) : [];
-
-            const mapped: RoleItem[] = (list || [])
-                .map((r: any) => ({
-                    key: String(r?.key || '').trim().toLowerCase(),
-                    name: String(r?.name || r?.key || '').trim() || String(r?.key || '').trim(),
-                }))
-                .filter((r: RoleItem) => Boolean(r.key));
-
-            const fallback: RoleItem[] = [
-                { key: 'admin', name: 'Admin' },
-                { key: 'md_manager', name: 'MD Manager' },
-                { key: 'ob_manager', name: 'OB Manager' },
-                { key: 'manager', name: 'Manager' },
-                { key: 'sbm', name: 'SBM' },
-                { key: 'rm', name: 'RM' },
-                { key: 'am', name: 'AM' },
-                { key: 'assistant', name: 'Assistant' },
-                { key: 'sub_assistance', name: 'Sub Assistance' },
-            ];
-
-            const merged = [...fallback, ...mapped];
-            const uniq = new Map<string, RoleItem>();
-            merged.forEach((r) => {
-                const k = normalizeRole(r.key);
-                if (!k) return;
-                if (!uniq.has(k)) uniq.set(k, { key: k, name: r.name || r.key });
-            });
-
-            setAvailableRoles(Array.from(uniq.values()));
-        } catch {
-            setAvailableRoles([
-                { key: 'admin', name: 'Admin' },
-                { key: 'md_manager', name: 'MD Manager' },
-                { key: 'ob_manager', name: 'OB Manager' },
-                { key: 'manager', name: 'Manager' },
-                { key: 'sbm', name: 'SBM' },
-                { key: 'rm', name: 'RM' },
-                { key: 'am', name: 'AM' },
-                { key: 'assistant', name: 'Assistant' },
-                { key: 'sub_assistance', name: 'Sub Assistance' },
-            ]);
-        } finally {
-            setRolesLoading(false);
-        }
-    }, [normalizeRole]);
-
-    const loadCompanies = useCallback(async () => {
-        setCompaniesLoading(true);
-        try {
-            const role = normalizeRole(currentUserRole);
-            const needsAllowedCompanies = role === 'md_manager' || role === 'ob_manager' || role === 'manager' || role === 'assistant';
-            const res = needsAllowedCompanies
-                ? await companyService.getAllowedCompanies()
-                : await companyService.getCompanies();
-            if (res?.success && Array.isArray(res.data)) {
-                setCompanies(res.data as Company[]);
-            } else {
-                setCompanies([]);
-            }
-        } catch {
-            setCompanies([]);
-        } finally {
-            setCompaniesLoading(false);
-        }
-    }, [currentUserRole, normalizeRole]);
-
-    useEffect(() => {
-        if (!canViewTeamPage) return;
-        loadCompanies();
-        if (!isCurrentUserAdmin) return;
-        loadRoles();
-    }, [canViewTeamPage, isCurrentUserAdmin, loadCompanies, loadRoles]);
-
-    const effectiveRoleOptions = useMemo(() => {
-        if (!isCurrentUserAdmin) return [];
-        const filtered = (availableRoles || []).filter((r) => canAssignRole(r.key));
-        const order = ['admin', 'md_manager', 'ob_manager', 'manager', 'sbm', 'rm', 'am', 'assistant'];
-        return filtered.sort((a, b) => {
-            const ia = order.indexOf(normalizeRole(a.key));
-            const ib = order.indexOf(normalizeRole(b.key));
-            if (ia !== -1 || ib !== -1) return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-            return (a.name || a.key).localeCompare(b.name || b.key);
-        });
-    }, [availableRoles, canAssignRole, isCurrentUserAdmin, normalizeRole]);
-
-    const roleOptionsForAddModal = useMemo(() => {
-        if (isCurrentUserAdmin) return effectiveRoleOptions;
-        if (normalizeRole(currentUserRole) === 'md_manager') {
-            return [{ key: 'manager', name: 'Manager' }, { key: 'assistant', name: 'Assistant' }];
-        }
-        if (normalizeRole(currentUserRole) === 'ob_manager') {
-            return [{ key: 'assistant', name: 'Assistant' }];
-        }
-        return [{ key: 'assistant', name: 'Assistant' }];
-    }, [currentUserRole, effectiveRoleOptions, isCurrentUserAdmin, normalizeRole]);
-
     const adminCandidates = useMemo(() => {
         const admins = (users || []).filter((u) => normalizeRole(u?.role) === 'admin');
         if (!isCurrentUserSuperAdmin && normalizeRole(currentUserRole) === 'admin') {
@@ -561,12 +482,12 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
     ]);
 
     const companyOptions = useMemo(() => {
-        const fromApi = (companies || [])
+        const fromApi = (users || [])
             .map((c: any) => String(c?.companyName || c?.name || c?.company || '').trim())
             .filter(Boolean);
         const uniq = Array.from(new Set(fromApi));
         return uniq.sort((a, b) => a.localeCompare(b));
-    }, [companies, users]);
+    }, [users]);
 
     const isTeamCompanyForced = useMemo(() => {
         if (isCurrentUserAdmin) return false;
@@ -602,10 +523,11 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                 if (uid && myId && uid === myId) return true;
 
                 if (normalizeRole(u?.role) === 'manager') {
-                    return (u?.managerId || '').toString() === myId;
+                    return (u as any)?.managerId?.toString() === myId;
                 }
 
-                if (normalizeRole(u?.role) === 'assistant') return true;
+                const r = normalizeRole(u?.role);
+                if (r === 'assistant' || r === 'sub_assistance') return true;
 
                 if (normalizeRole(u?.role) === 'ob_manager') return true;
 
@@ -620,7 +542,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                 if (uid && myId && uid === myId) return true;
 
                 const r = normalizeRole(u?.role);
-                if (r === 'assistant') return true;
+                if (r === 'assistant' || r === 'sub_assistance') return true;
                 if (r === 'manager') return true;
                 if (r === 'md_manager') return true;
                 if (r === 'ob_manager') return true;
@@ -635,7 +557,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                 if (uid && myId && uid === myId) return true;
 
                 const r = normalizeRole(u?.role);
-                if (r === 'assistant') return true;
+                if (r === 'assistant' || r === 'sub_assistance') return true;
                 if (r === 'manager') return true;
                 return false;
             }).filter(inCompany);
@@ -643,12 +565,6 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
         return [];
     }, [canViewTeamPage, currentUser, filterCompany, isCurrentUserAdmin, isCurrentUserMdManager, isCurrentUserManager, isCurrentUserObManager, users, normalizeRole, normalizeText]);
-
-    useEffect(() => {
-        if (!isCurrentUserManager) return;
-        if (filterRole !== 'ob_manager' && filterRole !== 'md_manager') return;
-        setFilterRole('all');
-    }, [filterRole, isCurrentUserManager]);
 
     const companyScopedUsers = useMemo(() => {
         if (!isCurrentUserAdmin) return visibleUsers;
@@ -658,7 +574,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
         const isSpeedEComSelected = selectedCompanyKey.includes('speed') && (selectedCompanyKey.includes('com') || selectedCompanyKey.includes('eom'));
 
         if (isMdImpexSelected) {
-            const allowed = new Set(['md_manager', 'ob_manager', 'manager', 'assistant']);
+            const allowed = new Set(['md_manager', 'ob_manager', 'manager', 'assistant', 'sub_assistance']);
             return visibleUsers.filter((u) => allowed.has(normalizeRole((u as any)?.role)));
         }
 
@@ -682,6 +598,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
         if (filterRole === 'rm') return companyScopedUsers.filter(u => normalizeRole(u.role) === 'rm');
         if (filterRole === 'am') return companyScopedUsers.filter(u => normalizeRole(u.role) === 'am');
         if (filterRole === 'assistant') return companyScopedUsers.filter(u => normalizeRole(u.role) === 'assistant');
+        if (filterRole === 'sub_assistance') return companyScopedUsers.filter(u => normalizeRole(u.role) === 'sub_assistance');
         return companyScopedUsers;
     }, [companyScopedUsers, filterRole, normalizeRole]);
 
@@ -819,6 +736,8 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                 return 'bg-green-100 text-green-800 border border-green-200';
             case 'designer':
                 return 'bg-pink-100 text-pink-800 border border-pink-200';
+            case 'sub_assistance':
+                return 'bg-teal-100 text-teal-800 border border-teal-200';
             default:
                 return 'bg-gray-100 text-gray-800 border border-gray-200';
         }
@@ -844,6 +763,8 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                 return <Briefcase className="h-4 w-4" />;
             case 'designer':
                 return <User className="h-4 w-4" />;
+            case 'sub_assistance':
+                return <User className="h-4 w-4" />;
             default:
                 return <User className="h-4 w-4" />;
         }
@@ -863,8 +784,9 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
         if (isCurrentUserMdManager) {
             const target = (users || []).find((u) => (u?.id || (u as any)?._id || '').toString() === userId?.toString());
-            if (!target || normalizeRole(target?.role) !== 'manager') {
-                toast.error('You can only delete manager accounts');
+            const r = normalizeRole(target?.role);
+            if (!target || (r !== 'manager' && r !== 'assistant' && r !== 'sub_assistance')) {
+                toast.error('You can only delete manager, assistant, or sub assistance accounts');
                 return;
             }
         }
@@ -873,9 +795,9 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
             const myId = (currentUserIdValue || '').toString();
             const target = (users || []).find((u) => (u?.id || (u as any)?._id || '').toString() === userId?.toString());
             const targetRole = normalizeRole(target?.role);
-            const isMyAssistant = targetRole === 'assistant' && (target as any)?.managerId?.toString() === myId;
+            const isMyAssistant = (targetRole === 'assistant' || targetRole === 'sub_assistance') && (target as any)?.managerId?.toString() === myId;
             if (!isMyAssistant) {
-                toast.error('You can only delete your assistant accounts');
+                toast.error('You can only delete your assistant or sub assistance accounts');
                 return;
             }
         }
@@ -921,17 +843,20 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
             return;
         }
 
-        if (isCurrentUserMdManager && normalizeRole(user?.role) !== 'manager') {
-            toast.error('You can only edit manager accounts');
-            return;
+        if (isCurrentUserMdManager) {
+            const r = normalizeRole(user?.role);
+            if (r !== 'manager' && r !== 'assistant' && r !== 'sub_assistance') {
+                toast.error('You can only edit manager, assistant, or sub assistance accounts');
+                return;
+            }
         }
 
         if (isCurrentUserManager) {
             const myId = (currentUserIdValue || '').toString();
             const targetRole = normalizeRole(user?.role);
-            const isMyAssistant = targetRole === 'assistant' && (user as any)?.managerId?.toString() === myId;
+            const isMyAssistant = (targetRole === 'assistant' || targetRole === 'sub_assistance') && (user as any)?.managerId?.toString() === myId;
             if (!isMyAssistant) {
-                toast.error('You can only edit your assistant accounts');
+                toast.error('You can only edit your assistant or sub assistance accounts');
                 return;
             }
         }
@@ -1065,11 +990,15 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                 resolvedManagerId = undefined;
             }
 
+            if (selectedAddRoleKey === 'sub_assistance') {
+                resolvedManagerId = undefined;
+            }
+
             const userData = {
                 name: newUser.name.trim(),
                 email: newUser.email.trim().toLowerCase(),
                 password: newUser.password,
-                role: isCurrentUserManager ? 'assistant' : newUser.role,
+                role: isCurrentUserManager ? (selectedAddRoleKey === 'sub_assistance' ? 'sub_assistance' : 'assistant') : newUser.role,
                 department: newUser.department || '',
                 position: newUser.position || '',
                 phone: newUser.phone || '',
@@ -1155,6 +1084,9 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                 break;
             case 'designer':
                 gradient = 'from-pink-500 to-pink-700';
+                break;
+            case 'sub_assistance':
+                gradient = 'from-teal-500 to-teal-700';
                 break;
         }
 
@@ -1271,7 +1203,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
             {/* Stats Cards - Small and Light with Colors */}
             {(() => {
-                const selectedCompanyKey = normalizeText(filterCompany === 'all' ? '' : filterCompany);
+                const selectedCompanyKey = normalizeText(filterCompany);
                 const isMdImpexSelected = selectedCompanyKey.includes('impex') || selectedCompanyKey === normalizeText(MD_IMPEX_COMPANY_NAME);
                 const isSpeedEComSelected = selectedCompanyKey.includes('speed') && (selectedCompanyKey.includes('com') || selectedCompanyKey.includes('eom'));
 
@@ -1316,6 +1248,13 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                             >
                                 <div className="text-3xl font-bold text-green-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'assistant').length}</div>
                                 <div className="text-sm text-gray-600 mt-1">Assistants</div>
+                            </button>
+                            <button
+                                onClick={() => setFilterRole('sub_assistance')}
+                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'sub_assistance' ? 'bg-teal-50 border-teal-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-teal-50 hover:border-teal-100'}`}
+                            >
+                                <div className="text-3xl font-bold text-teal-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'sub_assistance').length}</div>
+                                <div className="text-sm text-gray-600 mt-1">Sub Assistance</div>
                             </button>
                         </div>
                     );
@@ -1423,6 +1362,13 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                         >
                             <div className="text-3xl font-bold text-green-700">{visibleUsers.filter(u => normalizeRole(u.role) === 'assistant').length}</div>
                             <div className="text-sm text-gray-600 mt-1">Assistants</div>
+                        </button>
+                        <button
+                            onClick={() => setFilterRole('sub_assistance')}
+                            className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'sub_assistance' ? 'bg-teal-50 border-teal-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-teal-50 hover:border-teal-100'}`}
+                        >
+                            <div className="text-3xl font-bold text-teal-700">{visibleUsers.filter(u => normalizeRole(u.role) === 'sub_assistance').length}</div>
+                            <div className="text-sm text-gray-600 mt-1">Sub Assistance</div>
                         </button>
                         {isCurrentUserAdmin && (
                             <button
@@ -1815,7 +1761,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                                             value={(newUser.companyName || '').toString()}
                                             onChange={(e) => setNewUser({ ...newUser, companyName: e.target.value })}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            disabled={companiesLoading || isTeamCompanyForced}
+                                            disabled={isTeamCompanyForced}
                                         >
                                             <option value="">Select team</option>
                                             {companyOptions.map((name) => (
@@ -1838,7 +1784,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                                                 setAddRmId('');
                                             }}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            disabled={isCurrentUserAdmin ? rolesLoading : false}
+                                            disabled={false}
                                         >
                                             {roleOptionsForAddModal.map((r) => (
                                                 <option key={r.key} value={r.key}>
@@ -1861,7 +1807,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                             >
                                                 <option value="">Select admin</option>
-                                                {adminCandidates.map((u) => (
+                                                {adminCandidates.map((u: UserType) => (
                                                     <option key={getUserIdValue(u)} value={getUserIdValue(u)}>
                                                         {u.name}
                                                     </option>
@@ -1885,7 +1831,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                                 >
                                                     <option value="">Select admin</option>
-                                                    {adminCandidates.map((u) => (
+                                                    {adminCandidates.map((u: UserType) => (
                                                         <option key={getUserIdValue(u)} value={getUserIdValue(u)}>
                                                             {u.name}
                                                         </option>
@@ -1905,7 +1851,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                                 >
                                                     <option value="">Select SBM</option>
-                                                    {sbmCandidates.map((u) => (
+                                                    {sbmCandidates.map((u: UserType) => (
                                                         <option key={getUserIdValue(u)} value={getUserIdValue(u)}>
                                                             {u.name}
                                                         </option>
@@ -1931,7 +1877,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                                 >
                                                     <option value="">Select admin</option>
-                                                    {adminCandidates.map((u) => (
+                                                    {adminCandidates.map((u: UserType) => (
                                                         <option key={getUserIdValue(u)} value={getUserIdValue(u)}>
                                                             {u.name}
                                                         </option>
@@ -1952,7 +1898,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                                 >
                                                     <option value="">Select SBM</option>
-                                                    {sbmCandidates.map((u) => (
+                                                    {sbmCandidates.map((u: UserType) => (
                                                         <option key={getUserIdValue(u)} value={getUserIdValue(u)}>
                                                             {u.name}
                                                         </option>
@@ -1972,7 +1918,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                                 >
                                                     <option value="">Select RM</option>
-                                                    {rmCandidates.map((u) => (
+                                                    {rmCandidates.map((u: UserType) => (
                                                         <option key={getUserIdValue(u)} value={getUserIdValue(u)}>
                                                             {u.name}
                                                         </option>

@@ -2579,7 +2579,14 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     return (value == null ? '' : String(value)).trim().toLowerCase();
   }, []);
 
-  const normalizeEmail = useCallback((value: unknown): string => {
+  const normalizeRoleKey = useCallback((value: unknown): string => {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[\s-]+/g, '_');
+  }, []);
+
+  const normalizeEmailValue = useCallback((value: unknown): string => {
     return normalizeText(value);
   }, [normalizeText]);
 
@@ -2620,8 +2627,8 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       return;
     }
 
-    const myEmail = normalizeEmail(currentUser?.email);
-    const byEmail = (users || []).find((u: any) => normalizeEmail(u?.email) === myEmail);
+    const myEmail = normalizeEmailValue(currentUser?.email);
+    const byEmail = (users || []).find((u: any) => normalizeEmailValue(u?.email) === myEmail);
     const userId = (byEmail?.id || byEmail?._id || (currentUser as any)?.id || (currentUser as any)?._id || '').toString();
     if (!userId) {
       setUserMappings([]);
@@ -2641,7 +2648,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     return () => {
       cancelled = true;
     };
-  }, [currentUser, effectiveAdvancedFilters.company, normalizeEmail, users]);
+  }, [currentUser, effectiveAdvancedFilters.company, normalizeEmailValue, users]);
 
   const [taskTypeCompanyOverrides, setTaskTypeCompanyOverrides] = useState<Record<string, string[]>>({});
 
@@ -4219,10 +4226,10 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     setShowReassignModal(true);
   }, []);
 
-  const normalizeRole = useCallback((v: unknown) => String(v || '').trim().toLowerCase(), []);
+  const normalizeRoleValue = useCallback((v: unknown) => String(v || '').trim().toLowerCase(), []);
 
   const resolveAssignerRole = useCallback((t: any): string => {
-    const direct = normalizeRole(t?.assignedByUser?.role || t?.assignedBy?.role);
+    const direct = normalizeRoleValue(t?.assignedByUser?.role || t?.assignedBy?.role);
     if (direct) return direct;
 
     const candidate = t?.assignedByUser || t?.assignedBy;
@@ -4239,8 +4246,8 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       const email = String(u?.email || '').trim().toLowerCase();
       return (id && id === key) || (email && email === key);
     });
-    return normalizeRole(found?.role);
-  }, [normalizeRole, users]);
+    return normalizeRoleValue(found?.role);
+  }, [normalizeRoleValue, users]);
 
   const handleCloseReassignModal = useCallback(() => {
     setShowReassignModal(false);
@@ -4310,7 +4317,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     let filtered = tasksWithDemoData.filter((task: Task) => {
       const isCompleted = isTaskCompleted(task.id);
 
-      const roleKey = normalizeRole(currentUser?.role);
+      const roleKey = normalizeRoleKey(currentUser?.role);
       const myEmail = normalizeText(currentUser?.email);
 
       if (roleKey === 'manager') {
@@ -4446,8 +4453,8 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   }
 
   // ==================== RENDER ====================
-  const isObManagerViewOnly = normalizeRole(currentUser?.role) === 'ob_manager';
-  const isAssistantViewOnly = normalizeRole(currentUser?.role) === 'assistant';
+  const isObManagerViewOnly = normalizeRoleKey(currentUser?.role) === 'ob_manager';
+  const isAssistantViewOnly = normalizeRoleKey(currentUser?.role) === 'assistant';
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
       {/* Header Section */}
