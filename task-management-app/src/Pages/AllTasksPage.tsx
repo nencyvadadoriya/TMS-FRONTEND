@@ -196,6 +196,7 @@ interface MobileTaskItemProps {
   showAssignButton: boolean;
   onAssignClick: (task: Task) => void;
   disableStatusToggle?: boolean;
+  showDeleteButton?: boolean;
 }
 
 interface DesktopTaskItemProps {
@@ -208,21 +209,23 @@ interface DesktopTaskItemProps {
   isOverdue: (dueDate: string, status: string) => boolean;
   getTaskBorderColor: (task: Task) => string;
   getTaskStatusIcon: (taskId: string, isCompleted: boolean) => React.ReactNode;
-  getUserInfoForDisplay: (task: Task) => { name: string; email: string };
+  getUserInfoForDisplay: (userId: any) => { name: string; email: string };
   onToggleStatus: (taskId: string, originalTask: Task) => Promise<void>;
   onEditTaskClick: (task: Task) => void;
   onOpenCommentSidebar: (task: Task) => Promise<void>;
   onOpenHistoryModal: (task: Task) => Promise<void>;
+  onDeleteTask?: (taskId: string) => Promise<void>;
   isTaskCompleted: (taskId: string) => boolean;
   isTaskPermanentlyApproved: (taskId: string) => boolean;
   isTaskAssignee: (task: Task) => boolean;
   isTaskAssigner: (task: Task) => boolean;
-  canEditTask: (task: Task) => boolean;
+  canEditTask?: (task: Task) => boolean;
   onPermanentApproval: (taskId: string, value: boolean) => Promise<void>;
   isUpdatingApproval: boolean;
-  showAssignButton: boolean;
-  onAssignClick: (task: Task) => void;
+  showAssignButton?: boolean;
+  onAssignClick?: (task: Task) => void;
   disableStatusToggle?: boolean;
+  showDeleteButton?: boolean;
 }
 
 interface BulkActionsProps {
@@ -1199,12 +1202,15 @@ BulkImporter.displayName = 'BulkImporter';
 const MobileTaskItem = memo(({
   task,
   isToggling,
+  isDeleting,
+  currentUser,
   formatDate,
   isOverdue,
   getTaskBorderColor,
   getTaskStatusIcon,
   getUserInfoForDisplay,
   onToggleStatus,
+  onDeleteTask,
   showAssignButton,
   onAssignClick,
   isTaskAssigner,
@@ -1230,7 +1236,9 @@ const MobileTaskItem = memo(({
   const isCompleted = isTaskCompleted(task.id);
   const isPendingApproval = isTaskPendingApproval(task.id);
   const isPermanentlyApproved = isTaskPermanentlyApproved(task.id);
-  isTaskAssigner(task);
+  const userIsAssigner = isTaskAssigner(task);
+  const role = String((currentUser as any)?.role || '').trim().toLowerCase();
+  const canDeleteThisTask = role === 'admin' || role === 'super_admin' || userIsAssigner;
   const isOverdueTask = isOverdue(task.dueDate, task.status);
 
   return (
@@ -1298,6 +1306,16 @@ const MobileTaskItem = memo(({
                 <UserPlus className="h-4 w-4" />
               </button>
             )}
+            {canDeleteThisTask && (
+              <button
+                onClick={() => onDeleteTask(task.id)}
+                disabled={isDeleting}
+                className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                title="Delete"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
           </div>
 
           <div className="flex items-center justify-between pt-3 border-t">
@@ -1333,6 +1351,7 @@ const DesktopTaskItem = memo(({
   index,
   task,
   isToggling,
+  currentUser,
   brandLabel,
   formatDate,
   isOverdue,
@@ -1343,6 +1362,7 @@ const DesktopTaskItem = memo(({
   onEditTaskClick,
   onOpenCommentSidebar,
   onOpenHistoryModal,
+  onDeleteTask,
   showAssignButton,
   onAssignClick,
   isTaskCompleted,
@@ -1372,6 +1392,8 @@ const DesktopTaskItem = memo(({
   const isPermanentlyApproved = isTaskPermanentlyApproved(task.id);
   const userIsAssigner = isTaskAssigner(task);
   const canEditThisTask = typeof canEditTask === 'function' ? canEditTask(task) : userIsAssigner;
+  const role = String((currentUser as any)?.role || '').trim().toLowerCase();
+  const canDeleteThisTask = role === 'admin' || role === 'super_admin' || userIsAssigner;
   const isOverdueTask = isOverdue(task.dueDate, task.status);
 
   const taskTypeLabel = (task.taskType || (task as any).type || (task as any).task_type || '').toString();
@@ -1485,7 +1507,7 @@ const DesktopTaskItem = memo(({
 
             {/* Action Buttons */}
             <div className="flex items-center gap-1">
-              {showAssignButton && (
+              {showAssignButton && typeof onAssignClick === 'function' && (
                 <button
                   onClick={() => onAssignClick(task)}
                   className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -1521,6 +1543,16 @@ const DesktopTaskItem = memo(({
                   title={isCompleted ? "Editing not allowed for completed tasks" : "Edit task"}
                 >
                   <Edit className="h-4 w-4" />
+                </button>
+              )}
+
+              {canDeleteThisTask && typeof onDeleteTask === 'function' && (
+                <button
+                  onClick={() => onDeleteTask(task.id)}
+                  className="p-1 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Delete"
+                >
+                  <Trash2 className="h-4 w-4" />
                 </button>
               )}
 
@@ -2069,6 +2101,12 @@ const ReassignModal = memo(({
 }: ReassignModalProps) => {
   if (!showReassignModal || !reassignTask) return null;
 
+  const normalizeEmail = (v: unknown) => String(v || '').trim().toLowerCase();
+  const KEYURI_EMAIL = 'keyurismartbiz@gmail.com';
+  const RUTU_EMAIL = 'rutusmartbiz@gmail.com';
+  const myEmail = normalizeEmail((currentUser as any)?.email);
+  const canReassign = Boolean(myEmail && myEmail === KEYURI_EMAIL);
+
   const role = (currentUser?.role || '').toString().trim().toLowerCase();
   const normalizeRole = (v: unknown) => String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
   const isAssistantRole = (v: unknown) => {
@@ -2084,7 +2122,21 @@ const ReassignModal = memo(({
     : String(assignedToCandidate?.email || '')
   ).trim().toLowerCase();
 
-  const availableUsers = (users || [])
+  const ensureRutuCandidate = useMemo(() => {
+    const hasRutu = (users || []).some((u: any) => normalizeEmail(u?.email) === normalizeEmail(RUTU_EMAIL));
+    if (hasRutu) return users || [];
+    return [
+      ...(users || []),
+      {
+        id: RUTU_EMAIL,
+        name: RUTU_EMAIL.split('@')[0] || 'User',
+        email: RUTU_EMAIL,
+        role: 'sub_assistance'
+      } as any
+    ];
+  }, [users]);
+
+  const availableUsers = (ensureRutuCandidate || [])
     .filter((user: any) => {
       const uid = String(user?.id || user?._id || '').trim();
       const uemail = String(user?.email || '').trim().toLowerCase();
@@ -2092,7 +2144,13 @@ const ReassignModal = memo(({
       if (assignedToEmail && uemail && uemail === assignedToEmail) return false;
       return true;
     })
-    .filter(user => role !== 'ob_manager' || isAssistantRole((user as any)?.role));
+    .filter(user => role !== 'ob_manager' || isAssistantRole((user as any)?.role))
+    .filter((user: any) => {
+      if (!canReassign) return true;
+      const email = normalizeEmail(user?.email);
+      const urole = normalizeRole((user as any)?.role);
+      return email === RUTU_EMAIL || urole === 'sub_assistance';
+    });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -2123,15 +2181,18 @@ const ReassignModal = memo(({
                 value={newAssigneeId}
                 onChange={onAssigneeChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled={reassignLoading}
+                disabled={reassignLoading || !canReassign}
               >
                 <option value="">Select a user</option>
                 {availableUsers.map(user => (
-                    <option key={user.id || user.email} value={user.id || user.email}>
+                    <option key={user.email || user.id} value={user.email}>
                       {user.name} ({user.email})
                     </option>
                 ))}
               </select>
+              {!canReassign && (
+                <p className="mt-2 text-sm text-red-600">You do not have permission to reassign tasks</p>
+              )}
             </div>
           </div>
 
@@ -2145,7 +2206,7 @@ const ReassignModal = memo(({
             </button>
             <button
               onClick={onReassign}
-              disabled={!newAssigneeId || reassignLoading}
+              disabled={!canReassign || !newAssigneeId || reassignLoading}
               className="px-6 py-2 text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
             >
               {reassignLoading ? (
@@ -3932,6 +3993,17 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
+    const normalizeEmailSafe = (v: unknown): string => (v == null ? '' : String(v)).trim().toLowerCase();
+    const myEmail = normalizeEmailSafe((currentUser as any)?.email);
+    const assignedByEmail = normalizeEmailSafe((task as any)?.assignedBy) || normalizeEmailSafe((task as any)?.assignedByUser?.email);
+    const role = (currentUser?.role || '').toString().trim().toLowerCase();
+    const isAdmin = role === 'admin' || role === 'super_admin';
+    const isCreator = Boolean(myEmail && assignedByEmail && myEmail === assignedByEmail);
+    if (!isAdmin && !isCreator) {
+      toast.error('Only the task creator can delete this task');
+      return;
+    }
+
     try {
       await addHistoryRecord(
         taskId,
@@ -4604,8 +4676,6 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
 
               const showAssignButton = normalizeRole(currentUser?.role) === 'ob_manager' && (resolveAssignerRole(task) === 'manager' || resolveAssignerRole(task) === 'md_manager');
 
-              const displayIndex = (currentPageSafe - 1) * TASKS_PER_PAGE + idx + 1;
-
               return (
                 <div key={`${task.id}-${idx}`}>
                   {/* Mobile View */}
@@ -4660,6 +4730,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                       onEditTaskClick={handleOpenEditModal}
                       onOpenCommentSidebar={handleOpenCommentSidebar}
                       onOpenHistoryModal={handleOpenHistoryModal}
+                      onDeleteTask={handleDeleteTask}
                       isTaskCompleted={isTaskCompleted}
                       isTaskPermanentlyApproved={isTaskPermanentlyApproved}
                       isTaskAssignee={isTaskAssignee}
