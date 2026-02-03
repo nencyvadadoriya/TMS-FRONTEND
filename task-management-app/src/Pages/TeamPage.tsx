@@ -364,6 +364,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
         if (r === 'rm') return 'RM';
         if (r === 'am') return 'AM';
         if (r === 'assistant') return 'Assistant';
+        if (r === 'sub_assistance') return 'Sub Assistance';
         return (role || '').toString();
     }, [normalizeRole]);
 
@@ -432,6 +433,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                 { key: 'rm', name: 'RM' },
                 { key: 'am', name: 'AM' },
                 { key: 'assistant', name: 'Assistant' },
+                { key: 'sub_assistance', name: 'Sub Assistance' },
             ];
 
             const merged = [...fallback, ...mapped];
@@ -453,6 +455,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                 { key: 'rm', name: 'RM' },
                 { key: 'am', name: 'AM' },
                 { key: 'assistant', name: 'Assistant' },
+                { key: 'sub_assistance', name: 'Sub Assistance' },
             ]);
         } finally {
             setRolesLoading(false);
@@ -671,7 +674,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
     const getFilteredUsersByRole = useMemo(() => {
         if (filterRole === 'all') return companyScopedUsers;
         if (filterRole === 'super_admin') return companyScopedUsers.filter(u => normalizeRole(u.role) === 'super_admin');
-        if (filterRole === 'admin') return companyScopedUsers.filter(u => normalizeRole(u.role) === 'admin'); 
+        if (filterRole === 'admin') return companyScopedUsers.filter(u => normalizeRole(u.role) === 'admin');
         if (filterRole === 'md_manager') return companyScopedUsers.filter(u => normalizeRole(u.role) === 'md_manager');
         if (filterRole === 'ob_manager') return companyScopedUsers.filter(u => normalizeRole(u.role) === 'ob_manager');
         if (filterRole === 'manager') return companyScopedUsers.filter(u => normalizeRole(u.role) === 'manager');

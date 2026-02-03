@@ -84,14 +84,8 @@ const TaskCard: React.FC<TaskCardProps> = ({
     const assignedByEmailForCheck = normalizeEmailSafe((task as any)?.assignedBy) || normalizeEmailSafe((task as any)?.assignedByUser?.email);
     const isCreator = Boolean(myEmail && assignedByEmailForCheck && myEmail === assignedByEmailForCheck);
 
-    const canDeleteTasks = (() => {
-        const perms = (safeCurrentUser as any)?.permissions;
-        if (!perms || typeof perms !== 'object') return true;
-        if (Object.keys(perms).length === 0) return true;
-        if (typeof (perms as any).delete_task === 'undefined') return true;
-        const perm = String((perms as any).delete_task || '').toLowerCase();
-        return perm !== 'deny';
-    })();
+    const role = String((safeCurrentUser as any)?.role || '').trim().toLowerCase();
+    const isAdmin = role === 'admin' || role === 'super_admin';
 
     // Delete Task
     const handleDeleteTask = async () => {
@@ -100,8 +94,8 @@ const TaskCard: React.FC<TaskCardProps> = ({
             return;
         }
 
-        if (!canDeleteTasks) {
-            toast.error('You do not have permission to delete tasks');
+        if (!isCreator && !isAdmin) {
+            toast.error('Only the task creator can delete this task');
             return;
         }
 
@@ -242,7 +236,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
                         </button>
                     )}
 
-                    {canDeleteTasks && isCreator && (
+                    {(isCreator || isAdmin) && (
                         <button
                             onClick={handleDeleteTask}
                             className="p-1 rounded hover:bg-red-50 text-gray-500 hover:text-red-600 transition-colors duration-200"

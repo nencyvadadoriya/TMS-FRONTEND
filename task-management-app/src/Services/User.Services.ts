@@ -15,6 +15,7 @@ class AuthServices {
     authDeleteUser = "/auth/deleteUser";
     authUpdateUser = "/auth/updateUser";
     authCreateUser = "/auth/createUser";
+    authUploadProfileAvatar = "/auth/profile/avatar";
 
     // Brand endpoints
     brandUserBrands = "/brand/user";
@@ -373,6 +374,33 @@ class AuthServices {
                 success: false,
                 data: null,
                 message: error.response?.data?.msg || error.message || "Failed to fetch current user"
+            };
+        }
+    }
+
+    async uploadProfileAvatar(file: File) {
+        try {
+            const form = new FormData();
+            form.append('avatar', file);
+
+            const res = await apiClient.post(this.authUploadProfileAvatar, form, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+
+            return {
+                success: Boolean(res.data?.success),
+                message: res.data?.message || 'Avatar updated successfully',
+                data: res.data?.user || null
+            };
+        } catch (error: any) {
+            const message = error.response?.data?.message || error.response?.data?.msg || error.message || 'Failed to upload avatar';
+            toast.error(message);
+            return {
+                success: false,
+                message,
+                data: null
             };
         }
     }

@@ -4,6 +4,7 @@ import {
     Mail,
     Calendar,
     CheckCircle,
+    Edit,
 } from 'lucide-react';
 
 import type { UserType } from '../Types/Types';
@@ -14,11 +15,13 @@ import { UserProfileSkeleton } from '../Components/LoadingSkeletons';
 interface UserProfilePageProps {
     user?: UserType; // The profile being viewed
     formatDate?: (dateString: string) => string;
+    onUserUpdated?: (user: UserType) => void;
 }
 
 const UserProfilePage: React.FC<UserProfilePageProps> = ({
     user = {} as UserType,
     formatDate = (d) => d,
+    onUserUpdated,
 }) => {
     const [resolvedUser, setResolvedUser] = useState<UserType | null>(null);
     const [resolvedUserLoading, setResolvedUserLoading] = useState(false);
@@ -27,6 +30,10 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({
     const [googleConnected, setGoogleConnected] = useState<boolean>(false);
     const [googleConnectedAt, setGoogleConnectedAt] = useState<string | null>(null);
 
+    const [showAvatarModal, setShowAvatarModal] = useState(false);
+    const [avatarFile, setAvatarFile] = useState<File | null>(null);
+    const [avatarUploading, setAvatarUploading] = useState(false);
+
     const hasUserProp = useMemo(() => {
         return Boolean(user && Object.keys(user).length > 0);
     }, [user]);
@@ -34,6 +41,28 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({
     const profileUser = useMemo(() => {
         return hasUserProp ? user : resolvedUser;
     }, [hasUserProp, resolvedUser, user]);
+
+    const isOwnProfile = useMemo(() => {
+        const profileEmail = (profileUser as any)?.email ? String((profileUser as any).email).trim().toLowerCase() : '';
+        if (!profileEmail) return false;
+        try {
+            const cached = localStorage.getItem('currentUser');
+            if (!cached) return false;
+            const parsed = JSON.parse(cached);
+            const meEmail = parsed?.email ? String(parsed.email).trim().toLowerCase() : '';
+            return Boolean(meEmail && meEmail === profileEmail);
+        } catch {
+            return false;
+        }
+    }, [profileUser]);
+
+    const avatarUrl = useMemo(() => {
+        const raw = (profileUser as any)?.avatar;
+        const str = raw == null ? '' : String(raw).trim();
+        if (!str) return '';
+        if (/^https?:\/\//i.test(str)) return str;
+        return '';
+    }, [profileUser]);
 
     const isPlaceholderUser = useMemo(() => {
         const name = (user as any)?.name;
@@ -140,6 +169,39 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({
         }
     }, [fetchGoogleStatus]);
 
+    const handleSelectAvatarFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files && e.target.files.length > 0 ? e.target.files[0] : null;
+        setAvatarFile(file);
+    }, []);
+
+    const handleUploadAvatar = useCallback(async () => {
+        if (!avatarFile) return;
+        setAvatarUploading(true);
+        try {
+            const res = await authService.uploadProfileAvatar(avatarFile);
+            if (!res?.success || !res.data) {
+                return;
+            }
+
+            try {
+                localStorage.setItem('currentUser', JSON.stringify(res.data));
+            } catch {}
+
+            if (!hasUserProp) {
+                setResolvedUser(res.data as UserType);
+            }
+
+            if (typeof onUserUpdated === 'function') {
+                onUserUpdated(res.data as UserType);
+            }
+
+            setShowAvatarModal(false);
+            setAvatarFile(null);
+        } finally {
+            setAvatarUploading(false);
+        }
+    }, [avatarFile, hasUserProp, onUserUpdated]);
+
     const shouldShowInitialSkeleton = useMemo(() => {
         if (hasUserProp) return false;
         if (resolvedUserLoading) return false;
@@ -196,12 +258,31 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({
                                 <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6 mb-8">
                                     {/* Avatar */}
                                     <div className="relative">
-                                        <div className="w-32 h-32 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-5xl font-bold">
-                                            {profileUser.name.charAt(0).toUpperCase()}
-                                        </div>
+                                        {avatarUrl ? (
+                                            <img
+                                                src={avatarUrl}
+                                                alt={profileUser.name}
+                                                className="w-32 h-32 rounded-2xl object-cover border border-gray-200"
+                                            />
+                                        ) : (
+                                            <div className="w-32 h-32 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-5xl font-bold">
+                                                {profileUser.name.charAt(0).toUpperCase()}
+                                            </div>
+                                        )}
                                         <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-white p-2 rounded-full">
                                             <CheckCircle className="h-5 w-5" />
                                         </div>
+
+                                        {isOwnProfile && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowAvatarModal(true)}
+                                                className="absolute -top-2 -right-2 bg-white text-gray-700 p-2 rounded-full shadow border border-gray-200 hover:bg-gray-50"
+                                                title="Edit profile picture"
+                                            >
+                                                <Edit className="h-4 w-4" />
+                                            </button>
+                                        )}
                                     </div>
 
                                     {/* Basic Info */}
@@ -342,6 +423,46 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({
                     </div>
                 </div>
             </div>
+
+            {showAvatarModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowAvatarModal(false)} />
+                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+                        <div className="px-6 py-5 border-b border-gray-200">
+                            <h3 className="text-lg font-semibold text-gray-900">Update Profile Picture</h3>
+                        </div>
+                        <div className="px-6 py-6 space-y-4">
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleSelectAvatarFile}
+                                disabled={avatarUploading}
+                            />
+                            <div className="flex items-center justify-end gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowAvatarModal(false);
+                                        setAvatarFile(null);
+                                    }}
+                                    className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                                    disabled={avatarUploading}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleUploadAvatar}
+                                    className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                                    disabled={!avatarFile || avatarUploading}
+                                >
+                                    {avatarUploading ? 'Uploading...' : 'Upload'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -42,6 +42,8 @@ import AdvancedFilters from './AdvancedFilters';
 import AnalyzePage from './AnalyzePage';
 import { DashboardPageSkeleton } from '../Components/LoadingSkeletons';
 
+import EmployeeOfTheMonthCard from '../Components/EmployeeOfTheMonthCard';
+
 import AddTaskModal from './DashboardModals/AddTaskModal';
 import EditTaskModal from './DashboardModals/EditTaskModal';
 import BulkAddBrandsModal from './DashboardModals/BulkAddBrandsModal';
@@ -79,6 +81,19 @@ const stripDeletedEmailSuffix = (value: unknown): string => {
     const idx = raw.indexOf(marker);
     if (idx === -1) return raw;
     return raw.slice(0, idx).trim();
+};
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+const monthKeyOfDate = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+
+const performanceLevelForAvg = (avgStars: number) => {
+    const v = Number(avgStars);
+    if (!Number.isFinite(v)) return '—';
+    if (v >= 4.5) return 'Excellent';
+    if (v >= 4.0) return 'Very Good';
+    if (v >= 3.0) return 'Good';
+    return 'Improve';
 };
 
 interface NewTaskForm {
@@ -162,6 +177,9 @@ const DashboardPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [taskPage, setTaskPage] = useState(1);
 
+    const [reviewsMonth, setReviewsMonth] = useState<string>(() => monthKeyOfDate(new Date()));
+    const [reviewedTasksForSummary, setReviewedTasksForSummary] = useState<Task[]>([]);
+
     const [isCreatingTask, setIsCreatingTask] = useState(false);
     const [isUpdatingTask, setIsUpdatingTask] = useState(false);
     const [currentView, setCurrentView] = useState<'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'access' | 'company-brand-task-types' | 'assign' | 'reviews' | 'other-work'>('dashboard');
@@ -188,6 +206,112 @@ const DashboardPage = () => {
     const userMappingsFetchedAtRef = useRef<Map<string, number>>(new Map());
     const USER_MAPPINGS_TTL_MS = 60_000;
     const TASKS_AUTO_REFRESH_MS = 15_000;
+
+    useEffect(() => {
+        let mounted = true;
+        const fetchReviewedForSummary = async () => {
+            try {
+                const res = await taskService.getTaskReviews({ reviewed: true });
+                if (!mounted) return;
+                if (res && (res as any).success) {
+                    setReviewedTasksForSummary((res as any).data || []);
+                }
+            } catch {
+                return;
+            }
+        };
+        void fetchReviewedForSummary();
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
+    const employeeOfTheMonth = useMemo(() => {
+        const parseMonth = (value: string) => {
+            const [y, m] = String(value || '').split('-').map((x) => Number(x));
+            if (!Number.isFinite(y) || !Number.isFinite(m) || y < 1970 || m < 1 || m > 12) return null;
+            const start = new Date(y, m - 1, 1, 0, 0, 0, 0);
+            const endExclusive = new Date(y, m, 1, 0, 0, 0, 0);
+            return { start, endExclusive };
+        };
+
+        const monthRange = parseMonth(reviewsMonth);
+
+        const reviewed = (reviewedTasksForSummary || []).filter((t) => {
+            const stars = (t as any).reviewStars;
+            const reviewedAtRaw = (t as any).reviewedAt;
+            if (stars == null) return false;
+            if (!reviewedAtRaw) return false;
+            if (!monthRange) return true;
+            const reviewedAt = new Date(reviewedAtRaw);
+            if (Number.isNaN(reviewedAt.getTime())) return false;
+            return reviewedAt >= monthRange.start && reviewedAt < monthRange.endExclusive;
+        });
+
+        const byAssignee = new Map<string, {
+            email: string;
+            name: string;
+            total: number;
+            starSum: number;
+        }>();
+
+        reviewed.forEach((t) => {
+            const assignedToUser = (t as any)?.assignedToUser;
+            const email = String(
+                assignedToUser?.email
+                || (typeof (t as any).assignedTo === 'string' ? (t as any).assignedTo : (t as any).assignedTo?.email)
+                || ''
+            ).trim().toLowerCase();
+            if (!email) return;
+            const name = String(assignedToUser?.name || email);
+            const starsValue = Number((t as any).reviewStars);
+            if (!Number.isFinite(starsValue) || starsValue < 1 || starsValue > 5) return;
+
+            const existing = byAssignee.get(email) || { email, name, total: 0, starSum: 0 };
+            existing.total += 1;
+            existing.starSum += starsValue;
+            byAssignee.set(email, existing);
+        });
+
+        const rows = Array.from(byAssignee.values()).map((r) => {
+            const avgStars = r.total > 0 ? (r.starSum / r.total) : 0;
+            const ratingPct = r.total > 0 ? (r.starSum / (r.total * 5)) * 100 : 0;
+            return {
+                ...r,
+                avgStars,
+                ratingPct,
+                ratingPctLabel: `${ratingPct.toFixed(1)}%`,
+                avgStarsLabel: `${avgStars.toFixed(1)}`,
+                performance: performanceLevelForAvg(avgStars),
+            };
+        });
+
+        rows.sort((a, b) => (b.avgStars - a.avgStars) || (b.total - a.total) || a.name.localeCompare(b.name));
+
+        const top = rows[0];
+        if (!top) return null;
+
+        const photoUrl = (users || []).find((u: any) => {
+            const uemail = String(u?.email || '').trim().toLowerCase();
+            return uemail && uemail === top.email;
+        })?.avatar;
+
+        return {
+            name: top.name,
+            email: top.email,
+            rating: top.avgStars,
+            performance: top.performance,
+            avg: top.ratingPctLabel,
+            photoUrl: photoUrl ? String(photoUrl) : undefined,
+            summaryRows: rows.slice(0, 10).map((r) => ({
+                email: r.email,
+                name: r.name,
+                avgStarsLabel: r.avgStarsLabel,
+                total: r.total,
+                performance: r.performance,
+            })),
+        };
+    }, [reviewedTasksForSummary, reviewsMonth, users]);
 
     useEffect(() => {
         usersRef.current = users;
@@ -218,8 +342,6 @@ const DashboardPage = () => {
         if (role === 'ob_manager') return true;
         return hasAccess('view_all_tasks');
     }, [currentUser, hasAccess]);
-
-    const canDeleteTasks = useMemo(() => hasAccess('delete_task'), [hasAccess]);
 
     const canCreateTasks = useMemo(() => hasAccess('create_task'), [hasAccess]);
 
@@ -285,6 +407,9 @@ const DashboardPage = () => {
 
         const baseUsers = users || [];
 
+        const taskTypeKey = (newTask.taskType || '').toString().trim().toLowerCase();
+        const isOtherWork = taskTypeKey === 'other work';
+
         // MD Manager: show Managers of same company
         if (role === 'md_manager') {
             const requesterId = toId(currentUser);
@@ -297,22 +422,37 @@ const DashboardPage = () => {
             }) || (currentUser as any);
 
             const mdManagers = baseUsers.filter((u: any) => normalizeRole(u?.role) === 'md_manager');
-            const managersAndObManagers = filterByCompany(baseUsers.filter((u: any) => {
+            const managersAndObManagersAndAssistants = filterByCompany(baseUsers.filter((u: any) => {
                 const r = normalizeRole(u?.role);
-                return r === 'manager' || r === 'ob_manager';
+                return r === 'manager' || r === 'ob_manager' || r === 'assistant';
             }));
 
-            const candidates = [...mdManagers, selfUser, ...managersAndObManagers];
+            const candidates = [...mdManagers, selfUser, ...managersAndObManagersAndAssistants];
             return Array.from(new Map(candidates.map((u: any) => [toId(u) || String(u?.email || ''), u])).values());
         }
 
-        // Manager: show Managers + OB Managers of same company
+        // Manager: show Managers + OB Managers + Assistants of same company
         if (role === 'manager') {
             const byRole = baseUsers.filter((u: any) => {
                 const r = normalizeRole(u?.role);
-                return r === 'manager' || r === 'ob_manager';
+                return r === 'manager' || r === 'ob_manager' || r === 'assistant';
             });
-            return filterByCompany(byRole);
+
+            const scoped = filterByCompany(byRole);
+            if (!isOtherWork) return scoped;
+
+            const targetEmail = 'keyurismartbiz@gmail.com';
+            const keyuri = baseUsers.find((u: any) => String((u as any)?.email || '').trim().toLowerCase() === targetEmail);
+            const keyuriUser = keyuri || ({
+                id: targetEmail,
+                name: targetEmail.split('@')[0] || 'User',
+                email: targetEmail,
+                role: 'manager'
+            } as any);
+
+            const withoutObManagers = (scoped || []).filter((u: any) => normalizeRole((u as any)?.role) !== 'ob_manager');
+            const merged = [...withoutObManagers, keyuriUser].filter((u: any) => Boolean(String((u as any)?.email || '').trim()));
+            return Array.from(new Map(merged.map((u: any) => [String((u as any)?.email || '').trim().toLowerCase(), u])).values());
         }
 
         // OB Manager: show Assistants of same company
@@ -2231,6 +2371,11 @@ const DashboardPage = () => {
                 return;
             }
 
+            const normalizeEmailSafe = (v: unknown): string => (v == null ? '' : String(v)).trim().toLowerCase();
+            const myEmail = normalizeEmailSafe((currentUser as any)?.email);
+            const KEYURI_EMAIL = 'keyurismartbiz@gmail.com';
+            const RUTU_EMAIL = 'rutusmartbiz@gmail.com';
+
             const normalizeRole = (v: unknown) => String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
             const isAssistantRole = (v: unknown) => {
                 const r = normalizeRole(v);
@@ -2262,56 +2407,48 @@ const DashboardPage = () => {
                 return normalizeRole(findUserByIdOrEmail(idOrEmail)?.role);
             };
 
-            const newAssignee = findUserByIdOrEmail(newAssigneeId);
-            if (!newAssignee) {
-                toast.error('User not found');
+            const directEmail = newAssigneeId && newAssigneeId.includes('@') ? normalizeEmailSafe(newAssigneeId) : '';
+            const newAssignee = directEmail ? undefined : findUserByIdOrEmail(newAssigneeId);
+            const nextAssigneeEmail = directEmail || normalizeEmailSafe((newAssignee as any)?.email);
+            const nextAssigneeRole = normalizeRole((newAssignee as any)?.role);
+            const isSubAssistance = nextAssigneeRole === 'sub_assistance';
+            const isAllowedReassign = Boolean(
+                myEmail && myEmail === KEYURI_EMAIL &&
+                nextAssigneeEmail && (nextAssigneeEmail === RUTU_EMAIL || isSubAssistance || Boolean(directEmail))
+            );
+            if (!isAllowedReassign) {
+                toast.error('You do not have permission to reassign tasks');
                 return;
             }
 
-            if (role === 'ob_manager') {
-                const assignerRole = resolveAssignerRole(task);
-                if (assignerRole !== 'manager' && assignerRole !== 'md_manager') {
-                    toast.error('Only tasks created by Manager/MD Manager can be assigned');
-                    return;
-                }
-
-                const newAssigneeRole = normalizeRole((newAssignee as any)?.role);
-                if (!isAssistantRole(newAssigneeRole)) {
-                    toast.error('OB Manager can assign tasks only to Assistant');
-                    return;
-                }
-            } else {
-                const canReassignByRole = role === 'super_admin' || role === 'admin' || ['sbm', 'rm', 'am'].includes(role);
-                if (!canReassignByRole) {
-                    toast.error('You do not have permission to reassign tasks');
-                    return;
-                }
-            }
+            void role;
+            void isAssistantRole;
+            void resolveAssignerRole;
 
             const updatedTask = {
                 ...task,
-                assignedTo: newAssignee.email,
-                assignedToUser: {
-                    id: newAssignee.id,
-                    name: newAssignee.name,
-                    email: newAssignee.email,
-                    role: newAssignee.role
-                }
+                assignedTo: nextAssigneeEmail,
+                assignedToUser: newAssignee ? {
+                    id: (newAssignee as any).id,
+                    name: (newAssignee as any).name,
+                    email: (newAssignee as any).email,
+                    role: (newAssignee as any).role
+                } : undefined
             };
 
             const response = await taskService.updateTask(taskId, {
-                assignedTo: newAssignee.email,
-                assignedToUser: {
-                    id: newAssignee.id,
-                    name: newAssignee.name,
-                    email: newAssignee.email,
-                    role: newAssignee.role
-                }
+                assignedTo: nextAssigneeEmail,
+                assignedToUser: newAssignee ? {
+                    id: (newAssignee as any).id,
+                    name: (newAssignee as any).name,
+                    email: (newAssignee as any).email,
+                    role: (newAssignee as any).role
+                } : undefined
             });
 
             if (response.success) {
                 dispatch(taskUpserted(updatedTask as Task));
-                toast.success(`Task reassigned to ${newAssignee.name}`);
+                toast.success(`Task reassigned to ${newAssignee ? (newAssignee as any).name : nextAssigneeEmail}`);
             } else {
                 toast.error(response.message || 'Failed to reassign task');
             }
@@ -2611,8 +2748,8 @@ const DashboardPage = () => {
     }, [taskPage, totalTaskPages]);
 
     const showListActionsColumn = useMemo(() => {
-        return displayTasks.some((t: Task) => canEditTask(t) || (canDeleteTasks && canEditDeleteTask(t)));
-    }, [displayTasks, canEditTask, canDeleteTasks, canEditDeleteTask]);
+        return displayTasks.some((t: Task) => canEditTask(t) || canEditDeleteTask(t));
+    }, [displayTasks, canEditTask, canEditDeleteTask]);
 
     const baseFilteredTasks = useMemo(() => {
         if (!currentUser?.email) return [];
@@ -4059,11 +4196,6 @@ const DashboardPage = () => {
         const task = tasks.find(t => t.id === taskId);
         if (!task) return;
 
-        if (!canDeleteTasks) {
-            toast.error('You do not have permission to delete tasks');
-            return;
-        }
-
         if (!canEditDeleteTask(task)) {
             toast.error('Only the task creator can delete this task');
             return;
@@ -4084,7 +4216,7 @@ const DashboardPage = () => {
             console.error('Failed to delete task:', error);
             toast.error('Failed to delete task');
         }
-    }, [tasks, canEditDeleteTask, canDeleteTasks, dispatch]);
+    }, [tasks, canEditDeleteTask, dispatch]);
 
     const handleUpdateTask = useCallback(async (taskId: string, updatedData: Partial<Task>): Promise<Task | null> => {
         const task = tasks.find(t => t.id === taskId);
@@ -4340,6 +4472,31 @@ const DashboardPage = () => {
                                         </div>
                                     </div>
 
+                                    {employeeOfTheMonth && (
+                                        <>
+                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+                                                <div>
+                                                    <h2 className="text-sm font-semibold text-gray-900">Employee of the Month</h2>
+                                                    <p className="text-xs text-gray-500">Based on manager reviews (month wise)</p>
+                                                </div>
+                                                <input
+                                                    type="month"
+                                                    value={reviewsMonth}
+                                                    onChange={(e) => setReviewsMonth(e.target.value)}
+                                                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                                                />
+                                            </div>
+                                            <EmployeeOfTheMonthCard
+                                                name={employeeOfTheMonth.name}
+                                                rating={employeeOfTheMonth.rating}
+                                                performance={employeeOfTheMonth.performance}
+                                                avg={employeeOfTheMonth.avg}
+                                                photoUrl={employeeOfTheMonth.photoUrl}
+                                                summaryRows={employeeOfTheMonth.summaryRows}
+                                            />
+                                        </>
+                                    )}
+
                                     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
                                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                             <div>
@@ -4544,7 +4701,7 @@ const DashboardPage = () => {
                                                         >
                                                             {task.status === 'completed' ? 'Mark Pending' : 'Complete'}
                                                         </button>
-                                                        {(canDeleteTasks && canEditDeleteTask(task)) && (
+                                                        {canEditDeleteTask(task) && (
                                                             <button
                                                                 onClick={() => handleDeleteTask(task.id)}
                                                                 className="px-3 py-2 text-sm font-medium bg-rose-50 text-rose-700 rounded-lg hover:bg-rose-100 transition-colors"
@@ -4650,7 +4807,7 @@ const DashboardPage = () => {
                                                                                 <Edit className="h-4 w-4" />
                                                                             </button>
                                                                         )}
-                                                                        {canDeleteTasks && canEditDeleteTask(task) && (
+                                                                        {canEditDeleteTask(task) && (
                                                                             <button
                                                                                 type="button"
                                                                                 onClick={() => handleDeleteTask(task.id)}
@@ -4806,7 +4963,7 @@ const DashboardPage = () => {
                                     getAssignedUserInfo={getAssignedUserInfo}
                                     formatDate={formatDate}
                                     isOverdue={isOverdue}
-                                    canDeleteTask={canDeleteTasks}
+                                    canDeleteTask={true}
                                 />
                             ) : currentView === 'analyze' ? (
                                 <AnalyzePage
@@ -4829,6 +4986,18 @@ const DashboardPage = () => {
                                 <UserProfilePage
                                     user={currentUser}
                                     formatDate={formatDate}
+                                    onUserUpdated={(next) => {
+                                        try {
+                                            setCurrentUser(next);
+                                        } catch {
+                                            // ignore
+                                        }
+                                        try {
+                                            localStorage.setItem('currentUser', JSON.stringify(next));
+                                        } catch {
+                                            // ignore
+                                        }
+                                    }}
                                 />
                             ) : currentView === 'access' ? (
                                 <AccessPage
