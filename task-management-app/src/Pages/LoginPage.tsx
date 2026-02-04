@@ -7,6 +7,7 @@ import { routepath } from "../Routes/route";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { useAppDispatch } from "../Store/hooks";
 import { tasksReset } from "../Store/tasksSlice";
+import { linkPushDeviceToUser, registerPushDevice } from "../utils/fcm";
 
 export default function AuthPage() {
   const navigate = useNavigate();
@@ -78,6 +79,12 @@ export default function AuthPage() {
     setLoader(true);
 
     try {
+      try {
+        await registerPushDevice({ prompt: true, userEmail: loginData.email });
+      } catch (e) {
+        console.error('Push device register failed:', e);
+      }
+
       const trimmedPayload = {
         email: loginData.email.trim(),
         password: loginData.password.trim(),
@@ -115,6 +122,12 @@ export default function AuthPage() {
         }
 
         dispatch(tasksReset());
+
+        try {
+          await linkPushDeviceToUser({});
+        } catch (e) {
+          console.error('Push device link failed:', e);
+        }
 
         navigate(routepath.dashboard, { replace: true });
 

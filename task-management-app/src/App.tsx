@@ -1,13 +1,24 @@
 import { Navigate, Outlet, useLocation } from "react-router";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Toaster } from 'react-hot-toast';
 import { routepath } from "./Routes/route";
+import { initForegroundPushListener, initPushIfAlreadyGranted, linkPushDeviceToUser } from "./utils/fcm";
 
 export default function App() {
 
   const token = localStorage.getItem('token');
   const location = useLocation();
   const pathname = location?.pathname || '/';
+
+  useEffect(() => {
+    void initPushIfAlreadyGranted();
+    void initForegroundPushListener();
+  }, []);
+
+  useEffect(() => {
+    if (!token) return;
+    void linkPushDeviceToUser({});
+  }, [token]);
 
   const publicAuthPaths = useMemo(() => {
     return new Set<string>([
