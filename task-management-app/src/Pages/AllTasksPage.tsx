@@ -2117,7 +2117,22 @@ const ReassignModal = memo(({
   const normalizeRole = (v: unknown) => String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
   const myRoleKey = normalizeRole((currentUser as any)?.role);
   const isObManager = myRoleKey === 'ob_manager';
-  const canReassign = Boolean(isObManager || (myEmail && myEmail === KEYURI_EMAIL));
+
+  const assignedByCandidate: any = (reassignTask as any)?.assignedByUser || (reassignTask as any)?.assignedBy;
+  const assignedByEmail = (typeof assignedByCandidate === 'string'
+    ? (assignedByCandidate.includes('@') ? assignedByCandidate : '')
+    : String(assignedByCandidate?.email || '')
+  ).trim().toLowerCase();
+
+  const isManagerRole = myRoleKey === 'manager' || myRoleKey === 'md_manager';
+  const isTaskAssigner = Boolean(myEmail && assignedByEmail && myEmail === assignedByEmail);
+  const isKeyuri = Boolean(myEmail && myEmail === KEYURI_EMAIL);
+
+  const canReassign = Boolean(
+    isObManager ||
+    isKeyuri ||
+    (isManagerRole && isTaskAssigner)
+  );
 
   const isAssistantRole = (v: unknown) => {
     const r = normalizeRole(v);
@@ -2158,9 +2173,12 @@ const ReassignModal = memo(({
     .filter((user: any) => {
       if (!canReassign) return true;
       if (isObManager) return true;
-      const email = normalizeEmail(user?.email);
-      const urole = normalizeRole((user as any)?.role);
-      return email === RUTU_EMAIL || urole === 'sub_assistance';
+      if (isKeyuri && !(isManagerRole && isTaskAssigner)) {
+        const email = normalizeEmail(user?.email);
+        const urole = normalizeRole((user as any)?.role);
+        return email === RUTU_EMAIL || urole === 'sub_assistance';
+      }
+      return true;
     });
 
   return (
@@ -4726,7 +4744,20 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
               const brandLabel = formatBrandWithGroupNumber(task);
 
               const roleKey = normalizeRoleKey((currentUser as any)?.role);
-              const showAssignButton = roleKey === 'ob_manager' || String((currentUser as any)?.email || '').trim().toLowerCase() === 'keyurismartbiz@gmail.com';
+              const myEmail = String((currentUser as any)?.email || '').trim().toLowerCase();
+              const assignedByEmail = String(
+                (task as any)?.assignedByUser?.email ||
+                (typeof (task as any)?.assignedBy === 'string' ? (task as any)?.assignedBy : (task as any)?.assignedBy?.email) ||
+                (task as any)?.assignedBy ||
+                ''
+              ).trim().toLowerCase();
+
+              const isManagerRole = roleKey === 'manager' || roleKey === 'md_manager';
+              const showAssignButton = Boolean(
+                roleKey === 'ob_manager' ||
+                myEmail === 'keyurismartbiz@gmail.com' ||
+                (isManagerRole && myEmail && assignedByEmail && myEmail === assignedByEmail)
+              );
 
               return (
                 <div key={`${task.id}-${idx}`}>

@@ -4878,6 +4878,10 @@ const DashboardPage = () => {
             const myRoleKey = normalizeRole((currentUser as any)?.role);
             const isObManager = myRoleKey === 'ob_manager' || myRoleKey === 'obmanager';
 
+            const isManagerRole = myRoleKey === 'manager' || myRoleKey === 'md_manager';
+            const assignedByEmail = normalizeEmailSafe((task as any)?.assignedByUser?.email || (task as any)?.assignedBy);
+            const isTaskAssigner = Boolean(myEmail && assignedByEmail && myEmail === assignedByEmail);
+
 
 
             const findUserByIdOrEmail = (value: unknown): UserType | undefined => {
@@ -4941,6 +4945,7 @@ const DashboardPage = () => {
             const isObManagerDirectEmail = Boolean(isObManager && directEmail);
 
             const isAllowedReassign = Boolean(
+                (isManagerRole && isTaskAssigner && nextAssigneeEmail) ||
                 (myEmail && myEmail === KEYURI_EMAIL && nextAssigneeEmail && (isRutuDirect || isSubAssistance)) ||
                 (isObManager && nextAssigneeEmail && (isAssistantCandidate || isObManagerDirectEmail))
             );
