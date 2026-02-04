@@ -941,7 +941,7 @@ const AssignPage = ({ currentUser }: Props) => {
               const target = normalizeEmailSafe(emailRaw);
               if (!target) return '';
               const user = safeUsers.find((u: any) => normalizeEmailSafe(u?.email) === target);
-              return (user?.id || user?._id || '').toString();
+              return String((user as any)?.id || '').trim();
             };
 
             const companyTaskTypesRes = await companyBrandTaskTypeService.getCompanyTaskTypes({

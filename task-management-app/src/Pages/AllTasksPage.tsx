@@ -40,6 +40,7 @@ import AdvancedFiltersPanel from './AdvancedFilters';
 
 const SPEED_E_COM_COMPANY_KEY = 'speed e com';
 const SPEED_E_COM_FIXED_TASK_TYPES = ['Meeting Pending', 'CP Pending', 'Recharge Negative'];
+
 const TASKS_PER_PAGE = 20;
 
 // ==================== TYPES ====================
@@ -179,6 +180,7 @@ interface MobileTaskItemProps {
   getTaskBorderColor: (task: Task) => string;
   getTaskStatusIcon: (taskId: string, isCompleted: boolean) => React.ReactNode;
   getUserInfoForDisplay: (task: Task) => { name: string; email: string };
+  brandLabel?: string;
   onToggleStatus: (taskId: string, originalTask: Task) => Promise<void>;
   onEditTaskClick: (task: Task) => void;
   onOpenCommentSidebar: (task: Task) => Promise<void>;
@@ -203,13 +205,13 @@ interface DesktopTaskItemProps {
   index: number;
   task: Task;
   isToggling: boolean;
-  brandLabel: string;
   currentUser: UserType;
   formatDate: (date: string) => string;
   isOverdue: (dueDate: string, status: string) => boolean;
   getTaskBorderColor: (task: Task) => string;
   getTaskStatusIcon: (taskId: string, isCompleted: boolean) => React.ReactNode;
   getUserInfoForDisplay: (userId: any) => { name: string; email: string };
+  brandLabel?: string;
   onToggleStatus: (taskId: string, originalTask: Task) => Promise<void>;
   onEditTaskClick: (task: Task) => void;
   onOpenCommentSidebar: (task: Task) => Promise<void>;
@@ -933,7 +935,7 @@ Update documentation
 Test mobile responsiveness
 Add user notifications
 ..."
-                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-h-20"
+                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-h-[80px]"
                 rows={3}
               />
               <div className="flex flex-col gap-2">
@@ -1209,6 +1211,7 @@ const MobileTaskItem = memo(({
   getTaskBorderColor,
   getTaskStatusIcon,
   getUserInfoForDisplay,
+  brandLabel,
   onToggleStatus,
   onDeleteTask,
   showAssignButton,
@@ -1240,6 +1243,7 @@ const MobileTaskItem = memo(({
   const role = String((currentUser as any)?.role || '').trim().toLowerCase();
   const canDeleteThisTask = role === 'admin' || role === 'super_admin' || userIsAssigner;
   const isOverdueTask = isOverdue(task.dueDate, task.status);
+  const brandLabelText = (brandLabel || (task.brand || '')).toString();
 
   return (
     <div className={`bg-white rounded-xl shadow-sm border-l-4 ${getTaskBorderColor(task)} border shadow-sm hover:shadow-md transition-all duration-200 mb-3`}>
@@ -1332,6 +1336,11 @@ const MobileTaskItem = memo(({
                   {task.type}
                 </span>
               )}
+              {brandLabelText && (
+                <span className="text-xs bg-blue-50 text-blue-800 px-2 py-1 rounded" title={brandLabelText}>
+                  {brandLabelText}
+                </span>
+              )}
               {task.company && (
                 <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">
                   {task.company}
@@ -1352,12 +1361,12 @@ const DesktopTaskItem = memo(({
   task,
   isToggling,
   currentUser,
-  brandLabel,
   formatDate,
   isOverdue,
   getTaskBorderColor,
   getTaskStatusIcon,
   getUserInfoForDisplay,
+  brandLabel,
   onToggleStatus,
   onEditTaskClick,
   onOpenCommentSidebar,
@@ -1397,13 +1406,14 @@ const DesktopTaskItem = memo(({
   const isOverdueTask = isOverdue(task.dueDate, task.status);
 
   const taskTypeLabel = (task.taskType || (task as any).type || (task as any).task_type || '').toString();
+  const brandLabelText = (brandLabel || (task.brand || '')).toString();
 
   return (
     <div className={`relative bg-white rounded-lg border-l-4 ${getTaskBorderColor(task)} border shadow-sm hover:shadow-md transition-all duration-200 mb-3`}>
       <div className="grid grid-cols-12 gap-1 p-3 items-start"> {/* Changed: gap-1 और p-3 */}
         {/* Index Column - Fixed width */}
         <div className="col-span-1 flex justify-center items-center">
-          <span className="text-sm font-medium text-gray-500 tabular-nums min-w-5 text-center">
+          <span className="text-sm font-medium text-gray-500 tabular-nums min-w-[20px] text-center">
             {index}
           </span>
         </div>
@@ -1432,7 +1442,7 @@ const DesktopTaskItem = memo(({
         {/* Task Title Column - INCREASED WIDTH */}
         <div className="col-span-3 min-w-0 pr-2"> {/* Changed: col-span-3 और pr-2 */}
           <div className="flex flex-col gap-1">
-            <h3 className="font-semibold text-gray-900 text-sm whitespace-normal wrap-break-word leading-tight" title={task.title}>
+            <h3 className="font-semibold text-gray-900 text-sm whitespace-normal break-words leading-tight" title={task.title}>
               {task.title}
             </h3>
             {isOverdueTask && !isCompleted && (
@@ -1488,8 +1498,8 @@ const DesktopTaskItem = memo(({
         {/* Brand Column - FIXED WIDTH */}
         <div className="col-span-1 min-w-0 flex items-center justify-center">
           <div className="w-full max-w-[100px]">
-            <span className="text-xs text-blue-700 px-2 py-1 bg-blue-50 rounded-md truncate block w-full text-center" title={brandLabel}>
-              {brandLabel || "—"}
+            <span className="text-xs text-blue-700 px-2 py-1 bg-blue-50 rounded-md truncate block w-full text-center" title={brandLabelText}>
+              {brandLabelText || "—"}
             </span>
           </div>
         </div>
@@ -1591,7 +1601,7 @@ const CommentSidebar = memo(({
   currentUser,
   formatDate,
   isOverdue,
-  getBrandLabel,
+  formatBrandLabel,
   onCloseSidebar,
   onSetNewComment,
   onSaveComment,
@@ -1609,7 +1619,6 @@ const CommentSidebar = memo(({
   const userInfo = getUserInfoForDisplay(selectedTask);
   const isCompleted = isTaskCompleted(selectedTask.id);
   const [activeTab, setActiveTab] = useState<'details' | 'permanent-history'>('details');
-  const brandLabel = typeof getBrandLabel === 'function' ? getBrandLabel(selectedTask) : '';
 
   return (
     <div className="fixed inset-0 z-50">
@@ -1718,11 +1727,11 @@ const CommentSidebar = memo(({
                       </div>
                     )}
 
-                    {brandLabel && (
+                    {selectedTask.brand && (
                       <div>
                         <div className="text-xs font-medium text-gray-500 mb-1">Brand</div>
                         <div className="text-sm text-gray-900">
-                          {brandLabel}
+                          {(typeof formatBrandLabel === 'function' ? formatBrandLabel(selectedTask) : selectedTask.brand)}
                         </div>
                       </div>
                     )}
@@ -1737,7 +1746,7 @@ const CommentSidebar = memo(({
                       value={newComment}
                       onChange={(e) => onSetNewComment(e.target.value)}
                       placeholder="Type your comment here..."
-                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-20 resize-none"
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[80px] resize-none"
                       rows={3}
                     />
                   </div>
@@ -2105,13 +2114,14 @@ const ReassignModal = memo(({
   const KEYURI_EMAIL = 'keyurismartbiz@gmail.com';
   const RUTU_EMAIL = 'rutusmartbiz@gmail.com';
   const myEmail = normalizeEmail((currentUser as any)?.email);
-  const canReassign = Boolean(myEmail && myEmail === KEYURI_EMAIL);
-
-  const role = (currentUser?.role || '').toString().trim().toLowerCase();
   const normalizeRole = (v: unknown) => String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  const myRoleKey = normalizeRole((currentUser as any)?.role);
+  const isObManager = myRoleKey === 'ob_manager';
+  const canReassign = Boolean(isObManager || (myEmail && myEmail === KEYURI_EMAIL));
+
   const isAssistantRole = (v: unknown) => {
     const r = normalizeRole(v);
-    return r === 'assistant' || r.includes('assistant');
+    return r === 'assistant' || r === 'sub_assistance' || r === 'assistance' || r.includes('assistant');
   };
   const assignedToCandidate: any = (reassignTask as any)?.assignedToUser || (reassignTask as any)?.assignedTo;
   const assignedToId = typeof assignedToCandidate === 'object'
@@ -2144,9 +2154,10 @@ const ReassignModal = memo(({
       if (assignedToEmail && uemail && uemail === assignedToEmail) return false;
       return true;
     })
-    .filter(user => role !== 'ob_manager' || isAssistantRole((user as any)?.role))
+    .filter(user => !isObManager || isAssistantRole((user as any)?.role))
     .filter((user: any) => {
       if (!canReassign) return true;
+      if (isObManager) return true;
       const email = normalizeEmail(user?.email);
       const urole = normalizeRole((user as any)?.role);
       return email === RUTU_EMAIL || urole === 'sub_assistance';
@@ -2185,9 +2196,9 @@ const ReassignModal = memo(({
               >
                 <option value="">Select a user</option>
                 {availableUsers.map(user => (
-                    <option key={user.email || user.id} value={user.email}>
-                      {user.name} ({user.email})
-                    </option>
+                  <option key={user.email || user.id} value={user.email}>
+                    {user.name} ({user.email})
+                  </option>
                 ))}
               </select>
               {!canReassign && (
@@ -2600,62 +2611,48 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   }, [normalizeText]);
 
   const formatBrandWithGroupNumber = useCallback((task: any): string => {
-    const plain = String(
-      typeof task?.brand === 'string'
-        ? task.brand
-        : (task?.brand?.name || task?.brandName || '')
-    ).trim();
+    const plain = String(task?.brand || '').trim();
     if (!plain) return '';
 
-    const company = String(task?.companyName || task?.company || task?.company?.name || '').trim();
-    const brandId = String(task?.brandId || task?.brand?._id || task?.brand?.id || '').trim();
+    const company = String(task?.companyName || task?.company || '').trim();
+    const companyKey = normalizeCompanyKey(company);
+    const speedKey = normalizeCompanyKey(SPEED_E_COM_COMPANY_KEY);
+    if (companyKey !== speedKey) return plain;
 
+    const brandId = String(task?.brandId || '').trim();
     const byId = brandId
       ? (brands || []).find((b: any) => String(b?.id || b?._id || '').trim() === brandId)
-      : null;
+      : undefined;
 
-    const byCompanyName = !byId
+    const byNameCompany = !byId
       ? (brands || []).find((b: any) => (
-        normalizeText(String(b?.name || '').trim()) === normalizeText(plain) &&
-        normalizeCompanyKey(b?.company) === normalizeCompanyKey(company)
+        normalizeText(b?.name) === normalizeText(plain) &&
+        normalizeCompanyKey(b?.company) === companyKey
       ))
-      : null;
+      : undefined;
 
-    const brandDoc: any = byId || byCompanyName;
+    const brandDoc: any = byId || byNameCompany;
+    const displayName = String(brandDoc?.name || plain).trim() || plain;
     const groupNumber = String(brandDoc?.groupNumber || '').trim();
-    return groupNumber ? `${groupNumber} - ${plain}` : plain;
+    return groupNumber ? `${groupNumber} - ${displayName}` : displayName;
   }, [brands, normalizeCompanyKey, normalizeText]);
 
   const getBrandLabelForFilter = useCallback((brandName: string): string => {
     const plain = String(brandName || '').trim();
     if (!plain) return '';
 
-    const normalizedName = normalizeText(plain);
-    const companyFilter = String(effectiveAdvancedFilters.company || '').trim();
-    const companyKeyFilter = normalizeCompanyKey(companyFilter || '');
+    const speedKey = normalizeCompanyKey(SPEED_E_COM_COMPANY_KEY);
+    const selectedCompanyKey = normalizeCompanyKey(effectiveAdvancedFilters.company);
+    if (selectedCompanyKey && selectedCompanyKey !== 'all' && selectedCompanyKey !== speedKey) return '';
 
-    let candidates = (brands || []).filter((b: any) =>
-      normalizeText(String(b?.name || '').trim()) === normalizedName
-    );
+    const speedBrand = (brands || []).find((b: any) => (
+      normalizeCompanyKey(b?.company) === speedKey &&
+      normalizeText(b?.name) === normalizeText(plain)
+    ));
 
-    if (companyKeyFilter && companyKeyFilter !== 'all') {
-      const byCompany = candidates.filter((b: any) =>
-        normalizeCompanyKey(b?.company) === companyKeyFilter
-      );
-      if (byCompany.length) candidates = byCompany;
-    }
-
-    if (!candidates.length) return plain;
-
-    const brandDoc: any = candidates[0];
-    const company = String(brandDoc?.company || brandDoc?.companyName || '').trim();
-    const groupNumber = String(brandDoc?.groupNumber || '').trim();
-
-    if (company === 'speed Ecom' && groupNumber) {
-      return `${groupNumber} - ${plain}`;
-    }
-
-    return plain;
+    const groupNumber = String((speedBrand as any)?.groupNumber || '').trim();
+    const displayName = String((speedBrand as any)?.name || plain).trim() || plain;
+    return groupNumber ? `${groupNumber} - ${displayName}` : '';
   }, [brands, effectiveAdvancedFilters.company, normalizeCompanyKey, normalizeText]);
 
   const restrictTaskTypesForCompany = useCallback((companyName: unknown, list: string[]): string[] => {
@@ -3212,7 +3209,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
   const [bulkCreateSummary, setBulkCreateSummary] = useState<BulkCreateResult | null>(null);
 
-    const availableTaskTypesForBulk = useMemo(() => {
+  const availableTaskTypesForBulk = useMemo(() => {
     if (!bulkImportDefaults.companyName) return [];
     return getTaskTypesForCompany(bulkImportDefaults.companyName);
   }, [bulkImportDefaults.companyName, getTaskTypesForCompany]);
@@ -3786,11 +3783,6 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     if ((effectiveAdvancedFilters.taskType || '').toString().trim().toLowerCase() !== 'all') return;
     handleAdvancedFilterChange('taskType', 'other work');
   }, [currentUser?.role, effectiveAdvancedFilters.taskType, handleAdvancedFilterChange]);
-
-  useEffect(() => {
-    // Reset to first page when core filters or search term change
-    setCurrentPage(1);
-  }, [filter, dateFilter, assignedFilter, searchTerm, effectiveAdvancedFilters]);
 
   const handleBulkStatusChange = useCallback(async (status: 'completed' | 'pending') => {
     if (selectedTasks.length === 0) return;
@@ -4389,6 +4381,39 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       const roleKey = normalizeRoleKey(currentUser?.role);
       const myEmail = normalizeText(currentUser?.email);
 
+      if (roleKey === 'ob_manager') {
+        const assignedToEmail = normalizeText(
+          (task as any)?.assignedToUser?.email ||
+          (typeof (task as any)?.assignedTo === 'string' ? (task as any)?.assignedTo : (task as any)?.assignedTo?.email) ||
+          (task as any)?.assignedTo ||
+          ''
+        );
+        const isAssignedToMe = Boolean(myEmail && assignedToEmail && assignedToEmail === myEmail);
+
+        const direct = normalizeRoleKey((task as any)?.assignedToUser?.role);
+        let assigneeRoleKey = direct;
+        if (!assigneeRoleKey) {
+          const candidate = (task as any)?.assignedToUser || (task as any)?.assignedTo;
+          const idOrEmail = typeof candidate === 'string'
+            ? candidate
+            : (candidate?.id || candidate?._id || candidate?.email || '');
+          const key = String(idOrEmail || '').trim().toLowerCase();
+          const found = (users || []).find((u: any) => {
+            const id = String(u?.id || u?._id || '').trim().toLowerCase();
+            const email = String(u?.email || '').trim().toLowerCase();
+            return (id && id === key) || (email && email === key);
+          });
+          assigneeRoleKey = normalizeRoleKey((found as any)?.role);
+        }
+
+        const isAssistantAssignee = assigneeRoleKey === 'assistant'
+          || assigneeRoleKey === 'assistance'
+          || assigneeRoleKey === 'sub_assistance'
+          || assigneeRoleKey.includes('assistant');
+
+        if (!isAssignedToMe && !isAssistantAssignee) return false;
+      }
+
       if (roleKey === 'manager') {
         const assignedByMe = normalizeText(getAssignerEmail(task)) === myEmail;
         const assignedToMe = normalizeText(getEmailByIdInternal(task.assignedTo)) === myEmail;
@@ -4517,9 +4542,27 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     getAssignerEmail
   ]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    filter,
+    dateFilter,
+    assignedFilter,
+    searchTerm,
+    effectiveAdvancedFilters.status,
+    effectiveAdvancedFilters.priority,
+    effectiveAdvancedFilters.assigned,
+    effectiveAdvancedFilters.date,
+    effectiveAdvancedFilters.taskType,
+    effectiveAdvancedFilters.company,
+    effectiveAdvancedFilters.brand
+  ]);
+
   const totalTasks = filteredTasks.length;
   const totalPages = Math.max(1, Math.ceil(totalTasks / TASKS_PER_PAGE));
   const currentPageSafe = Math.min(currentPage, totalPages);
+  const startItemIndex = totalTasks === 0 ? 0 : (currentPageSafe - 1) * TASKS_PER_PAGE + 1;
+  const endItemIndex = totalTasks === 0 ? 0 : Math.min(startItemIndex + TASKS_PER_PAGE - 1, totalTasks);
 
   const paginatedTasks = useMemo(() => {
     if (!filteredTasks.length) return [] as Task[];
@@ -4528,8 +4571,9 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     return filteredTasks.slice(startIndex, endIndex);
   }, [filteredTasks, currentPageSafe]);
 
-  const startItemIndex = totalTasks === 0 ? 0 : (currentPageSafe - 1) * TASKS_PER_PAGE + 1;
-  const endItemIndex = totalTasks === 0 ? 0 : Math.min(startItemIndex + TASKS_PER_PAGE - 1, totalTasks);
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
 
   if (pageLoading) {
     return <TasksPageSkeleton />;
@@ -4539,7 +4583,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   const isObManagerViewOnly = normalizeRoleKey(currentUser?.role) === 'ob_manager';
   const isAssistantViewOnly = normalizeRoleKey(currentUser?.role) === 'assistant';
   return (
-    <div className="min-h-screen bg-linear-to-b from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
       {/* Header Section */}
       <div className="bg-white shadow-lg border-b">
         <div className="px-4 py-6 sm:px-6 lg:px-8">
@@ -4649,7 +4693,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                 </button>
                 <button
                   onClick={handleCreateTaskWithHistory}
-                  className="inline-flex items-center px-5 py-3 border border-transparent rounded-xl shadow-sm text-base font-medium text-white bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transition-all"
+                  className="inline-flex items-center px-5 py-3 border border-transparent rounded-xl shadow-sm text-base font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transition-all"
                 >
                   <Plus className="h-5 w-5 mr-2" />
                   Create New Task
@@ -4660,7 +4704,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         ) : (
           <div className="space-y-4">
             {/* Table Header - Desktop */}
-            <div className="hidden md:grid grid-cols-12 gap-3 px-6 py-4 bg-linear-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 text-sm font-semibold text-gray-700">
+            <div className="hidden md:grid grid-cols-12 gap-3 px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 text-sm font-semibold text-gray-700">
               <div className="col-span-1 text-center">#</div>
               <div className="col-span-1 text-center">Status</div>
               <div className="col-span-2">Task Title</div>
@@ -4681,7 +4725,8 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
 
               const brandLabel = formatBrandWithGroupNumber(task);
 
-              const showAssignButton = normalizeRole(currentUser?.role) === 'ob_manager' && (resolveAssignerRole(task) === 'manager' || resolveAssignerRole(task) === 'md_manager');
+              const roleKey = normalizeRoleKey((currentUser as any)?.role);
+              const showAssignButton = roleKey === 'ob_manager' || String((currentUser as any)?.email || '').trim().toLowerCase() === 'keyurismartbiz@gmail.com';
 
               return (
                 <div key={`${task.id}-${idx}`}>
@@ -4700,6 +4745,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                       getTaskBorderColor={getTaskBorderColor}
                       getTaskStatusIcon={(taskId: string, isCompleted: boolean) => getTaskStatusIcon(taskId, isCompleted, isToggling)}
                       getUserInfoForDisplay={getUserInfoForDisplay}
+                      brandLabel={brandLabel}
                       onToggleStatus={handleToggleTaskStatus}
                       onEditTaskClick={handleOpenEditModal}
                       onOpenCommentSidebar={handleOpenCommentSidebar}
@@ -4726,13 +4772,13 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                       index={(currentPageSafe - 1) * TASKS_PER_PAGE + idx + 1}
                       task={task}
                       isToggling={isToggling}
-                      brandLabel={brandLabel}
                       currentUser={currentUser}
                       formatDate={formatDate}
                       isOverdue={isOverdue}
                       getTaskBorderColor={getTaskBorderColor}
                       getTaskStatusIcon={(taskId: string, isCompleted: boolean) => getTaskStatusIcon(taskId, isCompleted, isToggling)}
                       getUserInfoForDisplay={getUserInfoForDisplay}
+                      brandLabel={brandLabel}
                       onToggleStatus={handleToggleTaskStatus}
                       onEditTaskClick={handleOpenEditModal}
                       onOpenCommentSidebar={handleOpenCommentSidebar}
@@ -4753,7 +4799,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                 </div>
               );
             })}
-            {/* Pagination Controls */}
+
             {totalTasks > 0 && (
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4">
                 <div className="text-sm text-gray-600">
@@ -4817,7 +4863,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         currentUser={currentUser}
         formatDate={formatDate}
         isOverdue={isOverdue}
-        getBrandLabel={formatBrandWithGroupNumber}
+        formatBrandLabel={formatBrandWithGroupNumber}
         onCloseSidebar={handleCloseCommentSidebar}
         onSetNewComment={setNewComment}
         onSaveComment={handleSaveComment}

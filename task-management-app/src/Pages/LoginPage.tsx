@@ -5,9 +5,12 @@ import toast from "react-hot-toast";
 import { authService } from "../Services/User.Services";
 import { routepath } from "../Routes/route";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
+import { useAppDispatch } from "../Store/hooks";
+import { tasksReset } from "../Store/tasksSlice";
 
 export default function AuthPage() {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const [showPassword, setShowPassword] = useState(false);
 
   const isDev = Boolean(import.meta.env.DEV);
@@ -110,6 +113,8 @@ export default function AuthPage() {
           if (isDev) console.log("💾 Saving user data:", userData);
           localStorage.setItem("currentUser", JSON.stringify(userData));
         }
+
+        dispatch(tasksReset());
 
         navigate(routepath.dashboard, { replace: true });
 

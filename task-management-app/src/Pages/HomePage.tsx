@@ -4,6 +4,7 @@ import { routepath } from "../Routes/route";
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <meta name="google-site-verification" content="q6BGcMT3Zm73tNhpI7jgiMo1LfAe78tMQ8z2kdij88M" />
       <div className="mx-auto max-w-5xl px-4 py-16">
         <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
           <div className="border-b border-gray-200 px-8 py-8">

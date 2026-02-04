@@ -15,12 +15,14 @@ const OtherWorkPage = ({ currentUser, tasks, onRefreshTasks }: { currentUser: Us
 
   const isManagerRole = role === 'manager' || role === 'md_manager' || role === 'admin' || role === 'super_admin';
   const isAssistantRole = role === 'assistant' || role === 'sub_assistance';
+  const isObManagerRole = role === 'ob_manager';
 
   const otherWorkTasks = useMemo(() => {
     if (!myEmail) return [];
     return (tasks || []).filter((t: any) => {
       const assignedBy = normalizeEmail(t?.assignedByUser?.email || t?.assignedBy);
       const assignedTo = normalizeEmail(t?.assignedToUser?.email || t?.assignedTo);
+      const assignedToRole = normalizeText(t?.assignedToUser?.role);
       const taskTypeKey = normalizeText(t?.taskType || t?.type);
       if (taskTypeKey !== 'other work') return false;
 
@@ -28,6 +30,11 @@ const OtherWorkPage = ({ currentUser, tasks, onRefreshTasks }: { currentUser: Us
       if (isManagerRole) {
         if (assignedBy !== myEmail) return false;
         return true;
+      }
+
+      // OB Manager: see tasks assigned to assistance/sub_assistance users (any assigner)
+      if (isObManagerRole) {
+        return assignedToRole === 'assistant' || assignedToRole === 'assistance' || assignedToRole === 'sub_assistance';
       }
 
       // Assistant/Sub Assistance: tasks assigned to me
@@ -38,7 +45,7 @@ const OtherWorkPage = ({ currentUser, tasks, onRefreshTasks }: { currentUser: Us
 
       return true;
     });
-  }, [tasks, myEmail, isManagerRole, isAssistantRole]);
+  }, [tasks, myEmail, isManagerRole, isObManagerRole, isAssistantRole]);
 
   const summary = useMemo(() => {
     const list = otherWorkTasks || [];
@@ -90,7 +97,7 @@ const OtherWorkPage = ({ currentUser, tasks, onRefreshTasks }: { currentUser: Us
     }
   };
 
-  if (!isManagerRole && !isAssistantRole) {
+  if (!isManagerRole && !isAssistantRole && !isObManagerRole) {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
         <h2 className="text-xl font-semibold text-gray-900">Other Work</h2>
@@ -106,7 +113,9 @@ const OtherWorkPage = ({ currentUser, tasks, onRefreshTasks }: { currentUser: Us
         <p className="text-sm text-gray-500 mt-1">
           {isManagerRole
             ? 'Tasks assigned by you (Other Work). Add reviews after completion.'
-            : 'Your Other Work tasks and the reviews given by managers.'}
+            : isObManagerRole
+              ? 'Other Work tasks assigned to assistance users.'
+              : 'Your Other Work tasks and the reviews given by managers.'}
         </p>
         <div className="mt-3 flex flex-wrap gap-2 text-xs">
           <span className="px-2.5 py-1 rounded-full border bg-gray-50 text-gray-700">Total: {summary.total}</span>

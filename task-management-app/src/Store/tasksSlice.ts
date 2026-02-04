@@ -68,6 +68,12 @@ const tasksSlice = createSlice({
   name: 'tasks',
   initialState,
   reducers: {
+    tasksReset: (state) => {
+      tasksAdapter.removeAll(state);
+      state.status = 'idle';
+      state.error = null;
+      state.lastFetchedAt = null;
+    },
     taskAdded: (state, action: { payload: Task }) => {
       tasksAdapter.addOne(state, action.payload);
     },
@@ -103,7 +109,7 @@ const tasksSlice = createSlice({
   },
 });
 
-export const { taskAdded, tasksAddedMany, taskUpserted, taskRemoved, tasksSetAll } = tasksSlice.actions;
+export const { tasksReset, taskAdded, tasksAddedMany, taskUpserted, taskRemoved, tasksSetAll } = tasksSlice.actions;
 
 export const tasksReducer = tasksSlice.reducer;
 
