@@ -25,6 +25,7 @@ import { TeamPageSkeleton } from '../Components/LoadingSkeletons';
 import { authService } from '../Services/User.Services';
 import { taskService } from '../Services/Task.services';
 import { routepath } from '../Routes/route';
+import { userAvatarUrl } from '../utils/avatar';
 
 interface TeamPageProps {
     users?: UserType[];
@@ -1067,6 +1068,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
     const getUserAvatar = (user: UserType, size: 'sm' | 'md' | 'lg' = 'md'): React.ReactElement => {
         const initials = getUserInitials(user.name);
         const role = normalizeRole(user.role);
+        const avatarUrl = userAvatarUrl(user);
 
         let gradient = 'from-gray-600 to-gray-800';
         switch (role) {
@@ -1098,8 +1100,17 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
         return (
             <div className="flex-shrink-0">
-                <div className={`rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white font-semibold ${sizeClasses[size]}`}>
-                    {initials}
+                <div className={`rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white font-semibold ${sizeClasses[size]} overflow-hidden`}>
+                    {avatarUrl ? (
+                        <img
+                            src={avatarUrl}
+                            alt={user?.name || 'User'}
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                        />
+                    ) : (
+                        initials
+                    )}
                 </div>
             </div>
         );

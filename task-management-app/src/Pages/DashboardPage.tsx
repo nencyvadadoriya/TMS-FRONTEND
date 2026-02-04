@@ -612,11 +612,19 @@ const DashboardPage = () => {
 
             photoUrl: photoUrl ? String(photoUrl) : undefined,
 
-            summaryRows: rows.slice(0, 10).map((r) => ({
+            summaryRows: rows.slice(0, 10).map((r) => {
+                const avatar = (users || []).find((u: any) => {
+                    const uemail = String(u?.email || '').trim().toLowerCase();
+                    return uemail && uemail === r.email;
+                })?.avatar;
+
+                return {
 
                 email: r.email,
 
                 name: r.name,
+
+                avatar: avatar ? String(avatar) : '',
 
                 avgStarsLabel: r.avgStarsLabel,
 
@@ -624,7 +632,8 @@ const DashboardPage = () => {
 
                 performance: r.performance,
 
-            })),
+                };
+            }),
 
         };
 
@@ -8058,6 +8067,8 @@ const DashboardPage = () => {
 
         const needsUsers =
 
+            currentView === 'dashboard' ||
+
             currentView === 'team' ||
 
             currentView === 'all-tasks' ||
@@ -10432,6 +10443,24 @@ const DashboardPage = () => {
 
                                             // ignore
 
+                                        }
+
+                                        try {
+                                            const nextId = (next as any)?.id || (next as any)?._id;
+                                            const nextEmail = String((next as any)?.email || '').trim().toLowerCase();
+                                            setUsers((prev) => {
+                                                const list = Array.isArray(prev) ? prev : [];
+                                                return list.map((u: any) => {
+                                                    const uid = (u?.id || u?._id || '').toString();
+                                                    const uemail = String(u?.email || '').trim().toLowerCase();
+                                                    const matchById = nextId && uid && uid === String(nextId);
+                                                    const matchByEmail = nextEmail && uemail && uemail === nextEmail;
+                                                    if (!matchById && !matchByEmail) return u;
+                                                    return { ...u, ...next, id: (next as any)?.id || (next as any)?._id || u?.id || uid };
+                                                });
+                                            });
+                                        } catch {
+                                            // ignore
                                         }
 
                                         try {

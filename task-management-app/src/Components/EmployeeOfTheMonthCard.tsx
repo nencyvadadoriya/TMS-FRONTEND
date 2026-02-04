@@ -1,4 +1,5 @@
 import { Star, TrendingUp } from 'lucide-react';
+import { toAvatarUrl } from '../utils/avatar';
 
 type EmployeeOfTheMonthCardProps = {
   title?: string;
@@ -10,6 +11,7 @@ type EmployeeOfTheMonthCardProps = {
   summaryRows?: Array<{
     email: string;
     name: string;
+    avatar?: string;
     avgStarsLabel: string;
     total: number;
     performance: string;
@@ -33,6 +35,7 @@ const EmployeeOfTheMonthCard = ({
   const safeRating = clampRating(rating);
   const fullStars = Math.floor(safeRating);
   const hasHalf = safeRating - fullStars >= 0.5;
+  const topAvatarUrl = toAvatarUrl(photoUrl);
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
@@ -50,8 +53,8 @@ const EmployeeOfTheMonthCard = ({
       <div className="mt-5 flex flex-col sm:flex-row sm:items-center gap-4">
         <div className="flex items-center gap-4">
           <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 overflow-hidden flex items-center justify-center">
-            {photoUrl ? (
-              <img src={photoUrl} alt={name} className="h-full w-full object-cover" />
+            {topAvatarUrl ? (
+              <img src={topAvatarUrl} alt={name} className="h-full w-full object-cover" loading="lazy" />
             ) : (
               <span className="text-lg font-semibold text-blue-700">{(name || 'U').trim().charAt(0).toUpperCase()}</span>
             )}
@@ -117,7 +120,18 @@ const EmployeeOfTheMonthCard = ({
               <tbody>
                 {summaryRows.map((r) => (
                   <tr key={r.email} className="border-t border-gray-100">
-                    <td className="py-2 pr-4 font-medium text-gray-900">{r.name}</td>
+                    <td className="py-2 pr-4 font-medium text-gray-900">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 overflow-hidden flex items-center justify-center flex-shrink-0">
+                          {toAvatarUrl((r as any)?.avatar) ? (
+                            <img src={toAvatarUrl((r as any)?.avatar)} alt={r.name} className="h-full w-full object-cover" loading="lazy" />
+                          ) : (
+                            <span className="text-sm font-semibold text-blue-700">{(r.name || 'U').trim().charAt(0).toUpperCase()}</span>
+                          )}
+                        </div>
+                        <span className="truncate">{r.name}</span>
+                      </div>
+                    </td>
                     <td className="py-2 pr-4 text-gray-700">{r.avgStarsLabel}</td>
                     <td className="py-2 pr-4 text-gray-700">{r.total}</td>
                     <td className="py-2 pr-4 text-gray-700">{r.performance}</td>

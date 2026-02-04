@@ -2,6 +2,7 @@
 import React from 'react';
 import { Menu, Search, LogOut } from 'lucide-react';
 import type { UserType } from '../Types/Types';
+import { userAvatarUrl } from '../utils/avatar';
 
 interface NavbarProps {
   setSidebarOpen: (open: boolean) => void;
@@ -25,7 +26,7 @@ const Navbar: React.FC<NavbarProps> = ({
   handleLogout
 }) => {
   
- // Get display avatar (first letter)
+  // Get display avatar (first letter)
   const getDisplayAvatar = () => {
     if (!currentUser) return 'U';
     
@@ -33,7 +34,7 @@ const Navbar: React.FC<NavbarProps> = ({
     if (currentUser.name && currentUser.name.trim() !== '') {
       return currentUser.name.charAt(0).toUpperCase();
     }
-    
+
     // Try email first letter
     if (currentUser.email && currentUser.email.trim() !== '') {
       return currentUser.email.charAt(0).toUpperCase();
@@ -41,6 +42,8 @@ const Navbar: React.FC<NavbarProps> = ({
     
     return 'U';
   };
+
+  const avatarUrl = userAvatarUrl(currentUser);
 
   // Get display name
   const getDisplayName = () => {
@@ -112,9 +115,13 @@ const Navbar: React.FC<NavbarProps> = ({
               }}
             >
               <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center">
-                <span className="text-white font-bold text-sm">
-                  {getDisplayAvatar()} {/* ✅ HERE - Function used! */}
-                </span>
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt={getDisplayName()} className="h-8 w-8 rounded-full object-cover" />
+                ) : (
+                  <span className="text-white font-bold text-sm">
+                    {getDisplayAvatar()} {/* ✅ HERE - Function used! */}
+                  </span>
+                )}
               </div>
 
               {/* Name and Email Display */}
