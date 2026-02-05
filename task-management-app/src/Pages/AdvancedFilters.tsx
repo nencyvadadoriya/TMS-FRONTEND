@@ -26,10 +26,11 @@ interface AdvancedFiltersProps {
 
 const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
     filters,
-    availableCompanies: _availableCompanies,
+    availableCompanies,
     availableTaskTypes,
     availableBrands,
     getBrandLabel,
+    currentUser,
     onFilterChange,
     onResetFilters,
     onApplyFilters,
@@ -37,6 +38,14 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
     onToggleFilters,
 }) => {
     if (!showFilters) return null;
+
+    const roleKey = (currentUser?.role || '')
+        .toString()
+        .trim()
+        .toLowerCase()
+        .replace(/[\s-]+/g, '_');
+
+    const canSeeCompanyFilter = roleKey === 'admin' || roleKey === 'super_admin';
 
     const formatLabel = (value: string) => {
         const v = (value || '').toString();
@@ -65,7 +74,7 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
         let count = 0;
         Object.entries(filters).forEach(([key, value]) => {
             if (key === 'brand') return;
-            if (key === 'company') return;
+            if (key === 'company' && !canSeeCompanyFilter) return;
             if (value !== 'all') count++;
         });
         return count;
@@ -118,6 +127,26 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                         <option value="completed">Completed</option>
                     </select>
                 </div>
+
+                {canSeeCompanyFilter ? (
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">
+                            Company
+                        </label>
+                        <select
+                            value={filters.company}
+                            onChange={(e) => onFilterChange('company', e.target.value)}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                            <option value="all">All Companies</option>
+                            {availableCompanies.map((companyName) => (
+                                <option key={companyName} value={companyName}>
+                                    {companyName}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                ) : null}
 
                 {/* Priority Filter */}
                 <div>

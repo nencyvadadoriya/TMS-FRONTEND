@@ -424,8 +424,6 @@ const DashboardPage = () => {
 
     const USER_MAPPINGS_TTL_MS = 60_000;
 
-    const TASKS_AUTO_REFRESH_MS = 15_000;
-
     const BRANDS_AUTO_REFRESH_MS = 15_000;
 
 
@@ -8064,36 +8062,6 @@ const DashboardPage = () => {
         });
 
     }, [companies, currentUser?.role]);
-
-
-
-    useEffect(() => {
-
-        if (!currentUser?.email) return;
-
-
-
-        const intervalId = window.setInterval(() => {
-
-            fetchTasks({ force: true }).catch(() => {
-
-                // Errors are already logged inside fetchTasks / service
-
-                return;
-
-            });
-
-        }, TASKS_AUTO_REFRESH_MS);
-
-
-
-        return () => {
-
-            window.clearInterval(intervalId);
-
-        };
-
-    }, [currentUser?.email, fetchTasks]);
 
 
 
