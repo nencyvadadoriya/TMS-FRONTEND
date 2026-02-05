@@ -30,7 +30,7 @@ import {
 import type { Task, UserType, CommentType, TaskHistory, Brand } from '../Types/Types';
 import toast from 'react-hot-toast';
 import type * as React from 'react';
-import { useMemo, useCallback, useState, useEffect, memo } from 'react';
+import { useMemo, useCallback, useState, useEffect, useRef ,memo } from 'react';
 import { taskTypeService, type TaskTypeItem } from '../Services/TaskType.service';
 import { companyTaskTypeService } from '../Services/CompanyTaskType.service';
 import { companyService } from '../Services/Company.service';
@@ -2609,6 +2609,10 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
 
   const [taskTypes, setTaskTypes] = useState<TaskTypeItem[]>([]);
 
+  const taskTypesFetchedAtRef = useRef<number>(0);
+  const taskTypesFetchInFlightRef = useRef<Promise<void> | null>(null);
+  const TASK_TYPES_TTL_MS = 60_000;
+
   const normalizeText = useCallback((value: unknown): string => {
     return (value == null ? '' : String(value)).trim().toLowerCase();
   }, []);
@@ -3130,47 +3134,40 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     return restrictTaskTypesForCompany(effectiveAdvancedFilters.company, merged.sort((a, b) => a.localeCompare(b)));
   }, [allowedTaskTypeKeysForManager, assistantScopedTasks, availableTaskTypes, currentUser?.role, effectiveAdvancedFilters.company, getTaskTypesForCompany, normalizeText, restrictTaskTypesForCompany, taskTypeCompanyOverrides, taskTypesByCompanyFromTasks, uniqueLabelsByKey]);
   const fetchTaskTypes = useCallback(async () => {
+    const isFresh = taskTypesFetchedAtRef.current && Date.now() - taskTypesFetchedAtRef.current < TASK_TYPES_TTL_MS;
+    if (taskTypes.length > 0 && isFresh) return;
+    if (taskTypesFetchInFlightRef.current) return taskTypesFetchInFlightRef.current;
+
     setPageLoading(true);
-    try {
-      const response = await taskTypeService.getTaskTypes();
-      if (response?.success && Array.isArray(response.data)) {
-        const role = (currentUser?.role || '').toLowerCase();
-        if (role === 'manager') {
-          const allowed = allowedTaskTypeKeysForManager;
-          const filtered = (response.data as TaskTypeItem[]).filter(t => allowed.has((t?.name || '').toString().trim().toLowerCase()));
-          setTaskTypes(filtered);
-          return;
-        }
 
-        if (role === 'assistant') {
-          const myEmail = (currentUser?.email || '').toString().trim().toLowerCase();
-          const allowed = new Set(
-            (tasks || [])
-              .filter((t: any) => {
-                const assignedTo = (t as any)?.assignedTo;
-                const assignedToUser = (t as any)?.assignedToUser;
-                const candidate =
-                  (typeof assignedTo === 'string' ? assignedTo : assignedTo?._id || assignedTo?.id) ||
-                  (typeof assignedToUser === 'string' ? assignedToUser : assignedToUser?._id || assignedToUser?.id) ||
-                  '';
-                return candidate.toString().trim().toLowerCase() === myEmail;
-              })
-              .map((t: any) => (t.taskType || t.type || '').toString().trim().toLowerCase())
-              .filter(Boolean)
-          );
-          const filtered = (response.data as TaskTypeItem[]).filter(t => allowed.has((t?.name || '').toString().trim().toLowerCase()));
-          setTaskTypes(filtered);
-          return;
-        }
+    taskTypesFetchInFlightRef.current = (async () => {
+      try {
+        const response = await taskTypeService.getTaskTypes();
+        if (response?.success && Array.isArray(response.data)) {
+          const role = (currentUser?.role || '').toLowerCase();
 
-        setTaskTypes(response.data as TaskTypeItem[]);
+          if (role === 'manager') {
+            const allowed = allowedTaskTypeKeysForManager;
+            const filtered = (response.data as TaskTypeItem[]).filter(t => allowed.has((t?.name || '').toString().trim().toLowerCase()));
+            setTaskTypes(filtered);
+            taskTypesFetchedAtRef.current = Date.now();
+            return;
+          }
+
+          setTaskTypes(response.data as TaskTypeItem[]);
+          taskTypesFetchedAtRef.current = Date.now();
+        }
+      } catch (error) {
+        console.error('Failed to fetch task types:', error);
+      } finally {
+        setPageLoading(false);
       }
-    } catch (error) {
-      console.error('Failed to fetch task types:', error);
-    } finally {
-      setPageLoading(false);
-    }
-  }, [allowedTaskTypeKeysForManager, currentUser]);
+    })().finally(() => {
+      taskTypesFetchInFlightRef.current = null;
+    });
+
+    return taskTypesFetchInFlightRef.current;
+  }, [allowedTaskTypeKeysForManager, currentUser?.role, taskTypes.length]);
 
   useEffect(() => {
     fetchTaskTypes();
@@ -4670,6 +4667,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                 availableTaskTypes={availableTaskTypesForFilters}
                 availableBrands={availableBrands}
                 getBrandLabel={getBrandLabelForFilter}
+                currentUser={currentUser}
                 onFilterChange={handleFilterChange}
                 onResetFilters={resetFilters}
                 onApplyFilters={applyAdvancedFilters}

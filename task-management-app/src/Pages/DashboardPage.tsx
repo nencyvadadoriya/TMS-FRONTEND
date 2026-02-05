@@ -424,8 +424,6 @@ const DashboardPage = () => {
 
     const USER_MAPPINGS_TTL_MS = 60_000;
 
-    const TASKS_AUTO_REFRESH_MS = 15_000;
-
     const BRANDS_AUTO_REFRESH_MS = 15_000;
 
 
@@ -4335,6 +4333,18 @@ const DashboardPage = () => {
 
                 if (targetRole !== 'assistant') throw new Error('You do not have permission to create users');
 
+            } else if (requesterRole === 'sbm') {
+
+                if (targetRole !== 'rm' && targetRole !== 'am') throw new Error('You do not have permission to create users');
+
+            } else if (requesterRole === 'rm') {
+
+                if (targetRole !== 'am') throw new Error('You do not have permission to create users');
+
+            } else if (requesterRole === 'admin' || requesterRole === 'super_admin') {
+
+                // allow
+
             } else {
 
                 throw new Error('You do not have permission to create users');
@@ -8051,36 +8061,6 @@ const DashboardPage = () => {
 
     useEffect(() => {
 
-        if (!currentUser?.email) return;
-
-
-
-        const intervalId = window.setInterval(() => {
-
-            fetchTasks({ force: true }).catch(() => {
-
-                // Errors are already logged inside fetchTasks / service
-
-                return;
-
-            });
-
-        }, TASKS_AUTO_REFRESH_MS);
-
-
-
-        return () => {
-
-            window.clearInterval(intervalId);
-
-        };
-
-    }, [currentUser?.email, fetchTasks]);
-
-
-
-    useEffect(() => {
-
         const role = (currentUser?.role || '').toString().trim().toLowerCase();
 
         const isAdminLike = role === 'admin' || role === 'super_admin';
@@ -10949,4 +10929,3 @@ const DashboardPage = () => {
 
 
 export default DashboardPage;
-
