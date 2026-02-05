@@ -3616,9 +3616,18 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       ...prev,
       assigner: currentUser.email || '',
       dueDate: new Date().toISOString().split('T')[0],
-      companyName: prev.companyName || ((['sbm', 'rm', 'am'].includes((currentUser?.role || '').toString().trim().toLowerCase())) ? SPEED_E_COM_COMPANY_KEY : prev.companyName)
+      companyName: (() => {
+        const prevCompany = (prev.companyName || '').toString().trim();
+        if (prevCompany) return prevCompany;
+
+        const roleKey = (currentUser?.role || '').toString().trim().toLowerCase();
+        if (roleKey === 'sbm' || roleKey === 'rm' || roleKey === 'am') return SPEED_E_COM_COMPANY_KEY;
+
+        if (companyKeys.length === 1) return companyKeys[0];
+        return prevCompany;
+      })()
     }));
-  }, [currentUser]);
+  }, [companyKeys, currentUser]);
 
   const handleBulkDefaultsChange = useCallback((defaults: Partial<BulkImportDefaults>) => {
     setBulkImportDefaults(prev => ({ ...prev, ...defaults }));
