@@ -2109,7 +2109,6 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
         const initials = getUserInitials(user.name);
 
         const role = normalizeRole(user.role);
-        const avatarUrl = userAvatarUrl(user);
 
         let gradient = 'from-gray-600 to-gray-800';
 
