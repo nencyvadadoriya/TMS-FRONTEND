@@ -4189,6 +4189,18 @@ const DashboardPage = () => {
 
                 if (targetRole !== 'assistant') throw new Error('You do not have permission to create users');
 
+            } else if (requesterRole === 'sbm') {
+
+                if (targetRole !== 'rm' && targetRole !== 'am') throw new Error('You do not have permission to create users');
+
+            } else if (requesterRole === 'rm') {
+
+                if (targetRole !== 'am') throw new Error('You do not have permission to create users');
+
+            } else if (requesterRole === 'admin' || requesterRole === 'super_admin') {
+
+                // allow
+
             } else {
 
                 throw new Error('You do not have permission to create users');
@@ -10727,4 +10739,3 @@ const DashboardPage = () => {
 
 
 export default DashboardPage;
-
