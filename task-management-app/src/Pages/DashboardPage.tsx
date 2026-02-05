@@ -4650,9 +4650,6 @@ const DashboardPage = () => {
             if (assigned.length > 0) {
 
                 assigned.forEach(addOption);
-
-                return Array.from(byNameKey.values()).sort((a, b) => a.label.localeCompare(b.label));
-
             }
 
         }
@@ -4740,9 +4737,6 @@ const DashboardPage = () => {
             if (assigned.length > 0) {
 
                 assigned.forEach(addOption);
-
-                return Array.from(byNameKey.values()).sort((a, b) => a.label.localeCompare(b.label));
-
             }
 
         }
