@@ -62,7 +62,8 @@ interface BrandStats {
 
 type TaskDisplayType = 'all' | 'total-brands' | 'active-brands' | 'total-tasks' | null;
 
-const BRANDS_PER_PAGE = 20;
+const DEFAULT_BRANDS_PER_PAGE = 20;
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 75, 100, 125, 150, 175, 200];
 
 const BrandsListPage: React.FC<BrandsListPageProps> = ({
     isSidebarCollapsed = false,
@@ -136,6 +137,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
     const [showDeletedBrands, setShowDeletedBrands] = useState(false);
     const [initialLoadComplete, setInitialLoadComplete] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
+    const [brandsPerPage, setBrandsPerPage] = useState<number>(DEFAULT_BRANDS_PER_PAGE);
 
     const effectiveTasks = useMemo(() => {
         const safePropTasks = Array.isArray(propTasks) ? propTasks : [];
@@ -1229,23 +1231,23 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
 
     const filteredBrands = getFilteredBrands();
     const totalBrands = filteredBrands.length;
-    const totalPages = Math.max(1, Math.ceil(totalBrands / BRANDS_PER_PAGE));
+    const totalPages = Math.max(1, Math.ceil(totalBrands / brandsPerPage));
     const currentPageSafe = Math.min(currentPage, totalPages);
 
     const paginatedBrands = useMemo(() => {
         if (!filteredBrands.length) return [] as Brand[];
-        const startIndex = (currentPageSafe - 1) * BRANDS_PER_PAGE;
-        const endIndex = startIndex + BRANDS_PER_PAGE;
+        const startIndex = (currentPageSafe - 1) * brandsPerPage;
+        const endIndex = startIndex + brandsPerPage;
         return filteredBrands.slice(startIndex, endIndex);
-    }, [filteredBrands, currentPageSafe]);
+    }, [filteredBrands, currentPageSafe, brandsPerPage]);
 
-    const startItemIndex = totalBrands === 0 ? 0 : (currentPageSafe - 1) * BRANDS_PER_PAGE + 1;
-    const endItemIndex = totalBrands === 0 ? 0 : Math.min(startItemIndex + BRANDS_PER_PAGE - 1, totalBrands);
+    const startItemIndex = totalBrands === 0 ? 0 : (currentPageSafe - 1) * brandsPerPage + 1;
+    const endItemIndex = totalBrands === 0 ? 0 : Math.min(startItemIndex + brandsPerPage - 1, totalBrands);
 
     useEffect(() => {
         // Reset to first page when filters or brand set change
         setCurrentPage(1);
-    }, [filters, accessibleBrands]);
+    }, [filters, accessibleBrands, brandsPerPage]);
 
     const getDisplayedTasks = useCallback((): Task[] => {
         const tasks: Task[] = Array.isArray(reportTasks) ? reportTasks : [];
@@ -1905,7 +1907,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                     ? 'No brands to display'
                                     : `Showing ${startItemIndex}-${endItemIndex} of ${filteredBrands.length} brands`}
                             </div>
-                            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                            <div className="inline-flex items-center bg-gray-100 rounded-lg p-1">
                                 <button
                                     onClick={() => setViewMode('grid')}
                                     className={`px-3 py-2 rounded-lg transition-colors ${viewMode === 'grid'
@@ -2291,6 +2293,22 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                     {`Showing ${startItemIndex}-${endItemIndex} of ${filteredBrands.length} brands`}
                                 </div>
                                 <div className="inline-flex items-center gap-2">
+                                    <select
+                                        value={String(brandsPerPage)}
+                                        onChange={(e) => {
+                                            const next = Number(e.target.value);
+                                            if (!Number.isFinite(next)) return;
+                                            setBrandsPerPage(next);
+                                            setCurrentPage(1);
+                                        }}
+                                        className="px-3 py-1.5 text-sm rounded-lg border bg-white hover:bg-gray-50"
+                                    >
+                                        {PAGE_SIZE_OPTIONS.map((n) => (
+                                            <option key={n} value={String(n)}>
+                                                {n}
+                                            </option>
+                                        ))}
+                                    </select>
                                     <button
                                         type="button"
                                         onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}

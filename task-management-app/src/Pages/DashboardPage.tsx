@@ -5698,13 +5698,14 @@ const DashboardPage = () => {
 
 
 
-    const tasksPerPage = 10;
+    const PAGE_SIZE_OPTIONS = [10, 25, 50, 75, 100, 125, 150, 175, 200];
+    const [tasksPerPage, setTasksPerPage] = useState<number>(10);
 
     const totalTaskPages = useMemo(() => {
 
         return Math.max(1, Math.ceil(displayTasks.length / tasksPerPage));
 
-    }, [displayTasks.length]);
+    }, [displayTasks.length, tasksPerPage]);
 
 
 
@@ -5732,6 +5733,8 @@ const DashboardPage = () => {
 
         filters.brand,
 
+        tasksPerPage,
+
     ]);
 
 
@@ -5758,7 +5761,7 @@ const DashboardPage = () => {
 
         return displayTasks.slice(start, start + tasksPerPage);
 
-    }, [displayTasks, taskPage]);
+    }, [displayTasks, taskPage, tasksPerPage]);
 
 
 
@@ -10298,7 +10301,43 @@ const DashboardPage = () => {
 
                                             <div className="text-sm text-gray-600">
 
-                                                Page {taskPage} of {totalTaskPages}
+                                                <div className="flex items-center gap-3">
+
+                                                    <span>Page {taskPage} of {totalTaskPages}</span>
+
+                                                    <select
+
+                                                        value={String(tasksPerPage)}
+
+                                                        onChange={(e) => {
+
+                                                            const next = Number(e.target.value);
+
+                                                            if (!Number.isFinite(next)) return;
+
+                                                            setTasksPerPage(next);
+
+                                                            setTaskPage(1);
+
+                                                        }}
+
+                                                        className="px-3 py-1.5 text-sm rounded-lg border bg-white hover:bg-gray-50"
+
+                                                    >
+
+                                                        {PAGE_SIZE_OPTIONS.map((n) => (
+
+                                                            <option key={n} value={String(n)}>
+
+                                                                {n}
+
+                                                            </option>
+
+                                                        ))}
+
+                                                    </select>
+
+                                                </div>
 
                                             </div>
 

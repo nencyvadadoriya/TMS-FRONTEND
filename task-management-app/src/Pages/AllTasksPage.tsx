@@ -41,7 +41,8 @@ import AdvancedFiltersPanel from './AdvancedFilters';
 const SPEED_E_COM_COMPANY_KEY = 'speed e com';
 const SPEED_E_COM_FIXED_TASK_TYPES = ['Meeting Pending', 'CP Pending', 'Recharge Negative'];
 
-const TASKS_PER_PAGE = 20;
+const DEFAULT_TASKS_PER_PAGE = 20;
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 75, 100, 125, 150, 175, 200];
 
 // ==================== TYPES ====================
 interface AllTasksPageProps {
@@ -2580,6 +2581,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [isLoading,] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [tasksPerPage, setTasksPerPage] = useState<number>(DEFAULT_TASKS_PER_PAGE);
 
   // Use DashboardPage's filters if provided, otherwise use local state
   const [localAdvancedFilters, setLocalAdvancedFilters] = useState<AdvancedFilters>({
@@ -4570,21 +4572,22 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     effectiveAdvancedFilters.date,
     effectiveAdvancedFilters.taskType,
     effectiveAdvancedFilters.company,
-    effectiveAdvancedFilters.brand
+    effectiveAdvancedFilters.brand,
+    tasksPerPage
   ]);
 
   const totalTasks = filteredTasks.length;
-  const totalPages = Math.max(1, Math.ceil(totalTasks / TASKS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(totalTasks / tasksPerPage));
   const currentPageSafe = Math.min(currentPage, totalPages);
-  const startItemIndex = totalTasks === 0 ? 0 : (currentPageSafe - 1) * TASKS_PER_PAGE + 1;
-  const endItemIndex = totalTasks === 0 ? 0 : Math.min(startItemIndex + TASKS_PER_PAGE - 1, totalTasks);
+  const startItemIndex = totalTasks === 0 ? 0 : (currentPageSafe - 1) * tasksPerPage + 1;
+  const endItemIndex = totalTasks === 0 ? 0 : Math.min(startItemIndex + tasksPerPage - 1, totalTasks);
 
   const paginatedTasks = useMemo(() => {
     if (!filteredTasks.length) return [] as Task[];
-    const startIndex = (currentPageSafe - 1) * TASKS_PER_PAGE;
-    const endIndex = startIndex + TASKS_PER_PAGE;
+    const startIndex = (currentPageSafe - 1) * tasksPerPage;
+    const endIndex = startIndex + tasksPerPage;
     return filteredTasks.slice(startIndex, endIndex);
-  }, [filteredTasks, currentPageSafe]);
+  }, [filteredTasks, currentPageSafe, tasksPerPage]);
 
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(totalPages);
@@ -4798,7 +4801,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                   {/* Desktop View */}
                   <div className="hidden md:block">
                     <DesktopTaskItem
-                      index={(currentPageSafe - 1) * TASKS_PER_PAGE + idx + 1}
+                      index={(currentPageSafe - 1) * tasksPerPage + idx + 1}
                       task={task}
                       isToggling={isToggling}
                       currentUser={currentUser}
@@ -4835,6 +4838,22 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                   {`Showing ${startItemIndex}-${endItemIndex} of ${totalTasks} tasks`}
                 </div>
                 <div className="inline-flex items-center gap-2">
+                  <select
+                    value={String(tasksPerPage)}
+                    onChange={(e) => {
+                      const next = Number(e.target.value);
+                      if (!Number.isFinite(next)) return;
+                      setTasksPerPage(next);
+                      setCurrentPage(1);
+                    }}
+                    className="px-3 py-1.5 text-sm rounded-lg border bg-white hover:bg-gray-50"
+                  >
+                    {PAGE_SIZE_OPTIONS.map((n) => (
+                      <option key={n} value={String(n)}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
                   <button
                     type="button"
                     onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
