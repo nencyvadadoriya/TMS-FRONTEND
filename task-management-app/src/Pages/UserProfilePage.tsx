@@ -11,6 +11,7 @@ import type { UserType } from '../Types/Types';
 import apiClient from '../Services/apiClient';
 import { authService } from '../Services/User.Services';
 import { UserProfileSkeleton } from '../Components/LoadingSkeletons';
+import { userAvatarUrl } from '../utils/avatar';
 
 interface UserProfilePageProps {
     user?: UserType; // The profile being viewed
@@ -57,11 +58,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({
     }, [profileUser]);
 
     const avatarUrl = useMemo(() => {
-        const raw = (profileUser as any)?.avatar;
-        const str = raw == null ? '' : String(raw).trim();
-        if (!str) return '';
-        if (/^https?:\/\//i.test(str)) return str;
-        return '';
+        return userAvatarUrl(profileUser);
     }, [profileUser]);
 
     const isPlaceholderUser = useMemo(() => {
@@ -201,6 +198,33 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({
             setAvatarUploading(false);
         }
     }, [avatarFile, hasUserProp, onUserUpdated]);
+
+    const handleRemoveAvatar = useCallback(async () => {
+        setAvatarUploading(true);
+        try {
+            const res = await authService.removeProfileAvatar();
+            if (!res?.success || !res.data) {
+                return;
+            }
+
+            try {
+                localStorage.setItem('currentUser', JSON.stringify(res.data));
+            } catch {}
+
+            if (!hasUserProp) {
+                setResolvedUser(res.data as UserType);
+            }
+
+            if (typeof onUserUpdated === 'function') {
+                onUserUpdated(res.data as UserType);
+            }
+
+            setShowAvatarModal(false);
+            setAvatarFile(null);
+        } finally {
+            setAvatarUploading(false);
+        }
+    }, [hasUserProp, onUserUpdated]);
 
     const shouldShowInitialSkeleton = useMemo(() => {
         if (hasUserProp) return false;
@@ -358,7 +382,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({
                                                         type="button"
                                                         onClick={handleDisconnectGoogle}
                                                         disabled={googleActionLoading}
-                                                        className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                                                        className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                                                     >
                                                         Disconnect
                                                     </button>
@@ -439,6 +463,14 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({
                                 disabled={avatarUploading}
                             />
                             <div className="flex items-center justify-end gap-3">
+                                <button
+                                    type="button"
+                                    onClick={handleRemoveAvatar}
+                                    className="px-4 py-2 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50"
+                                    disabled={avatarUploading}
+                                >
+                                    Remove Photo
+                                </button>
                                 <button
                                     type="button"
                                     onClick={() => {

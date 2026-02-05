@@ -46,6 +46,8 @@ import {
 
     User,
 
+    Star,
+
 } from 'lucide-react';
 
 import toast from 'react-hot-toast';
@@ -360,6 +362,16 @@ const DashboardPage = () => {
 
     const [reviewedTasksForSummary, setReviewedTasksForSummary] = useState<Task[]>([]);
 
+    const [reviewModalTaskId, setReviewModalTaskId] = useState<string | null>(null);
+
+    const [reviewModalStars, setReviewModalStars] = useState<number>(5);
+
+    const [reviewModalComment, setReviewModalComment] = useState<string>('');
+
+    const [reviewModalSubmitting, setReviewModalSubmitting] = useState(false);
+
+    const notifiedReviewTaskIdsRef = useRef<Set<string>>(new Set());
+
 
 
     const [isCreatingTask, setIsCreatingTask] = useState(false);
@@ -612,11 +624,19 @@ const DashboardPage = () => {
 
             photoUrl: photoUrl ? String(photoUrl) : undefined,
 
-            summaryRows: rows.slice(0, 10).map((r) => ({
+            summaryRows: rows.slice(0, 10).map((r) => {
+                const avatar = (users || []).find((u: any) => {
+                    const uemail = String(u?.email || '').trim().toLowerCase();
+                    return uemail && uemail === r.email;
+                })?.avatar;
+
+                return {
 
                 email: r.email,
 
                 name: r.name,
+
+                avatar: avatar ? String(avatar) : '',
 
                 avgStarsLabel: r.avgStarsLabel,
 
@@ -624,11 +644,137 @@ const DashboardPage = () => {
 
                 performance: r.performance,
 
-            })),
+                };
+            }),
 
         };
 
     }, [reviewedTasksForSummary, reviewsMonth, users]);
+
+    const pendingManagerReviewTasks = useMemo(() => {
+        const normalizeEmailSafe = (v: unknown): string => String(v || '').trim().toLowerCase();
+        const normalizeRoleKey = (v: unknown): string => String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+
+        const isAssistantRoleKey = (roleKey: string): boolean => {
+            if (!roleKey) return false;
+            if (roleKey === 'assistant' || roleKey.includes('assistant')) return true;
+            return roleKey === 'sub_assistance' || roleKey === 'sub_assistence' || roleKey === 'sub_assist' || roleKey === 'sub_assistant';
+        };
+
+        const roleKey = normalizeRoleKey((currentUser as any)?.role);
+        if (roleKey !== 'manager' && roleKey !== 'md_manager') return [];
+
+        const myEmail = normalizeEmailSafe((currentUser as any)?.email);
+        if (!myEmail) return [];
+
+        const getAssignedByEmail = (t: any): string => {
+            const raw = (t as any)?.assignedBy;
+            if (typeof raw === 'string') return normalizeEmailSafe(raw);
+            if (raw && typeof raw === 'object') return normalizeEmailSafe((raw as any)?.email);
+            return normalizeEmailSafe((t as any)?.assignedByUser?.email);
+        };
+
+        const getAssignedToEmail = (t: any): string => {
+            const raw = (t as any)?.assignedTo;
+            if (typeof raw === 'string') return normalizeEmailSafe(raw);
+            if (raw && typeof raw === 'object') return normalizeEmailSafe((raw as any)?.email);
+            return normalizeEmailSafe((t as any)?.assignedToUser?.email);
+        };
+
+        const getAssigneeRoleKey = (t: any): string => {
+            const role = (t as any)?.assignedToUser?.role;
+            const key = normalizeRoleKey(role);
+            if (key) return key;
+
+            const email = getAssignedToEmail(t);
+            const found = (users || []).find((u: any) => normalizeEmailSafe((u as any)?.email) === email);
+            return normalizeRoleKey((found as any)?.role);
+        };
+
+        const list = (tasks || [])
+            .filter((t: any) => {
+                if (!t) return false;
+                const status = String((t as any)?.status || '').trim().toLowerCase();
+                if (status !== 'completed') return false;
+                if ((t as any)?.reviewStars != null) return false;
+                const assignedByEmail = getAssignedByEmail(t);
+                if (!assignedByEmail || assignedByEmail !== myEmail) return false;
+                const assigneeRoleKey = getAssigneeRoleKey(t);
+                if (!isAssistantRoleKey(assigneeRoleKey)) return false;
+                return true;
+            })
+            .sort((a: any, b: any) => {
+                const aDate = new Date((a as any)?.statusUpdatedAt || (a as any)?.updatedAt || (a as any)?.createdAt || 0).getTime();
+                const bDate = new Date((b as any)?.statusUpdatedAt || (b as any)?.updatedAt || (b as any)?.createdAt || 0).getTime();
+                return bDate - aDate;
+            });
+
+        return list;
+    }, [currentUser, tasks, users]);
+
+    const reviewModalTask = useMemo(() => {
+        if (!reviewModalTaskId) return null;
+        return (pendingManagerReviewTasks || []).find((t: any) => String((t as any)?.id || (t as any)?._id || '') === reviewModalTaskId) || null;
+    }, [pendingManagerReviewTasks, reviewModalTaskId]);
+
+    useEffect(() => {
+        const next = pendingManagerReviewTasks || [];
+        if (next.length === 0) {
+            setReviewModalTaskId(null);
+            return;
+        }
+
+        setReviewModalTaskId((prev) => {
+            if (prev && next.some((t: any) => String((t as any)?.id || (t as any)?._id || '') === prev)) return prev;
+            return String((next[0] as any)?.id || (next[0] as any)?._id || '');
+        });
+    }, [pendingManagerReviewTasks]);
+
+    useEffect(() => {
+        if (!reviewModalTaskId) return;
+        setReviewModalStars(5);
+        setReviewModalComment('');
+    }, [reviewModalTaskId]);
+
+    useEffect(() => {
+        const next = pendingManagerReviewTasks || [];
+        if (next.length === 0) return;
+
+        next.forEach((t: any) => {
+            const id = String((t as any)?.id || (t as any)?._id || '').trim();
+            if (!id) return;
+            if (notifiedReviewTaskIdsRef.current.has(id)) return;
+            notifiedReviewTaskIdsRef.current.add(id);
+
+            const assigneeName = String((t as any)?.assignedToUser?.name || '').trim();
+            const title = String((t as any)?.title || 'Task').trim();
+            toast.success(`Task completed${assigneeName ? ` by ${assigneeName}` : ''}: ${title}. Review required.`);
+        });
+    }, [pendingManagerReviewTasks]);
+
+    const submitReviewFromModal = useCallback(async () => {
+        if (!reviewModalTaskId) return;
+        if (reviewModalSubmitting) return;
+
+        setReviewModalSubmitting(true);
+        try {
+            const res = await taskService.submitTaskReview(reviewModalTaskId, {
+                reviewStars: reviewModalStars,
+                reviewComment: reviewModalComment,
+            });
+
+            if (res.success && res.data) {
+                dispatch(taskUpserted(res.data as Task));
+                toast.success(res.message || 'Review saved successfully');
+            } else {
+                toast.error(res.message || 'Failed to save review');
+            }
+        } catch (e: any) {
+            toast.error(e?.message || 'Failed to save review');
+        } finally {
+            setReviewModalSubmitting(false);
+        }
+    }, [dispatch, reviewModalComment, reviewModalStars, reviewModalSubmitting, reviewModalTaskId]);
 
 
 
@@ -4718,11 +4864,7 @@ const DashboardPage = () => {
         } catch (error: any) {
 
             console.error('Error saving comment:', error);
-
-
-
             const mockComment: CommentType = {
-
                 id: `mock-${Date.now()}`,
 
                 taskId: taskId,
@@ -4864,9 +5006,6 @@ const DashboardPage = () => {
                 return;
 
             }
-
-
-
             const normalizeEmailSafe = (v: unknown): string => stripDeletedEmailSuffix(v).trim().toLowerCase();
 
             const myEmail = normalizeEmailSafe((currentUser as any)?.email);
@@ -8070,6 +8209,10 @@ const DashboardPage = () => {
 
         const needsUsers =
 
+            currentView === 'dashboard' ||
+
+            currentView === 'reviews' ||
+
             currentView === 'team' ||
 
             currentView === 'all-tasks' ||
@@ -9123,6 +9266,71 @@ const DashboardPage = () => {
                 currentView={currentView}
 
             />
+
+            {reviewModalTaskId && reviewModalTask ? (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-xl rounded-2xl bg-white shadow-xl border border-gray-200 overflow-hidden">
+                        <div className="px-6 py-5 border-b border-gray-100">
+                            <div className="text-sm font-semibold text-gray-900">Task Completed</div>
+                            <div className="mt-1 text-xs text-gray-600">Review is required before continuing</div>
+                        </div>
+
+                        <div className="px-6 py-5 space-y-4">
+                            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                                <div className="text-sm font-semibold text-gray-900 truncate">{String((reviewModalTask as any)?.title || 'Task')}</div>
+                                <div className="mt-1 text-xs text-gray-600">
+                                    {String((reviewModalTask as any)?.assignedToUser?.name || (reviewModalTask as any)?.assignedToUser?.email || (reviewModalTask as any)?.assignedTo || '').trim()
+                                        ? `Completed by ${(reviewModalTask as any)?.assignedToUser?.name || (reviewModalTask as any)?.assignedToUser?.email || (reviewModalTask as any)?.assignedTo}`
+                                        : ''}
+                                </div>
+                            </div>
+
+                            <div>
+                                <div className="text-sm font-medium text-gray-900">Rating</div>
+                                <div className="mt-2 flex items-center gap-1">
+                                    {[1, 2, 3, 4, 5].map((n) => (
+                                        <button
+                                            key={n}
+                                            type="button"
+                                            onClick={() => setReviewModalStars(n)}
+                                            disabled={reviewModalSubmitting}
+                                            className="p-1 rounded-lg hover:bg-gray-100 disabled:opacity-60"
+                                            aria-label={`Rate ${n} stars`}
+                                        >
+                                            <Star
+                                                className={n <= reviewModalStars ? 'h-6 w-6 text-yellow-500' : 'h-6 w-6 text-gray-300'}
+                                                fill={n <= reviewModalStars ? 'currentColor' : 'none'}
+                                            />
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <div className="text-sm font-medium text-gray-900">Comment (optional)</div>
+                                <textarea
+                                    value={reviewModalComment}
+                                    onChange={(e) => setReviewModalComment(e.target.value)}
+                                    disabled={reviewModalSubmitting}
+                                    className="mt-2 w-full min-h-[110px] rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50"
+                                    placeholder="Add feedback..."
+                                />
+                            </div>
+                        </div>
+
+                        <div className="px-6 py-5 border-t border-gray-100 flex items-center justify-end gap-3">
+                            <button
+                                type="button"
+                                onClick={submitReviewFromModal}
+                                disabled={reviewModalSubmitting}
+                                className="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-60"
+                            >
+                                {reviewModalSubmitting ? 'Saving...' : 'Submit Review'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
 
 
 
@@ -10447,6 +10655,24 @@ const DashboardPage = () => {
                                         }
 
                                         try {
+                                            const nextId = (next as any)?.id || (next as any)?._id;
+                                            const nextEmail = String((next as any)?.email || '').trim().toLowerCase();
+                                            setUsers((prev) => {
+                                                const list = Array.isArray(prev) ? prev : [];
+                                                return list.map((u: any) => {
+                                                    const uid = (u?.id || u?._id || '').toString();
+                                                    const uemail = String(u?.email || '').trim().toLowerCase();
+                                                    const matchById = nextId && uid && uid === String(nextId);
+                                                    const matchByEmail = nextEmail && uemail && uemail === nextEmail;
+                                                    if (!matchById && !matchByEmail) return u;
+                                                    return { ...u, ...next, id: (next as any)?.id || (next as any)?._id || u?.id || uid };
+                                                });
+                                            });
+                                        } catch {
+                                            // ignore
+                                        }
+
+                                        try {
 
                                             localStorage.setItem('currentUser', JSON.stringify(next));
 
@@ -10495,6 +10721,8 @@ const DashboardPage = () => {
                                 <ReviewsPage
 
                                     currentUser={currentUser}
+
+                                    users={users}
 
                                 />
 

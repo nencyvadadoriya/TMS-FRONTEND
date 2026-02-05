@@ -21,8 +21,15 @@ const performanceLevelForAvg = (avgStars: number) => {
   return 'Improve';
 };
 
-const ReviewsPage = ({ currentUser }: { currentUser: UserType }) => {
+const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: UserType[] }) => {
   const role = useMemo(() => normalizeRole(currentUser?.role), [currentUser?.role]);
+  const roleKey = useMemo(() => String(role || '').trim().toLowerCase().replace(/[\s-]+/g, '_'), [role]);
+  const isSubAssistance = useMemo(() => {
+    return roleKey === 'sub_assistance' || roleKey === 'sub_assistence' || roleKey === 'sub_assist' || roleKey === 'sub_assistant';
+  }, [roleKey]);
+  const isAssistant = useMemo(() => {
+    return roleKey === 'assistant';
+  }, [roleKey]);
   const canSubmit = false;
   const canView = useMemo(() => {
     if (role === 'admin' || role === 'super_admin') return true;
@@ -40,6 +47,8 @@ const ReviewsPage = ({ currentUser }: { currentUser: UserType }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filter, setFilter] = useState<ReviewFilter>('all');
 
+  const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
+
   const [month, setMonth] = useState<string>(() => monthKeyOfDate(new Date()));
 
   const [reviewedTasks, setReviewedTasks] = useState<Task[]>([]);
@@ -47,6 +56,190 @@ const ReviewsPage = ({ currentUser }: { currentUser: UserType }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [stars, setStars] = useState<number>(5);
   const [comment, setComment] = useState<string>('');
+
+  const [tableStatFilter, setTableStatFilter] = useState<'all' | 'done' | 'pending' | 'reviewed'>('all');
+
+  const normalizeEmailKey = useCallback((v: unknown): string => {
+    const raw = String(v || '').trim().toLowerCase();
+    if (!raw) return '';
+    const base = raw.split('.deleted.')[0];
+    return base.trim().toLowerCase();
+  }, []);
+
+  const resolveAssigneeEmailKey = useCallback((t: any): string => {
+    const raw = (t as any)?.assignedToUser?.email
+      || (typeof (t as any)?.assignedTo === 'string' ? (t as any)?.assignedTo : (t as any)?.assignedTo?.email)
+      || '';
+    return normalizeEmailKey(raw);
+  }, [normalizeEmailKey]);
+
+  const assistantAllowedAssigneeKeys = useMemo(() => {
+    if (!isAssistant) return [] as string[];
+
+    const me = normalizeEmailKey((currentUser as any)?.email);
+    const companyKey = normalizeEmailKey((currentUser as any)?.companyName || (currentUser as any)?.company);
+
+    const normalizeRoleKey = (v: unknown): string => String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+    const isSubAssistanceRoleKey = (rk: string): boolean => {
+      if (!rk) return false;
+      return rk === 'sub_assistance' || rk === 'sub_assistence' || rk === 'sub_assist' || rk === 'sub_assistant';
+    };
+
+    const list = Array.isArray(users) ? users : [];
+    const subKeys = list
+      .filter((u: any) => {
+        const rk = normalizeRoleKey(u?.role);
+        if (!isSubAssistanceRoleKey(rk)) return false;
+        if (!companyKey) return true;
+        const uCompanyKey = normalizeEmailKey((u as any)?.companyName || (u as any)?.company);
+        return uCompanyKey === companyKey;
+      })
+      .map((u: any) => normalizeEmailKey(u?.email))
+      .filter(Boolean);
+
+    const merged = [me, ...subKeys].filter(Boolean) as string[];
+    return Array.from(new Set(merged));
+  }, [currentUser, isAssistant, normalizeEmailKey, users]);
+
+  const assistantAllowedAssigneeSet = useMemo(() => {
+    return new Set(assistantAllowedAssigneeKeys || []);
+  }, [assistantAllowedAssigneeKeys]);
+
+  const assigneeOptions = useMemo(() => {
+    const map = new Map<string, { email: string; label: string }>();
+
+    const normalizeRoleKey = (v: unknown): string => String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+    const isAssistantRoleKey = (roleKey: string): boolean => {
+      if (!roleKey) return false;
+      if (roleKey === 'assistant' || roleKey.includes('assistant')) return true;
+      return roleKey === 'sub_assistance' || roleKey === 'sub_assistence' || roleKey === 'sub_assist' || roleKey === 'sub_assistant';
+    };
+
+    const roleKey = normalizeRoleKey(role);
+    const managerOnlyAssistants = roleKey === 'manager' || roleKey === 'md_manager';
+
+    const userRoleKeyByEmail = (emailKey: string): string => {
+      if (!emailKey) return '';
+      const list = Array.isArray(users) ? users : [];
+      const found = list.find((u: any) => normalizeEmailKey(u?.email) === emailKey);
+      return normalizeRoleKey((found as any)?.role);
+    };
+
+    if (roleKey === 'assistant') {
+      const list = Array.isArray(users) ? users : [];
+      const getLabel = (emailKey: string): string => {
+        const found = list.find((u: any) => normalizeEmailKey(u?.email) === emailKey);
+        const name = String((found as any)?.name || '').trim();
+        return name ? `${name} (${emailKey})` : emailKey;
+      };
+
+      assistantAllowedAssigneeKeys.forEach((emailKey) => {
+        if (!emailKey) return;
+        map.set(emailKey, { email: emailKey, label: getLabel(emailKey) });
+      });
+    }
+
+    if ((roleKey === 'manager' || roleKey === 'md_manager') && Array.isArray(users)) {
+      (users || []).forEach((u: any) => {
+        const emailKey = normalizeEmailKey(u?.email);
+        if (!emailKey) return;
+        const userRoleKey = normalizeRoleKey(u?.role);
+        if (!isAssistantRoleKey(userRoleKey)) return;
+        const name = String(u?.name || '').trim();
+        const label = name ? `${name} (${emailKey})` : emailKey;
+        if (!map.has(emailKey)) map.set(emailKey, { email: emailKey, label });
+      });
+    }
+
+    (tasks || []).forEach((t: any) => {
+      const key = resolveAssigneeEmailKey(t);
+      if (!key) return;
+
+      if (managerOnlyAssistants) {
+        const taskRoleKey = normalizeRoleKey((t as any)?.assignedToUser?.role);
+        const resolvedRoleKey = taskRoleKey || userRoleKeyByEmail(key);
+        if (!isAssistantRoleKey(resolvedRoleKey)) return;
+      }
+
+      if (roleKey === 'assistant') {
+        if (!assistantAllowedAssigneeSet.has(key)) return;
+      }
+
+      const assignedToUser = (t as any)?.assignedToUser;
+      const name = String(assignedToUser?.name || '').trim();
+      const label = name ? `${name} (${key})` : key;
+      if (!map.has(key)) map.set(key, { email: key, label });
+    });
+
+    return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [assistantAllowedAssigneeKeys, assistantAllowedAssigneeSet, resolveAssigneeEmailKey, role, tasks, users, normalizeEmailKey]);
+
+  const selectedAssigneeKey = useMemo(() => {
+    if (isSubAssistance) {
+      const me = normalizeEmailKey((currentUser as any)?.email);
+      return me || 'all';
+    }
+
+    if (isAssistant) {
+      const me = normalizeEmailKey((currentUser as any)?.email);
+      const key = normalizeEmailKey(assigneeFilter);
+      if (key && key !== 'all') return key;
+      return me || 'all';
+    }
+
+    const key = normalizeEmailKey(assigneeFilter);
+    return key && key !== 'all' ? key : 'all';
+  }, [assigneeFilter, currentUser, isSubAssistance, isAssistant, normalizeEmailKey]);
+
+  useEffect(() => {
+    if (!isSubAssistance) return;
+    const me = normalizeEmailKey((currentUser as any)?.email);
+    if (!me) return;
+    setAssigneeFilter(me);
+  }, [currentUser, isSubAssistance, normalizeEmailKey]);
+
+  useEffect(() => {
+    if (!isAssistant) return;
+    const me = normalizeEmailKey((currentUser as any)?.email);
+    if (!me) return;
+    setAssigneeFilter((prev) => {
+      const next = normalizeEmailKey(prev);
+      if (next && next !== 'all') return prev;
+      return me;
+    });
+  }, [currentUser, isAssistant, normalizeEmailKey]);
+
+  const filteredTasks = useMemo(() => {
+    if (isAssistant) {
+      const base = (tasks || []).filter((t: any) => assistantAllowedAssigneeSet.has(resolveAssigneeEmailKey(t)));
+      if (selectedAssigneeKey === 'all') return base;
+      return base.filter((t: any) => resolveAssigneeEmailKey(t) === selectedAssigneeKey);
+    }
+    if (selectedAssigneeKey === 'all') return tasks;
+    return (tasks || []).filter((t: any) => resolveAssigneeEmailKey(t) === selectedAssigneeKey);
+  }, [assistantAllowedAssigneeSet, isAssistant, resolveAssigneeEmailKey, selectedAssigneeKey, tasks]);
+
+  const tableTasks = useMemo(() => {
+    const list = filteredTasks || [];
+    if (tableStatFilter === 'done') {
+      return list.filter((t: any) => String(t?.status || '').trim().toLowerCase() === 'completed');
+    }
+    if (tableStatFilter === 'pending') {
+      return list.filter((t: any) => String(t?.status || '').trim().toLowerCase() !== 'completed');
+    }
+    if (tableStatFilter === 'reviewed') {
+      return list.filter((t: any) => (t as any)?.reviewStars != null);
+    }
+    return list;
+  }, [filteredTasks, tableStatFilter]);
+
+  const filteredStats = useMemo(() => {
+    const list = filteredTasks || [];
+    const done = list.filter((t: any) => String(t?.status || '').trim().toLowerCase() === 'completed').length;
+    const pending = list.length - done;
+    const reviewed = list.filter((t: any) => (t as any)?.reviewStars != null).length;
+    return { total: list.length, done, pending, reviewed };
+  }, [filteredTasks]);
 
   const fetchReviews = useCallback(async () => {
     if (!canView) {
@@ -112,6 +305,10 @@ const ReviewsPage = ({ currentUser }: { currentUser: UserType }) => {
       return reviewedAt >= monthRange.start && reviewedAt < monthRange.endExclusive;
     });
 
+    const assigneeScoped = selectedAssigneeKey === 'all'
+      ? reviewed
+      : reviewed.filter((t: any) => resolveAssigneeEmailKey(t) === selectedAssigneeKey);
+
     const byAssignee = new Map<string, {
       email: string;
       name: string;
@@ -120,7 +317,7 @@ const ReviewsPage = ({ currentUser }: { currentUser: UserType }) => {
       stars: Record<number, number>;
     }>();
 
-    reviewed.forEach((t) => {
+    assigneeScoped.forEach((t) => {
       const assignedToUser = (t as any)?.assignedToUser;
       const email = String(
         assignedToUser?.email
@@ -194,7 +391,7 @@ const ReviewsPage = ({ currentUser }: { currentUser: UserType }) => {
       rows: mapped,
       topEmail,
     };
-  }, [month, reviewedTasks]);
+  }, [month, resolveAssigneeEmailKey, reviewedTasks, selectedAssigneeKey]);
 
   const startEdit = (t: Task) => {
     setEditingId(t.id);
@@ -260,6 +457,21 @@ const ReviewsPage = ({ currentUser }: { currentUser: UserType }) => {
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
               disabled={loading}
             />
+            {!isSubAssistance && (roleKey === 'manager' || roleKey === 'md_manager' || roleKey === 'admin' || roleKey === 'super_admin' || roleKey === 'ob_manager' || roleKey === 'assistant') ? (
+              <select
+                value={assigneeFilter}
+                onChange={(e) => setAssigneeFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                disabled={loading}
+              >
+                {roleKey !== 'assistant' ? (
+                  <option value="all">All assistance</option>
+                ) : null}
+                {assigneeOptions.map((o) => (
+                  <option key={o.email} value={o.email}>{o.label}</option>
+                ))}
+              </select>
+            ) : null}
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value as ReviewFilter)}
@@ -271,6 +483,12 @@ const ReviewsPage = ({ currentUser }: { currentUser: UserType }) => {
               <option value="all">All</option>
             </select>
           </div>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2 text-xs">
+          <button type="button" onClick={() => setTableStatFilter('all')} className={`px-2.5 py-1 rounded-full border ${tableStatFilter === 'all' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-gray-50 text-gray-700'}`}>Total: {filteredStats.total}</button>
+          <button type="button" onClick={() => setTableStatFilter('done')} className={`px-2.5 py-1 rounded-full border ${tableStatFilter === 'done' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-gray-50 text-gray-700'}`}>Done: {filteredStats.done}</button>
+          <button type="button" onClick={() => setTableStatFilter('pending')} className={`px-2.5 py-1 rounded-full border ${tableStatFilter === 'pending' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-gray-50 text-gray-700'}`}>Pending: {filteredStats.pending}</button>
+          <button type="button" onClick={() => setTableStatFilter('reviewed')} className={`px-2.5 py-1 rounded-full border ${tableStatFilter === 'reviewed' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-gray-50 text-gray-700'}`}>Reviewed: {filteredStats.reviewed}</button>
         </div>
       </div>
 
@@ -355,7 +573,7 @@ const ReviewsPage = ({ currentUser }: { currentUser: UserType }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {tasks.map((t) => {
+              {tableTasks.map((t) => {
                 const reviewedStars = (t as any).reviewStars;
                 const isReviewed = reviewedStars != null;
                 const isEditing = editingId === t.id;
@@ -448,7 +666,7 @@ const ReviewsPage = ({ currentUser }: { currentUser: UserType }) => {
                 );
               })}
 
-              {tasks.length === 0 && (
+              {tableTasks.length === 0 && (
                 <tr>
                   <td className="px-6 py-8 text-sm text-gray-500" colSpan={8}>
                     {loading ? 'Loading…' : 'No tasks found'}

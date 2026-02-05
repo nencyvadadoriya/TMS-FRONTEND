@@ -404,6 +404,25 @@ class AuthServices {
             };
         }
     }
+
+    async removeProfileAvatar() {
+        try {
+            const res = await apiClient.delete(this.authUploadProfileAvatar);
+            return {
+                success: Boolean(res.data?.success),
+                message: res.data?.message || 'Avatar removed successfully',
+                data: res.data?.user || null
+            };
+        } catch (error: any) {
+            const message = error.response?.data?.message || error.response?.data?.msg || error.message || 'Failed to remove avatar';
+            toast.error(message);
+            return {
+                success: false,
+                message,
+                data: null
+            };
+        }
+    }
 }
 
 export const authService = new AuthServices();

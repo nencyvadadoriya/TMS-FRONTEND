@@ -56,8 +56,6 @@ import { companyService, type Company } from '../Services/Company.service';
 
 import { routepath } from '../Routes/route';
 
-
-
 interface TeamPageProps {
 
     users?: UserType[];
@@ -2111,6 +2109,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
         const initials = getUserInitials(user.name);
 
         const role = normalizeRole(user.role);
+        const avatarUrl = userAvatarUrl(user);
 
         let gradient = 'from-gray-600 to-gray-800';
 
@@ -2161,11 +2160,8 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
         return (
 
             <div className="flex-shrink-0">
-
                 <div className={`rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white font-semibold ${sizeClasses[size]}`}>
-
                     {initials}
-
                 </div>
 
             </div>

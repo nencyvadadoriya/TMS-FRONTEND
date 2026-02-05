@@ -20,6 +20,7 @@ import {
 
 import type { Task, TaskHistory, UserType } from '../Types/Types';
 import toast from 'react-hot-toast';
+import { userAvatarUrl } from '../utils/avatar';
 
 interface TeamDetailsPageProps {
     user: UserType;
@@ -480,18 +481,18 @@ const TeamDetailsPage: React.FC<TeamDetailsPageProps> = ({
     // Get user avatar
     const getUserAvatar = (user: UserType, size: 'sm' | 'md' | 'lg' = 'md') => {
         const initials = getUserInitials(user.name);
+        const avatarUrl = userAvatarUrl(user);
 
         let gradient = 'from-gray-600 to-gray-800';
         switch (user.role?.toLowerCase()) {
             case 'admin':
                 gradient = 'from-purple-600 to-purple-800';
+
                 break;
             case 'manager':
                 gradient = 'from-blue-600 to-blue-800';
                 break;
             case 'assistant':
-                gradient = 'from-green-600 to-green-800';
-                break;
             case 'developer':
                 gradient = 'from-green-600 to-green-800';
                 break;
@@ -508,8 +509,17 @@ const TeamDetailsPage: React.FC<TeamDetailsPageProps> = ({
 
         return (
             <div className="flex-shrink-0">
-                <div className={`rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white font-semibold ${sizeClasses[size]}`}>
-                    {initials}
+                <div className={`rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white font-semibold ${sizeClasses[size]} overflow-hidden`}>
+                    {avatarUrl ? (
+                        <img
+                            src={avatarUrl}
+                            alt={user?.name || 'User'}
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                        />
+                    ) : (
+                        initials
+                    )}
                 </div>
             </div>
         );
