@@ -284,6 +284,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
     type BrandsPageHistoryItem = BrandHistory & {
         _brandId: string;
         _brandName: string;
+        _brandGroupNumber?: string;
         _brandCompany: string;
         _rawTimestamp?: any;
     };
@@ -343,7 +344,10 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
             const history = Array.isArray(b?.history) ? b.history : [];
             const brandId = String(b?.id || b?._id || '').trim();
             const brandName = String(b?.name || '').trim();
+            const brandGroupNumber = String((b as any)?.groupNumber || '').trim();
             const brandCompany = String(b?.company || '').trim();
+
+            if (role === 'sbm' && !brandGroupNumber) return;
 
             const dedupeKey = `${brandId}|${brandName.toLowerCase()}|${brandCompany.toLowerCase()}|${String(b?.status || '')}`;
             if (seen.has(dedupeKey)) return;
@@ -354,6 +358,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                     ...(h || {}),
                     _brandId: brandId,
                     _brandName: brandName,
+                    _brandGroupNumber: brandGroupNumber,
                     _brandCompany: brandCompany,
                     _rawTimestamp: h?.timestamp || h?.performedAt
                 });
@@ -2669,7 +2674,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                                                     <div className="mt-0.5">{getHistoryIcon(action)}</div>
                                                                     <div className="min-w-0">
                                                                         <div className="text-sm font-medium text-gray-900 truncate">
-                                                                            {h._brandName || 'Brand'}{h._brandCompany ? ` (${h._brandCompany})` : ''}
+                                                                            {(h._brandGroupNumber ? `${h._brandGroupNumber} - ` : '')}{h._brandName || 'Brand'}{h._brandCompany ? ` (${h._brandCompany})` : ''}
                                                                         </div>
                                                                         <div className="text-xs text-gray-600 mt-0.5">
                                                                             {(h?.message || '').toString() || action}
