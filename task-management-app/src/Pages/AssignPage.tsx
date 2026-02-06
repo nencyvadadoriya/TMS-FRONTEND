@@ -25,6 +25,7 @@ const normalizeText = (v: unknown) => (v == null ? '' : String(v)).trim();
 const normalizeCompanyKey = (v: unknown) => normalizeText(v).toLowerCase().replace(/\s+/g, '');
 
 const SPEED_E_COM_FIXED_TASK_TYPES = ['Meeting Pending', 'CP Pending', 'Recharge Negative'];
+const SPEED_E_COM_COMPANY_KEY = 'speedecom';
 
 const AssignPage = ({ currentUser }: Props) => {
   const hasAccess = useCallback((moduleId: string) => {
@@ -82,6 +83,10 @@ const AssignPage = ({ currentUser }: Props) => {
   const [selectedCompany, setSelectedCompany] = useState<string>('');
   const [companyUsers, setCompanyUsers] = useState<AssignUserItem[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
+
+  const isSpeedEcomCompanySelected = useMemo(() => {
+    return normalizeCompanyKey(selectedCompany) === SPEED_E_COM_COMPANY_KEY;
+  }, [selectedCompany]);
 
   const [selectedBrandIds, setSelectedBrandIds] = useState<Set<string>>(new Set());
   const [pendingTaskTypeIds, setPendingTaskTypeIds] = useState<Set<string>>(new Set());
@@ -152,7 +157,7 @@ const AssignPage = ({ currentUser }: Props) => {
     } finally {
       setLoadingCompanies(false);
     }
-  }, []);
+  }, [isAdminUser]);
 
   const loadMdManagers = useCallback(async () => {
     if (!isAdminUser) return;
@@ -220,6 +225,19 @@ const AssignPage = ({ currentUser }: Props) => {
     const company = normalizeText(companyName);
     if (!company) {
       setCompanyAllowedTaskTypeIds(new Set());
+      return;
+    }
+
+    if (isAdminUser || normalizeCompanyKey(company) === SPEED_E_COM_COMPANY_KEY) {
+      try {
+        const res = await taskTypeService.getTaskTypes({ companyName: company });
+        const ids = (res?.data || [])
+          .map((t: any) => String(t?.id || t?._id || '').trim())
+          .filter(Boolean);
+        setCompanyAllowedTaskTypeIds(new Set(ids));
+      } catch {
+        setCompanyAllowedTaskTypeIds(new Set());
+      }
       return;
     }
 
@@ -412,6 +430,8 @@ const AssignPage = ({ currentUser }: Props) => {
   useEffect(() => {
     if (!canOpen) return;
 
+    if (isAdminUser || isSpeedEcomCompanySelected) return;
+
     setPendingTaskTypeIds((prev) => {
       if (companyAllowedTaskTypeIds.size === 0) return prev;
       const next = new Set<string>();
@@ -420,7 +440,7 @@ const AssignPage = ({ currentUser }: Props) => {
       });
       return next;
     });
-  }, [canOpen, companyAllowedTaskTypeIds]);
+  }, [canOpen, companyAllowedTaskTypeIds, isAdminUser, isSpeedEcomCompanySelected]);
 
   useEffect(() => {
     if (!canOpen) return;
@@ -611,7 +631,7 @@ const AssignPage = ({ currentUser }: Props) => {
     return (taskTypes || [])
       .map((t: any) => ({
         id: String(t?.id || t?._id || '').trim(),
-        name: String(t?.name || '').trim()
+        name: normalizeText(t?.name),
       }))
       .filter((t) => Boolean(t.id) && Boolean(t.name))
       .filter((t) => allowed.size === 0 || allowed.has(t.id))

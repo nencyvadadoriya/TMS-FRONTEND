@@ -3,6 +3,7 @@ import apiClient from './apiClient';
 export type TaskTypeItem = {
   id: string;
   _id?: string;
+  companyId?: string | null;
   name: string;
   isActive?: boolean;
   createdAt?: string;
@@ -10,8 +11,14 @@ export type TaskTypeItem = {
 };
 
 export const taskTypeService = {
-  async getTaskTypes(): Promise<{ success: boolean; data: TaskTypeItem[] }> {
-    const response = await apiClient.get('/task-types');
+  async getTaskTypes(params?: { companyName?: string; companyId?: string }): Promise<{ success: boolean; data: TaskTypeItem[] }> {
+    const query: any = {};
+    const companyName = (params?.companyName || '').toString().trim();
+    const companyId = (params?.companyId || '').toString().trim();
+    if (companyName) query.companyName = companyName;
+    if (companyId) query.companyId = companyId;
+
+    const response = await apiClient.get('/task-types', { params: query });
     return response.data;
   },
 

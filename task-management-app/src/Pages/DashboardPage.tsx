@@ -3496,6 +3496,10 @@ const DashboardPage = () => {
 
         };
 
+        if (role === 'admin' || role === 'super_admin' || normalizeCompanyKey(company) === SPEED_E_COM_COMPANY_KEY) {
+            return ensureManagerOtherWork(baseCompany());
+        }
+
 
 
         const effectiveEmail = (currentUser?.email || newTask.assignedTo || '').toString();
