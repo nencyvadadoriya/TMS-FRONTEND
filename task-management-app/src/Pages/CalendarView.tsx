@@ -410,11 +410,19 @@ const CalendarView: React.FC<CalendarViewProps> = (props) => {
     if (!Array.isArray(mergedTasks)) return [];
     let base = mergedTasks;
 
-    if (assignmentFilter !== 'all' && currentUserEmail) {
-      if (assignmentFilter === 'assigned_to_me') {
-        base = base.filter((t) => getTaskEmail((t as any)?.assignedTo) === currentUserEmail);
-      } else {
-        base = base.filter((t) => getTaskEmail((t as any)?.assignedBy) === currentUserEmail);
+    if (currentUserEmail) {
+      base = base.filter((t) => {
+        const assignedTo = getTaskEmail((t as any)?.assignedTo);
+        const assignedBy = getTaskEmail((t as any)?.assignedBy);
+        return assignedTo === currentUserEmail || assignedBy === currentUserEmail;
+      });
+
+      if (assignmentFilter !== 'all') {
+        if (assignmentFilter === 'assigned_to_me') {
+          base = base.filter((t) => getTaskEmail((t as any)?.assignedTo) === currentUserEmail);
+        } else {
+          base = base.filter((t) => getTaskEmail((t as any)?.assignedBy) === currentUserEmail);
+        }
       }
     }
 
