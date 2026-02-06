@@ -1352,6 +1352,18 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
     }, [fetchBrands, fetchTasks, fetchUsersForAdmin, fetchCompaniesForAdmin, fetchDeletedCompaniesForAdmin]);
 
     useEffect(() => {
+        const handler = () => {
+            void fetchBrands();
+        };
+
+        window.addEventListener('brandUpdated', handler as any);
+
+        return () => {
+            window.removeEventListener('brandUpdated', handler as any);
+        };
+    }, [fetchBrands]);
+
+    useEffect(() => {
         if (!isLoading) {
             calculateStats();
         }

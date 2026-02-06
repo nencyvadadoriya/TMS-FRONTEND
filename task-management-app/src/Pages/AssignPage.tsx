@@ -439,6 +439,29 @@ const AssignPage = ({ currentUser }: Props) => {
   }, [loadBrandsForCompany, loadCompanies, loadTaskTypes, selectedCompany]);
 
   useEffect(() => {
+    const handler = (evt: any) => {
+      if (!selectedCompany) return;
+
+      const detail = evt?.detail || {};
+      const companyName = normalizeText(detail?.companyName);
+      const userId = normalizeText(detail?.userId);
+
+      if (companyName && normalizeText(selectedCompany) !== companyName) return;
+
+      void loadUsersForCompany(selectedCompany);
+
+      if (userId && normalizeText(selectedUserId) && userId !== normalizeText(selectedUserId)) {
+        return;
+      }
+
+      void loadMappings(selectedCompany, selectedUserId);
+    };
+
+    window.addEventListener('assignmentsApplied', handler as any);
+    return () => window.removeEventListener('assignmentsApplied', handler as any);
+  }, [loadMappings, loadUsersForCompany, selectedCompany, selectedUserId]);
+
+  useEffect(() => {
     if (!showBulkBrandModal) return;
     const company = normalizeText(bulkBrandForm.company);
     if (!company) return;
@@ -573,7 +596,7 @@ const AssignPage = ({ currentUser }: Props) => {
   const brandOptions = useMemo(() => {
     return (brands || [])
       .map((b: any) => {
-        const id = String(b?.id || b?._id || '').trim();
+        const id = String(b?._id || b?.id || '').trim();
         const baseName = String(b?.name || '').trim();
         const groupNumber = String((b as any)?.groupNumber || '').trim();
         const label = groupNumber ? `${groupNumber} - ${baseName}` : baseName;
@@ -648,12 +671,17 @@ const AssignPage = ({ currentUser }: Props) => {
 
     const selectedTaskIds = Array.from(pendingTaskTypeIds);
 
+    if (toAssign.length > 0 && selectedTaskIds.length === 0) {
+      toast.error('Please select at least one task type to assign');
+      return;
+    }
+
     applyInFlightRef.current = true;
     setIsApplying(true);
     try {
       await Promise.all([
         ...toAssign.map(async (brandId) => {
-          const brand = (brands || []).find((bb: any) => String(bb?.id || bb?._id || '').trim() === brandId);
+          const brand = (brands || []).find((bb: any) => String(bb?._id || bb?.id || '').trim() === brandId);
           const brandName = String((brand as any)?.name || '').trim();
           await assignService.upsertUserMapping({
             companyName: company,
@@ -664,7 +692,7 @@ const AssignPage = ({ currentUser }: Props) => {
           });
         }),
         ...toRemove.map(async (brandId) => {
-          const brand = (brands || []).find((bb: any) => String(bb?.id || bb?._id || '').trim() === brandId);
+          const brand = (brands || []).find((bb: any) => String(bb?._id || bb?.id || '').trim() === brandId);
           const brandName = String((brand as any)?.name || '').trim();
           await assignService.upsertUserMapping({
             companyName: company,
@@ -814,6 +842,15 @@ const AssignPage = ({ currentUser }: Props) => {
     const companyKey = normalizeCompanyKey(bulkBrandForm.company);
     const isSpeedEcomCompany = companyKey === 'speedecom';
     const isSpeedEcomBulkMode = Boolean(canUseBulkBrandGroupFields && isSpeedEcomCompany);
+
+    if (isSpeedEcomBulkMode) {
+      const rmEmail = normalizeText(bulkBrandForm.rmEmail);
+      const amEmail = normalizeText(bulkBrandForm.amEmail);
+      if (!rmEmail || !amEmail) {
+        toast.error('Please select RM and AM');
+        return;
+      }
+    }
 
     const splitLines = (text: string) => (text || '').split(/\r?\n/).map((l) => l.trim());
     const trimEndEmpty = (list: string[]) => {
@@ -1016,6 +1053,7 @@ const AssignPage = ({ currentUser }: Props) => {
                     companyName: bulkBrandForm.company,
                     userId: rmUserId,
                     mappings,
+                    skipDerived: true,
                   })
                 );
                 assignedUserIds.push(rmUserId);
@@ -1031,6 +1069,7 @@ const AssignPage = ({ currentUser }: Props) => {
                     companyName: bulkBrandForm.company,
                     userId: amUserId,
                     mappings,
+                    skipDerived: true,
                   })
                 );
                 assignedUserIds.push(amUserId);

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useLocation, useNavigate } from 'react-router-dom';
 
+import { io, type Socket } from 'socket.io-client';
+
 
 
 import {
@@ -149,6 +151,28 @@ import { routepath } from '../Routes/route';
 import { useAppDispatch, useAppSelector } from '../Store/hooks';
 
 import { fetchTasks as fetchTasksThunk, selectAllTasks, taskAdded, taskRemoved, taskUpserted, tasksAddedMany, tasksReset } from '../Store/tasksSlice';
+
+
+
+const resolveSocketUrl = () => {
+
+    const envBaseUrl = import.meta.env.VITE_API_BASE_URL;
+
+    const isDev = Boolean(import.meta.env.DEV);
+
+    const apiBase =
+
+        (typeof envBaseUrl === 'string' && envBaseUrl.trim().length > 0)
+
+            ? envBaseUrl
+
+            : (isDev ? 'http://localhost:8100/api' : 'https://tms-backend-sand.vercel.app/api');
+
+    const trimmed = String(apiBase || '').trim().replace(/\/+$/, '');
+
+    return trimmed.endsWith('/api') ? trimmed.slice(0, -4) : trimmed;
+
+};
 
 
 
@@ -418,6 +442,8 @@ const DashboardPage = () => {
 
     const currentUserEmailRef = useRef<string>('');
 
+    const socketRef = useRef<Socket | null>(null);
+
     const userMappingsFetchInFlightRef = useRef<Map<string, Promise<void>>>(new Map());
 
     const userMappingsFetchedAtRef = useRef<Map<string, number>>(new Map());
@@ -630,17 +656,17 @@ const DashboardPage = () => {
 
                 return {
 
-                email: r.email,
+                    email: r.email,
 
-                name: r.name,
+                    name: r.name,
 
-                avatar: avatar ? String(avatar) : '',
+                    avatar: avatar ? String(avatar) : '',
 
-                avgStarsLabel: r.avgStarsLabel,
+                    avgStarsLabel: r.avgStarsLabel,
 
-                total: r.total,
+                    total: r.total,
 
-                performance: r.performance,
+                    performance: r.performance,
 
                 };
             }),
@@ -819,6 +845,349 @@ const DashboardPage = () => {
             });
 
     }, [currentUser?.email, dispatch]);
+
+
+
+    useEffect(() => {
+
+        if (!isAuthReady) return;
+
+        const email = (currentUser?.email || '').toString().trim().toLowerCase();
+
+        if (!email) return;
+
+        const userId = String((currentUser as any)?.id || (currentUser as any)?._id || '').trim();
+
+        const role = String((currentUser as any)?.role || '').trim().toLowerCase();
+
+        const companyName = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim();
+
+        const socketUrl = resolveSocketUrl();
+
+        if (!socketUrl) return;
+
+        try {
+
+            socketRef.current?.disconnect();
+
+        } catch {
+
+            // ignore
+
+        }
+
+        const socket = io(socketUrl, {
+
+            transports: ['websocket'],
+
+            auth: {
+
+                userId,
+
+                role,
+
+                companyName,
+
+            },
+
+        });
+
+        socketRef.current = socket;
+
+        const normalizeIncomingTask = (task: any) => {
+
+            if (!task) return task;
+
+            const id = String(task?.id || task?._id || '').trim();
+
+            return {
+
+                ...task,
+
+                id: id || task?.id,
+
+                companyName: (task?.companyName || task?.company || '').toString(),
+
+                taskType: (task?.taskType || task?.type || '').toString(),
+
+                brand: (typeof task?.brand === 'string' ? task.brand : (task?.brand?.name || '')).toString(),
+
+            };
+
+        };
+
+        const onUpserted = (payload: any) => {
+
+            try {
+
+                const task = normalizeIncomingTask(payload?.task);
+
+                if (!task?.id) return;
+
+                dispatch(taskUpserted(task as Task));
+
+            } catch {
+
+                return;
+
+            }
+
+        };
+
+        const normalizeIncomingBrand = (brand: any) => {
+
+            if (!brand) return brand;
+
+            const id = String(brand?.id || brand?._id || '').trim();
+
+            return {
+
+                ...brand,
+
+                id: id || brand?.id,
+
+                company: (brand?.company || brand?.companyName || '').toString(),
+
+            };
+
+        };
+
+        const onBrandUpserted = (payload: any) => {
+
+            try {
+
+                const next = normalizeIncomingBrand(payload?.brand);
+
+                const nextId = String((next as any)?.id || (next as any)?._id || '').trim();
+
+                if (!nextId) return;
+
+                setApiBrands((prev) => {
+
+                    const list = Array.isArray(prev) ? prev : [];
+
+                    const idx = list.findIndex((b: any) => String((b as any)?.id || (b as any)?._id || '').trim() === nextId);
+
+                    if (idx >= 0) {
+
+                        const clone = [...list];
+
+                        clone[idx] = { ...(clone[idx] as any), ...(next as any) };
+
+                        return clone;
+
+                    }
+
+                    return [next as Brand, ...list];
+
+                });
+
+                brandsFetchedAtRef.current = Date.now();
+
+                try {
+                    window.dispatchEvent(new CustomEvent('brandUpdated', { detail: { brandId: nextId } }));
+                } catch {
+                    // ignore
+                }
+
+            } catch {
+
+                return;
+
+            }
+
+        };
+
+        const onBrandDeleted = (payload: any) => {
+
+            try {
+
+                const brandId = String(payload?.brandId || '').trim();
+
+                if (!brandId) return;
+
+                setApiBrands((prev) => {
+
+                    const list = Array.isArray(prev) ? prev : [];
+
+                    return list.filter((b: any) => String((b as any)?.id || (b as any)?._id || '').trim() !== brandId);
+
+                });
+
+                brandsFetchedAtRef.current = Date.now();
+
+                try {
+                    window.dispatchEvent(new CustomEvent('brandUpdated', { detail: { brandId } }));
+                } catch {
+                    // ignore
+                }
+
+            } catch {
+
+                return;
+
+            }
+
+        };
+
+        const normalizeIncomingUser = (user: any) => {
+
+            if (!user) return user;
+
+            const id = String(user?.id || user?._id || '').trim();
+
+            return {
+
+                ...user,
+
+                id: id || user?.id,
+
+                companyName: (user?.companyName || user?.company || '').toString(),
+
+            };
+
+        };
+
+        const onUserUpserted = (payload: any) => {
+
+            try {
+
+                const next = normalizeIncomingUser(payload?.user);
+
+                const nextId = String((next as any)?.id || (next as any)?._id || '').trim();
+
+                if (!nextId) return;
+
+                setUsers((prev) => {
+
+                    const list = Array.isArray(prev) ? prev : [];
+
+                    const idx = list.findIndex((u: any) => String((u as any)?.id || (u as any)?._id || '').trim() === nextId);
+
+                    if (idx >= 0) {
+
+                        const clone = [...list];
+
+                        clone[idx] = { ...(clone[idx] as any), ...(next as any) };
+
+                        return clone as any;
+
+                    }
+
+                    return [next as UserType, ...list];
+
+                });
+
+                usersFetchedAtRef.current = Date.now();
+
+                try {
+                    window.dispatchEvent(new CustomEvent('userUpdated', { detail: { userId: nextId } }));
+                } catch {
+                    // ignore
+                }
+
+            } catch {
+
+                return;
+
+            }
+
+        };
+
+        const onUserDeleted = (payload: any) => {
+
+            try {
+
+                const userIdToDelete = String(payload?.userId || '').trim();
+
+                if (!userIdToDelete) return;
+
+                setUsers((prev) => {
+
+                    const list = Array.isArray(prev) ? prev : [];
+
+                    return list.filter((u: any) => String((u as any)?.id || (u as any)?._id || '').trim() !== userIdToDelete);
+
+                });
+
+                usersFetchedAtRef.current = Date.now();
+
+                try {
+                    window.dispatchEvent(new CustomEvent('userUpdated', { detail: { userId: userIdToDelete } }));
+                } catch {
+                    // ignore
+                }
+
+            } catch {
+
+                return;
+
+            }
+
+        };
+
+        const onAssignmentChanged = (payload: any) => {
+
+            try {
+
+                const companyName = String(payload?.companyName || '').trim();
+
+                const affectedUserId = String(payload?.userId || '').trim();
+
+                if (!companyName || !affectedUserId) return;
+
+                window.dispatchEvent(new CustomEvent('assignmentsApplied', {
+                    detail: {
+                        companyName,
+                        userId: affectedUserId,
+                    }
+                }));
+
+            } catch {
+
+                return;
+
+            }
+
+        };
+
+        socket.on('task:upserted', onUpserted);
+
+        socket.on('brand:upserted', onBrandUpserted);
+        socket.on('brand:deleted', onBrandDeleted);
+
+        socket.on('user:upserted', onUserUpserted);
+        socket.on('user:deleted', onUserDeleted);
+
+        socket.on('assignment:upserted', onAssignmentChanged);
+        socket.on('assignment:bulk-upserted', onAssignmentChanged);
+
+        return () => {
+
+            try {
+
+                socket.off('task:upserted', onUpserted);
+
+                socket.off('brand:upserted', onBrandUpserted);
+                socket.off('brand:deleted', onBrandDeleted);
+
+                socket.off('user:upserted', onUserUpserted);
+                socket.off('user:deleted', onUserDeleted);
+
+                socket.off('assignment:upserted', onAssignmentChanged);
+                socket.off('assignment:bulk-upserted', onAssignmentChanged);
+
+                socket.disconnect();
+
+            } catch {
+
+                // ignore
+
+            }
+
+        };
+
+    }, [currentUser, dispatch, isAuthReady]);
 
 
 
@@ -5486,7 +5855,7 @@ const DashboardPage = () => {
                 const email = String(u?.email || '').trim().toLowerCase();
                 return (id && id === key) || (email && email === key);
             });
-            
+
             return normalizeRoleKey((found as any)?.role);
         };
 

@@ -6,7 +6,7 @@ const isDev = Boolean(import.meta.env.DEV);
 const resolvedBaseUrl =
     (typeof envBaseUrl === 'string' && envBaseUrl.trim().length > 0)
         ? envBaseUrl
-        : (isDev ? 'http://localhost:9000/api' : 'https://tms-backend-sand.vercel.app/api');
+        : (isDev ? 'http://localhost:8100/api' : 'https://tms-backend-sand.vercel.app/api');
 
 const apiClient = axios.create({
     baseURL: resolvedBaseUrl,

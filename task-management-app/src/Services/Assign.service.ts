@@ -77,6 +77,7 @@ export const assignService = {
     brandId: string;
     brandName: string;
     taskTypeIds: string[];
+    skipDerived?: boolean;
   }): Promise<{ success: boolean; data: UserBrandTaskTypeMapping }> {
     const response = await apiClient.post('/assign/mappings', payload);
     return response.data;
@@ -90,6 +91,7 @@ export const assignService = {
       brandName: string;
       taskTypeIds: string[];
     }>;
+    skipDerived?: boolean;
   }): Promise<{ success: boolean; data: { matchedCount?: number; modifiedCount?: number; upsertedCount?: number } }> {
     const response = await apiClient.post('/assign/mappings/bulk', payload);
     return response.data;
