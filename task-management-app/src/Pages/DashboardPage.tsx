@@ -6705,13 +6705,34 @@ const DashboardPage = () => {
 
     const handleInputChange = useCallback((field: keyof NewTaskForm, value: string) => {
 
-        setNewTask(prev => ({
+        setNewTask(prev => {
+            const next: any = {
+                ...prev,
+                [field]: value,
+            };
 
-            ...prev,
+            if (field === 'assignedTo') {
+                const emailKey = (value || '').toString().trim().toLowerCase();
+                const userDoc: any = (usersRef.current || []).find((u: any) => {
+                    const uEmail = (u?.email || '').toString().trim().toLowerCase();
+                    return uEmail && uEmail === emailKey;
+                });
 
-            [field]: value,
+                const userCompany = (userDoc?.companyName || userDoc?.company || '').toString().trim();
+                if (userCompany && userCompany !== (next.companyName || '').toString().trim()) {
+                    next.companyName = userCompany;
+                    next.brand = '';
+                    next.taskType = '';
+                }
+            }
 
-        }));
+            if (field === 'companyName') {
+                next.brand = '';
+                next.taskType = '';
+            }
+
+            return next as NewTaskForm;
+        });
 
 
 
@@ -6730,20 +6751,6 @@ const DashboardPage = () => {
         }
 
 
-
-        if (field === 'companyName') {
-
-            setNewTask(prev => ({
-
-                ...prev,
-
-                brand: '',
-
-                taskType: '',
-
-            }));
-
-        }
 
     }, [formErrors]);
 
