@@ -158,7 +158,23 @@ const resolveSocketUrl = () => {
 
     const envBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
+    const envSocketUrl = import.meta.env.VITE_SOCKET_URL;
+
     const isDev = Boolean(import.meta.env.DEV);
+
+    if (typeof envSocketUrl === 'string' && envSocketUrl.trim().length > 0) {
+
+        return String(envSocketUrl).trim().replace(/\/+$/, '');
+
+    }
+
+    if (!isDev) {
+
+        const base = (typeof envBaseUrl === 'string' && envBaseUrl.trim().length > 0) ? envBaseUrl : '';
+
+        if (String(base).includes('tms-backend-sand.vercel.app')) return '';
+
+    }
 
     const apiBase =
 
