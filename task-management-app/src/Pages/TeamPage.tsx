@@ -737,9 +737,33 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+        if (isCurrentUserSbm) {
+
+            const targetRole = normalizeRole(target?.role);
+
+            if (targetRole !== 'rm' && targetRole !== 'am') return false;
+
+            return true;
+
+        }
+
+
+
+        if (isCurrentUserRm) {
+
+            const targetRole = normalizeRole(target?.role);
+
+            if (targetRole !== 'am') return false;
+
+            return true;
+
+        }
+
+
+
         return false;
 
-    }, [currentUserIdValue, isCurrentUserAdmin, isCurrentUserMdManager, normalizeRole]);
+    }, [currentUserIdValue, isCurrentUserAdmin, isCurrentUserMdManager, isCurrentUserRm, isCurrentUserSbm, normalizeRole]);
 
 
 

@@ -4583,6 +4583,8 @@ const DashboardPage = () => {
 
         if (role === 'super_admin' || role === 'admin') return true;
 
+        if (role === 'rm' || role === 'am') return true;
+
 
 
         const myEmail = normalizeEmailSafe(currentUser?.email);
@@ -4650,6 +4652,14 @@ const DashboardPage = () => {
             } else if (requesterRole === 'manager') {
 
                 if (targetRole !== 'assistant') throw new Error('Only administrators can edit users');
+
+            } else if (requesterRole === 'sbm') {
+
+                if (targetRole !== 'rm' && targetRole !== 'am') throw new Error('Only administrators can edit users');
+
+            } else if (requesterRole === 'rm') {
+
+                if (targetRole !== 'am') throw new Error('Only administrators can edit users');
 
             } else {
 
@@ -4830,6 +4840,14 @@ const DashboardPage = () => {
             } else if (requesterRole === 'manager') {
 
                 if (targetRole !== 'assistant' && targetRole !== 'sub_assistance') throw new Error('Only administrators can delete users');
+
+            } else if (requesterRole === 'sbm') {
+
+                if (targetRole !== 'rm' && targetRole !== 'am') throw new Error('Only administrators can delete users');
+
+            } else if (requesterRole === 'rm') {
+
+                if (targetRole !== 'am') throw new Error('Only administrators can delete users');
 
             } else {
 
