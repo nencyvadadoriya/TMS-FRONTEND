@@ -86,11 +86,17 @@ const TaskCard: React.FC<TaskCardProps> = ({
 
     const role = String((safeCurrentUser as any)?.role || '').trim().toLowerCase();
     const isAdmin = role === 'admin' || role === 'super_admin';
+    const canDeleteByRole = role !== 'rm' && role !== 'am';
 
     // Delete Task
     const handleDeleteTask = async () => {
         if (!task.id) {
             toast.error('Cannot delete: Task ID is missing');
+            return;
+        }
+
+        if (!canDeleteByRole) {
+            toast.error('You do not have permission to delete tasks');
             return;
         }
 
@@ -236,7 +242,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
                         </button>
                     )}
 
-                    {(isCreator || isAdmin) && (
+                    {canDeleteByRole && (isCreator || isAdmin) && (
                         <button
                             onClick={handleDeleteTask}
                             className="p-1 rounded hover:bg-red-50 text-gray-500 hover:text-red-600 transition-colors duration-200"

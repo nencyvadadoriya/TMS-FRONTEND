@@ -4563,6 +4563,8 @@ const DashboardPage = () => {
 
             if (role === 'super_admin' || role === 'admin') return true;
 
+            if (role === 'rm' || role === 'am') return false;
+
             return Boolean(myEmail && assignedByEmail && myEmail === assignedByEmail);
 
         },
@@ -11065,7 +11067,11 @@ const DashboardPage = () => {
 
                                     isOverdue={isOverdue}
 
-                                    canDeleteTask={true}
+                                    canDeleteTask={(() => {
+                                        const role = String((currentUser as any)?.role || '').trim().toLowerCase();
+                                        return role !== 'rm' && role !== 'am';
+                                    })()}
+
 
                                 />
 

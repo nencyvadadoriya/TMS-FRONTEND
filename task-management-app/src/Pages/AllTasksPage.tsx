@@ -1242,7 +1242,7 @@ const MobileTaskItem = memo(({
   const isPermanentlyApproved = isTaskPermanentlyApproved(task.id);
   const userIsAssigner = isTaskAssigner(task);
   const role = String((currentUser as any)?.role || '').trim().toLowerCase();
-  const canDeleteThisTask = role === 'admin' || role === 'super_admin' || userIsAssigner;
+  const canDeleteThisTask = (role !== 'rm' && role !== 'am') && (role === 'admin' || role === 'super_admin' || userIsAssigner);
   const isOverdueTask = isOverdue(task.dueDate, task.status);
   const brandLabelText = (brandLabel || (task.brand || '')).toString();
 
@@ -1403,7 +1403,7 @@ const DesktopTaskItem = memo(({
   const userIsAssigner = isTaskAssigner(task);
   const canEditThisTask = typeof canEditTask === 'function' ? canEditTask(task) : userIsAssigner;
   const role = String((currentUser as any)?.role || '').trim().toLowerCase();
-  const canDeleteThisTask = role === 'admin' || role === 'super_admin' || userIsAssigner;
+  const canDeleteThisTask = (role !== 'rm' && role !== 'am') && (role === 'admin' || role === 'super_admin' || userIsAssigner);
   const isOverdueTask = isOverdue(task.dueDate, task.status);
 
   const taskTypeLabel = (task.taskType || (task as any).type || (task as any).task_type || '').toString();
@@ -4024,6 +4024,11 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     const role = (currentUser?.role || '').toString().trim().toLowerCase();
     const isAdmin = role === 'admin' || role === 'super_admin';
     const isCreator = Boolean(myEmail && assignedByEmail && myEmail === assignedByEmail);
+    if (role === 'rm' || role === 'am') {
+      toast.error('You do not have permission to delete tasks');
+      return;
+    }
+
     if (!isAdmin && !isCreator) {
       toast.error('Only the task creator can delete this task');
       return;
