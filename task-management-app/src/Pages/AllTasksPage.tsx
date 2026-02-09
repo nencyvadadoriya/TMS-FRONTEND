@@ -1549,9 +1549,9 @@ const DesktopTaskItem = memo(({
               {canEditThisTask && (
                 <button
                   onClick={() => onEditTaskClick(task)}
-                  disabled={isCompleted}
-                  className={`p-1 rounded-lg transition-colors ${isCompleted ? 'text-gray-400 cursor-not-allowed' : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'}`}
-                  title={isCompleted ? "Editing not allowed for completed tasks" : "Edit task"}
+                  disabled={isPermanentlyApproved}
+                  className={`p-1 rounded-lg transition-colors ${isPermanentlyApproved ? 'text-gray-400 cursor-not-allowed' : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'}`}
+                  title={isPermanentlyApproved ? "Editing not allowed for permanently approved tasks" : "Edit task"}
                 >
                   <Edit className="h-4 w-4" />
                 </button>

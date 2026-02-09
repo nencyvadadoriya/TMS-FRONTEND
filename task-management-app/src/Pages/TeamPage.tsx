@@ -2427,7 +2427,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
                             </button>
 
-                            {!isCurrentUserManager && (
+                            {!isCurrentUserManager && !isCurrentUserObManager && (
 
                                 <button
 
@@ -2488,6 +2488,20 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                                 <div className="text-3xl font-bold text-green-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'assistant').length}</div>
 
                                 <div className="text-sm text-gray-600 mt-1">Assistants</div>
+
+                            </button>
+
+                            <button
+
+                                onClick={() => setFilterRole('sub_assistance')}
+
+                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'sub_assistance' ? 'bg-green-50 border-green-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-green-50 hover:border-green-100'}`}
+
+                            >
+
+                                <div className="text-3xl font-bold text-green-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'sub_assistance').length}</div>
+
+                                <div className="text-sm text-gray-600 mt-1">Sub Assistance</div>
 
                             </button>
 
@@ -2659,7 +2673,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
                             </button>
 
-                            {!isCurrentUserManager && (
+                            {!isCurrentUserManager && !isCurrentUserObManager && (
 
                                 <button
 
@@ -2723,6 +2737,20 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
                             </button>
 
+                            <button
+
+                                onClick={() => setFilterRole('sub_assistance')}
+
+                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'sub_assistance' ? 'bg-green-50 border-green-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-green-50 hover:border-green-100'}`}
+
+                            >
+
+                                <div className="text-3xl font-bold text-green-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'sub_assistance').length}</div>
+
+                                <div className="text-sm text-gray-600 mt-1">Sub Assistance</div>
+
+                            </button>
+
                         </div>
 
                     );
@@ -2749,7 +2777,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
                         </button>
 
-                        {!isCurrentUserManager && (
+                        {!isCurrentUserManager && !isCurrentUserObManager && (
 
                             <button
 
@@ -2864,6 +2892,20 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                             <div className="text-3xl font-bold text-green-700">{visibleUsers.filter(u => normalizeRole(u.role) === 'assistant').length}</div>
 
                             <div className="text-sm text-gray-600 mt-1">Assistants</div>
+
+                        </button>
+
+                        <button
+
+                            onClick={() => setFilterRole('sub_assistance')}
+
+                            className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'sub_assistance' ? 'bg-green-50 border-green-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-green-50 hover:border-green-100'}`}
+
+                        >
+
+                            <div className="text-3xl font-bold text-green-700">{visibleUsers.filter(u => normalizeRole(u.role) === 'sub_assistance').length}</div>
+
+                            <div className="text-sm text-gray-600 mt-1">Sub Assistance</div>
 
                         </button>
 

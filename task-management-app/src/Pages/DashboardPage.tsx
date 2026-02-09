@@ -1947,6 +1947,38 @@ const DashboardPage = () => {
 
 
 
+    const isSpeedEcomTask = useCallback((task: any): boolean => {
+
+        const companyKey = normalizeCompanyKey(task?.companyName || task?.company);
+
+        return companyKey === SPEED_E_COM_COMPANY_KEY;
+
+    }, [normalizeCompanyKey]);
+
+
+
+    const getTaskAssigneeEmail = useCallback((task: any): string => {
+
+        const assignedTo = (task as any)?.assignedTo;
+
+        const assignedToUser = (task as any)?.assignedToUser;
+
+        const email =
+
+            (typeof assignedTo === 'string' && assignedTo.includes('@') ? assignedTo : assignedTo?.email) ||
+
+            (typeof assignedToUser === 'string' && assignedToUser.includes('@') ? assignedToUser : assignedToUser?.email) ||
+
+            (typeof assignedTo === 'string' ? assignedTo : '') ||
+
+            '';
+
+        return stripDeletedEmailSuffix(email).trim().toLowerCase();
+
+    }, []);
+
+
+
     const restrictTaskTypesForCompany = useCallback((companyName: unknown, list: string[]): string[] => {
 
         const companyKey = normalizeCompanyKey(companyName);
@@ -5954,7 +5986,7 @@ const DashboardPage = () => {
 
             }
 
-            if (canViewAllTasks) return true;
+            if (canViewAllTasks || role === 'rm' || role === 'am') return true;
 
             return task.assignedTo === currentUser.email || task.assignedBy === currentUser.email;
 
@@ -6294,7 +6326,7 @@ const DashboardPage = () => {
 
 
 
-            if (canViewAllTasks) return true;
+            if (canViewAllTasks || role === 'rm' || role === 'am') return true;
 
             return task.assignedTo === currentUser.email || task.assignedBy === currentUser.email;
 
@@ -8870,11 +8902,10 @@ const DashboardPage = () => {
 
 
 
-        const normalizedStatus = String(task?.status || '').toLowerCase().trim();
 
-        if (normalizedStatus === 'completed') {
+        if (Boolean(task?.completedApproval)) {
 
-            toast.error('Editing not allowed for completed tasks');
+            toast.error('Editing not allowed for permanently approved tasks');
 
             setOpenMenuId(null);
 
@@ -9184,6 +9215,18 @@ const DashboardPage = () => {
 
         try {
 
+            const myEmail = stripDeletedEmailSuffix(currentUser?.email || '').trim().toLowerCase();
+
+            const previousDueDate = editingTask?.dueDate ? new Date(editingTask.dueDate).toISOString().split('T')[0] : '';
+
+            const dueDateChanged = Boolean(previousDueDate && editFormData.dueDate && previousDueDate !== editFormData.dueDate);
+
+            const speedEcomTask = isSpeedEcomTask(editingTask);
+
+            const assigneeEmail = getTaskAssigneeEmail(editingTask);
+
+            const canEditDueDateForSpeedEcom = !speedEcomTask || (myEmail && assigneeEmail && myEmail === assigneeEmail);
+
             const selectedBrandObj = brands.find(b =>
 
                 normalizeText(b.name) === normalizeText(editFormData.brand) &&
@@ -9204,7 +9247,7 @@ const DashboardPage = () => {
 
 
 
-            const updateData = {
+            const updateData: any = {
 
                 title: editFormData.title,
 
@@ -9227,6 +9270,18 @@ const DashboardPage = () => {
                 assignedToUser: users.find(u => u.email === editFormData.assignedTo),
 
             };
+
+            if (!canEditDueDateForSpeedEcom) {
+
+                if (dueDateChanged) {
+
+                    toast.error('Only the assignee can update due date for Speed E Com tasks');
+
+                }
+
+                delete updateData.dueDate;
+
+            }
 
 
 
@@ -9262,7 +9317,7 @@ const DashboardPage = () => {
 
         }
 
-    }, [validateEditForm, editingTask, editFormData, brands, users, isMongoObjectId, updateTaskInState]);
+    }, [validateEditForm, editingTask, editFormData, brands, users, isMongoObjectId, updateTaskInState, currentUser, getTaskAssigneeEmail, isSpeedEcomTask]);
 
 
 
@@ -10699,9 +10754,9 @@ const DashboardPage = () => {
 
                                                                                 onClick={() => handleOpenEditModal(task)}
 
-                                                                                disabled={String(task?.status || '').toLowerCase().trim() === 'completed'}
+                                                                                disabled={Boolean(task?.completedApproval)}
 
-                                                                                className={`inline-flex items-center justify-center w-9 h-9 rounded-lg ${String(task?.status || '').toLowerCase().trim() === 'completed'
+                                                                                className={`inline-flex items-center justify-center w-9 h-9 rounded-lg ${Boolean(task?.completedApproval)
 
                                                                                     ? 'text-gray-300 cursor-not-allowed'
 
@@ -10709,7 +10764,7 @@ const DashboardPage = () => {
 
                                                                                     }`}
 
-                                                                                title={String(task?.status || '').toLowerCase().trim() === 'completed' ? 'Editing not allowed for completed tasks' : 'Edit'}
+                                                                                title={Boolean(task?.completedApproval) ? 'Editing not allowed for permanently approved tasks' : 'Edit'}
 
                                                                             >
 
@@ -11340,6 +11395,18 @@ const DashboardPage = () => {
                 onSubmit={handleSaveEditedTask}
 
                 isSubmitting={isUpdatingTask}
+
+                disableDueDate={(() => {
+
+                    if (!editingTask) return false;
+
+                    const myEmail = stripDeletedEmailSuffix(currentUser?.email || '').trim().toLowerCase();
+
+                    const assigneeEmail = getTaskAssigneeEmail(editingTask);
+
+                    return isSpeedEcomTask(editingTask) && (!myEmail || !assigneeEmail || myEmail !== assigneeEmail);
+
+                })()}
 
             />
 

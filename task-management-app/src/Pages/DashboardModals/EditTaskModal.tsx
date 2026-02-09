@@ -32,6 +32,8 @@ type Props = {
 
   onSubmit: () => void;
   isSubmitting: boolean;
+
+  disableDueDate?: boolean;
 };
 
 const EditTaskModal = ({
@@ -47,6 +49,7 @@ const EditTaskModal = ({
   getEditFormBrandOptions,
   onSubmit,
   isSubmitting,
+  disableDueDate,
 }: Props) => {
   if (!open || !editingTask) return null;
 
@@ -127,6 +130,7 @@ const EditTaskModal = ({
                   className={`w-full px-4 py-3 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${editFormErrors.dueDate ? 'border-red-500' : 'border-gray-300'}`}
                   value={editFormData.dueDate}
                   onChange={(e) => onChange('dueDate', e.target.value)}
+                  disabled={Boolean(disableDueDate)}
                 />
                 {editFormErrors.dueDate && <p className="mt-1 text-sm text-red-600">{editFormErrors.dueDate}</p>}
               </div>
