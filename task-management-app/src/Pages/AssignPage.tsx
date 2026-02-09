@@ -865,9 +865,8 @@ const AssignPage = ({ currentUser }: Props) => {
 
     if (isSpeedEcomBulkMode) {
       const rmEmail = normalizeText(bulkBrandForm.rmEmail);
-      const amEmail = normalizeText(bulkBrandForm.amEmail);
-      if (!rmEmail || !amEmail) {
-        toast.error('Please select RM and AM');
+      if (!rmEmail) {
+        toast.error('Please select RM');
         return;
       }
     }

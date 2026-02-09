@@ -158,7 +158,23 @@ const resolveSocketUrl = () => {
 
     const envBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
+    const envSocketUrl = import.meta.env.VITE_SOCKET_URL;
+
     const isDev = Boolean(import.meta.env.DEV);
+
+    if (typeof envSocketUrl === 'string' && envSocketUrl.trim().length > 0) {
+
+        return String(envSocketUrl).trim().replace(/\/+$/, '');
+
+    }
+
+    if (!isDev) {
+
+        const base = (typeof envBaseUrl === 'string' && envBaseUrl.trim().length > 0) ? envBaseUrl : '';
+
+        if (String(base).includes('tms-backend-sand.vercel.app')) return '';
+
+    }
 
     const apiBase =
 
@@ -877,9 +893,6 @@ const DashboardPage = () => {
         }
 
         const socket = io(socketUrl, {
-
-            transports: ['websocket'],
-
             auth: {
 
                 userId,
@@ -893,6 +906,30 @@ const DashboardPage = () => {
         });
 
         socketRef.current = socket;
+
+        socket.on('connect', () => {
+            try {
+                console.log('[socket] connected', { id: socket.id, socketUrl, userId, role, companyName });
+            } catch {
+                // ignore
+            }
+        });
+
+        socket.on('disconnect', (reason) => {
+            try {
+                console.log('[socket] disconnected', { reason });
+            } catch {
+                // ignore
+            }
+        });
+
+        socket.on('connect_error', (err: any) => {
+            try {
+                console.error('[socket] connect_error', err?.message || err);
+            } catch {
+                // ignore
+            }
+        });
 
         const normalizeIncomingTask = (task: any) => {
 
@@ -4562,6 +4599,8 @@ const DashboardPage = () => {
 
         if (role === 'super_admin' || role === 'admin') return true;
 
+        if (role === 'rm' || role === 'am') return true;
+
 
 
         const myEmail = normalizeEmailSafe(currentUser?.email);
@@ -4629,6 +4668,14 @@ const DashboardPage = () => {
             } else if (requesterRole === 'manager') {
 
                 if (targetRole !== 'assistant') throw new Error('Only administrators can edit users');
+
+            } else if (requesterRole === 'sbm') {
+
+                if (targetRole !== 'rm' && targetRole !== 'am') throw new Error('Only administrators can edit users');
+
+            } else if (requesterRole === 'rm') {
+
+                if (targetRole !== 'am') throw new Error('Only administrators can edit users');
 
             } else {
 
@@ -4809,6 +4856,14 @@ const DashboardPage = () => {
             } else if (requesterRole === 'manager') {
 
                 if (targetRole !== 'assistant' && targetRole !== 'sub_assistance') throw new Error('Only administrators can delete users');
+
+            } else if (requesterRole === 'sbm') {
+
+                if (targetRole !== 'rm' && targetRole !== 'am') throw new Error('Only administrators can delete users');
+
+            } else if (requesterRole === 'rm') {
+
+                if (targetRole !== 'am') throw new Error('Only administrators can delete users');
 
             } else {
 
