@@ -4471,8 +4471,9 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       if (effectiveAdvancedFilters.status !== 'all') {
         const status = effectiveAdvancedFilters.status.toLowerCase();
         if (status === 'completed' && !isCompleted) statusPass = false;
-        else if (status === 'pending' && isCompleted) statusPass = false;
-        else if (status === 'in-progress' && task.status !== 'in-progress') statusPass = false;
+        else if (status === 'pending' && (isCompleted || String(task.status || '').toLowerCase() !== 'pending')) statusPass = false;
+        else if (status === 'in-progress' && String(task.status || '').toLowerCase() !== 'in-progress') statusPass = false;
+        else if (status === 'reassigned' && String(task.status || '').toLowerCase() !== 'reassigned') statusPass = false;
       } else if (filter !== 'all') {
         if (filter === 'completed' && !isCompleted) statusPass = false;
         else if (filter === 'pending' && isCompleted) statusPass = false;

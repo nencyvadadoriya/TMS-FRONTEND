@@ -1234,6 +1234,8 @@ const DashboardPage = () => {
 
         if (moduleId === 'user_management') return role === 'super_admin' || role === 'admin';
 
+        if (moduleId === 'access_management' && (role === 'am' || role === 'rm')) return false;
+
         if (role === 'super_admin' || role === 'admin') return true;
 
         if (['sbm', 'rm', 'am', 'ar'].includes(role) && moduleId === 'create_task') return true;
@@ -6658,9 +6660,10 @@ const DashboardPage = () => {
 
         setTaskPage(1);
 
-        setSelectedStatFilter(selectedStatFilter === statId ? 'all' : statId);
+        // behave like a radio group: selecting a card selects it (no toggle-off)
+        setSelectedStatFilter(statId);
 
-    }, [selectedStatFilter]);
+    }, []);
 
 
 
@@ -9906,11 +9909,17 @@ const DashboardPage = () => {
 
                                             {stats.map((stat) => (
 
-                                                <div
+                                                <button
 
                                                     key={stat.name}
 
                                                     onClick={() => handleStatClick(stat.id)}
+
+                                                    type="button"
+
+                                                    role="radio"
+
+                                                    aria-checked={selectedStatFilter === stat.id}
 
                                                     className={`bg-white p-6 rounded-2xl shadow-sm border-2 cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-1 relative ${selectedStatFilter === stat.id
 
@@ -9921,6 +9930,30 @@ const DashboardPage = () => {
                                                         }`}
 
                                                 >
+
+                                                    <div
+
+                                                        className={`absolute top-4 right-4 h-5 w-5 rounded-full border-2 transition-colors ${selectedStatFilter === stat.id
+
+                                                            ? 'border-blue-600'
+
+                                                            : 'border-gray-300'
+
+                                                            }`}
+
+                                                    >
+
+                                                        {selectedStatFilter === stat.id ? (
+
+                                                            <div className="h-full w-full flex items-center justify-center">
+
+                                                                <div className="h-2.5 w-2.5 rounded-full bg-blue-600" />
+
+                                                            </div>
+
+                                                        ) : null}
+
+                                                    </div>
 
                                                     <div className="flex items-start justify-between">
 
@@ -10004,7 +10037,7 @@ const DashboardPage = () => {
 
                                                     </div>
 
-                                                </div>
+                                                </button>
 
                                             ))}
 

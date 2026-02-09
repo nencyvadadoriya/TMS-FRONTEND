@@ -1,4 +1,4 @@
-export type TaskStatus = 'in-progress' | 'completed' | 'pending' | 'cancelled' | 'on-hold';
+export type TaskStatus = 'in-progress' | 'completed' | 'pending' | 'reassigned' | 'cancelled' | 'on-hold';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 
 // Brand-related types

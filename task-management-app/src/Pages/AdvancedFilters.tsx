@@ -124,6 +124,7 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                     >
                         <option value="all">All Status</option>
                         <option value="pending">Pending</option>
+                        <option value="reassigned">Reassigned</option>
                         <option value="completed">Completed</option>
                     </select>
                 </div>

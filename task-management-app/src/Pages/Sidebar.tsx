@@ -30,6 +30,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [darkMode, setDarkMode] = useState(false);
 
   const hasAccess = (moduleId: string) => {
+    const role = String((currentUser as any)?.role || '').trim().toLowerCase();
+    if (moduleId === 'access_management' && (role === 'am' || role === 'rm')) return false;
     const perms = (currentUser as any)?.permissions;
     if (!perms || typeof perms !== 'object') return true;
     if (Object.keys(perms).length === 0) return true;

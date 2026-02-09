@@ -112,6 +112,7 @@ const EditTaskModal = ({
                   className="w-full px-4 py-3 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="pending">Pending</option>
+                  <option value="reassigned">Reassigned</option>
                   <option value="in-progress">In Progress</option>
                   <option value="completed">Completed</option>
                 </select>
@@ -190,14 +191,14 @@ const EditTaskModal = ({
                 <label className="block text-sm font-medium text-gray-900 mb-2">Brand</label>
                 <select
                   className="w-full px-4 py-3 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={editFormData.brand}
+                  value={editFormData?.brand}
                   onChange={(e) => onChange('brand', e.target.value)}
                   disabled={!editFormData.companyName}
                 >
                   <option value="">Select a brand</option>
                   {getEditFormBrandOptions().map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
+                    <option key={opt?.value} value={opt?.value}>
+                      {opt?.label}
                     </option>
                   ))}
                 </select>
