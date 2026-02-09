@@ -4607,8 +4607,20 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   }
 
   // ==================== RENDER ====================
-  const isObManagerViewOnly = normalizeRoleKey(currentUser?.role) === 'ob_manager';
-  const isAssistantViewOnly = normalizeRoleKey(currentUser?.role) === 'assistant';
+  const roleKey = normalizeRoleKey(currentUser?.role);
+  const isObManagerViewOnly = roleKey === 'ob_manager';
+  const isAssistantViewOnly = roleKey === 'assistant';
+  const isSubAssistanceRole = roleKey === 'sub_assistance'
+    || roleKey === 'sub_assistence'
+    || roleKey === 'sub_assist'
+    || roleKey === 'sub_assistant';
+  const isAssistantLikeRole = roleKey === 'assistant'
+    || roleKey === 'sub_assistance'
+    || roleKey === 'sub_assistence'
+    || roleKey === 'sub_assist'
+    || roleKey === 'sub_assistant';
+  const isBulkImportDisabled = isObManagerViewOnly || isAssistantLikeRole;
+  const isCreateTaskDisabled = isSubAssistanceRole;
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
       {/* Header Section */}
@@ -4642,21 +4654,25 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                   {showAdvancedFilters ? 'Hide Filters' : 'Show Filters'}
                 </button>
 
-                <button
-                  onClick={handleOpenBulkImporter}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Bulk Import
-                </button>
+                {!isBulkImportDisabled && (
+                  <button
+                    onClick={handleOpenBulkImporter}
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Bulk Import
+                  </button>
+                )}
 
-                <button
-                  onClick={handleCreateTaskWithHistory}
-                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Task
-                </button>
+                {!isCreateTaskDisabled && (
+                  <button
+                    onClick={handleCreateTaskWithHistory}
+                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Task
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -4712,20 +4728,24 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
             </p>
             {!isObManagerViewOnly && !isAssistantViewOnly && (
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <button
-                  onClick={handleOpenBulkImporter}
-                  className="inline-flex items-center px-5 py-3 border-2 border-gray-200 rounded-xl bg-white text-base font-medium text-gray-700 hover:bg-gray-50 hover:border-blue-300 transition-all"
-                >
-                  <Upload className="h-5 w-5 mr-2" />
-                  Bulk Import Tasks
-                </button>
-                <button
-                  onClick={handleCreateTaskWithHistory}
-                  className="inline-flex items-center px-5 py-3 border border-transparent rounded-xl shadow-sm text-base font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transition-all"
-                >
-                  <Plus className="h-5 w-5 mr-2" />
-                  Create New Task
-                </button>
+                {!isBulkImportDisabled && (
+                  <button
+                    onClick={handleOpenBulkImporter}
+                    className="inline-flex items-center px-5 py-3 border-2 border-gray-200 rounded-xl bg-white text-base font-medium text-gray-700 hover:bg-gray-50 hover:border-blue-300 transition-all"
+                  >
+                    <Upload className="h-5 w-5 mr-2" />
+                    Bulk Import Tasks
+                  </button>
+                )}
+                {!isCreateTaskDisabled && (
+                  <button
+                    onClick={handleCreateTaskWithHistory}
+                    className="inline-flex items-center px-5 py-3 border border-transparent rounded-xl shadow-sm text-base font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transition-all"
+                  >
+                    <Plus className="h-5 w-5 mr-2" />
+                    Create New Task
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -4890,7 +4910,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       </div>
 
       {/* Bulk Import Modal */}
-      {showBulkImporter && !isObManagerViewOnly && !isAssistantViewOnly && (
+      {showBulkImporter && !isBulkImportDisabled && (
         <BulkImporter
           draftTasks={bulkDraftTasks}
           defaults={bulkImportDefaults}
