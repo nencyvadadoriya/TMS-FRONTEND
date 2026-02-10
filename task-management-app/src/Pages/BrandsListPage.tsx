@@ -1195,31 +1195,44 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         }
         if (filters.search) {
             const q = filters.search.toLowerCase().trim();
-            list = list.filter((b: any) => {
-                const name = String(b?.name || '').toLowerCase();
-                const company = String(b?.company || '').toLowerCase();
-                const groupNumber = String(b?.groupNumber || '').toLowerCase();
-                const groupName = String(b?.groupName || '').toLowerCase();
-                const brandId = String(b?.id || '').toLowerCase();
-                const brandMongoId = String(b?._id || '').toLowerCase();
-                const rmName = String(b?.rmName || '').toLowerCase();
-                const amName = String(b?.amName || '').toLowerCase();
-
-                return (
-                    name.includes(q)
-                    || company.includes(q)
-                    || groupNumber.includes(q)
-                    || groupName.includes(q)
-                    || brandId.includes(q)
-                    || brandMongoId.includes(q)
-                    || rmName.includes(q)
-                    || amName.includes(q)
-                );
+            list = list.filter((b) => {
+                const name = (b.name || '').toLowerCase();
+                const company = (b.company || '').toLowerCase();
+                return name.includes(q) || company.includes(q);
             });
         }
 
         return list;
     }, [accessibleBrands, filters]);
+
+    const getBrandLabelForFilter = (brandName: string): string => {
+        const name = String(brandName || '').trim();
+        if (!name) return '';
+
+        const candidate = (accessibleBrands || []).find((b: any) => {
+            const n = String(b?.name || '').trim().toLowerCase();
+            if (n !== name.toLowerCase()) return false;
+
+            // If company filter is active, prefer the brand in that company
+            if (filters.company !== 'all') {
+                return String(b?.company || '').trim() === String(filters.company || '').trim();
+            }
+
+            return true;
+        });
+
+        if (!candidate) return name;
+
+        const company = String((candidate as any).company || '').trim();
+        const groupNumber = String((candidate as any).groupNumber || '').trim();
+
+        // Your logic: only prepend groupNumber for speed Ecom
+        if (company === 'speed Ecom' && groupNumber) {
+            return `${groupNumber} - ${name}`;
+        }
+
+        return name;
+    };
 
     const filteredBrands = getFilteredBrands();
     const totalBrands = filteredBrands.length;
@@ -1366,20 +1379,8 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         if (filters.company !== 'all') {
             list = accessibleBrands.filter((b) => b.company === filters.company);
         }
-        const names = list.map((b) => String(b.name || '').trim()).filter(Boolean);
-        return Array.from(new Set(names)).sort((a, b) => a.localeCompare(b));
+        return [...new Set(list.map((b) => b.name))].filter(Boolean).sort();
     }, [accessibleBrands, filters.company]);
-
-    const getBrandLabelForFilter = (brandName: string) => {
-        const raw = String(brandName || '').trim();
-        if (!raw) return '';
-        const parts = raw
-            .replace(/[_-]+/g, ' ')
-            .split(' ')
-            .map((p) => p.trim())
-            .filter(Boolean);
-        return parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
-    };
 
     const isNewBrand = useCallback((brand: Brand) => {
         if (!brand.createdAt) return false;

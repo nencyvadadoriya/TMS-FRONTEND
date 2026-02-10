@@ -97,7 +97,7 @@ const EditTaskModal = ({
                   onChange={(e) => onChange('assignedTo', e.target.value)}
                   className={`w-full px-4 py-3 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${editFormErrors.assignedTo ? 'border-red-500' : 'border-gray-300'}`}
                 >
-                  <option value="">{editingTask.companyName?.toLowerCase() === 'speed e com' || editingTask.companyName?.toLowerCase() === 'speedecom' ? `Current Assignee: ${editFormData.assignedTo}` : 'Select team member'}</option>
+                  <option value="">Select team member</option>
                   {users.map((user) => (
                     <option key={user.id} value={user.email}>
                       {user.name} ({user.email})
@@ -115,6 +115,7 @@ const EditTaskModal = ({
                   className="w-full px-4 py-3 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="pending">Pending</option>
+                  <option value="reassigned">Reassigned</option>
                   <option value="in-progress">In Progress</option>
                   <option value="completed">Completed</option>
                 </select>

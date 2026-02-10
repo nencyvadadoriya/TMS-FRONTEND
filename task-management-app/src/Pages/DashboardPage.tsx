@@ -625,6 +625,7 @@ const DashboardPage = () => {
                 performance: performanceLevelForAvg(avgStars),
 
             };
+
         });
 
 
@@ -956,7 +957,7 @@ const DashboardPage = () => {
 
             try {
 
-                const task = normalizeIncomingTask(payload?.task || payload);
+                const task = normalizeIncomingTask(payload?.task);
 
                 if (!task?.id) return;
 
@@ -4540,10 +4541,6 @@ const DashboardPage = () => {
 
             return 'border-l-4 border-l-red-500';
 
-        } else if (String(task.status || '').trim().toLowerCase() === 'reassigned') {
-
-            return 'border-l-4 border-l-yellow-500';
-
         } else if (task.priority === 'high') {
 
             return 'border-l-4 border-l-orange-500';
@@ -5452,7 +5449,7 @@ const DashboardPage = () => {
 
 
 
-    const handleReassignTask = useCallback(async (taskId: string, newAssigneeId: string, newDueDate?: string) => {
+    const handleReassignTask = useCallback(async (taskId: string, newAssigneeId: string) => {
 
         try {
 
@@ -5560,7 +5557,13 @@ const DashboardPage = () => {
                 (isObManager && nextAssigneeEmail && (isAssistantCandidate || isObManagerDirectEmail))
             );
 
-            void isAllowedReassign;
+            if (!isAllowedReassign) {
+
+                toast.error('You do not have permission to reassign tasks');
+
+                return;
+
+            }
 
 
 
@@ -5574,8 +5577,6 @@ const DashboardPage = () => {
 
                 ...task,
 
-                status: 'reassigned',
-
                 assignedTo: nextAssigneeEmail,
 
                 assignedToUser: newAssignee ? {
@@ -5588,9 +5589,7 @@ const DashboardPage = () => {
 
                     role: (newAssignee as any).role
 
-                } : undefined,
-
-                ...(newDueDate ? { dueDate: newDueDate } : {})
+                } : undefined
 
             };
 
@@ -5610,9 +5609,7 @@ const DashboardPage = () => {
 
                     role: (newAssignee as any).role
 
-                } : undefined,
-
-                ...(newDueDate ? { dueDate: newDueDate } : {})
+                } : undefined
 
             });
 
@@ -5620,8 +5617,7 @@ const DashboardPage = () => {
 
             if (response.success) {
 
-                const serverTask = response.data as any;
-                dispatch(taskUpserted((serverTask ? { ...updatedTask, ...serverTask } : updatedTask) as Task));
+                dispatch(taskUpserted(updatedTask as Task));
 
                 toast.success(`Task reassigned to ${newAssignee ? (newAssignee as any).name : nextAssigneeEmail}`);
 
@@ -6130,8 +6126,6 @@ const DashboardPage = () => {
 
                 const brand = (task.brand || '').toLowerCase();
 
-                const brandWithGroupNumber = formatBrandWithGroupNumber(task).toLowerCase();
-
                 const typeVal = (task.taskType || (task as any).type || '').toLowerCase();
 
                 return (
@@ -6141,8 +6135,6 @@ const DashboardPage = () => {
                     company.includes(term) ||
 
                     brand.includes(term) ||
-
-                    brandWithGroupNumber.includes(term) ||
 
                     typeVal.includes(term)
 
@@ -9223,6 +9215,8 @@ const DashboardPage = () => {
 
         try {
 
+            const myEmail = stripDeletedEmailSuffix(currentUser?.email || '').trim().toLowerCase();
+
             const previousDueDate = editingTask?.dueDate ? new Date(editingTask.dueDate).toISOString().split('T')[0] : '';
 
             const dueDateChanged = Boolean(previousDueDate && editFormData.dueDate && previousDueDate !== editFormData.dueDate);
@@ -9230,22 +9224,8 @@ const DashboardPage = () => {
             const speedEcomTask = isSpeedEcomTask(editingTask);
 
             const assigneeEmail = getTaskAssigneeEmail(editingTask);
-            const nextAssigneeEmail = stripDeletedEmailSuffix(editFormData.assignedTo || '').trim().toLowerCase();
 
-            const normalizeEmailSafe = (v: unknown): string => stripDeletedEmailSuffix(v).trim().toLowerCase();
-            const myEmail = normalizeEmailSafe((currentUser as any)?.email);
-            const assignedByEmail = normalizeEmailSafe((editingTask as any)?.assignedByUser?.email || (editingTask as any)?.assignedBy);
-            const isTaskAssigner = Boolean(myEmail && assignedByEmail && myEmail === assignedByEmail);
-            const isTaskAssignee = Boolean(myEmail && assigneeEmail && myEmail === assigneeEmail);
-
-            const isReassigningInEditModal = Boolean(
-                speedEcomTask &&
-                assigneeEmail &&
-                nextAssigneeEmail &&
-                assigneeEmail !== nextAssigneeEmail
-            );
-
-            const canEditDueDateForSpeedEcom = !speedEcomTask || isTaskAssignee || (isReassigningInEditModal && isTaskAssigner);
+            const canEditDueDateForSpeedEcom = !speedEcomTask || (myEmail && assigneeEmail && myEmail === assigneeEmail);
 
             const selectedBrandObj = brands.find(b =>
 
@@ -9290,10 +9270,6 @@ const DashboardPage = () => {
                 assignedToUser: users.find(u => u.email === editFormData.assignedTo),
 
             };
-
-            if (isReassigningInEditModal) {
-                updateData.status = 'reassigned';
-            }
 
             if (!canEditDueDateForSpeedEcom) {
 
@@ -9968,17 +9944,7 @@ const DashboardPage = () => {
 
                                         getBrandLabel={getBrandLabelForFilter}
 
-                                        users={(() => {
-                                            if (!editingTask) return users;
-                                            if (!isSpeedEcomTask(editingTask)) return users;
-
-                                            const normalizeCompanyKeySafe = (value: unknown): string => normalizeText(value).replace(/\s+/g, '');
-                                            const speedKey = normalizeCompanyKeySafe('Speed E Com').toLowerCase();
-                                            return (users || []).filter((u: any) => {
-                                                const key = normalizeCompanyKeySafe(u?.companyName || u?.company).toLowerCase();
-                                                return key === speedKey;
-                                            });
-                                        })()}
+                                        users={users}
 
                                         currentUser={currentUser}
 
@@ -11418,16 +11384,7 @@ const DashboardPage = () => {
 
                 onChange={handleEditInputChange}
 
-                users={(() => {
-                    const speedEcomTask = editingTask ? isSpeedEcomTask(editingTask) : false;
-                    if (!speedEcomTask) return users;
-
-                    const speedKey = normalizeCompanyKey(SPEED_E_COM_COMPANY_NAME);
-                    return (users || []).filter((u: any) => {
-                        const key = normalizeCompanyKey(u?.companyName || u?.company);
-                        return key === speedKey;
-                    });
-                })()}
+                users={users}
 
                 availableTaskTypesForEditTask={availableTaskTypesForEditTask}
 
@@ -11440,23 +11397,15 @@ const DashboardPage = () => {
                 isSubmitting={isUpdatingTask}
 
                 disableDueDate={(() => {
+
                     if (!editingTask) return false;
-                    if (!isSpeedEcomTask(editingTask)) return false;
 
-                    const normalizeEmailSafe = (v: unknown): string => stripDeletedEmailSuffix(v).trim().toLowerCase();
-                    const myEmail = normalizeEmailSafe((currentUser as any)?.email);
+                    const myEmail = stripDeletedEmailSuffix(currentUser?.email || '').trim().toLowerCase();
+
                     const assigneeEmail = getTaskAssigneeEmail(editingTask);
-                    const assignedByEmail = normalizeEmailSafe((editingTask as any)?.assignedByUser?.email || (editingTask as any)?.assignedBy);
-                    const nextAssigneeEmail = normalizeEmailSafe(editFormData.assignedTo);
 
-                    const isAssignee = Boolean(myEmail && assigneeEmail && myEmail === assigneeEmail);
-                    const isAssigner = Boolean(myEmail && assignedByEmail && myEmail === assignedByEmail);
-                    const isReassigning = Boolean(assigneeEmail && nextAssigneeEmail && assigneeEmail !== nextAssigneeEmail);
+                    return isSpeedEcomTask(editingTask) && (!myEmail || !assigneeEmail || myEmail !== assigneeEmail);
 
-                    // For Speed E Com tasks: assignee can edit due date anytime,
-                    // assigner can edit due date only when reassigning (changing assignee).
-                    const canEdit = isAssignee || (isAssigner && isReassigning);
-                    return !canEdit;
                 })()}
 
             />
