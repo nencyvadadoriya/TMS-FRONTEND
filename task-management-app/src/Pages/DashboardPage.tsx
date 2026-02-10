@@ -625,7 +625,6 @@ const DashboardPage = () => {
                 performance: performanceLevelForAvg(avgStars),
 
             };
-
         });
 
 
@@ -5449,7 +5448,7 @@ const DashboardPage = () => {
 
 
 
-    const handleReassignTask = useCallback(async (taskId: string, newAssigneeId: string) => {
+    const handleReassignTask = useCallback(async (taskId: string, newAssigneeId: string, newDueDate?: string) => {
 
         try {
 
@@ -5557,13 +5556,7 @@ const DashboardPage = () => {
                 (isObManager && nextAssigneeEmail && (isAssistantCandidate || isObManagerDirectEmail))
             );
 
-            if (!isAllowedReassign) {
-
-                toast.error('You do not have permission to reassign tasks');
-
-                return;
-
-            }
+            void isAllowedReassign;
 
 
 
@@ -5589,7 +5582,9 @@ const DashboardPage = () => {
 
                     role: (newAssignee as any).role
 
-                } : undefined
+                } : undefined,
+
+                ...(newDueDate ? { dueDate: newDueDate } : {})
 
             };
 
@@ -5609,7 +5604,9 @@ const DashboardPage = () => {
 
                     role: (newAssignee as any).role
 
-                } : undefined
+                } : undefined,
+
+                ...(newDueDate ? { dueDate: newDueDate } : {})
 
             });
 
@@ -9219,8 +9216,6 @@ const DashboardPage = () => {
 
         try {
 
-            const myEmail = stripDeletedEmailSuffix(currentUser?.email || '').trim().toLowerCase();
-
             const previousDueDate = editingTask?.dueDate ? new Date(editingTask.dueDate).toISOString().split('T')[0] : '';
 
             const dueDateChanged = Boolean(previousDueDate && editFormData.dueDate && previousDueDate !== editFormData.dueDate);
@@ -9228,8 +9223,16 @@ const DashboardPage = () => {
             const speedEcomTask = isSpeedEcomTask(editingTask);
 
             const assigneeEmail = getTaskAssigneeEmail(editingTask);
+            const nextAssigneeEmail = stripDeletedEmailSuffix(editFormData.assignedTo || '').trim().toLowerCase();
 
-            const canEditDueDateForSpeedEcom = !speedEcomTask || (myEmail && assigneeEmail && myEmail === assigneeEmail);
+            const isReassigningInEditModal = Boolean(
+                speedEcomTask &&
+                assigneeEmail &&
+                nextAssigneeEmail &&
+                assigneeEmail !== nextAssigneeEmail
+            );
+
+            const canEditDueDateForSpeedEcom = true;
 
             const selectedBrandObj = brands.find(b =>
 
@@ -9274,6 +9277,10 @@ const DashboardPage = () => {
                 assignedToUser: users.find(u => u.email === editFormData.assignedTo),
 
             };
+
+            if (isReassigningInEditModal) {
+                updateData.status = 'reassigned';
+            }
 
             if (!canEditDueDateForSpeedEcom) {
 
@@ -9948,7 +9955,17 @@ const DashboardPage = () => {
 
                                         getBrandLabel={getBrandLabelForFilter}
 
-                                        users={users}
+                                        users={(() => {
+                                            if (!editingTask) return users;
+                                            if (!isSpeedEcomTask(editingTask)) return users;
+
+                                            const normalizeCompanyKeySafe = (value: unknown): string => normalizeText(value).replace(/\s+/g, '');
+                                            const speedKey = normalizeCompanyKeySafe('Speed E Com').toLowerCase();
+                                            return (users || []).filter((u: any) => {
+                                                const key = normalizeCompanyKeySafe(u?.companyName || u?.company).toLowerCase();
+                                                return key === speedKey;
+                                            });
+                                        })()}
 
                                         currentUser={currentUser}
 
@@ -11388,7 +11405,14 @@ const DashboardPage = () => {
 
                 onChange={handleEditInputChange}
 
-                users={users}
+                users={(() => {
+                    const speedEcomTask = editingTask ? isSpeedEcomTask(editingTask) : false;
+                    if (speedEcomTask) {
+                        const assigneeEmail = getTaskAssigneeEmail(editingTask);
+                        return users.filter(u => stripDeletedEmailSuffix(u.email || '').trim().toLowerCase() === stripDeletedEmailSuffix(assigneeEmail || '').trim().toLowerCase());
+                    }
+                    return users;
+                })()}
 
                 availableTaskTypesForEditTask={availableTaskTypesForEditTask}
 
@@ -11400,17 +11424,7 @@ const DashboardPage = () => {
 
                 isSubmitting={isUpdatingTask}
 
-                disableDueDate={(() => {
-
-                    if (!editingTask) return false;
-
-                    const myEmail = stripDeletedEmailSuffix(currentUser?.email || '').trim().toLowerCase();
-
-                    const assigneeEmail = getTaskAssigneeEmail(editingTask);
-
-                    return isSpeedEcomTask(editingTask) && (!myEmail || !assigneeEmail || myEmail !== assigneeEmail);
-
-                })()}
+                disableDueDate={false}
 
             />
 
