@@ -4541,9 +4541,10 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         const matchesType = task.type?.toLowerCase().includes(searchLower) || false;
         const matchesCompany = task.company?.toLowerCase().includes(searchLower) || false;
         const matchesBrand = task.brand?.toLowerCase().includes(searchLower) || false;
+        const matchesBrandWithGroupNumber = formatBrandWithGroupNumber(task)?.toLowerCase().includes(searchLower) || false;
 
         if (!matchesTitle && !matchesAssignee && !matchesAssigner &&
-          !matchesType && !matchesCompany && !matchesBrand) {
+          !matchesType && !matchesCompany && !matchesBrand && !matchesBrandWithGroupNumber) {
           return false;
         }
       }
