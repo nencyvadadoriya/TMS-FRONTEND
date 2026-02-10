@@ -6130,6 +6130,8 @@ const DashboardPage = () => {
 
                 const brand = (task.brand || '').toLowerCase();
 
+                const brandWithGroupNumber = formatBrandWithGroupNumber(task).toLowerCase();
+
                 const typeVal = (task.taskType || (task as any).type || '').toLowerCase();
 
                 return (
@@ -6139,6 +6141,8 @@ const DashboardPage = () => {
                     company.includes(term) ||
 
                     brand.includes(term) ||
+
+                    brandWithGroupNumber.includes(term) ||
 
                     typeVal.includes(term)
 
