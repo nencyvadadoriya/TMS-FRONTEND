@@ -38,7 +38,7 @@ import { assignService } from '../Services/Assign.service';
 import { TasksPageSkeleton } from '../Components/LoadingSkeletons';
 import AdvancedFiltersPanel from './AdvancedFilters';
 
-const SPEED_E_COM_COMPANY_KEY = 'speed e com';
+const SPEED_E_COM_COMPANY_KEY = 'speedecom';
 const SPEED_E_COM_FIXED_TASK_TYPES = ['Meeting Pending', 'CP Pending', 'Recharge Negative'];
 
 const DEFAULT_TASKS_PER_PAGE = 20;
