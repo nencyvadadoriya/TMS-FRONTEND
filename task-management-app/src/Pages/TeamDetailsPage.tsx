@@ -203,7 +203,7 @@ const TeamDetailsPage: React.FC<TeamDetailsPageProps> = ({
                         taskId: task.id,
                         taskTitle: task.title,
                         taskStatus: task.status,
-                    };
+                    };   
                 })
                 .filter((x: any) => {
                     if (!x?.action) return false;
