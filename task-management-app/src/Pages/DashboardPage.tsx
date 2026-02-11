@@ -82,6 +82,8 @@ import ReviewsPage from './ReviewsPage';
 
 import OtherWorkPage from './OtherWorkPage';
 
+import SpeedEcomReassignPage from './SpeedEcomReassignPage';
+
 import AdvancedFilters from './AdvancedFilters';
 
 import AnalyzePage from './AnalyzePage';
@@ -390,6 +392,9 @@ const DashboardPage = () => {
 
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
+    const [speedEcomReassignTask, setSpeedEcomReassignTask] = useState<Task | null>(null);
+    const [isSpeedEcomReassignSubmitting, setIsSpeedEcomReassignSubmitting] = useState<boolean>(false);
+
     const [loading, setLoading] = useState(true);
 
     const [searchTerm, setSearchTerm] = useState('');
@@ -418,7 +423,7 @@ const DashboardPage = () => {
 
     const [isUpdatingTask, setIsUpdatingTask] = useState(false);
 
-    const [currentView, setCurrentView] = useState<'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'access' | 'company-brand-task-types' | 'assign' | 'reviews' | 'other-work'>('dashboard');
+    const [currentView, setCurrentView] = useState<'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'access' | 'company-brand-task-types' | 'assign' | 'reviews' | 'other-work' | 'speed-ecom-reassign'>('dashboard');
 
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
@@ -4071,7 +4076,7 @@ const DashboardPage = () => {
 
     const navigateTo = (page: string) => {
 
-        const viewMap: Record<string, 'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'access' | 'company-brand-task-types' | 'assign' | 'reviews' | 'other-work'> = {
+        const viewMap: Record<string, 'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'access' | 'company-brand-task-types' | 'assign' | 'speed-ecom-reassign' | 'reviews' | 'other-work'> = {
 
             'dashboard': 'dashboard',
 
@@ -4096,6 +4101,8 @@ const DashboardPage = () => {
             'company-brand-task-types': 'company-brand-task-types',
 
             'assign': 'assign',
+
+            'speed-ecom-reassign': 'speed-ecom-reassign',
 
             'reviews': 'reviews',
 
@@ -4134,6 +4141,8 @@ const DashboardPage = () => {
             'company-brand-task-types': 'company_brand_task_type',
 
             'assign': 'assign_page',
+
+            'speed-ecom-reassign': 'tasks_page',
 
             'reviews': 'reviews_page',
 
@@ -4180,6 +4189,8 @@ const DashboardPage = () => {
             'company-brand-task-types': routepath.companyBrandTaskTypes,
 
             assign: routepath.assign,
+
+            'speed-ecom-reassign': routepath.speedEcomReassign,
 
             reviews: routepath.reviews,
 
@@ -4379,6 +4390,42 @@ const DashboardPage = () => {
 
         }
 
+        if (path === routepath.speedEcomReassign) {
+
+            if (!hasAccess('tasks_page')) {
+
+                toast.error('Access denied');
+
+                navigate(routepath.dashboard);
+
+                return;
+
+            }
+
+            setCurrentView('speed-ecom-reassign');
+
+            try {
+
+                const params = new URLSearchParams(location.search || '');
+
+                const taskId = params.get('taskId') || '';
+
+                const found = taskId
+                    ? (tasks || []).find((t: any) => String(t?.id || '') === String(taskId))
+                    : null;
+
+                setSpeedEcomReassignTask((found as Task) || null);
+
+            } catch {
+
+                setSpeedEcomReassignTask(null);
+
+            }
+
+            return;
+
+        }
+
 
 
         if (path === routepath.reviews) {
@@ -4500,6 +4547,34 @@ const DashboardPage = () => {
         }
 
     }, [hasAccess, isAuthReady, location.pathname, location.search, currentUser, navigate]);
+
+
+
+    const handleSpeedEcomReassignSubmit = useCallback(async (payload: { assignedTo: string; dueDate: string }) => {
+        if (!speedEcomReassignTask?.id) {
+            toast.error('Task not found');
+            return false;
+        }
+        setIsSpeedEcomReassignSubmitting(true);
+        try {
+            const response = await taskService.updateTask(speedEcomReassignTask.id, {
+                assignedTo: payload.assignedTo,
+                dueDate: payload.dueDate,
+            });
+            if (response.success && response.data) {
+                dispatch(taskUpserted(response.data as Task));
+                return true;
+            }
+            toast.error(response.message || 'Failed to reassign task');
+            return false;
+        } catch (e: any) {
+            console.error('Speed E Com reassign failed:', e);
+            toast.error('Failed to reassign task');
+            return false;
+        } finally {
+            setIsSpeedEcomReassignSubmitting(false);
+        }
+    }, [dispatch, speedEcomReassignTask?.id]);
 
 
 
@@ -4649,7 +4724,17 @@ const DashboardPage = () => {
 
         const isAssigner = Boolean(myEmail && assignedByEmail && myEmail === assignedByEmail);
 
-        return isAssigner;
+        if (isAssigner) return true;
+
+        // Speed E Com: Allow assignee to edit (limited fields in modal)
+        const normalizeCompanyKey = (v: unknown): string => String(v || '').trim().toLowerCase().replace(/\s+/g, '');
+        const isSpeedEcomTask = normalizeCompanyKey(task?.companyName || (task as any)?.company) === 'speedecom';
+        const assignedToEmail = normalizeEmailSafe((task as any)?.assignedTo) || normalizeEmailSafe((task as any)?.assignedToUser?.email);
+        const isAssignee = Boolean(myEmail && assignedToEmail && myEmail === assignedToEmail);
+
+        if (isSpeedEcomTask && isAssignee) return true;
+
+        return false;
 
     }, [currentUser]);
 
@@ -5449,7 +5534,7 @@ const DashboardPage = () => {
 
 
 
-    const handleReassignTask = useCallback(async (taskId: string, newAssigneeId: string) => {
+    const handleReassignTask = useCallback(async (taskId: string, newAssigneeId: string, dueDate?: string) => {
 
         try {
 
@@ -5486,8 +5571,13 @@ const DashboardPage = () => {
             const isObManager = myRoleKey === 'ob_manager' || myRoleKey === 'obmanager';
 
             const isManagerRole = myRoleKey === 'manager' || myRoleKey === 'md_manager';
+            const isSbmRole = myRoleKey === 'sbm';
+            const isRmOrAmRole = myRoleKey === 'rm' || myRoleKey === 'am';
             const assignedByEmail = normalizeEmailSafe((task as any)?.assignedByUser?.email || (task as any)?.assignedBy);
             const isTaskAssigner = Boolean(myEmail && assignedByEmail && myEmail === assignedByEmail);
+
+            const normalizeCompanyKey = (value: unknown): string => String(value || '').trim().toLowerCase().replace(/\s+/g, '');
+            const isSpeedEcomTask = normalizeCompanyKey((task as any)?.companyName || (task as any)?.company) === 'speedecom';
 
 
 
@@ -5551,11 +5641,13 @@ const DashboardPage = () => {
             const isAssistantCandidate = Boolean(nextAssigneeEmail && (isAssistantRole(nextAssigneeRole) || isAssistantRole((newAssignee as any)?.role)));
             const isObManagerDirectEmail = Boolean(isObManager && directEmail);
 
-            const isAllowedReassign = Boolean(
-                (isManagerRole && isTaskAssigner && nextAssigneeEmail) ||
-                (myEmail && myEmail === KEYURI_EMAIL && nextAssigneeEmail && (isRutuDirect || isSubAssistance)) ||
-                (isObManager && nextAssigneeEmail && (isAssistantCandidate || isObManagerDirectEmail))
-            );
+            const isAllowedReassign = isSpeedEcomTask
+                ? Boolean(isTaskAssigner && (isRmOrAmRole || isSbmRole) && nextAssigneeEmail)
+                : Boolean(
+                    (isManagerRole && isTaskAssigner && nextAssigneeEmail) ||
+                    (myEmail && myEmail === KEYURI_EMAIL && nextAssigneeEmail && (isRutuDirect || isSubAssistance)) ||
+                    (isObManager && nextAssigneeEmail && (isAssistantCandidate || isObManagerDirectEmail))
+                );
 
             if (!isAllowedReassign) {
 
@@ -5573,31 +5665,11 @@ const DashboardPage = () => {
 
 
 
-            const updatedTask = {
-
-                ...task,
-
-                assignedTo: nextAssigneeEmail,
-
-                assignedToUser: newAssignee ? {
-
-                    id: (newAssignee as any).id,
-
-                    name: (newAssignee as any).name,
-
-                    email: (newAssignee as any).email,
-
-                    role: (newAssignee as any).role
-
-                } : undefined
-
-            };
-
-
-
             const response = await taskService.updateTask(taskId, {
 
                 assignedTo: nextAssigneeEmail,
+
+                dueDate: dueDate || (task as any)?.dueDate,
 
                 assignedToUser: newAssignee ? {
 
@@ -5615,12 +5687,9 @@ const DashboardPage = () => {
 
 
 
-            if (response.success) {
-
-                dispatch(taskUpserted(updatedTask as Task));
-
+            if (response.success && response.data) {
+                dispatch(taskUpserted(response.data as Task));
                 toast.success(`Task reassigned to ${newAssignee ? (newAssignee as any).name : nextAssigneeEmail}`);
-
             } else {
 
                 toast.error(response.message || 'Failed to reassign task');
@@ -9248,39 +9317,27 @@ const DashboardPage = () => {
 
 
             const updateData: any = {
-
                 title: editFormData.title,
-
                 assignedTo: editFormData.assignedTo,
-
-                dueDate: editFormData.dueDate,
-
                 priority: editFormData.priority,
-
                 taskType: editFormData.taskType,
-
                 companyName: editFormData.companyName,
-
                 brand: editFormData.brand,
-
                 brandId: resolvedBrandId,
-
                 status: editFormData.status,
-
                 assignedToUser: users.find(u => u.email === editFormData.assignedTo),
-
             };
 
+            // Only send dueDate if it was actually changed to avoid triggering backend validation
+            if (dueDateChanged) {
+                updateData.dueDate = editFormData.dueDate;
+            }
+
             if (!canEditDueDateForSpeedEcom) {
-
                 if (dueDateChanged) {
-
                     toast.error('Only the assignee can update due date for Speed E Com tasks');
-
+                    delete updateData.dueDate;
                 }
-
-                delete updateData.dueDate;
-
             }
 
 
@@ -11246,6 +11303,22 @@ const DashboardPage = () => {
 
                                 />
 
+                            ) : currentView === 'speed-ecom-reassign' ? (
+
+                                <SpeedEcomReassignPage
+
+                                    task={speedEcomReassignTask}
+
+                                    currentUser={currentUser}
+
+                                    users={users}
+
+                                    onSubmit={handleSpeedEcomReassignSubmit}
+
+                                    isSubmitting={isSpeedEcomReassignSubmitting}
+
+                                />
+
                             ) : currentView === 'reviews' ? (
 
                                 <ReviewsPage
@@ -11396,17 +11469,9 @@ const DashboardPage = () => {
 
                 isSubmitting={isUpdatingTask}
 
-                disableDueDate={(() => {
+                disableDueDate={true}
 
-                    if (!editingTask) return false;
-
-                    const myEmail = stripDeletedEmailSuffix(currentUser?.email || '').trim().toLowerCase();
-
-                    const assigneeEmail = getTaskAssigneeEmail(editingTask);
-
-                    return isSpeedEcomTask(editingTask) && (!myEmail || !assigneeEmail || myEmail !== assigneeEmail);
-
-                })()}
+                currentUserEmail={(currentUser as any)?.email || ''}
 
             />
 
@@ -11505,7 +11570,5 @@ const DashboardPage = () => {
     );
 
 };
-
-
 
 export default DashboardPage;

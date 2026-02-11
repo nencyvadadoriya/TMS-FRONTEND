@@ -30,7 +30,7 @@ import {
 import type { Task, UserType, CommentType, TaskHistory, Brand } from '../Types/Types';
 import toast from 'react-hot-toast';
 import type * as React from 'react';
-import { useMemo, useCallback, useState, useEffect, useRef ,memo } from 'react';
+import { useMemo, useCallback, useState, useEffect, useRef, memo } from 'react';
 import { taskTypeService, type TaskTypeItem } from '../Services/TaskType.service';
 import { companyTaskTypeService } from '../Services/CompanyTaskType.service';
 import { companyService } from '../Services/Company.service';
@@ -70,7 +70,7 @@ interface AllTasksPageProps {
   onSaveComment?: (taskId: string, content: string) => Promise<CommentType>;
   onDeleteComment?: (taskId: string, commentId: string) => Promise<void>;
   onFetchTaskComments?: (taskId: string) => Promise<CommentType[]>;
-  onReassignTask?: (taskId: string, newAssigneeId: string) => Promise<void>;
+  onReassignTask?: (taskId: string, newAssigneeId: string, dueDate?: string) => Promise<void>;
   onAddTaskHistory?: (taskId: string, history: Omit<TaskHistory, 'id' | 'timestamp'>, additionalData?: Record<string, any>) => Promise<void>;
   onApproveTask?: (taskId: string, approve: boolean) => Promise<void>;
   onUpdateTaskApproval?: (taskId: string, completedApproval: boolean) => Promise<void>;
@@ -253,11 +253,13 @@ interface ReassignModalProps {
   showReassignModal: boolean;
   reassignTask: Task | null;
   newAssigneeId: string;
+  newDueDate: string;
   reassignLoading: boolean;
   users: UserType[];
   currentUser: UserType;
   onClose: () => void;
   onAssigneeChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  onDueDateChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onReassign: () => Promise<void>;
 }
 
@@ -1242,8 +1244,13 @@ const MobileTaskItem = memo(({
   const isPermanentlyApproved = isTaskPermanentlyApproved(task.id);
   const userIsAssigner = isTaskAssigner(task);
   const role = String((currentUser as any)?.role || '').trim().toLowerCase();
-  const canDeleteThisTask = (role !== 'rm' && role !== 'am') && (role === 'admin' || role === 'super_admin' || userIsAssigner);
+  const taskCompanyKey = String((task as any)?.companyName || (task as any)?.company || '').trim().toLowerCase().replace(/\s+/g, '');
+  const isSpeedEcomTask = taskCompanyKey === 'speedecom';
+  const canDeleteThisTask = isSpeedEcomTask
+    ? (role === 'admin' || role === 'super_admin')
+    : (role !== 'rm' && role !== 'am') && (role === 'admin' || role === 'super_admin' || userIsAssigner);
   const isOverdueTask = isOverdue(task.dueDate, task.status);
+  const isReassignedTask = String(task.status || '').trim().toLowerCase() === 'reassigned';
   const brandLabelText = (brandLabel || (task.brand || '')).toString();
 
   return (
@@ -1275,6 +1282,11 @@ const MobileTaskItem = memo(({
                   {isOverdueTask && !isCompleted && (
                     <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">
                       Overdue
+                    </span>
+                  )}
+                  {isReassignedTask && !isCompleted && (
+                    <span className="text-xs bg-cyan-100 text-cyan-800 px-2 py-0.5 rounded-full">
+                      Reassigned
                     </span>
                   )}
                 </div>
@@ -1403,8 +1415,13 @@ const DesktopTaskItem = memo(({
   const userIsAssigner = isTaskAssigner(task);
   const canEditThisTask = typeof canEditTask === 'function' ? canEditTask(task) : userIsAssigner;
   const role = String((currentUser as any)?.role || '').trim().toLowerCase();
-  const canDeleteThisTask = (role !== 'rm' && role !== 'am') && (role === 'admin' || role === 'super_admin' || userIsAssigner);
+  const taskCompanyKey = String((task as any)?.companyName || (task as any)?.company || '').trim().toLowerCase().replace(/\s+/g, '');
+  const isSpeedEcomTask = taskCompanyKey === 'speedecom';
+  const canDeleteThisTask = isSpeedEcomTask
+    ? (role === 'admin' || role === 'super_admin')
+    : (role !== 'rm' && role !== 'am') && (role === 'admin' || role === 'super_admin' || userIsAssigner);
   const isOverdueTask = isOverdue(task.dueDate, task.status);
+  const isReassignedTask = String(task.status || '').trim().toLowerCase() === 'reassigned';
 
   const taskTypeLabel = (task.taskType || (task as any).type || (task as any).task_type || '').toString();
   const brandLabelText = (brandLabel || (task.brand || '')).toString();
@@ -1450,6 +1467,12 @@ const DesktopTaskItem = memo(({
               <span className="inline-flex items-center gap-1 text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded-full mt-1 w-fit">
                 <Clock className="h-3 w-3" />
                 Overdue
+              </span>
+            )}
+            {isReassignedTask && !isCompleted && (
+              <span className="inline-flex items-center gap-1 text-xs text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded-full mt-1 w-fit">
+                <UserPlus className="h-3 w-3" />
+                Reassigned
               </span>
             )}
           </div>
@@ -2102,22 +2125,30 @@ const ReassignModal = memo(({
   showReassignModal,
   reassignTask,
   newAssigneeId,
+  newDueDate,
   reassignLoading,
   users,
   currentUser,
   onClose,
   onAssigneeChange,
+  onDueDateChange,
   onReassign
 }: ReassignModalProps) => {
   if (!showReassignModal || !reassignTask) return null;
 
   const normalizeEmail = (v: unknown) => String(v || '').trim().toLowerCase();
+  const normalizeCompanyKey = (v: unknown) => String(v || '').trim().toLowerCase().replace(/\s+/g, '');
   const KEYURI_EMAIL = 'keyurismartbiz@gmail.com';
   const RUTU_EMAIL = 'rutusmartbiz@gmail.com';
   const myEmail = normalizeEmail((currentUser as any)?.email);
   const normalizeRole = (v: unknown) => String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
   const myRoleKey = normalizeRole((currentUser as any)?.role);
   const isObManager = myRoleKey === 'ob_manager';
+  const isSbmRole = myRoleKey === 'sbm';
+  const isRmOrAmRole = myRoleKey === 'rm' || myRoleKey === 'am';
+
+  const taskCompanyKey = normalizeCompanyKey((reassignTask as any)?.companyName || (reassignTask as any)?.company);
+  const isSpeedEcomTask = taskCompanyKey === 'speedecom';
 
   const assignedByCandidate: any = (reassignTask as any)?.assignedByUser || (reassignTask as any)?.assignedBy;
   const assignedByEmail = (typeof assignedByCandidate === 'string'
@@ -2129,11 +2160,14 @@ const ReassignModal = memo(({
   const isTaskAssigner = Boolean(myEmail && assignedByEmail && myEmail === assignedByEmail);
   const isKeyuri = Boolean(myEmail && myEmail === KEYURI_EMAIL);
 
-  const canReassign = Boolean(
-    isObManager ||
-    isKeyuri ||
-    (isManagerRole && isTaskAssigner)
-  );
+  const canReassign = isSpeedEcomTask
+    ? Boolean(isTaskAssigner && (isRmOrAmRole || isSbmRole))
+    : Boolean(
+      isObManager ||
+      isKeyuri ||
+      (isManagerRole && isTaskAssigner) ||
+      (isSbmRole && isTaskAssigner)
+    );
 
   const isAssistantRole = (v: unknown) => {
     const r = normalizeRole(v);
@@ -2149,6 +2183,7 @@ const ReassignModal = memo(({
   ).trim().toLowerCase();
 
   const ensureRutuCandidate = useMemo(() => {
+    if (isSpeedEcomTask) return users || [];
     const hasRutu = (users || []).some((u: any) => normalizeEmail(u?.email) === normalizeEmail(RUTU_EMAIL));
     if (hasRutu) return users || [];
     return [
@@ -2160,14 +2195,27 @@ const ReassignModal = memo(({
         role: 'sub_assistance'
       } as any
     ];
-  }, [users]);
+  }, [isSpeedEcomTask, users]);
 
   const availableUsers = (ensureRutuCandidate || [])
     .filter((user: any) => {
       const uid = String(user?.id || user?._id || '').trim();
       const uemail = String(user?.email || '').trim().toLowerCase();
+
+      if (isSpeedEcomTask) {
+        // For Speed E Com tasks, only show the CURRENT assignee
+        return (assignedToId && uid && uid === assignedToId) ||
+          (assignedToEmail && uemail && uemail === assignedToEmail);
+      }
+
+      // Original logic for non-Speed E Com tasks
       if (assignedToId && uid && uid === assignedToId) return false;
       if (assignedToEmail && uemail && uemail === assignedToEmail) return false;
+      return true;
+    })
+    .filter(() => {
+      // SpeedEcom role filtering already handled above
+      if (isSpeedEcomTask) return true;
       return true;
     })
     .filter(user => !isObManager || isAssistantRole((user as any)?.role))
@@ -2181,6 +2229,8 @@ const ReassignModal = memo(({
       }
       return true;
     });
+
+  const dueDateValue = newDueDate;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -2203,6 +2253,31 @@ const ReassignModal = memo(({
               <p className="text-sm text-gray-600 truncate">{reassignTask.message}</p>
             </div>
 
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Current Assignee Email
+              </label>
+              <input
+                type="text"
+                value={assignedToEmail || '—'}
+                disabled
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700"
+              />
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Due Date
+              </label>
+              <input
+                type="date"
+                value={dueDateValue}
+                onChange={onDueDateChange}
+                disabled={reassignLoading || !canReassign}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Select New Assignee
@@ -2216,7 +2291,7 @@ const ReassignModal = memo(({
                 <option value="">Select a user</option>
                 {availableUsers.map(user => (
                   <option key={user.email || user.id} value={user.email}>
-                    {user.name} ({user.email})
+                    {String(user.email || '').trim()}
                   </option>
                 ))}
               </select>
@@ -3196,6 +3271,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   const [showReassignModal, setShowReassignModal] = useState(false);
   const [reassignTask, setReassignTask] = useState<Task | null>(null);
   const [newAssigneeId, setNewAssigneeId] = useState('');
+  const [newDueDate, setNewDueDate] = useState('');
   const [reassignLoading, setReassignLoading] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [historyTask, setHistoryTask] = useState<Task | null>(null);
@@ -3343,6 +3419,14 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     const raw = perms && typeof perms === 'object' ? (perms as any).edit_any_task : undefined;
     const value = typeof raw === 'string' ? raw.toLowerCase() : undefined;
 
+    const normalizeCompanyKey = (v: unknown): string => String(v || '').trim().toLowerCase().replace(/\s+/g, '');
+    const isSpeedEcomTask = normalizeCompanyKey(task?.companyName || (task as any)?.company) === 'speedecom';
+
+    // Speed E Com: Allow assignee to edit (limited fields in modal handled by EditTaskModal)
+    if (isSpeedEcomTask && isTaskAssignee(task)) {
+      return true;
+    }
+
     // Backward-compatible fallback: if permission not present, only assigner can edit.
     if (typeof value === 'undefined') {
       return isTaskAssigner(task);
@@ -3467,6 +3551,15 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         return 'bg-green-100 text-green-800 border border-green-200';
       }
     }
+
+    const task = tasks.find(t => t.id === taskId);
+    if (task?.status === 'in-progress') {
+      return 'bg-orange-100 text-orange-800 border border-orange-200';
+    }
+    if (task?.status === 'reassigned') {
+      return 'bg-cyan-100 text-cyan-800 border border-cyan-200';
+    }
+
     return 'bg-gray-100 text-gray-800 border border-gray-200';
   }, [isTaskCompleted, isTaskPermanentlyApproved, isTaskPendingApproval]);
 
@@ -3484,6 +3577,15 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         return 'Approved';
       }
     }
+
+    const task = tasks.find(t => t.id === taskId);
+    if (task?.status === 'in-progress') {
+      return 'In Progress';
+    }
+    if (task?.status === 'reassigned') {
+      return 'Reassigned';
+    }
+
     return 'Pending';
   }, [isTaskCompleted, isTaskPermanentlyApproved, isTaskPendingApproval]);
 
@@ -4315,6 +4417,13 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
 
   const handleOpenReassignModal = useCallback((task: Task) => {
     setReassignTask(task);
+    try {
+      const raw = (task as any)?.dueDate;
+      const normalized = raw ? new Date(raw).toISOString().split('T')[0] : '';
+      setNewDueDate(normalized || '');
+    } catch {
+      setNewDueDate('');
+    }
     setShowReassignModal(true);
   }, []);
 
@@ -4346,36 +4455,28 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     setReassignLoading(false);
     setReassignTask(null);
     setNewAssigneeId('');
+    setNewDueDate('');
   }, []);
 
   const handleReassignTask = useCallback(async () => {
-    if (!reassignTask || !newAssigneeId || !onReassignTask) return;
+    if (!reassignTask || !newAssigneeId || !newDueDate || !onReassignTask) return;
 
     setReassignLoading(true);
 
     try {
-      await onReassignTask(reassignTask.id, newAssigneeId);
+      await onReassignTask(reassignTask.id, newAssigneeId, newDueDate);
 
-      await addHistoryRecord(
-        reassignTask.id,
-        'task_reassigned',
-        `Task reassigned by ${currentUser.role} (${currentUser.name})`,
-        {
-          previousAssignee: getEmailByIdInternal(reassignTask.assignedTo),
-          newAssignee: getEmailByIdInternal(newAssigneeId),
-          reassignedAt: new Date().toISOString()
-        }
-      );
-
-      toast.success(' Task reassigned successfully!');
+      // The onReassignTask from DashboardPage already updates the Redux store
+      // but we need to ensure the local state is cleared and modal closed
       handleCloseReassignModal();
+      toast.success(' Task reassigned successfully!');
     } catch (error) {
       console.error('Error reassigning task:', error);
       toast.error('Failed to reassign task');
     } finally {
       setReassignLoading(false);
     }
-  }, [reassignTask, newAssigneeId, onReassignTask, addHistoryRecord, currentUser, getEmailByIdInternal, handleCloseReassignModal]);
+  }, [reassignTask, newAssigneeId, newDueDate, onReassignTask, addHistoryRecord, currentUser, getEmailByIdInternal, handleCloseReassignModal]);
 
   const handleOpenHistoryModal = useCallback(async (task: Task) => {
     setHistoryTask(task);
@@ -4788,12 +4889,18 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                 ''
               ).trim().toLowerCase();
 
+              const taskCompanyKey = normalizeCompanyKey((task as any)?.companyName || (task as any)?.company || '');
+              const speedCompanyKey = normalizeCompanyKey(SPEED_E_COM_COMPANY_KEY);
+              const isSpeedEcomTask = Boolean(taskCompanyKey && taskCompanyKey === speedCompanyKey);
+
               const isManagerRole = roleKey === 'manager' || roleKey === 'md_manager';
-              const showAssignButton = Boolean(
-                roleKey === 'ob_manager' ||
-                myEmail === 'keyurismartbiz@gmail.com' ||
-                (isManagerRole && myEmail && assignedByEmail && myEmail === assignedByEmail)
-              );
+              const showAssignButton = isSpeedEcomTask
+                ? Boolean(myEmail && assignedByEmail && myEmail === assignedByEmail)
+                : Boolean(
+                  roleKey === 'ob_manager' ||
+                  myEmail === 'keyurismartbiz@gmail.com' ||
+                  (isManagerRole && myEmail && assignedByEmail && myEmail === assignedByEmail)
+                );
 
               return (
                 <div key={`${task.id}-${idx}`}>
@@ -4974,11 +5081,13 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         showReassignModal={showReassignModal}
         reassignTask={reassignTask}
         newAssigneeId={newAssigneeId}
+        newDueDate={newDueDate}
         reassignLoading={reassignLoading}
         users={users}
         currentUser={currentUser}
         onClose={handleCloseReassignModal}
         onAssigneeChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewAssigneeId(e.target.value)}
+        onDueDateChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewDueDate(e.target.value)}
         onReassign={handleReassignTask}
       />
 

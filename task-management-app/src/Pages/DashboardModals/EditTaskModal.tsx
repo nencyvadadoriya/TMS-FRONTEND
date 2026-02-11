@@ -34,6 +34,7 @@ type Props = {
   isSubmitting: boolean;
 
   disableDueDate?: boolean;
+  currentUserEmail: string;
 };
 
 const EditTaskModal = ({
@@ -50,8 +51,21 @@ const EditTaskModal = ({
   onSubmit,
   isSubmitting,
   disableDueDate,
+  currentUserEmail,
 }: Props) => {
   if (!open || !editingTask) return null;
+
+  const normalizeEmail = (email: string) => email.trim().toLowerCase();
+  const taskAssigner = normalizeEmail(editingTask.assignedBy || (editingTask as any).assignedByUser?.email || '');
+  const taskAssignee = normalizeEmail(editingTask.assignedTo || (editingTask as any).assignedToUser?.email || '');
+  const currentEmail = normalizeEmail(currentUserEmail);
+
+  const isAssigner = currentEmail === taskAssigner;
+  const isAssignee = currentEmail === taskAssignee;
+  const isSpeedEcom = editingTask?.companyName?.toLowerCase().replace(/\s+/g, '') === 'speedecom';
+
+  // Only disable all fields for Speed E Com tasks when the user is the ASSIGNEE (not the assigner)
+  const shouldDisableAllForSpeedEcom = isSpeedEcom && isAssignee && !isAssigner;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -86,6 +100,7 @@ const EditTaskModal = ({
                   className={`w-full px-4 py-3 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${editFormErrors.title ? 'border-red-500' : 'border-gray-300'}`}
                   value={editFormData.title}
                   onChange={(e) => onChange('title', e.target.value)}
+                  disabled={shouldDisableAllForSpeedEcom}
                 />
                 {editFormErrors.title && <p className="mt-1 text-sm text-red-600">{editFormErrors.title}</p>}
               </div>
@@ -96,6 +111,7 @@ const EditTaskModal = ({
                   value={editFormData.assignedTo}
                   onChange={(e) => onChange('assignedTo', e.target.value)}
                   className={`w-full px-4 py-3 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${editFormErrors.assignedTo ? 'border-red-500' : 'border-gray-300'}`}
+                  disabled={shouldDisableAllForSpeedEcom}
                 >
                   <option value="">Select team member</option>
                   {users.map((user) => (
@@ -115,7 +131,6 @@ const EditTaskModal = ({
                   className="w-full px-4 py-3 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="pending">Pending</option>
-                  <option value="reassigned">Reassigned</option>
                   <option value="in-progress">In Progress</option>
                   <option value="completed">Completed</option>
                 </select>
@@ -130,7 +145,7 @@ const EditTaskModal = ({
                   className={`w-full px-4 py-3 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${editFormErrors.dueDate ? 'border-red-500' : 'border-gray-300'}`}
                   value={editFormData.dueDate}
                   onChange={(e) => onChange('dueDate', e.target.value)}
-                  disabled={Boolean(disableDueDate)}
+                  disabled={shouldDisableAllForSpeedEcom || Boolean(disableDueDate)}
                 />
                 {editFormErrors.dueDate && <p className="mt-1 text-sm text-red-600">{editFormErrors.dueDate}</p>}
               </div>
@@ -144,13 +159,14 @@ const EditTaskModal = ({
                         key={priority}
                         type="button"
                         onClick={() => onChange('priority', priority)}
+                        disabled={shouldDisableAllForSpeedEcom}
                         className={`py-2.5 text-xs font-medium rounded-lg border ${editFormData.priority === (priority as TaskPriority)
                           ? priority === 'high'
                             ? 'bg-rose-100 text-rose-700 border-rose-300'
                             : priority === 'medium'
                               ? 'bg-amber-100 text-amber-700 border-amber-300'
                               : 'bg-blue-100 text-blue-700 border-blue-300'
-                          : 'bg-gray-100 text-gray-600 border-gray-300'}`}
+                          : 'bg-gray-100 text-gray-600 border-gray-300'} ${shouldDisableAllForSpeedEcom ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
                         {priority.charAt(0).toUpperCase() + priority.slice(1)}
                       </button>
@@ -164,6 +180,7 @@ const EditTaskModal = ({
                     className="w-full px-4 py-3 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={editFormData.taskType}
                     onChange={(e) => onChange('taskType', e.target.value)}
+                    disabled={shouldDisableAllForSpeedEcom}
                   >
                     {availableTaskTypesForEditTask.map((typeName) => (
                       <option key={typeName} value={typeName.toLowerCase()}>
@@ -180,7 +197,7 @@ const EditTaskModal = ({
                   value={editFormData.companyName}
                   onChange={(e) => onChange('companyName', e.target.value)}
                   className={`w-full px-4 py-3 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${editFormErrors.companyName ? 'border-red-500' : 'border-gray-300'}`}
-                  disabled={availableCompanies.length === 1}
+                  disabled={availableCompanies.length === 1 || shouldDisableAllForSpeedEcom}
                 >
                   <option value="">Select a company</option>
                   {availableCompanies.map((company) => (
@@ -197,7 +214,7 @@ const EditTaskModal = ({
                   className="w-full px-4 py-3 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={editFormData?.brand}
                   onChange={(e) => onChange('brand', e.target.value)}
-                  disabled={!editFormData.companyName}
+                  disabled={!editFormData.companyName || shouldDisableAllForSpeedEcom}
                 >
                   <option value="">Select a brand</option>
                   {getEditFormBrandOptions().map((opt) => (

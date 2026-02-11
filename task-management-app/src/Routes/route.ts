@@ -29,6 +29,7 @@ export const routepath = {
     brandDetail: '/brands/:brandId',
     companyBrandTaskTypes: '/company-brand-task-types',
     assign: '/assign',
+    speedEcomReassign: '/speed-ecom-reassign',
     reviews: '/reviews',
     otherWork: '/other-work'
 };
@@ -108,6 +109,10 @@ export const route = createHashRouter([
             },
             {
                 path: routepath.assign,
+                lazy: lazyComponent(() => import("../Pages/DashboardPage"))
+            },
+            {
+                path: routepath.speedEcomReassign,
                 lazy: lazyComponent(() => import("../Pages/DashboardPage"))
             },
             {

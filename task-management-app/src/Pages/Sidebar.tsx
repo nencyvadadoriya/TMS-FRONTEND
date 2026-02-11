@@ -14,7 +14,7 @@ interface SidebarProps {
   isCollapsed: boolean;
   setIsCollapsed: (collapsed: boolean) => void;
   navigateTo: (page: string) => void;
-  currentView?: 'dashboard' | 'all-tasks' | 'calendar' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'analyze' | 'access' | 'assign' | 'company-brand-task-types' | 'reviews' | 'other-work';
+  currentView?: 'dashboard' | 'all-tasks' | 'calendar' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'analyze' | 'access' | 'assign' | 'speed-ecom-reassign' | 'company-brand-task-types' | 'reviews' | 'other-work';
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
