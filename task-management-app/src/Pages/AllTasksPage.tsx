@@ -1250,7 +1250,9 @@ const MobileTaskItem = memo(({
     ? (role === 'admin' || role === 'super_admin')
     : (role !== 'rm' && role !== 'am') && (role === 'admin' || role === 'super_admin' || userIsAssigner);
   const isOverdueTask = isOverdue(task.dueDate, task.status);
-  const isReassignedTask = String(task.status || '').trim().toLowerCase() === 'reassigned';
+  const statusKey = String(task.status || '').trim().toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-');
+  const isReassignedTask = statusKey === 'reassigned';
+ statusKey === 'in-progress';
   const brandLabelText = (brandLabel || (task.brand || '')).toString();
 
   return (
@@ -1421,7 +1423,9 @@ const DesktopTaskItem = memo(({
     ? (role === 'admin' || role === 'super_admin')
     : (role !== 'rm' && role !== 'am') && (role === 'admin' || role === 'super_admin' || userIsAssigner);
   const isOverdueTask = isOverdue(task.dueDate, task.status);
-  const isReassignedTask = String(task.status || '').trim().toLowerCase() === 'reassigned';
+  const statusKey = String(task.status || '').trim().toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-');
+  const isReassignedTask = statusKey === 'reassigned';
+  const isInProgressTask = statusKey === 'in-progress';
 
   const taskTypeLabel = (task.taskType || (task as any).type || (task as any).task_type || '').toString();
   const brandLabelText = (brandLabel || (task.brand || '')).toString();
@@ -1535,8 +1539,10 @@ const DesktopTaskItem = memo(({
             <span className={`text-xs px-2 py-1 rounded-full shrink-0 ${isCompleted ?
               (isPermanentlyApproved ? 'bg-blue-100 text-blue-800 border border-blue-200' :
                 'bg-green-100 text-green-800 border border-green-200') :
+              isInProgressTask ? 'bg-orange-100 text-orange-800 border border-orange-200' :
+              isReassignedTask ? 'bg-cyan-100 text-cyan-800 border border-cyan-200' :
               'bg-gray-100 text-gray-800 border border-gray-200'}`}>
-              {isCompleted ? (isPermanentlyApproved ? 'Approved' : 'Completed') : 'Pending'}
+              {isCompleted ? (isPermanentlyApproved ? 'Approved' : 'Completed') : isInProgressTask ? 'In Progress' : isReassignedTask ? 'Reassigned' : 'Pending'}
             </span>
 
             {/* Action Buttons */}
@@ -3537,6 +3543,14 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     }
   }, [isTaskPermanentlyApproved]);
 
+  const normalizeStatusKey = useCallback((value: any): string => {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/_/g, '-')
+      .replace(/\s+/g, '-');
+  }, []);
+
   const getStatusBadgeColor = useCallback((taskId: string) => {
     const isCompleted = isTaskCompleted(taskId);
     const isPermanentlyApproved = isTaskPermanentlyApproved(taskId);
@@ -3553,15 +3567,16 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     }
 
     const task = tasks.find(t => t.id === taskId);
-    if (task?.status === 'in-progress') {
+    const statusKey = normalizeStatusKey(task?.status);
+    if (statusKey === 'in-progress') {
       return 'bg-orange-100 text-orange-800 border border-orange-200';
     }
-    if (task?.status === 'reassigned') {
+    if (statusKey === 'reassigned') {
       return 'bg-cyan-100 text-cyan-800 border border-cyan-200';
     }
 
     return 'bg-gray-100 text-gray-800 border border-gray-200';
-  }, [isTaskCompleted, isTaskPermanentlyApproved, isTaskPendingApproval]);
+  }, [isTaskCompleted, isTaskPermanentlyApproved, isTaskPendingApproval, normalizeStatusKey, tasks]);
 
   const getStatusText = useCallback((taskId: string) => {
     const isCompleted = isTaskCompleted(taskId);
@@ -3579,15 +3594,16 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     }
 
     const task = tasks.find(t => t.id === taskId);
-    if (task?.status === 'in-progress') {
+    const statusKey = normalizeStatusKey(task?.status);
+    if (statusKey === 'in-progress') {
       return 'In Progress';
     }
-    if (task?.status === 'reassigned') {
+    if (statusKey === 'reassigned') {
       return 'Reassigned';
     }
 
     return 'Pending';
-  }, [isTaskCompleted, isTaskPermanentlyApproved, isTaskPendingApproval]);
+  }, [isTaskCompleted, isTaskPermanentlyApproved, isTaskPendingApproval, normalizeStatusKey, tasks]);
 
   const getTaskCommentsInternal = useCallback((taskId: string): CommentType[] => {
     return taskComments[taskId] || [];
