@@ -1252,7 +1252,6 @@ const MobileTaskItem = memo(({
   const isOverdueTask = isOverdue(task.dueDate, task.status);
   const statusKey = String(task.status || '').trim().toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-');
   const isReassignedTask = statusKey === 'reassigned';
-  const isInProgressTask = statusKey === 'in-progress';
   const brandLabelText = (brandLabel || (task.brand || '')).toString();
 
   return (
@@ -2603,6 +2602,23 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   onOpenEditModal,
   getBrandsByCompany,
 }) => {
+  useEffect(() => {
+    const handleTaskUpdated = (event: any) => {
+      const updatedTask = event.detail.task;
+      if (!updatedTask || !updatedTask.id) return;
+      
+      // Since tasks are passed as props from DashboardPage, 
+      // they should already be updated in the parent state by the socket handler.
+      // We can use this listener to trigger any local refresh or side effects if needed.
+      console.log('Real-time task update received in AllTasksPage:', updatedTask.id);
+    };
+
+    window.addEventListener('taskUpdated', handleTaskUpdated);
+    return () => {
+      window.removeEventListener('taskUpdated', handleTaskUpdated);
+    };
+  }, []);
+
   const [pageLoading, setPageLoading] = useState(true);
 
   const [companyKeys, setCompanyKeys] = useState<string[]>([]);
