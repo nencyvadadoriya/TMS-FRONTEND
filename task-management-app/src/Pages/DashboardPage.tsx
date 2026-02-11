@@ -968,6 +968,12 @@ const DashboardPage = () => {
 
                 dispatch(taskUpserted(task as Task));
 
+                try {
+                    window.dispatchEvent(new CustomEvent('taskUpdated', { detail: { task } }));
+                } catch {
+                    // ignore
+                }
+
             } catch {
 
                 return;

@@ -1252,7 +1252,7 @@ const MobileTaskItem = memo(({
   const isOverdueTask = isOverdue(task.dueDate, task.status);
   const statusKey = String(task.status || '').trim().toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-');
   const isReassignedTask = statusKey === 'reassigned';
- statusKey === 'in-progress';
+  const isInProgressTask = statusKey === 'in-progress';
   const brandLabelText = (brandLabel || (task.brand || '')).toString();
 
   return (
