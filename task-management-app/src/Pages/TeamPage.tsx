@@ -90,9 +90,6 @@ type RoleItem = {
 
 const TeamPage: React.FC<TeamPageProps> = (props) => {
 
-    const MD_IMPEX_COMPANY_NAME = '';
-
-
     const navigate = useNavigate();
 
     const accessDeniedRef = useRef(false);
@@ -1396,13 +1393,21 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
         if (role === 'md_manager') {
 
-            return [{ key: 'manager', name: 'Manager' }, { key: 'assistant', name: 'Assistant' }];
+            return [
+                { key: 'md_manager', name: 'MD Manager' },
+                { key: 'ob_manager', name: 'OB Manager' },
+                { key: 'assistant', name: 'Assistant' },
+                { key: 'sub_assistance', name: 'Sub Assistance' },
+            ];
 
         }
 
         if (role === 'ob_manager') {
 
-            return [{ key: 'assistant', name: 'Assistant' }];
+            return [
+                { key: 'assistant', name: 'Assistant' },
+                { key: 'sub_assistance', name: 'Sub Assistance' },
+            ];
 
         }
 
@@ -1512,7 +1517,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
             if (currentUserRole === 'admin') return 'md_manager';
 
-            if (currentUserRole === 'md_manager') return 'manager';
+            if (currentUserRole === 'md_manager') return 'ob_manager';
 
             return 'assistant';
 
@@ -1536,6 +1541,31 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+        const resolvedDefaultCompany = (() => {
+
+            const fromUser = ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
+
+            if (fromUser) return fromUser;
+
+            if (filterCompany && filterCompany !== 'all') return String(filterCompany).toString().trim();
+
+            return '';
+
+        })();
+
+        const resolvedDefaultCompanyFromOptions = (() => {
+
+            const raw = (resolvedDefaultCompany || '').toString().trim();
+            if (!raw) return '';
+
+            const key = normalizeText(raw);
+            if (!key) return raw;
+
+            const match = (companyOptions || []).find((name) => normalizeText(name) === key);
+            return match || raw;
+
+        })();
+
         setNewUser({
 
             name: '',
@@ -1554,7 +1584,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
             managerId: undefined,
 
-            companyName: ((currentUser as any)?.companyName || '')
+            companyName: (resolvedDefaultCompanyFromOptions as any)
 
         });
 
@@ -1573,6 +1603,50 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
         setShowAddModal(true);
 
     };
+
+
+
+    useEffect(() => {
+
+        if (!showAddModal) return;
+
+        setNewUser((prev) => {
+
+            const existingRaw = ((prev as any)?.companyName || '').toString().trim();
+
+            const options = Array.isArray(companyOptions) ? companyOptions : [];
+
+            // If user is company-forced and only one option exists, always force it.
+            if (isTeamCompanyForced && options.length === 1) {
+                const only = (options[0] || '').toString();
+                if (only && only !== existingRaw) return { ...prev, companyName: only as any };
+                if (only) return prev;
+            }
+
+            // If there is already a value, try to reconcile it to an exact option string.
+            if (existingRaw) {
+                if (options.includes(existingRaw)) return prev;
+                const key = normalizeText(existingRaw);
+                const match = key ? options.find((name) => normalizeText(name) === key) : '';
+                if (match && match !== existingRaw) return { ...prev, companyName: match as any };
+                return prev;
+            }
+
+            const fromUser = ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
+            const raw = fromUser || (filterCompany && filterCompany !== 'all' ? String(filterCompany).toString().trim() : '');
+            if (!raw) return prev;
+
+            const key = normalizeText(raw);
+            const match = key ? options.find((name) => normalizeText(name) === key) : '';
+            const next = match || raw;
+
+            if (!next) return prev;
+
+            return { ...prev, companyName: next as any };
+
+        });
+
+    }, [companyOptions, currentUser, filterCompany, isTeamCompanyForced, normalizeText, showAddModal]);
 
 
 
@@ -2399,369 +2473,105 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
             {(() => {
 
+                const baseUsers = companyScopedUsers;
+
                 const selectedCompanyKey = normalizeText(filterCompany === 'all' ? '' : filterCompany);
+                const speedCompanyKey = normalizeText('Speed Ecom');
+                const isSpeedEcomSelected = Boolean(selectedCompanyKey)
+                    && (selectedCompanyKey === speedCompanyKey
+                        || (selectedCompanyKey.includes('speed') && selectedCompanyKey.includes('ecom')));
 
-                const isMdImpexSelected = selectedCompanyKey.includes('impex') || selectedCompanyKey === normalizeText(MD_IMPEX_COMPANY_NAME);
+                const uniqueKeyForUser = (u: any) => String(u?.id || u?._id || u?.email || '').trim();
 
-                const isSpeedEComSelected = selectedCompanyKey.includes('speed') && (selectedCompanyKey.includes('com') || selectedCompanyKey.includes('eom'));
+                const uniqueUsersMap = new Map<string, UserType>();
 
+                for (const u of baseUsers || []) {
 
+                    const key = uniqueKeyForUser(u);
 
-                if (isCurrentUserAdmin && isMdImpexSelected) {
+                    if (!key) continue;
 
-                    return (
-
-                        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-4">
-
-                            <button
-
-                                onClick={() => setFilterRole('all')}
-
-                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'all' ? 'bg-blue-50 border-blue-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-blue-50 hover:border-blue-100'}`}
-
-                            >
-
-                                <div className="text-3xl font-bold text-gray-900">{companyScopedUsers.length}</div>
-
-                                <div className="text-sm text-gray-600 mt-1">Total Members</div>
-
-                            </button>
-
-                            {!isCurrentUserManager && !isCurrentUserObManager && (
-
-                                <button
-
-                                    onClick={() => setFilterRole('md_manager')}
-
-                                    className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'md_manager' ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-indigo-50 hover:border-indigo-100'}`}
-
-                                >
-
-                                    <div className="text-3xl font-bold text-indigo-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'md_manager').length}</div>
-
-                                    <div className="text-sm text-gray-600 mt-1">MD Manager</div>
-
-                                </button>
-
-                            )}
-
-                            {!isCurrentUserManager && (
-
-                                <button
-
-                                    onClick={() => setFilterRole('ob_manager')}
-
-                                    className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'ob_manager' ? 'bg-violet-50 border-violet-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-violet-50 hover:border-violet-100'}`}
-
-                                >
-
-                                    <div className="text-3xl font-bold text-violet-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'ob_manager').length}</div>
-
-                                    <div className="text-sm text-gray-600 mt-1">OB Manager</div>
-
-                                </button>
-
-                            )}
-
-                            <button
-
-                                onClick={() => setFilterRole('manager')}
-
-                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'manager' ? 'bg-purple-50 border-purple-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-purple-50 hover:border-purple-100'}`}
-
-                            >
-
-                                <div className="text-3xl font-bold text-purple-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'manager').length}</div>
-
-                                <div className="text-sm text-gray-600 mt-1">Managers</div>
-
-                            </button>
-
-                            <button
-
-                                onClick={() => setFilterRole('assistant')}
-
-                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'assistant' ? 'bg-green-50 border-green-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-green-50 hover:border-green-100'}`}
-
-                            >
-
-                                <div className="text-3xl font-bold text-green-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'assistant').length}</div>
-
-                                <div className="text-sm text-gray-600 mt-1">Assistants</div>
-
-                            </button>
-
-                            <button
-
-                                onClick={() => setFilterRole('sub_assistance')}
-
-                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'sub_assistance' ? 'bg-green-50 border-green-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-green-50 hover:border-green-100'}`}
-
-                            >
-
-                                <div className="text-3xl font-bold text-green-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'sub_assistance').length}</div>
-
-                                <div className="text-sm text-gray-600 mt-1">Sub Assistance</div>
-
-                            </button>
-
-                        </div>
-
-                    );
+                    if (!uniqueUsersMap.has(key)) uniqueUsersMap.set(key, u);
 
                 }
 
+                const uniqueUsers = Array.from(uniqueUsersMap.values());
 
+                const countByRole = (roleKey: string) => uniqueUsers.filter((u) => normalizeRole((u as any)?.role) === roleKey).length;
 
-                if (isCurrentUserAdmin && isSpeedEComSelected) {
+                const speedHierarchyRoles = new Set(['sbm', 'rm', 'am']);
+                const speedHierarchyUsers = uniqueUsers.filter((u) => speedHierarchyRoles.has(normalizeRole((u as any)?.role)));
+                const speedHierarchyUserIds = new Set(speedHierarchyUsers.map((u) => uniqueKeyForUser(u)).filter(Boolean));
+                const speedHierarchyCount = Array.from(speedHierarchyUserIds).length;
 
-                    return (
+                const totalCount = isSpeedEcomSelected ? speedHierarchyCount : uniqueUsers.length;
 
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                const roleOrder = ['md_manager', 'ob_manager', 'manager', 'sbm', 'rm', 'am', 'assistant', 'sub_assistance'];
 
-                            <button
+                const roleLabels: Record<string, string> = {
+                    md_manager: 'MD Manager',
+                    ob_manager: 'OB Manager',
+                    manager: 'Managers',
+                    sbm: 'SBM',
+                    rm: 'RM',
+                    am: 'AM',
+                    assistant: 'Assistants',
+                    sub_assistance: 'Sub Assistance'
+                };
 
-                                onClick={() => setFilterRole('all')}
+                const roleCardClass: Record<string, string> = {
+                    md_manager: 'bg-indigo-50 border-indigo-200',
+                    ob_manager: 'bg-violet-50 border-violet-200',
+                    manager: 'bg-purple-50 border-purple-200',
+                    sbm: 'bg-amber-50 border-amber-200',
+                    rm: 'bg-cyan-50 border-cyan-200',
+                    am: 'bg-emerald-50 border-emerald-200',
+                    assistant: 'bg-green-50 border-green-200',
+                    sub_assistance: 'bg-green-50 border-green-200'
+                };
 
-                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'all' ? 'bg-blue-50 border-blue-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-blue-50 hover:border-blue-100'}`}
+                const roleTextClass: Record<string, string> = {
+                    md_manager: 'text-indigo-700',
+                    ob_manager: 'text-violet-700',
+                    manager: 'text-purple-700',
+                    sbm: 'text-amber-700',
+                    rm: 'text-cyan-700',
+                    am: 'text-emerald-700',
+                    assistant: 'text-green-700',
+                    sub_assistance: 'text-green-700'
+                };
 
-                            >
+                const isRoleVisible = (roleKey: string) => {
 
-                                <div className="text-3xl font-bold text-gray-900">{companyScopedUsers.length}</div>
+                    if (isCurrentUserAdmin) return true;
 
-                                <div className="text-sm text-gray-600 mt-1">Total Members</div>
+                    if (roleKey === 'md_manager') return isCurrentUserMdManager;
 
-                            </button>
+                    if (roleKey === 'ob_manager') return isCurrentUserMdManager || isCurrentUserObManager || isCurrentUserManager;
 
-                            <button
+                    if (roleKey === 'manager') return isCurrentUserMdManager || isCurrentUserObManager || isCurrentUserManager;
 
-                                onClick={() => setFilterRole('sbm')}
+                    if (roleKey === 'sbm' || roleKey === 'rm' || roleKey === 'am') return isCurrentUserSbm || isCurrentUserRm || isCurrentUserAm;
 
-                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'sbm' ? 'bg-amber-50 border-amber-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-amber-50 hover:border-amber-100'}`}
+                    if (roleKey === 'assistant' || roleKey === 'sub_assistance') return true;
 
-                            >
+                    return false;
 
-                                <div className="text-3xl font-bold text-amber-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'sbm').length}</div>
+                };
 
-                                <div className="text-sm text-gray-600 mt-1">SBM</div>
+                const rolesToRender = roleOrder
+                    .filter((r) => isRoleVisible(r))
+                    .filter((r) => countByRole(r) > 0);
 
-                            </button>
+                const gridCols = rolesToRender.length + 1;
 
-                            <button
-
-                                onClick={() => setFilterRole('rm')}
-
-                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'rm' ? 'bg-cyan-50 border-cyan-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-cyan-50 hover:border-cyan-100'}`}
-
-                            >
-
-                                <div className="text-3xl font-bold text-cyan-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'rm').length}</div>
-
-                                <div className="text-sm text-gray-600 mt-1">RM</div>
-
-                            </button>
-
-                            <button
-
-                                onClick={() => setFilterRole('am')}
-
-                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'am' ? 'bg-emerald-50 border-emerald-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-emerald-50 hover:border-emerald-100'}`}
-
-                            >
-
-                                <div className="text-3xl font-bold text-emerald-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'am').length}</div>
-
-                                <div className="text-sm text-gray-600 mt-1">AM</div>
-
-                            </button>
-
-                        </div>
-
-                    );
-
-                }
-
-
-
-                if (isSpeedEComSelected) {
-
-                    return (
-
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-
-                            <button
-
-                                onClick={() => setFilterRole('all')}
-
-                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'all' ? 'bg-blue-50 border-blue-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-blue-50 hover:border-blue-100'}`}
-
-                            >
-
-                                <div className="text-3xl font-bold text-gray-900">{companyScopedUsers.length}</div>
-
-                                <div className="text-sm text-gray-600 mt-1">Total Members</div>
-
-                            </button>
-
-                            <button
-
-                                onClick={() => setFilterRole('sbm')}
-
-                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'sbm' ? 'bg-amber-50 border-amber-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-amber-50 hover:border-amber-100'}`}
-
-                            >
-
-                                <div className="text-3xl font-bold text-amber-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'sbm').length}</div>
-
-                                <div className="text-sm text-gray-600 mt-1">SBM</div>
-
-                            </button>
-
-                            <button
-
-                                onClick={() => setFilterRole('rm')}
-
-                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'rm' ? 'bg-cyan-50 border-cyan-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-cyan-50 hover:border-cyan-100'}`}
-
-                            >
-
-                                <div className="text-3xl font-bold text-cyan-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'rm').length}</div>
-
-                                <div className="text-sm text-gray-600 mt-1">RM</div>
-
-                            </button>
-
-                            <button
-
-                                onClick={() => setFilterRole('am')}
-
-                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'am' ? 'bg-emerald-50 border-emerald-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-emerald-50 hover:border-emerald-100'}`}
-
-                            >
-
-                                <div className="text-3xl font-bold text-emerald-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'am').length}</div>
-
-                                <div className="text-sm text-gray-600 mt-1">AM</div>
-
-                            </button>
-
-                        </div>
-
-                    );
-
-                }
-
-
-
-                if (isMdImpexSelected) {
-
-                    return (
-
-                        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-4">
-
-                            <button
-
-                                onClick={() => setFilterRole('all')}
-
-                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'all' ? 'bg-blue-50 border-blue-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-blue-50 hover:border-blue-100'}`}
-
-                            >
-
-                                <div className="text-3xl font-bold text-gray-900">{companyScopedUsers.length}</div>
-
-                                <div className="text-sm text-gray-600 mt-1">Total Members</div>
-
-                            </button>
-
-                            {!isCurrentUserManager && !isCurrentUserObManager && (
-
-                                <button
-
-                                    onClick={() => setFilterRole('md_manager')}
-
-                                    className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'md_manager' ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-indigo-50 hover:border-indigo-100'}`}
-
-                                >
-
-                                    <div className="text-3xl font-bold text-indigo-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'md_manager').length}</div>
-
-                                    <div className="text-sm text-gray-600 mt-1">MD Manager</div>
-
-                                </button>
-
-                            )}
-
-                            {!isCurrentUserManager && (
-
-                                <button
-
-                                    onClick={() => setFilterRole('ob_manager')}
-
-                                    className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'ob_manager' ? 'bg-violet-50 border-violet-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-violet-50 hover:border-violet-100'}`}
-
-                                >
-
-                                    <div className="text-3xl font-bold text-violet-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'ob_manager').length}</div>
-
-                                    <div className="text-sm text-gray-600 mt-1">OB Manager</div>
-
-                                </button>
-
-                            )}
-
-                            <button
-
-                                onClick={() => setFilterRole('manager')}
-
-                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'manager' ? 'bg-purple-50 border-purple-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-purple-50 hover:border-purple-100'}`}
-
-                            >
-
-                                <div className="text-3xl font-bold text-purple-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'manager').length}</div>
-
-                                <div className="text-sm text-gray-600 mt-1">Managers</div>
-
-                            </button>
-
-                            <button
-
-                                onClick={() => setFilterRole('assistant')}
-
-                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'assistant' ? 'bg-green-50 border-green-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-green-50 hover:border-green-100'}`}
-
-                            >
-
-                                <div className="text-3xl font-bold text-green-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'assistant').length}</div>
-
-                                <div className="text-sm text-gray-600 mt-1">Assistants</div>
-
-                            </button>
-
-                            <button
-
-                                onClick={() => setFilterRole('sub_assistance')}
-
-                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'sub_assistance' ? 'bg-green-50 border-green-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-green-50 hover:border-green-100'}`}
-
-                            >
-
-                                <div className="text-3xl font-bold text-green-700">{companyScopedUsers.filter(u => normalizeRole(u.role) === 'sub_assistance').length}</div>
-
-                                <div className="text-sm text-gray-600 mt-1">Sub Assistance</div>
-
-                            </button>
-
-                        </div>
-
-                    );
-
-                }
-
-
+                const gridClass = gridCols <= 4
+                    ? 'grid grid-cols-2 md:grid-cols-4 gap-4'
+                    : 'grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4';
 
                 return (
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4">
+                    <div className={gridClass}>
 
                         <button
 
@@ -2771,165 +2581,31 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
                         >
 
-                            <div className="text-3xl font-bold text-gray-900">{visibleUsers.length}</div>
+                            <div className="text-3xl font-bold text-gray-900">{totalCount}</div>
 
                             <div className="text-sm text-gray-600 mt-1">Total Members</div>
 
                         </button>
 
-                        {!isCurrentUserManager && !isCurrentUserObManager && (
+                        {rolesToRender.map((roleKey) => (
 
                             <button
 
-                                onClick={() => setFilterRole('md_manager')}
+                                key={roleKey}
 
-                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'md_manager' ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-indigo-50 hover:border-indigo-100'}`}
+                                onClick={() => setFilterRole(roleKey)}
 
-                            >
-
-                                <div className="text-3xl font-bold text-indigo-700">{visibleUsers.filter(u => normalizeRole(u.role) === 'md_manager').length}</div>
-
-                                <div className="text-sm text-gray-600 mt-1">MD Manager</div>
-
-                            </button>
-
-                        )}
-
-                        {!isCurrentUserManager && (
-
-                            <button
-
-                                onClick={() => setFilterRole('ob_manager')}
-
-                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'ob_manager' ? 'bg-violet-50 border-violet-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-violet-50 hover:border-violet-100'}`}
+                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === roleKey ? `${roleCardClass[roleKey]} shadow-sm` : `bg-white border-gray-200 hover:${roleCardClass[roleKey]}`}`}
 
                             >
 
-                                <div className="text-3xl font-bold text-violet-700">{visibleUsers.filter(u => normalizeRole(u.role) === 'ob_manager').length}</div>
+                                <div className={`text-3xl font-bold ${roleTextClass[roleKey]}`}>{countByRole(roleKey)}</div>
 
-                                <div className="text-sm text-gray-600 mt-1">OB Manager</div>
-
-                            </button>
-
-                        )}
-
-                        <button
-
-                            onClick={() => setFilterRole('manager')}
-
-                            className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'manager' ? 'bg-purple-50 border-purple-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-purple-50 hover:border-purple-100'}`}
-
-                        >
-
-                            <div className="text-3xl font-bold text-purple-700">{visibleUsers.filter(u => normalizeRole(u.role) === 'manager').length}</div>
-
-                            <div className="text-sm text-gray-600 mt-1">Managers</div>
-
-                        </button>
-
-                        {isCurrentUserAdmin && (
-
-                            <button
-
-                                onClick={() => setFilterRole('sbm')}
-
-                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'sbm' ? 'bg-amber-50 border-amber-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-amber-50 hover:border-amber-100'}`}
-
-                            >
-
-                                <div className="text-3xl font-bold text-amber-700">{visibleUsers.filter(u => normalizeRole(u.role) === 'sbm').length}</div>
-
-                                <div className="text-sm text-gray-600 mt-1">SBM</div>
+                                <div className="text-sm text-gray-600 mt-1">{roleLabels[roleKey] || roleKey}</div>
 
                             </button>
 
-                        )}
-
-                        {isCurrentUserAdmin && (
-
-                            <button
-
-                                onClick={() => setFilterRole('rm')}
-
-                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'rm' ? 'bg-cyan-50 border-cyan-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-cyan-50 hover:border-cyan-100'}`}
-
-                            >
-
-                                <div className="text-3xl font-bold text-cyan-700">{visibleUsers.filter(u => normalizeRole(u.role) === 'rm').length}</div>
-
-                                <div className="text-sm text-gray-600 mt-1">RM</div>
-
-                            </button>
-
-                        )}
-
-                        {isCurrentUserAdmin && (
-
-                            <button
-
-                                onClick={() => setFilterRole('am')}
-
-                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'am' ? 'bg-emerald-50 border-emerald-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-emerald-50 hover:border-emerald-100'}`}
-
-                            >
-
-                                <div className="text-3xl font-bold text-emerald-700">{visibleUsers.filter(u => normalizeRole(u.role) === 'am').length}</div>
-
-                                <div className="text-sm text-gray-600 mt-1">AM</div>
-
-                            </button>
-
-                        )}
-
-                        <button
-
-                            onClick={() => setFilterRole('assistant')}
-
-                            className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'assistant' ? 'bg-green-50 border-green-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-green-50 hover:border-green-100'}`}
-
-                        >
-
-                            <div className="text-3xl font-bold text-green-700">{visibleUsers.filter(u => normalizeRole(u.role) === 'assistant').length}</div>
-
-                            <div className="text-sm text-gray-600 mt-1">Assistants</div>
-
-                        </button>
-
-                        <button
-
-                            onClick={() => setFilterRole('sub_assistance')}
-
-                            className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'sub_assistance' ? 'bg-green-50 border-green-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-green-50 hover:border-green-100'}`}
-
-                        >
-
-                            <div className="text-3xl font-bold text-green-700">{visibleUsers.filter(u => normalizeRole(u.role) === 'sub_assistance').length}</div>
-
-                            <div className="text-sm text-gray-600 mt-1">Sub Assistance</div>
-
-                        </button>
-
-                        {isCurrentUserAdmin && (
-
-                            <button
-
-                                onClick={() => setFilterRole('admin')}
-
-                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'admin' ? 'bg-purple-50 border-purple-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-purple-50 hover:border-purple-100'}`}
-
-                            >
-
-                                <div className="text-3xl font-bold text-purple-700">
-
-                                    {visibleUsers.filter(u => normalizeRole(u.role) === 'admin').length}
-
-                                </div>
-
-                                <div className="text-sm text-gray-600 mt-1">Admins</div>
-
-                            </button>
-
-                        )}
+                        ))}
 
                     </div>
 
