@@ -959,27 +959,33 @@ const DashboardPage = () => {
         };
 
         const onUpserted = (payload: any) => {
-
             try {
-
                 const task = normalizeIncomingTask(payload?.task);
-
                 if (!task?.id) return;
-
                 dispatch(taskUpserted(task as Task));
-
                 try {
                     window.dispatchEvent(new CustomEvent('taskUpdated', { detail: { task } }));
                 } catch {
                     // ignore
                 }
-
             } catch {
-
                 return;
-
             }
+        };
 
+        const onDeleted = (payload: any) => {
+            try {
+                const taskId = String(payload?.taskId || '').trim();
+                if (!taskId) return;
+                dispatch(taskRemoved(taskId));
+                try {
+                    window.dispatchEvent(new CustomEvent('taskDeleted', { detail: { taskId } }));
+                } catch {
+                    // ignore
+                }
+            } catch {
+                return;
+            }
         };
 
         const normalizeIncomingBrand = (brand: any) => {
@@ -1200,6 +1206,7 @@ const DashboardPage = () => {
         };
 
         socket.on('task:upserted', onUpserted);
+        socket.on('task:deleted', (payload: any) => onDeleted(payload));
 
         socket.on('brand:upserted', onBrandUpserted);
         socket.on('brand:deleted', onBrandDeleted);
@@ -1215,6 +1222,7 @@ const DashboardPage = () => {
             try {
 
                 socket.off('task:upserted', onUpserted);
+                socket.off('task:deleted', onDeleted);
 
                 socket.off('brand:upserted', onBrandUpserted);
                 socket.off('brand:deleted', onBrandDeleted);
