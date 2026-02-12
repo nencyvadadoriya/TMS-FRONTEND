@@ -91,6 +91,8 @@ const AssignPage = ({ currentUser }: Props) => {
   const [pendingTaskTypeIds, setPendingTaskTypeIds] = useState<Set<string>>(new Set());
   const [initialAssignedBrandIds, setInitialAssignedBrandIds] = useState<Set<string>>(new Set());
 
+  const [brandSearch, setBrandSearch] = useState('');
+
   const [loadingCompanies, setLoadingCompanies] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [loadingBrands, setLoadingBrands] = useState(false);
@@ -624,6 +626,12 @@ const AssignPage = ({ currentUser }: Props) => {
       .filter((b) => Boolean(b.id) && Boolean(b.name))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [brands]);
+
+  const filteredBrandOptions = useMemo(() => {
+    const q = normalizeText(brandSearch).toLowerCase();
+    if (!q) return brandOptions;
+    return brandOptions.filter((b) => String(b?.name || '').toLowerCase().includes(q));
+  }, [brandOptions, brandSearch]);
 
   const taskTypeOptions = useMemo(() => {
     const allowed = companyAllowedTaskTypeIds;
@@ -1493,16 +1501,25 @@ const AssignPage = ({ currentUser }: Props) => {
             <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
               <div className="lg:col-span-5 border border-gray-200 rounded-2xl p-4">
                 <div className="text-sm font-semibold text-gray-900">Brand</div>
+
+                <div className="mt-3">
+                  <input
+                    value={brandSearch}
+                    onChange={(e) => setBrandSearch(e.target.value)}
+                    placeholder="Search brand..."
+                    disabled={!selectedCompany || !selectedUserId || loadingMappings || isApplying}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+
                 <div className="mt-3 space-y-2 max-h-[520px] overflow-y-auto pr-1">
-                  {brandOptions.map((b) => {
+                  {filteredBrandOptions.map((b) => {
                     const checked = selectedBrandIds.has(b.id);
                     const disabled = !selectedCompany || !selectedUserId || loadingMappings || isApplying;
                     return (
                       <label
                         key={b.id}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors ${checked
-                          ? 'bg-indigo-50 border-indigo-200'
-                          : 'bg-white border-gray-200'} ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:border-gray-300'}`}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-xl border ${checked ? 'border-indigo-300 bg-indigo-50' : 'border-gray-200 bg-white'} ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'}`}
                       >
                         <input
                           type="checkbox"
@@ -1511,12 +1528,12 @@ const AssignPage = ({ currentUser }: Props) => {
                           onChange={() => toggleBrand(b.id)}
                           className="h-4 w-4"
                         />
-                        <span className="text-sm font-medium text-gray-900">{b.name}</span>
+                        <span className="text-sm text-gray-900 truncate">{b.name}</span>
                       </label>
                     );
                   })}
 
-                  {selectedCompany && !loadingBrands && brandOptions.length === 0 && (
+                  {selectedCompany && !loadingBrands && filteredBrandOptions.length === 0 && (
                     <div className="text-sm text-gray-600">No brands found for this company.</div>
                   )}
                 </div>

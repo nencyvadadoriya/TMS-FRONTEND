@@ -10,14 +10,25 @@ export const brandService = {
         status?: string;
         company?: string;
         includeDeleted?: boolean; // New parameter
+        page?: number;
+        limit?: number;
     }): Promise<{ success: boolean; data: Brand[]; total: number }> {
         const response = await apiClient.get('/brands', { params });
         return response.data;
     },
 
     // Get brands for task creation dropdown (assigned brands for non-admin; all for admin)
-    async getAssignedBrands(): Promise<{ success: boolean; data: Brand[]; total: number }> {
-        const response = await apiClient.get('/brands/assigned');
+    async getAssignedBrands(params?: { page?: number; limit?: number }): Promise<{ success: boolean; data: Brand[]; total: number }> {
+        const response = await apiClient.get('/brands/assigned', { params });
+        return response.data;
+    },
+
+    async getBrandHistoryFeed(params?: {
+        includeDeleted?: boolean;
+        page?: number;
+        limit?: number;
+    }): Promise<{ success: boolean; data: any[]; total: number; page: number; limit: number }> {
+        const response = await apiClient.get('/brands/history', { params });
         return response.data;
     },
 

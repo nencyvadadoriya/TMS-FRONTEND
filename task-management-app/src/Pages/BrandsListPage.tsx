@@ -138,6 +138,12 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
     const [initialLoadComplete, setInitialLoadComplete] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [brandsPerPage, setBrandsPerPage] = useState<number>(DEFAULT_BRANDS_PER_PAGE);
+    const [brandsTotal, setBrandsTotal] = useState<number>(0);
+
+    const [brandHistoryPage, setBrandHistoryPage] = useState(1);
+    const [brandHistoryLimit] = useState(30);
+    const [brandHistoryTotal, setBrandHistoryTotal] = useState(0);
+    const [brandHistoryItems, setBrandHistoryItems] = useState<any[]>([]);
 
     const effectiveTasks = useMemo(() => {
         const safePropTasks = Array.isArray(propTasks) ? propTasks : [];
@@ -280,6 +286,8 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
             brand.status !== 'deleted' && brand.status !== 'archived'
         );
     }, [apiBrands, currentUser, role, reportTasks]);
+
+    const accessibleBrands = brands;
 
     type BrandsPageHistoryItem = BrandHistory & {
         _brandId: string;
@@ -440,6 +448,8 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         return filtered.slice(0, 30);
     }, [brands, apiBrands, deletedBrands, reportTasks, currentUser, role, allUsers]);
 
+    void recentBrandActivity;
+
     type CompaniesPageHistoryItem = any & {
         _companyId: string;
         _companyName: string;
@@ -543,51 +553,8 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
     const adminDeletedBrands = useMemo(() => {
         if (!canDeleteBrand) return [];
         const safeDeletedBrands = Array.isArray(deletedBrands) ? deletedBrands : [];
-        return [...safeDeletedBrands].filter(brand =>
-            brand.status === 'deleted' || brand.status === 'archived'
-        );
+        return safeDeletedBrands;
     }, [canDeleteBrand, deletedBrands]);
-
-    const accessibleBrands = useMemo(() => {
-        return brands;
-    }, [brands]);
-
-    const brandTaskCounts = useMemo(() => {
-        const counts = new Map<string, number>();
-
-        const byBrandId = new Map<string, number>();
-        const byBrandCompanyKey = new Map<string, number>();
-
-        (reportTasks || []).forEach((task: any) => {
-            const taskBrandId = String(task?.brandId || '').trim();
-            if (taskBrandId) {
-                byBrandId.set(taskBrandId, (byBrandId.get(taskBrandId) || 0) + 1);
-                return;
-            }
-
-            const brandName = String(
-                (typeof task?.brand === 'string'
-                    ? task.brand
-                    : (task?.brand?.name || task?.brandName || ''))
-            ).trim().toLowerCase();
-            const companyName = String(task?.companyName || task?.company || task?.company?.name || '').trim().toLowerCase();
-            if (!brandName && !companyName) return;
-            const key = `${brandName}|${companyName}`;
-            byBrandCompanyKey.set(key, (byBrandCompanyKey.get(key) || 0) + 1);
-        });
-
-        (accessibleBrands || []).forEach((brand: any) => {
-            const idKey = String(brand?.id || brand?._id || '').trim();
-            const brandKey = `${String(brand?.name || '').trim().toLowerCase()}|${String(brand?.company || '').trim().toLowerCase()}`;
-            const count =
-                (idKey ? (byBrandId.get(idKey) || 0) : 0) ||
-                (byBrandCompanyKey.get(brandKey) || 0);
-
-            if (idKey) counts.set(idKey, count);
-        });
-
-        return counts;
-    }, [accessibleBrands, reportTasks]);
 
     const getActiveFilterCount = useCallback(() => {
         let count = 0;
@@ -860,7 +827,14 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         try {
             setIsLoading(true);
             if (role === 'md_manager') {
-                const res = await brandService.getBrands({ includeDeleted: true });
+                const res = await brandService.getBrands({
+                    includeDeleted: true,
+                    search: filters.search || undefined,
+                    status: filters.status !== 'all' ? filters.status : undefined,
+                    company: filters.company && filters.company !== 'all' ? filters.company : undefined,
+                    page: currentPage,
+                    limit: brandsPerPage,
+                });
                 const raw = Array.isArray((res as any)?.data) ? (res as any).data : [];
                 const sortByRecent = (list: Brand[]) => {
                     return [...list].sort((a: any, b: any) => {
@@ -872,13 +846,18 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
 
                 setApiBrands(sortByRecent(raw));
                 setDeletedBrands([]);
+                setBrandsTotal(Number((res as any)?.total || raw.length || 0));
                 return;
             }
             if (canDeleteBrand) {
-                const [activeRes, deletedRes] = await Promise.all([
-                    brandService.getBrands(),
-                    brandService.getDeletedBrands()
-                ]);
+                const activeRes = await brandService.getBrands({
+                    search: filters.search || undefined,
+                    status: filters.status !== 'all' ? filters.status : undefined,
+                    company: filters.company && filters.company !== 'all' ? filters.company : undefined,
+                    page: currentPage,
+                    limit: brandsPerPage,
+                });
+                const deletedRes = await brandService.getDeletedBrands();
 
                 const rawActive = Array.isArray((activeRes as any)?.data) ? (activeRes as any).data : [];
                 const rawDeleted = Array.isArray((deletedRes as any)?.data) ? (deletedRes as any).data : [];
@@ -893,8 +872,15 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
 
                 setApiBrands(sortByRecent(rawActive));
                 setDeletedBrands(sortByRecent(rawDeleted));
+                setBrandsTotal(Number((activeRes as any)?.total || rawActive.length || 0));
             } else {
-                const response = await brandService.getBrands();
+                const response = await brandService.getBrands({
+                    search: filters.search || undefined,
+                    status: filters.status !== 'all' ? filters.status : undefined,
+                    company: filters.company && filters.company !== 'all' ? filters.company : undefined,
+                    page: currentPage,
+                    limit: brandsPerPage,
+                });
                 const rawBrands = Array.isArray((response as any)?.data) ? (response as any).data : [];
                 if (rawBrands.length > 0) {
                     const allBrands = [...rawBrands].sort((a: Brand, b: Brand) => {
@@ -912,16 +898,43 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                     setApiBrands([]);
                 }
                 setDeletedBrands([]);
+                setBrandsTotal(Number((response as any)?.total || rawBrands.length || 0));
             }
         } catch (error: any) {
             console.error('Error fetching brands:', error);
             toast.error('Failed to load brands');
             setApiBrands([]);
             setDeletedBrands([]);
+            setBrandsTotal(0);
         } finally {
             setInitialLoadComplete(true);
         }
-    }, [canDeleteBrand, role]);
+    }, [canDeleteBrand, role, filters, currentPage, brandsPerPage]);
+
+    const fetchBrandHistoryFeed = useCallback(async () => {
+        if (!canViewBrandsCompaniesReport) {
+            setBrandHistoryItems([]);
+            setBrandHistoryTotal(0);
+            return;
+        }
+        try {
+            const res: any = await brandService.getBrandHistoryFeed({
+                includeDeleted: false,
+                page: brandHistoryPage,
+                limit: brandHistoryLimit,
+            });
+            const items = Array.isArray(res?.data) ? res.data : [];
+            setBrandHistoryItems(items);
+            setBrandHistoryTotal(Number(res?.total || items.length || 0));
+        } catch (e) {
+            setBrandHistoryItems([]);
+            setBrandHistoryTotal(0);
+        }
+    }, [canViewBrandsCompaniesReport, brandHistoryPage, brandHistoryLimit]);
+
+    useEffect(() => {
+        fetchBrandHistoryFeed();
+    }, [fetchBrandHistoryFeed]);
 
     const fetchUsersForAdmin = useCallback(async () => {
         if (!canViewBrandsCompaniesReport) return;
@@ -1235,24 +1248,31 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
     };
 
     const filteredBrands = getFilteredBrands();
-    const totalBrands = filteredBrands.length;
+    const totalBrands = Number(brandsTotal || 0);
     const totalPages = Math.max(1, Math.ceil(totalBrands / brandsPerPage));
     const currentPageSafe = Math.min(currentPage, totalPages);
 
     const paginatedBrands = useMemo(() => {
-        if (!filteredBrands.length) return [] as Brand[];
-        const startIndex = (currentPageSafe - 1) * brandsPerPage;
-        const endIndex = startIndex + brandsPerPage;
-        return filteredBrands.slice(startIndex, endIndex);
-    }, [filteredBrands, currentPageSafe, brandsPerPage]);
+        return filteredBrands as Brand[];
+    }, [filteredBrands]);
+
+    const brandTaskCounts = useMemo(() => {
+        const map = new Map<string, number>();
+        (Array.isArray(reportTasks) ? reportTasks : []).forEach((t: any) => {
+            const brandId = String(t?.brandId || t?.brand?._id || t?.brand?.id || '').trim();
+            if (!brandId) return;
+            map.set(brandId, (map.get(brandId) || 0) + 1);
+        });
+        return map;
+    }, [reportTasks]);
 
     const startItemIndex = totalBrands === 0 ? 0 : (currentPageSafe - 1) * brandsPerPage + 1;
-    const endItemIndex = totalBrands === 0 ? 0 : Math.min(startItemIndex + brandsPerPage - 1, totalBrands);
+    const endItemIndex = totalBrands === 0 ? 0 : Math.min(startItemIndex + (paginatedBrands.length || 0) - 1, totalBrands);
 
     useEffect(() => {
         // Reset to first page when filters or brand set change
         setCurrentPage(1);
-    }, [filters, accessibleBrands, brandsPerPage]);
+    }, [filters, brandsPerPage]);
 
     const getDisplayedTasks = useCallback((): Task[] => {
         const tasks: Task[] = Array.isArray(reportTasks) ? reportTasks : [];
@@ -1321,8 +1341,11 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         const safeBrands = Array.isArray(accessibleBrands) ? accessibleBrands : [];
         const safeTasks = Array.isArray(reportTasks) ? reportTasks : [];
 
-        const totalBrands = safeBrands.length;
-        const activeBrands = safeBrands.filter((brand) => brand.status === 'active').length;
+        const hasActiveFilters = getActiveFilterCount() > 0 || Boolean(filters.search);
+        const totalBrands = hasActiveFilters ? safeBrands.length : Number(brandsTotal || 0);
+        const activeBrands = hasActiveFilters
+            ? safeBrands.filter((brand) => brand.status === 'active').length
+            : Number(brandsTotal || 0);
         const totalTasks = safeTasks.length;
         const averageTasksPerBrand = totalBrands > 0 ? totalTasks / totalBrands : 0;
 
@@ -1332,7 +1355,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
             totalTasks,
             averageTasksPerBrand: Number(averageTasksPerBrand.toFixed(1)),
         });
-    }, [accessibleBrands, reportTasks]);
+    }, [accessibleBrands, reportTasks, brandsTotal, filters.search, getActiveFilterCount]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -2647,19 +2670,21 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                                 })}
                                             </div>
                                         )}
+
                                     </div>
 
                                     <div className="mt-6 rounded-xl border border-gray-200 p-5">
                                         <div className="flex items-center justify-between mb-4">
                                             <h3 className="text-lg font-semibold text-gray-900">Brand History</h3>
-                                            <span className="text-sm text-gray-500">{recentBrandActivity.length} recent activities</span>
+                                            <span className="text-sm text-gray-500">{brandHistoryTotal} activities</span>
                                         </div>
 
-                                        {recentBrandActivity.length === 0 ? (
+                                        {brandHistoryItems.length === 0 ? (
                                             <div className="text-sm text-gray-500">No brand activity found.</div>
                                         ) : (
                                             <div className="space-y-3">
-                                                {recentBrandActivity.map((h, idx) => {
+
+                                                {brandHistoryItems.map((h: any, idx: number) => {
                                                     const action = String((h as any)?.action || '').toLowerCase();
                                                     const actor = (h?.userName || h?.userEmail || 'Unknown').toString();
                                                     const when = (h as any)?.timestamp;
@@ -2668,13 +2693,13 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                                     const newValue = (h as any)?.newValue;
 
                                                     return (
-                                                        <div key={`${h._brandId}-${idx}`} className="rounded-lg border border-gray-100 p-3">
+                                                        <div key={`${String(h?._brandId || '')}-${idx}`} className="rounded-lg border border-gray-100 p-3">
                                                             <div className="flex items-start justify-between gap-3">
                                                                 <div className="flex items-start gap-3 min-w-0">
                                                                     <div className="mt-0.5">{getHistoryIcon(action)}</div>
                                                                     <div className="min-w-0">
                                                                         <div className="text-sm font-medium text-gray-900 truncate">
-                                                                            {(h._brandGroupNumber ? `${h._brandGroupNumber} - ` : '')}{h._brandName || 'Brand'}{h._brandCompany ? ` (${h._brandCompany})` : ''}
+                                                                            {(h?._brandGroupNumber ? `${h._brandGroupNumber} - ` : '')}{h?._brandName || 'Brand'}{h?._brandCompany ? ` (${h._brandCompany})` : ''}
                                                                         </div>
                                                                         <div className="text-xs text-gray-600 mt-0.5">
                                                                             {(h?.message || '').toString() || action}
@@ -2700,6 +2725,28 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                                 })}
                                             </div>
                                         )}
+
+                                        <div className="mt-4 flex items-center justify-end gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setBrandHistoryPage((p) => Math.max(1, p - 1))}
+                                                disabled={brandHistoryPage <= 1}
+                                                className="px-3 py-1.5 text-sm rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                Previous
+                                            </button>
+                                            <span className="text-sm text-gray-600">
+                                                Page {brandHistoryPage} of {Math.max(1, Math.ceil(brandHistoryTotal / brandHistoryLimit))}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => setBrandHistoryPage((p) => p + 1)}
+                                                disabled={brandHistoryPage >= Math.max(1, Math.ceil(brandHistoryTotal / brandHistoryLimit))}
+                                                className="px-3 py-1.5 text-sm rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                Next
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
