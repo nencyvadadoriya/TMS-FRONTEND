@@ -987,10 +987,17 @@ const AssignPage = ({ currentUser }: Props) => {
       const batches = chunk(brandPayload, chunkSize);
       const createdBrandsAll: any[] = [];
 
+      const assignmentMetaAgg = {
+        rmAmEmailCount: 0,
+        rmAmUsersFound: 0,
+        assignedBrandIdsOps: 0,
+        mappingOps: 0,
+      };
+
       for (let i = 0; i < batches.length; i += 1) {
         const res = await brandService.bulkUpsertBrands(
           { brands: batches[i] as any },
-          { timeout: 180000 }
+          { timeout: 300000 }
         );
 
         if (!res?.success) {
@@ -1000,163 +1007,26 @@ const AssignPage = ({ currentUser }: Props) => {
         if (Array.isArray((res as any).data)) {
           createdBrandsAll.push(...((res as any).data || []));
         }
+
+        const meta = (res as any)?.meta?.assignment;
+        if (meta) {
+          assignmentMetaAgg.rmAmEmailCount = Math.max(assignmentMetaAgg.rmAmEmailCount, Number(meta.rmAmEmailCount || 0));
+          assignmentMetaAgg.rmAmUsersFound = Math.max(assignmentMetaAgg.rmAmUsersFound, Number(meta.rmAmUsersFound || 0));
+          assignmentMetaAgg.assignedBrandIdsOps += Number(meta.assignedBrandIdsOps || 0);
+          assignmentMetaAgg.mappingOps += Number(meta.mappingOps || 0);
+        }
       }
 
-      const res = { success: true, data: createdBrandsAll } as any;
+      const res = { success: true, data: createdBrandsAll, meta: { assignment: assignmentMetaAgg } } as any;
 
       if (res?.success) {
-        // If RM/AM are selected for Speed Ecom bulk mode, also assign created brands to those users
+        // If RM/AM are selected for Speed Ecom bulk mode, prefer backend assignment to avoid slow client-side bulk mapping.
         if (isSpeedEcomBulkMode && (bulkBrandForm.rmEmail || bulkBrandForm.amEmail)) {
-          try {
-            const createdBrands = (res.data || []) as any[];
-            const normalizeEmailSafe = (v: unknown): string => String(v || '').trim().toLowerCase();
-
-            let safeUsers = Array.isArray(companyUsers) ? companyUsers : [];
-            try {
-              const usersRes = await assignService.getCompanyUsers({ companyName: bulkBrandForm.company });
-              if (usersRes?.success && Array.isArray(usersRes.data)) safeUsers = usersRes.data as any;
-            } catch {
-              // ignore - fallback to state
-            }
-            const findUserIdByEmail = (emailRaw: unknown): string => {
-              const target = normalizeEmailSafe(emailRaw);
-              if (!target) return '';
-              const user = safeUsers.find((u: any) => normalizeEmailSafe(u?.email) === target);
-              return String((user as any)?.id || '').trim();
-            };
-
-            const companyTaskTypesRes = await companyBrandTaskTypeService.getCompanyTaskTypes({
-              companyName: bulkBrandForm.company
-            });
-            const allowedTaskTypeIds = (companyTaskTypesRes?.data?.taskTypes || [])
-              .map((t: any) => String(t?.id || t?._id || '').trim())
-              .filter(Boolean);
-
-            const resolveTaskTypeIdsByNames = (typesList: any[], names: string[]): string[] => {
-              const nameKeys = new Set((names || []).map((n) => normalizeText(n).toLowerCase()).filter(Boolean));
-              if (nameKeys.size === 0) return [];
-              const safe = Array.isArray(typesList) ? typesList : [];
-              return safe
-                .map((t: any) => ({
-                  id: String(t?.id || t?._id || '').trim(),
-                  nameKey: normalizeText(t?.name).toLowerCase(),
-                }))
-                .filter((t: any) => Boolean(t.id) && Boolean(t.nameKey) && nameKeys.has(t.nameKey))
-                .map((t: any) => t.id);
-            };
-
-            let fallbackTaskTypeIds: string[] = [];
-            if (allowedTaskTypeIds.length === 0) {
-              fallbackTaskTypeIds = resolveTaskTypeIdsByNames(taskTypes as any, SPEED_E_COM_FIXED_TASK_TYPES);
-              if (fallbackTaskTypeIds.length === 0) {
-                try {
-                  const taskTypesRes = await taskTypeService.getTaskTypes();
-                  if (taskTypesRes?.success && Array.isArray(taskTypesRes.data)) {
-                    fallbackTaskTypeIds = resolveTaskTypeIdsByNames(taskTypesRes.data as any, SPEED_E_COM_FIXED_TASK_TYPES);
-                  }
-                } catch {
-                  // ignore
-                }
-              }
-            }
-
-            const defaultTaskTypeIds = allowedTaskTypeIds.length > 0 ? allowedTaskTypeIds : fallbackTaskTypeIds;
-            if (defaultTaskTypeIds.length === 0) {
-              toast.error('Brands added, but task types not loaded yet. Please refresh and try again.');
-              throw new Error('No taskTypeIds resolved for assignment');
-            }
-
-            const mappings = createdBrands
-              .map((b: any) => {
-                const brandId = String(b?.id || b?._id || '').trim();
-                const brandName = String(b?.name || b?.brandName || '').trim();
-                if (!brandId || !brandName) return null;
-                return {
-                  brandId,
-                  brandName,
-                  taskTypeIds: defaultTaskTypeIds,
-                };
-              })
-              .filter(Boolean) as Array<{
-                brandId: string;
-                brandName: string;
-                taskTypeIds: string[];
-              }>;
-
-            if (mappings.length > 0) {
-              const tasks: Promise<any>[] = [];
-              const assignedUserIds: string[] = [];
-
-              const mappingBatches = chunk(mappings, 50);
-
-              const rmUserId = findUserIdByEmail(bulkBrandForm.rmEmail);
-              if (bulkBrandForm.rmEmail && !rmUserId) {
-                toast.error('Brands added, but selected RM was not found for this company');
-              }
-              if (rmUserId) {
-                for (const mb of mappingBatches) {
-                  tasks.push(
-                    assignService.bulkUpsertUserMappings(
-                      {
-                        companyName: bulkBrandForm.company,
-                        userId: rmUserId,
-                        mappings: mb,
-                        skipDerived: true,
-                      },
-                      { timeout: 180000 }
-                    )
-                  );
-                }
-                assignedUserIds.push(rmUserId);
-              }
-
-              const amUserId = findUserIdByEmail(bulkBrandForm.amEmail);
-              if (bulkBrandForm.amEmail && !amUserId) {
-                toast.error('Brands added, but selected AM was not found for this company');
-              }
-              if (amUserId) {
-                for (const mb of mappingBatches) {
-                  tasks.push(
-                    assignService.bulkUpsertUserMappings(
-                      {
-                        companyName: bulkBrandForm.company,
-                        userId: amUserId,
-                        mappings: mb,
-                        skipDerived: true,
-                      },
-                      { timeout: 180000 }
-                    )
-                  );
-                }
-                assignedUserIds.push(amUserId);
-              }
-
-              if (tasks.length > 0) {
-                await Promise.all(tasks);
-                toast.success('Assigned to selected RM/AM');
-
-                // Notify other parts of the app that assignments have changed
-                try {
-                  assignedUserIds.forEach((uid) => {
-                    const event = new CustomEvent('assignmentsApplied', {
-                      detail: {
-                        companyName: bulkBrandForm.company,
-                        userId: uid,
-                        brandIds: mappings.map((m) => m.brandId),
-                        taskTypeIds: defaultTaskTypeIds,
-                      },
-                    });
-                    window.dispatchEvent(event);
-                  });
-                } catch {
-                  // ignore event dispatch failures
-                }
-              }
-            }
-          } catch (assignError) {
-            console.error('Error assigning brands to RM/AM:', assignError);
-            const msg = (assignError as any)?.response?.data?.message || (assignError as any)?.message;
-            toast.error(msg || 'Brands added, but failed to assign to RM/AM');
+          const backendDidAssignment = Boolean((res as any)?.meta?.assignment?.mappingOps);
+          if (backendDidAssignment) {
+            toast.success('Assigned to selected RM/AM');
+          } else {
+            toast.success('Brands added. Assignment is processing on server.');
           }
         }
 

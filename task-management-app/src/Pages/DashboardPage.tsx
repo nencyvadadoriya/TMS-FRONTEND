@@ -7488,13 +7488,20 @@ const DashboardPage = () => {
 
             const createdBrandsAll: any[] = [];
 
+            const assignmentMetaAgg = {
+                rmAmEmailCount: 0,
+                rmAmUsersFound: 0,
+                assignedBrandIdsOps: 0,
+                mappingOps: 0,
+            };
+
             for (let i = 0; i < batches.length; i += 1) {
 
                 const res = await brandService.bulkUpsertBrands(
 
                     { brands: batches[i] as any },
 
-                    { timeout: 180000 }
+                    { timeout: 300000 }
 
                 );
 
@@ -7510,9 +7517,17 @@ const DashboardPage = () => {
 
                 }
 
+                const meta = (res as any)?.meta?.assignment;
+                if (meta) {
+                    assignmentMetaAgg.rmAmEmailCount = Math.max(assignmentMetaAgg.rmAmEmailCount, Number(meta.rmAmEmailCount || 0));
+                    assignmentMetaAgg.rmAmUsersFound = Math.max(assignmentMetaAgg.rmAmUsersFound, Number(meta.rmAmUsersFound || 0));
+                    assignmentMetaAgg.assignedBrandIdsOps += Number(meta.assignedBrandIdsOps || 0);
+                    assignmentMetaAgg.mappingOps += Number(meta.mappingOps || 0);
+                }
+
             }
 
-            const res = { success: true, data: createdBrandsAll } as any;
+            const res = { success: true, data: createdBrandsAll, meta: { assignment: assignmentMetaAgg } } as any;
 
 
 
@@ -7520,233 +7535,28 @@ const DashboardPage = () => {
 
                 if (isSpeedEcomCompany && (bulkBrandForm.rmEmail || bulkBrandForm.amEmail)) {
 
-                    try {
-
-                        const createdBrands = (res.data || []) as any[];
-
-                        const normalizeEmailSafe = (v: unknown): string => stripDeletedEmailSuffix(v).trim().toLowerCase();
-
-
-
-                        const companyTaskTypesRes = await companyBrandTaskTypeService.getCompanyTaskTypes({ companyName });
-
-                        const allowedTaskTypeIds = (companyTaskTypesRes?.data?.taskTypes || [])
-
-                            .map((t: any) => (t?.id || t?._id || '').toString())
-
-                            .filter(Boolean);
-
-
-
-                        const resolveTaskTypeIdsByNames = (names: string[]): string[] => {
-
-                            const nameKeys = new Set((names || []).map((n) => normalizeText(n)).filter(Boolean));
-
-                            if (nameKeys.size === 0) return [];
-
-                            return (taskTypes || [])
-
-                                .map((t: any) => ({
-
-                                    id: (t?.id || t?._id || '').toString(),
-
-                                    nameKey: normalizeText(t?.name),
-
-                                }))
-
-                                .filter((t: any) => Boolean(t.id) && Boolean(t.nameKey) && nameKeys.has(t.nameKey))
-
-                                .map((t: any) => t.id);
-
-                        };
-
-
-
-                        // Backend requires non-empty taskTypeIds (ObjectIds). Prefer company allowed IDs.
-
-                        const defaultTaskTypeIds = allowedTaskTypeIds.length > 0
-
-                            ? allowedTaskTypeIds
-
-                            : resolveTaskTypeIdsByNames(SPEED_E_COM_FIXED_TASK_TYPES);
-
-
-
-                        if (defaultTaskTypeIds.length === 0) {
-
-                            toast.error('Brands created, but no task types were resolved for assignment');
-
-                            throw new Error('No taskTypeIds resolved for assignment');
-
-                        }
-
-
-
-                        let safeUsers = Array.isArray(companyUsers) ? companyUsers : [];
-
+                    const backendDidAssignment = Boolean((res as any)?.meta?.assignment?.mappingOps);
+                    if (backendDidAssignment) {
                         try {
-
-                            const usersRes = await assignService.getCompanyUsers({ companyName });
-
-                            if (usersRes?.success && Array.isArray(usersRes.data)) safeUsers = usersRes.data as any;
-
+                            const event = new CustomEvent('assignmentsApplied', {
+                                detail: {
+                                    companyName,
+                                    userId: '',
+                                    brandIds: (res.data || []).map((b: any) => (b?.id || b?._id || '').toString()).filter(Boolean),
+                                    taskTypeIds: [],
+                                },
+                            });
+                            window.dispatchEvent(event);
                         } catch {
-
-                            // ignore - fallback to state
-
+                            // ignore
                         }
 
-                        const findUserIdByEmail = (emailRaw: unknown): string => {
+                        toast.success('Assigned to selected RM/AM');
+                    }
 
-                            const target = normalizeEmailSafe(emailRaw);
+                    if (!backendDidAssignment) {
 
-                            if (!target) return '';
-
-                            const user = safeUsers.find((u: any) => normalizeEmailSafe(u?.email) === target);
-
-                            return (user?.id || user?._id || '').toString();
-
-                        };
-
-
-
-                        const mappings = createdBrands
-
-                            .map((b: any) => {
-
-                                const brandId = (b?.id || b?._id || '').toString();
-
-                                const brandName = (b?.name || b?.brandName || '').toString().trim();
-
-                                if (!brandId || !brandName) return null;
-
-                                return {
-
-                                    brandId,
-
-                                    brandName,
-
-                                    taskTypeIds: defaultTaskTypeIds,
-
-                                };
-
-                            })
-
-                            .filter(Boolean) as Array<{ brandId: string; brandName: string; taskTypeIds: string[] }>;
-
-
-
-                        if (mappings.length > 0) {
-
-                            const mappingBatches = chunk(mappings, 50);
-
-                            const tasks: Promise<any>[] = [];
-
-                            const assignedUserIds: string[] = [];
-
-
-
-                            const rmUserId = findUserIdByEmail(bulkBrandForm.rmEmail);
-
-                            if (bulkBrandForm.rmEmail && !rmUserId) {
-
-                                toast.error('Brands created, but selected RM was not found for this company');
-
-                            }
-
-                            if (rmUserId) {
-
-                                for (const mb of mappingBatches) {
-
-                                    tasks.push(assignService.bulkUpsertUserMappings(
-
-                                        { companyName, userId: rmUserId, mappings: mb, skipDerived: true },
-
-                                        { timeout: 180000 }
-
-                                    ));
-
-                                }
-
-                                assignedUserIds.push(rmUserId);
-
-                            }
-
-
-
-                            const amUserId = findUserIdByEmail(bulkBrandForm.amEmail);
-
-                            if (bulkBrandForm.amEmail && !amUserId) {
-
-                                toast.error('Brands created, but selected AM was not found for this company');
-
-                            }
-
-                            if (amUserId) {
-
-                                for (const mb of mappingBatches) {
-
-                                    tasks.push(assignService.bulkUpsertUserMappings(
-
-                                        { companyName, userId: amUserId, mappings: mb, skipDerived: true },
-
-                                        { timeout: 180000 }
-
-                                    ));
-
-                                }
-
-                                assignedUserIds.push(amUserId);
-
-                            }
-
-
-
-                            if (tasks.length > 0) {
-
-                                await Promise.all(tasks);
-
-                                try {
-
-                                    assignedUserIds.forEach((uid) => {
-
-                                        const event = new CustomEvent('assignmentsApplied', {
-
-                                            detail: {
-
-                                                companyName,
-
-                                                userId: uid,
-
-                                                brandIds: mappings.map((m) => m.brandId),
-
-                                                taskTypeIds: defaultTaskTypeIds,
-
-                                            },
-
-                                        });
-
-                                        window.dispatchEvent(event);
-
-                                    });
-
-                                } catch {
-
-                                    // ignore custom event failures
-
-                                }
-
-                            }
-
-                        }
-
-                    } catch (assignError) {
-
-                        console.error('Error assigning brands to RM/AM:', assignError);
-
-                        const msg = (assignError as any)?.response?.data?.message || (assignError as any)?.message;
-
-                        toast.error(msg || 'Brands created, but failed to assign to RM/AM');
+                        toast.success('Brands added. Assignment is processing on server.');
 
                     }
 
