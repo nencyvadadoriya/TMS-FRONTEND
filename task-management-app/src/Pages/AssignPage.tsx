@@ -963,21 +963,46 @@ const AssignPage = ({ currentUser }: Props) => {
 
     setIsCreatingBulkBrands(true);
     try {
-      const res = await brandService.bulkUpsertBrands({
-        brands: requestedBrands.map((row: any) => ({
-          name: row.brandName,
-          company: bulkBrandForm.company,
-          status: 'active',
-          ...(isSpeedEcomBulkMode
-            ? {
-                groupNumber: row.groupNumber,
-                groupName: row.brandName,
-                rmEmail: bulkBrandForm.rmEmail,
-                amEmail: bulkBrandForm.amEmail,
-              }
-            : {}),
-        }))
-      });
+      const chunkSize = 50;
+      const chunk = <T,>(list: T[], size: number): T[][] => {
+        const out: T[][] = [];
+        for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));
+        return out;
+      };
+
+      const brandPayload = requestedBrands.map((row: any) => ({
+        name: row.brandName,
+        company: bulkBrandForm.company,
+        status: 'active',
+        ...(isSpeedEcomBulkMode
+          ? {
+              groupNumber: row.groupNumber,
+              groupName: row.brandName,
+              rmEmail: bulkBrandForm.rmEmail,
+              amEmail: bulkBrandForm.amEmail,
+            }
+          : {}),
+      }));
+
+      const batches = chunk(brandPayload, chunkSize);
+      const createdBrandsAll: any[] = [];
+
+      for (let i = 0; i < batches.length; i += 1) {
+        const res = await brandService.bulkUpsertBrands(
+          { brands: batches[i] as any },
+          { timeout: 180000 }
+        );
+
+        if (!res?.success) {
+          throw new Error('Failed to add brands');
+        }
+
+        if (Array.isArray((res as any).data)) {
+          createdBrandsAll.push(...((res as any).data || []));
+        }
+      }
+
+      const res = { success: true, data: createdBrandsAll } as any;
 
       if (res?.success) {
         // If RM/AM are selected for Speed Ecom bulk mode, also assign created brands to those users
@@ -1062,19 +1087,26 @@ const AssignPage = ({ currentUser }: Props) => {
               const tasks: Promise<any>[] = [];
               const assignedUserIds: string[] = [];
 
+              const mappingBatches = chunk(mappings, 50);
+
               const rmUserId = findUserIdByEmail(bulkBrandForm.rmEmail);
               if (bulkBrandForm.rmEmail && !rmUserId) {
                 toast.error('Brands added, but selected RM was not found for this company');
               }
               if (rmUserId) {
-                tasks.push(
-                  assignService.bulkUpsertUserMappings({
-                    companyName: bulkBrandForm.company,
-                    userId: rmUserId,
-                    mappings,
-                    skipDerived: true,
-                  })
-                );
+                for (const mb of mappingBatches) {
+                  tasks.push(
+                    assignService.bulkUpsertUserMappings(
+                      {
+                        companyName: bulkBrandForm.company,
+                        userId: rmUserId,
+                        mappings: mb,
+                        skipDerived: true,
+                      },
+                      { timeout: 180000 }
+                    )
+                  );
+                }
                 assignedUserIds.push(rmUserId);
               }
 
@@ -1083,14 +1115,19 @@ const AssignPage = ({ currentUser }: Props) => {
                 toast.error('Brands added, but selected AM was not found for this company');
               }
               if (amUserId) {
-                tasks.push(
-                  assignService.bulkUpsertUserMappings({
-                    companyName: bulkBrandForm.company,
-                    userId: amUserId,
-                    mappings,
-                    skipDerived: true,
-                  })
-                );
+                for (const mb of mappingBatches) {
+                  tasks.push(
+                    assignService.bulkUpsertUserMappings(
+                      {
+                        companyName: bulkBrandForm.company,
+                        userId: amUserId,
+                        mappings: mb,
+                        skipDerived: true,
+                      },
+                      { timeout: 180000 }
+                    )
+                  );
+                }
                 assignedUserIds.push(amUserId);
               }
 

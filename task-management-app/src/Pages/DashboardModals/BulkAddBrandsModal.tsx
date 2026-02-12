@@ -47,6 +47,60 @@ const BulkAddBrandsModal = ({
 }: Props) => {
   if (!open) return null;
 
+  const parseGroupAndBrandColumns = (raw: string) => {
+    const lines = (raw || '').split(/\r?\n/);
+    const groupNumbers: string[] = [];
+    const brandNames: string[] = [];
+
+    for (let i = 0; i < lines.length; i += 1) {
+      const line = (lines[i] || '').replace(/\r/g, '').trim();
+      if (!line) continue;
+
+      let g = '';
+      let b = '';
+
+      if (line.includes('\t')) {
+        const parts = line.split(/\t+/);
+        g = (parts[0] || '').trim();
+        b = (parts.slice(1).join(' ') || '').trim();
+      } else if (line.includes('|')) {
+        const parts = line.split('|');
+        g = (parts[0] || '').trim();
+        b = (parts.slice(1).join('|') || '').trim();
+      } else if (line.includes(',')) {
+        const parts = line.split(',');
+        g = (parts[0] || '').trim();
+        b = (parts.slice(1).join(',') || '').trim();
+      } else {
+        const m = line.match(/^(\S+)\s+(.*)$/);
+        if (m) {
+          g = (m[1] || '').trim();
+          b = (m[2] || '').trim();
+        } else {
+          g = line;
+          b = '';
+        }
+      }
+
+      const gLower = g.toLowerCase();
+      const bLower = b.toLowerCase();
+      const looksLikeHeader =
+        i === 0 &&
+        (gLower.includes('group') || gLower.includes('number')) &&
+        (bLower.includes('brand') || bLower.includes('name'));
+      if (looksLikeHeader) continue;
+
+      if (!g && !b) continue;
+      if (g && !b) continue;
+      if (!g && b) continue;
+
+      groupNumbers.push(g);
+      brandNames.push(b);
+    }
+
+    return { groupNumbers, brandNames };
+  };
+
   const normalizedRole = (currentUserRole || '').toString().trim().toLowerCase();
   const canUseGroupFields =
     normalizedRole === 'admin' || normalizedRole === 'super_admin' || normalizedRole === 'abm' || normalizedRole === 'sbm';
@@ -145,37 +199,13 @@ const BulkAddBrandsModal = ({
                     value={bulkBrandForm.brandNames}
                     onChange={(e) => {
                       const raw = e.target.value;
-                      const lines = raw.split(/\r?\n/);
-                      const groupNumbers: string[] = [];
-                      const brandNames: string[] = [];
-
-                      lines.forEach((line) => {
-                        const trimmed = (line || '').trim();
-                        if (!trimmed) return;
-
-                        let parts: string[] = [];
-                        if (trimmed.includes('\t')) {
-                          parts = trimmed.split('\t');
-                        } else if (trimmed.includes('|')) {
-                          parts = trimmed.split('|');
-                        } else if (trimmed.includes(',')) {
-                          parts = trimmed.split(',');
-                        } else {
-                          parts = [trimmed];
-                        }
-
-                        const g = (parts[0] || '').trim();
-                        const b = (parts[1] || '').trim();
-                        if (!g && !b) return;
-                        groupNumbers.push(g);
-                        brandNames.push(b);
-                      });
+                      const parsed = parseGroupAndBrandColumns(raw);
 
                       setBulkBrandForm({
                         ...bulkBrandForm,
                         brandNames: raw,
-                        groupNumber: groupNumbers.join('\n'),
-                        groupName: brandNames.join('\n'),
+                        groupNumber: parsed.groupNumbers.join('\n'),
+                        groupName: parsed.brandNames.join('\n'),
                       });
                     }}
                   />

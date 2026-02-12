@@ -1,4 +1,5 @@
 import apiClient from './apiClient';
+import type { AxiosRequestConfig } from 'axios';
 
 export type AssignUserItem = {
   id: string;
@@ -92,8 +93,8 @@ export const assignService = {
       taskTypeIds: string[];
     }>;
     skipDerived?: boolean;
-  }): Promise<{ success: boolean; data: { matchedCount?: number; modifiedCount?: number; upsertedCount?: number } }> {
-    const response = await apiClient.post('/assign/mappings/bulk', payload);
+  }, config?: AxiosRequestConfig): Promise<{ success: boolean; data: { matchedCount?: number; modifiedCount?: number; upsertedCount?: number } }> {
+    const response = await apiClient.post('/assign/mappings/bulk', payload, config);
     return response.data;
   }
 };

@@ -1,5 +1,6 @@
 // services/Brand.services.ts
 import apiClient from './apiClient';
+import type { AxiosRequestConfig } from 'axios';
 import type { Brand, CreateBrandDto, UpdateBrandDto } from '../Types/Types';
 
 export const brandService = {
@@ -50,8 +51,11 @@ export const brandService = {
         return response.data;
     },
 
-    async bulkUpsertBrands(payload: { brands: Array<CreateBrandDto & { clientId?: string }> }): Promise<{ success: boolean; data: Brand[] }> {
-        const response = await apiClient.post('/brands/bulk', payload);
+    async bulkUpsertBrands(
+        payload: { brands: Array<CreateBrandDto & { clientId?: string }> },
+        config?: AxiosRequestConfig
+    ): Promise<{ success: boolean; data: Brand[] }> {
+        const response = await apiClient.post('/brands/bulk', payload, config);
         return response.data;
     },
 

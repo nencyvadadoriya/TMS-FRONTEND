@@ -20,6 +20,8 @@ import {
 
     Clock,
 
+    Bell,
+
     Trash2,
 
     Grid,
@@ -134,6 +136,8 @@ import type {
 
 import { taskService } from '../Services/Task.services';
 
+import apiClient from '../Services/apiClient';
+
 import { authService } from '../Services/User.Services';
 
 import { brandService } from '../Services/Brand.service';
@@ -153,6 +157,36 @@ import { routepath } from '../Routes/route';
 import { useAppDispatch, useAppSelector } from '../Store/hooks';
 
 import { fetchTasks as fetchTasksThunk, selectAllTasks, taskAdded, taskRemoved, taskUpserted, tasksAddedMany, tasksReset } from '../Store/tasksSlice';
+
+
+
+type TaskReminderClientItem = {
+
+    id: string;
+
+    taskId: string;
+
+    fromEmail: string;
+
+    message: string;
+
+    createdAt?: string | Date | null;
+
+    task?: {
+
+        title?: string;
+
+        dueDate?: string | Date | null;
+
+        status?: string;
+
+        companyName?: string;
+
+        brand?: string;
+
+    };
+
+};
 
 
 
@@ -370,6 +404,12 @@ const DashboardPage = () => {
 
     const [apiBrands, setApiBrands] = useState<Brand[]>([]);
 
+    const [sendingReminderByTaskId, setSendingReminderByTaskId] = useState<Record<string, boolean>>({});
+
+    const [unreadReminders, setUnreadReminders] = useState<TaskReminderClientItem[]>([]);
+
+    const [activeReminderId, setActiveReminderId] = useState<string>('');
+
     const SUPPORTING_FETCH_TTL_MS = 5 * 60_000;
 
     const MD_IMPEX_COMPANY_NAME = 'MD Impex';
@@ -472,6 +512,98 @@ const DashboardPage = () => {
     const USER_MAPPINGS_TTL_MS = 60_000;
 
     const BRANDS_AUTO_REFRESH_MS = 15_000;
+
+
+
+    const fetchMyReminders = useCallback(async () => {
+
+        try {
+
+            const res = await apiClient.get('/reminder/my');
+
+            const list = Array.isArray(res?.data?.data) ? (res.data.data as any[]) : [];
+
+            const normalized: TaskReminderClientItem[] = list
+
+                .map((r: any) => ({
+
+                    id: String(r?.id || r?._id || '').trim(),
+
+                    taskId: String(r?.taskId || '').trim(),
+
+                    fromEmail: String(r?.fromEmail || '').trim(),
+
+                    message: String(r?.message || '').trim(),
+
+                    createdAt: r?.createdAt || null,
+
+                    task: r?.task || {}
+
+                }))
+
+                .filter((r) => Boolean(r.id));
+
+            setUnreadReminders(normalized);
+
+            setActiveReminderId((prev) => {
+
+                if (prev && normalized.some((x) => x.id === prev)) return prev;
+
+                return normalized[0]?.id || '';
+
+            });
+
+        } catch {
+
+            // ignore
+
+        }
+
+    }, []);
+
+
+
+    const acknowledgeReminder = useCallback(async (reminderId: string) => {
+
+        const id = String(reminderId || '').trim();
+
+        if (!id) return;
+
+        try {
+
+            await apiClient.patch(`/reminder/${id}/seen`);
+
+        } catch {
+
+            // ignore
+
+        }
+
+        setUnreadReminders((prev) => prev.filter((r) => r.id !== id));
+
+        setActiveReminderId((prev) => {
+
+            if (prev !== id) return prev;
+
+            const remaining = unreadReminders.filter((r) => r.id !== id);
+
+            return remaining[0]?.id || '';
+
+        });
+
+    }, [unreadReminders]);
+
+
+
+    const activeReminder = useMemo(() => {
+
+        const id = String(activeReminderId || '').trim();
+
+        if (!id) return null;
+
+        return (unreadReminders || []).find((r) => r.id === id) || null;
+
+    }, [activeReminderId, unreadReminders]);
 
 
 
@@ -887,6 +1019,9 @@ const DashboardPage = () => {
 
         if (!socketUrl) return;
 
+        // initial pull (covers refresh)
+        void fetchMyReminders();
+
         try {
 
             socketRef.current?.disconnect();
@@ -1235,7 +1370,7 @@ const DashboardPage = () => {
 
         };
 
-    }, [currentUser, dispatch, isAuthReady]);
+    }, [currentUser, dispatch, fetchMyReminders, isAuthReady]);
 
 
 
@@ -1306,6 +1441,60 @@ const DashboardPage = () => {
         return r === 'sbm';
 
     }, [currentUser]);
+
+
+
+    const isAdminLike = useMemo(() => {
+
+        const role = String((currentUser as any)?.role || '').trim().toLowerCase();
+
+        return role === 'admin' || role === 'super_admin';
+
+    }, [currentUser]);
+
+
+
+    const handleSendReminder = useCallback(async (task: Task) => {
+
+        if (!isAdminLike) return;
+
+        const taskId = String((task as any)?.id || (task as any)?._id || '').trim();
+
+        if (!taskId) return;
+
+        if (sendingReminderByTaskId[taskId]) return;
+
+        const messageRaw = window.prompt('Reminder message (optional)');
+
+        const message = (messageRaw == null ? '' : String(messageRaw)).trim();
+
+        setSendingReminderByTaskId((prev) => ({ ...prev, [taskId]: true }));
+
+        try {
+
+            const res = await apiClient.post('/reminder/send', { taskId, message });
+
+            if (res?.data?.success) {
+
+                toast.success(res?.data?.message || 'Reminder sent');
+
+            } else {
+
+                toast.error(res?.data?.message || 'Failed to send reminder');
+
+            }
+
+        } catch (e: any) {
+
+            toast.error(e?.response?.data?.message || e?.message || 'Failed to send reminder');
+
+        } finally {
+
+            setSendingReminderByTaskId((prev) => ({ ...prev, [taskId]: false }));
+
+        }
+
+    }, [isAdminLike, sendingReminderByTaskId]);
 
 
 
@@ -7257,35 +7446,73 @@ const DashboardPage = () => {
 
         try {
 
-            const res = await brandService.bulkUpsertBrands({
+            const chunkSize = 50;
 
-                brands: requestedBrands.map((row: any) => ({
+            const chunk = <T,>(list: T[], size: number): T[][] => {
 
-                    name: row.brandName,
+                const out: T[][] = [];
 
-                    company: companyName,
+                for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));
 
-                    status: 'active',
+                return out;
 
-                    ...(isSpeedEcomCompany
+            };
 
-                        ? {
+            const brandPayload = requestedBrands.map((row: any) => ({
 
-                            groupNumber: row.groupNumber,
+                name: row.brandName,
 
-                            groupName: row.brandName,
+                company: companyName,
 
-                            rmEmail: bulkBrandForm.rmEmail,
+                status: 'active',
 
-                            amEmail: bulkBrandForm.amEmail,
+                ...(isSpeedEcomCompany
 
-                        }
+                    ? {
 
-                        : {}),
+                        groupNumber: row.groupNumber,
 
-                }))
+                        groupName: row.brandName,
 
-            });
+                        rmEmail: bulkBrandForm.rmEmail,
+
+                        amEmail: bulkBrandForm.amEmail,
+
+                    }
+
+                    : {}),
+
+            }));
+
+            const batches = chunk(brandPayload, chunkSize);
+
+            const createdBrandsAll: any[] = [];
+
+            for (let i = 0; i < batches.length; i += 1) {
+
+                const res = await brandService.bulkUpsertBrands(
+
+                    { brands: batches[i] as any },
+
+                    { timeout: 180000 }
+
+                );
+
+                if (!res?.success) {
+
+                    throw new Error('Failed to add brands');
+
+                }
+
+                if (Array.isArray((res as any).data)) {
+
+                    createdBrandsAll.push(...((res as any).data || []));
+
+                }
+
+            }
+
+            const res = { success: true, data: createdBrandsAll } as any;
 
 
 
@@ -7411,6 +7638,8 @@ const DashboardPage = () => {
 
                         if (mappings.length > 0) {
 
+                            const mappingBatches = chunk(mappings, 50);
+
                             const tasks: Promise<any>[] = [];
 
                             const assignedUserIds: string[] = [];
@@ -7427,7 +7656,17 @@ const DashboardPage = () => {
 
                             if (rmUserId) {
 
-                                tasks.push(assignService.bulkUpsertUserMappings({ companyName, userId: rmUserId, mappings }));
+                                for (const mb of mappingBatches) {
+
+                                    tasks.push(assignService.bulkUpsertUserMappings(
+
+                                        { companyName, userId: rmUserId, mappings: mb, skipDerived: true },
+
+                                        { timeout: 180000 }
+
+                                    ));
+
+                                }
 
                                 assignedUserIds.push(rmUserId);
 
@@ -7445,7 +7684,17 @@ const DashboardPage = () => {
 
                             if (amUserId) {
 
-                                tasks.push(assignService.bulkUpsertUserMappings({ companyName, userId: amUserId, mappings }));
+                                for (const mb of mappingBatches) {
+
+                                    tasks.push(assignService.bulkUpsertUserMappings(
+
+                                        { companyName, userId: amUserId, mappings: mb, skipDerived: true },
+
+                                        { timeout: 180000 }
+
+                                    ));
+
+                                }
 
                                 assignedUserIds.push(amUserId);
 
@@ -9770,6 +10019,88 @@ const DashboardPage = () => {
 
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex">
 
+            {activeReminder && (
+
+                <div className="fixed top-4 right-4 z-[9999] w-[92vw] max-w-md">
+
+                    <div className="bg-white border border-blue-200 shadow-xl rounded-2xl p-4">
+
+                        <div className="flex items-start justify-between gap-3">
+
+                            <div className="flex items-start gap-3">
+
+                                <div className="mt-0.5 h-9 w-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-700">
+
+                                    <Bell className="h-5 w-5" />
+
+                                </div>
+
+                                <div>
+
+                                    <div className="text-sm font-semibold text-gray-900">Task Reminder</div>
+
+                                    <div className="text-xs text-gray-500">From: {activeReminder.fromEmail || '—'}</div>
+
+                                </div>
+
+                            </div>
+
+                            <button
+
+                                type="button"
+
+                                onClick={() => acknowledgeReminder(activeReminder.id)}
+
+                                className="text-xs text-gray-500 hover:text-gray-700"
+
+                            >
+
+                                Accept
+
+                            </button>
+
+                        </div>
+
+                        <div className="mt-3 text-sm text-gray-800">
+
+                            {activeReminder.message || activeReminder.task?.title || 'Reminder'}
+
+                        </div>
+
+                        {activeReminder.task?.title && (
+
+                            <div className="mt-2 text-xs text-gray-500">
+
+                                Task: {activeReminder.task.title}
+
+                            </div>
+
+                        )}
+
+                        <div className="mt-4 flex items-center justify-end gap-2">
+
+                            <button
+
+                                type="button"
+
+                                onClick={() => acknowledgeReminder(activeReminder.id)}
+
+                                className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+
+                            >
+
+                                Accept
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            )}
+
             <Sidebar
 
                 sidebarOpen={sidebarOpen}
@@ -10636,6 +10967,34 @@ const DashboardPage = () => {
                                                             >
 
                                                                 Delete
+
+                                                            </button>
+
+                                                        )}
+
+                                                        {isAdminLike && (
+
+                                                            <button
+
+                                                                type="button"
+
+                                                                onClick={() => handleSendReminder(task)}
+
+                                                                disabled={Boolean(sendingReminderByTaskId[String(task.id || '')])}
+
+                                                                title="Send reminder"
+
+                                                                className={`px-3 py-2 rounded-lg border transition-colors ${sendingReminderByTaskId[String(task.id || '')]
+
+                                                                    ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed'
+
+                                                                    : 'bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100'
+
+                                                                    }`}
+
+                                                            >
+
+                                                                <Bell className="h-4 w-4" />
 
                                                             </button>
 
