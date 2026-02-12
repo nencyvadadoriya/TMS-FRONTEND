@@ -24,7 +24,6 @@ type Props = {
 const normalizeText = (v: unknown) => (v == null ? '' : String(v)).trim();
 const normalizeCompanyKey = (v: unknown) => normalizeText(v).toLowerCase().replace(/\s+/g, '');
 
-const SPEED_E_COM_FIXED_TASK_TYPES = ['Meeting Pending', 'CP Pending', 'Recharge Negative'];
 const SPEED_E_COM_COMPANY_KEY = 'speedecom';
 
 const AssignPage = ({ currentUser }: Props) => {
