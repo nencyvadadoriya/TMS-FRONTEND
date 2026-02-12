@@ -28,11 +28,9 @@ interface CalendarViewProps {
   isSidebarCollapsed?: boolean;
 }
 
-type AssignmentFilterMode = 'all' | 'assigned_to_me' | 'assigned_by_me';
-
 type StatusFilterMode = 'all' | 'pending' | 'completed' | 'overdue';
 
-type PriorityFilterMode = 'all' | 'high' | 'medium' | 'low' | 'urgent';
+type PriorityFilterMode = 'all' | 'high' | 'medium' | 'low';
 
 const CalendarView: React.FC<CalendarViewProps> = (props) => {
   const navigate = useNavigate();
@@ -166,7 +164,6 @@ const CalendarView: React.FC<CalendarViewProps> = (props) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [assignmentFilter, setAssignmentFilter] = useState<AssignmentFilterMode>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilterMode>('all');
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilterMode>('all');
 
@@ -416,20 +413,10 @@ const CalendarView: React.FC<CalendarViewProps> = (props) => {
         const assignedBy = getTaskEmail((t as any)?.assignedBy);
         return assignedTo === currentUserEmail || assignedBy === currentUserEmail;
       });
-
-      if (assignmentFilter !== 'all') {
-        if (assignmentFilter === 'assigned_to_me') {
-          base = base.filter((t) => getTaskEmail((t as any)?.assignedTo) === currentUserEmail);
-        } else {
-          base = base.filter((t) => getTaskEmail((t as any)?.assignedBy) === currentUserEmail);
-        }
-      }
     }
 
-    if (statusFilter === 'all') return base;
-
     if (statusFilter === 'overdue') {
-      return base.filter((t) => {
+      base = base.filter((t) => {
         const status = String((t as any)?.status || '').toLowerCase();
         if (status === 'completed') return false;
         return isOverdue(String((t as any)?.dueDate || ''), status);
@@ -437,7 +424,7 @@ const CalendarView: React.FC<CalendarViewProps> = (props) => {
     }
 
     if (statusFilter === 'completed') {
-      return base.filter((t) => String((t as any)?.status || '').toLowerCase() === 'completed');
+      base = base.filter((t) => String((t as any)?.status || '').toLowerCase() === 'completed');
     }
 
     if (statusFilter === 'pending') {
@@ -449,7 +436,7 @@ const CalendarView: React.FC<CalendarViewProps> = (props) => {
     }
 
     return base;
-  }, [assignmentFilter, currentUserEmail, getTaskEmail, isOverdue, mergedTasks, priorityFilter, statusFilter]);
+  }, [currentUserEmail, getTaskEmail, isOverdue, mergedTasks, priorityFilter, statusFilter]);
 
   const handleDismissReminder = useCallback((taskId: string) => {
     setDismissedReminderTaskIds((prev) => ({ ...prev, [taskId]: true }));
@@ -750,16 +737,6 @@ const CalendarView: React.FC<CalendarViewProps> = (props) => {
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Filter:</span>
-            <select
-              value={assignmentFilter}
-              onChange={(e) => setAssignmentFilter(e.target.value as AssignmentFilterMode)}
-              className="h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-            >
-              <option value="all">All</option>
-              <option value="assigned_to_me">Assigned to me</option>
-              <option value="assigned_by_me">Assigned by me</option>
-            </select>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as StatusFilterMode)}
@@ -779,7 +756,6 @@ const CalendarView: React.FC<CalendarViewProps> = (props) => {
               <option value="high">High</option>
               <option value="medium">Medium</option>
               <option value="low">Low</option>
-              <option value="urgent">Urgent</option>
             </select>
           </div>
           <div className="text-sm text-gray-600">
