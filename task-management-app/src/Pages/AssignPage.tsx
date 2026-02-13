@@ -623,17 +623,24 @@ const AssignPage = ({ currentUser }: Props) => {
   }, [isAdminUser, loadSbms, sbmCompanyIds, selectedSbmId]);
 
   const brandOptions = useMemo(() => {
-    return (brands || [])
+    const raw = (brands || [])
       .map((b: any) => {
         const id = String(b?._id || b?.id || '').trim();
-        const baseName = String(b?.name || '').trim();
+        const name = String(b?.name || '').trim();
         const groupNumber = String((b as any)?.groupNumber || '').trim();
-        const label = groupNumber ? `${groupNumber} - ${baseName}` : baseName;
+        const label = groupNumber ? `${groupNumber} - ${name}` : name;
         return { id, name: label };
       })
       .filter((b) => Boolean(b.id) && Boolean(b.name))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [brands]);
+
+    if (!selectedUserId) return raw;
+
+    if (loadingMappings) return raw;
+
+    const allowed = initialAssignedBrandIds;
+    return raw.filter((b) => allowed.has(b.id));
+  }, [brands, initialAssignedBrandIds, loadingMappings, selectedUserId]);
 
   const filteredBrandOptions = useMemo(() => {
     const q = normalizeText(brandSearch).toLowerCase();
