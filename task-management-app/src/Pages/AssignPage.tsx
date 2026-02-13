@@ -505,6 +505,14 @@ const AssignPage = ({ currentUser }: Props) => {
     });
   }, []);
 
+  const resolveErrorMessage = useCallback((e: any, fallback: string) => {
+    const msg = String(e?.response?.data?.message || e?.message || '').trim();
+    const code = String(e?.code || '').trim();
+    const isTimeout = code === 'ECONNABORTED' || /timeout/i.test(msg);
+    if (isTimeout) return fallback;
+    return msg || fallback;
+  }, []);
+
   const toggleSbmCompany = useCallback((companyId: string) => {
     const id = normalizeText(companyId);
     if (!id) return;
@@ -706,30 +714,27 @@ const AssignPage = ({ currentUser }: Props) => {
     applyInFlightRef.current = true;
     setIsApplying(true);
     try {
-      await Promise.all([
-        ...toAssign.map(async (brandId) => {
+      const mappings = [
+        ...toAssign.map((brandId) => {
           const brand = (brands || []).find((bb: any) => String(bb?._id || bb?.id || '').trim() === brandId);
           const brandName = String((brand as any)?.name || '').trim();
-          await assignService.upsertUserMapping({
-            companyName: company,
-            userId: uid,
-            brandId,
-            brandName,
-            taskTypeIds: selectedTaskIds
-          });
+          return { brandId, brandName, taskTypeIds: selectedTaskIds };
         }),
-        ...toRemove.map(async (brandId) => {
+        ...toRemove.map((brandId) => {
           const brand = (brands || []).find((bb: any) => String(bb?._id || bb?.id || '').trim() === brandId);
           const brandName = String((brand as any)?.name || '').trim();
-          await assignService.upsertUserMapping({
-            companyName: company,
-            userId: uid,
-            brandId,
-            brandName,
-            taskTypeIds: []
-          });
+          return { brandId, brandName, taskTypeIds: [] as string[] };
         })
-      ]);
+      ];
+
+      await assignService.bulkUpsertUserMappings(
+        {
+          companyName: company,
+          userId: uid,
+          mappings,
+        },
+        { timeout: 300000 }
+      );
 
       toast.success('Applied');
       await loadMappings(company, uid);
@@ -748,12 +753,12 @@ const AssignPage = ({ currentUser }: Props) => {
         // ignore
       }
     } catch (e: any) {
-      toast.error(e?.response?.data?.message || e?.message || 'Failed to apply');
+      toast.error(resolveErrorMessage(e, 'Request timed out. Please try again.'));
     } finally {
       setIsApplying(false);
       applyInFlightRef.current = false;
     }
-  }, [brands, initialAssignedBrandIds, loadMappings, pendingTaskTypeIds, selectedBrandIds, selectedCompany, selectedUserId]);
+  }, [brands, initialAssignedBrandIds, loadMappings, pendingTaskTypeIds, resolveErrorMessage, selectedBrandIds, selectedCompany, selectedUserId]);
 
   const handleAddCompanyClick = useCallback(async () => {
     if (canBulkAddCompanies) {
@@ -950,7 +955,10 @@ const AssignPage = ({ currentUser }: Props) => {
 
           const nameMatches = nameKey && bNameKey === nameKey;
           const groupMatches = groupKey && bGroupKey === groupKey;
-          return nameMatches || groupMatches;
+          if (isSpeedEcomBulkMode) {
+            return groupMatches;
+          }
+          return nameMatches;
         });
 
         if (match) {
@@ -1057,12 +1065,12 @@ const AssignPage = ({ currentUser }: Props) => {
       } else {
         toast.error('Failed to add brands');
       }
-    } catch {
-      toast.error('Failed to add brands');
+    } catch (e: any) {
+      toast.error(resolveErrorMessage(e, 'Request timed out. Please try again.'));
     } finally {
       setIsCreatingBulkBrands(false);
     }
-  }, [brands, bulkBrandForm.amEmail, bulkBrandForm.brandNames, bulkBrandForm.company, bulkBrandForm.groupName, bulkBrandForm.groupNumber, bulkBrandForm.rmEmail, canBulkAddBrands, canUseBulkBrandGroupFields, companyAllowedTaskTypeIds, companyUsers, loadBrandsForCompany, normalizeCompanyKey, selectedCompany]);
+  }, [brands, bulkBrandForm.amEmail, bulkBrandForm.brandNames, bulkBrandForm.company, bulkBrandForm.groupName, bulkBrandForm.groupNumber, bulkBrandForm.rmEmail, canBulkAddBrands, canUseBulkBrandGroupFields, companyAllowedTaskTypeIds, companyUsers, loadBrandsForCompany, normalizeCompanyKey, resolveErrorMessage, selectedCompany]);
 
   const handleSubmitBulkTaskTypes = useCallback(async () => {
     if (!canBulkAddTaskTypes) {
@@ -1157,12 +1165,12 @@ const AssignPage = ({ currentUser }: Props) => {
       } else {
         toast.error('Failed to create brand');
       }
-    } catch {
-      toast.error('Failed to create brand');
+    } catch (e: any) {
+      toast.error(resolveErrorMessage(e, 'Request timed out. Please try again.'));
     } finally {
       setIsCreatingManagerBrand(false);
     }
-  }, [brands, loadBrandsForCompany, managerBrandName, normalizeCompanyKey, selectedCompany]);
+  }, [brands, loadBrandsForCompany, managerBrandName, normalizeCompanyKey, resolveErrorMessage, selectedCompany]);
 
   if (!canOpen) {
     return (

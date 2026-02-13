@@ -104,6 +104,11 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
     }, [currentUser, hasAccess]);
     const canViewBrandsCompaniesReport = useMemo(() => hasAccess('brands_companies_report'), [hasAccess]);
 
+    const canViewBrandHistory = useMemo(() => {
+        if (canViewBrandsCompaniesReport) return true;
+        return role === 'sbm';
+    }, [canViewBrandsCompaniesReport, role]);
+
     useEffect(() => {
         if (!currentUser) return;
         const name = String((currentUser as any)?.name || '').trim().toLowerCase();
@@ -912,25 +917,44 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
     }, [canDeleteBrand, role, filters, currentPage, brandsPerPage]);
 
     const fetchBrandHistoryFeed = useCallback(async () => {
-        if (!canViewBrandsCompaniesReport) {
+        if (!canViewBrandHistory) {
             setBrandHistoryItems([]);
             setBrandHistoryTotal(0);
             return;
         }
         try {
             const res: any = await brandService.getBrandHistoryFeed({
-                includeDeleted: false,
+                includeDeleted: true,
                 page: brandHistoryPage,
                 limit: brandHistoryLimit,
             });
-            const items = Array.isArray(res?.data) ? res.data : [];
+
+            const items =
+                (Array.isArray(res?.data) ? res.data : null) ||
+                (Array.isArray(res?.data?.data) ? res.data.data : null) ||
+                (Array.isArray(res?.result) ? res.result : null) ||
+                (Array.isArray(res?.result?.data) ? res.result.data : null) ||
+                (Array.isArray(res?.items) ? res.items : null) ||
+                (Array.isArray(res?.data?.items) ? res.data.items : null) ||
+                [];
+
+            const totalRaw =
+                res?.total ??
+                res?.data?.total ??
+                res?.result?.total ??
+                res?.data?.pagination?.total ??
+                res?.pagination?.total ??
+                items.length;
+
             setBrandHistoryItems(items);
-            setBrandHistoryTotal(Number(res?.total || items.length || 0));
-        } catch (e) {
+            setBrandHistoryTotal(Number(totalRaw || 0));
+        } catch (e: any) {
+            console.error('Error fetching brand history feed:', e);
+            toast.error(e?.response?.data?.message || e?.message || 'Failed to load brand history');
             setBrandHistoryItems([]);
             setBrandHistoryTotal(0);
         }
-    }, [canViewBrandsCompaniesReport, brandHistoryPage, brandHistoryLimit]);
+    }, [canViewBrandHistory, brandHistoryPage, brandHistoryLimit]);
 
     useEffect(() => {
         fetchBrandHistoryFeed();
@@ -2373,7 +2397,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                         )}
 
                         {/* Admin Reports Section - Moved after brands */}
-                        {canViewBrandsCompaniesReport && !showDeletedBrands && (
+                        {canViewBrandsCompaniesReport && (
                             <div className="mt-8">
                                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                                     <div className="flex items-center justify-between mb-4">
@@ -2747,6 +2771,88 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                                 Next
                                             </button>
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {!canViewBrandsCompaniesReport && canViewBrandHistory && (
+                            <div className="mt-8">
+                                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div>
+                                            <h2 className="text-xl font-bold text-gray-900">Brand History</h2>
+                                            <p className="text-sm text-gray-600 mt-1">Recent brand activity</p>
+                                        </div>
+                                        <span className="text-sm text-gray-500">{brandHistoryTotal} activities</span>
+                                    </div>
+
+                                    {brandHistoryItems.length === 0 ? (
+                                        <div className="text-sm text-gray-500">No brand activity found.</div>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {brandHistoryItems.map((h: any, idx: number) => {
+                                                const action = String((h as any)?.action || '').toLowerCase();
+                                                const actor = (h?.userName || h?.userEmail || 'Unknown').toString();
+                                                const when = (h as any)?.timestamp;
+                                                const field = (h as any)?.field;
+                                                const oldValue = (h as any)?.oldValue;
+                                                const newValue = (h as any)?.newValue;
+
+                                                return (
+                                                    <div key={`${String(h?._brandId || '')}-${idx}`} className="rounded-lg border border-gray-100 p-3">
+                                                        <div className="flex items-start justify-between gap-3">
+                                                            <div className="flex items-start gap-3 min-w-0">
+                                                                <div className="mt-0.5">{getHistoryIcon(action)}</div>
+                                                                <div className="min-w-0">
+                                                                    <div className="text-sm font-medium text-gray-900 truncate">
+                                                                        {(h?._brandGroupNumber ? `${h._brandGroupNumber} - ` : '')}{h?._brandName || 'Brand'}{h?._brandCompany ? ` (${h._brandCompany})` : ''}
+                                                                    </div>
+                                                                    <div className="text-xs text-gray-600 mt-0.5">
+                                                                        {(h?.message || '').toString() || action}
+                                                                    </div>
+                                                                    {field !== undefined && (oldValue !== undefined || newValue !== undefined) && (
+                                                                        <div className="text-xs text-gray-500 mt-1">
+                                                                            <span className="font-medium">{String(field)}:</span>{' '}
+                                                                            <span className="text-gray-700">{formatHistoryValue(oldValue)}</span>
+                                                                            <span className="mx-1">→</span>
+                                                                            <span className="text-gray-700">{formatHistoryValue(newValue)}</span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="text-right shrink-0">
+                                                                <div className="text-xs text-gray-600">{actor}</div>
+                                                                <div className="text-xs text-gray-500 mt-0.5">{formatDateTime(when)}</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+
+                                    <div className="mt-4 flex items-center justify-end gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setBrandHistoryPage((p) => Math.max(1, p - 1))}
+                                            disabled={brandHistoryPage <= 1}
+                                            className="px-3 py-1.5 text-sm rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            Previous
+                                        </button>
+                                        <span className="text-sm text-gray-600">
+                                            Page {brandHistoryPage} of {Math.max(1, Math.ceil(brandHistoryTotal / brandHistoryLimit))}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setBrandHistoryPage((p) => p + 1)}
+                                            disabled={brandHistoryPage >= Math.max(1, Math.ceil(brandHistoryTotal / brandHistoryLimit))}
+                                            className="px-3 py-1.5 text-sm rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            Next
+                                        </button>
                                     </div>
                                 </div>
                             </div>

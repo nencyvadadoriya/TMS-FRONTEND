@@ -10,7 +10,7 @@ const resolvedBaseUrl =
 
 const apiClient = axios.create({
     baseURL: resolvedBaseUrl,
-    timeout: 30000,
+    timeout: 300000,
     headers: {
         'Content-Type': 'application/json',
     },
@@ -34,6 +34,12 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
     (response) => response,
     (error) => {
+        const msg = String(error?.message || '').trim();
+        const code = String(error?.code || '').trim();
+        const isTimeout = code === 'ECONNABORTED' || /timeout/i.test(msg);
+        if (isTimeout) {
+            error.message = 'Request timed out. Please try again.';
+        }
         if (error.response?.status === 401) {
             // Handle unauthorized access
             localStorage.removeItem('token');
