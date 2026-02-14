@@ -1235,7 +1235,9 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
             list = list.filter((b) => {
                 const name = (b.name || '').toLowerCase();
                 const company = (b.company || '').toLowerCase();
-                return name.includes(q) || company.includes(q);
+                const groupNumber = String((b as any)?.groupNumber || '').trim().toLowerCase();
+                const groupName = String((b as any)?.groupName || '').trim().toLowerCase();
+                return name.includes(q) || company.includes(q) || groupNumber.includes(q) || groupName.includes(q);
             });
         }
 

@@ -37,35 +37,78 @@ export default function SpeedEcomReassignPage({ task, currentUser, users, onSubm
     return normalizeText(email);
   }, [normalizeText, task]);
 
-  const assignedByRoleKey = useMemo(() => {
-    const directRole = normalizeRoleKey((task as any)?.assignedByUser?.role || (task as any)?.assignedBy?.role);
-    if (directRole) return directRole;
-    if (!assignedByEmail) return '';
-    const found = (users || []).find((u: any) => normalizeText(u?.email) === assignedByEmail);
-    return normalizeRoleKey(found?.role);
-  }, [assignedByEmail, normalizeRoleKey, normalizeText, task, users]);
-
   const myEmail = useMemo(() => normalizeText((currentUser as any)?.email), [currentUser, normalizeText]);
   const myRoleKey = useMemo(() => normalizeRoleKey((currentUser as any)?.role), [currentUser, normalizeRoleKey]);
+  const myId = useMemo(() => String((currentUser as any)?.id || (currentUser as any)?._id || '').trim(), [currentUser]);
+  const myManagerId = useMemo(() => String((currentUser as any)?.managerId || '').trim(), [currentUser]);
+
+  const allowedPairIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (myId) ids.add(myId);
+    const list = Array.isArray(users) ? users : [];
+
+    if (myRoleKey === 'rm') {
+      list.forEach((u: any) => {
+        const uid = String(u?.id || u?._id || '').trim();
+        const urole = normalizeRoleKey(u?.role);
+        const mgr = String(u?.managerId || '').trim();
+        if (uid && urole === 'am' && mgr && myId && mgr === myId) ids.add(uid);
+      });
+    }
+
+    if (myRoleKey === 'am') {
+      if (myManagerId) ids.add(myManagerId);
+    }
+
+    return ids;
+  }, [myId, myManagerId, myRoleKey, normalizeRoleKey, users]);
 
   const canReassign = useMemo(() => {
     if (!task) return false;
+    const taskStatusKey = String((task as any)?.status || '').trim().toLowerCase();
+    const isTaskCompleted = taskStatusKey === 'completed';
+    if (!isTaskCompleted) return false;
+
     const isCreator = Boolean(myEmail && assignedByEmail && myEmail === assignedByEmail);
-    const isAmForRm = myRoleKey === 'am' && assignedByRoleKey === 'rm';
-    return isCreator || isAmForRm;
-  }, [assignedByEmail, assignedByRoleKey, myEmail, myRoleKey, task]);
+    if (isCreator) return true;
+
+    if (myRoleKey !== 'rm' && myRoleKey !== 'am') return false;
+
+    const assignedById = String((task as any)?.assignedByUser?.id || (task as any)?.assignedByUser?._id || '').trim();
+    if (assignedById && allowedPairIds.has(assignedById)) return true;
+
+    if (!assignedByEmail) return false;
+    const found = (users || []).find((u: any) => normalizeText(u?.email) === assignedByEmail);
+    const foundId = String((found as any)?.id || (found as any)?._id || '').trim();
+    return Boolean(foundId && allowedPairIds.has(foundId));
+  }, [allowedPairIds, assignedByEmail, myEmail, myRoleKey, normalizeText, task, users]);
 
   const availableUsers = useMemo(() => {
     const SPEED_ECOM_KEY = 'speedecom';
     const list = Array.isArray(users) ? users : [];
     const filtered = list.filter((u: any) => normalizeCompanyKey(u?.companyName || u?.company) === SPEED_ECOM_KEY);
-    return filtered
-      .filter((u: any) => {
-        const uemail = normalizeText(u?.email);
-        return uemail && uemail === currentAssigneeEmail;
-      })
-      .sort((a: any, b: any) => String(a?.email || '').localeCompare(String(b?.email || '')));
-  }, [normalizeCompanyKey, users, currentAssigneeEmail, normalizeText]);
+    const restricted = filtered.filter((u: any) => {
+      const uid = String(u?.id || u?._id || '').trim();
+      const urole = normalizeRoleKey(u?.role);
+      if (myRoleKey === 'sbm') return true;
+      if (myRoleKey === 'rm' || myRoleKey === 'am') {
+        if (urole === 'sbm' || urole === 'admin' || urole === 'super_admin') return true;
+        return Boolean(uid && allowedPairIds.has(uid));
+      }
+      return false;
+    });
+
+    // Always include current assignee as a safe fallback
+    const withAssignee = (() => {
+      if (!currentAssigneeEmail) return restricted;
+      const found = filtered.find((u: any) => normalizeText(u?.email) === currentAssigneeEmail);
+      if (!found) return restricted;
+      const already = restricted.some((u: any) => normalizeText(u?.email) === currentAssigneeEmail);
+      return already ? restricted : [...restricted, found];
+    })();
+
+    return withAssignee.sort((a: any, b: any) => String(a?.email || '').localeCompare(String(b?.email || '')));
+  }, [allowedPairIds, currentAssigneeEmail, myRoleKey, normalizeCompanyKey, normalizeRoleKey, normalizeText, users]);
 
   const initialDueDate = useMemo(() => {
     const raw = (task as any)?.dueDate;

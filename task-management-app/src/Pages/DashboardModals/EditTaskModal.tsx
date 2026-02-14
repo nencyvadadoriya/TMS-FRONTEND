@@ -1,5 +1,7 @@
 import { Edit, X } from 'lucide-react';
 
+import * as React from 'react';
+
 import type { Task, TaskPriority, TaskStatus, UserType } from '../../Types/Types';
 
 interface EditTaskForm {
@@ -35,6 +37,7 @@ type Props = {
 
   disableDueDate?: boolean;
   currentUserEmail: string;
+  currentUser?: UserType;
 };
 
 const EditTaskModal = ({
@@ -52,10 +55,13 @@ const EditTaskModal = ({
   isSubmitting,
   disableDueDate,
   currentUserEmail,
+  currentUser,
 }: Props) => {
   if (!open || !editingTask) return null;
 
   const normalizeEmail = (email: string) => email.trim().toLowerCase();
+  const normalizeRoleKey = (v: unknown) => String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  const normalizeCompanyKey = (v: unknown) => String(v || '').trim().toLowerCase().replace(/\s+/g, '');
   const taskAssigner = normalizeEmail(editingTask.assignedBy || (editingTask as any).assignedByUser?.email || '');
   const taskAssignee = normalizeEmail(editingTask.assignedTo || (editingTask as any).assignedToUser?.email || '');
   const currentEmail = normalizeEmail(currentUserEmail);
@@ -63,6 +69,52 @@ const EditTaskModal = ({
   const isAssigner = currentEmail === taskAssigner;
   const isAssignee = currentEmail === taskAssignee;
   const isSpeedEcom = editingTask?.companyName?.toLowerCase().replace(/\s+/g, '') === 'speedecom';
+
+  const myRoleKey = normalizeRoleKey((currentUser as any)?.role || '');
+  const myId = String((currentUser as any)?.id || (currentUser as any)?._id || '').trim();
+  const myManagerId = String((currentUser as any)?.managerId || '').trim();
+
+  const allowedPairIds = (() => {
+    const ids = new Set<string>();
+    if (myId) ids.add(myId);
+    const list = Array.isArray(users) ? users : [];
+    if (myRoleKey === 'rm') {
+      list.forEach((u: any) => {
+        const uid = String(u?.id || u?._id || '').trim();
+        const urole = normalizeRoleKey(u?.role);
+        const mgr = String(u?.managerId || '').trim();
+        if (uid && urole === 'am' && mgr && myId && mgr === myId) ids.add(uid);
+      });
+    }
+    if (myRoleKey === 'am') {
+      if (myManagerId) ids.add(myManagerId);
+    }
+    return ids;
+  })();
+
+  const filteredUsers = React.useMemo(() => {
+    const list = Array.isArray(users) ? users : [];
+    const taskCompanyKey = normalizeCompanyKey(editingTask?.companyName || (editingTask as any)?.company);
+
+    // SBM should see all Speed E Com users for Speed E Com tasks
+    if (myRoleKey === 'sbm' && taskCompanyKey === 'speedecom') {
+      return list.filter((u: any) => normalizeCompanyKey(u?.companyName || u?.company) === 'speedecom');
+    }
+
+    // RM/AM should see only pair + sbm/admin/super_admin for the same company as task
+    if (myRoleKey === 'rm' || myRoleKey === 'am') {
+      return list.filter((u: any) => {
+        const uid = String(u?.id || u?._id || '').trim();
+        const urole = normalizeRoleKey(u?.role);
+        const uCompanyKey = normalizeCompanyKey(u?.companyName || u?.company);
+        if (taskCompanyKey && (!uCompanyKey || uCompanyKey !== taskCompanyKey)) return false;
+        if (urole === 'sbm' || urole === 'admin' || urole === 'super_admin') return true;
+        return Boolean(uid && allowedPairIds.has(uid));
+      });
+    }
+
+    return list;
+  }, [allowedPairIds, editingTask, myRoleKey, normalizeCompanyKey, normalizeRoleKey, users]);
 
   // Only disable all fields for Speed E Com tasks when the user is the ASSIGNEE (not the assigner)
   const shouldDisableAllForSpeedEcom = isSpeedEcom && isAssignee && !isAssigner;
@@ -114,7 +166,7 @@ const EditTaskModal = ({
                   disabled={shouldDisableAllForSpeedEcom}
                 >
                   <option value="">Select team member</option>
-                  {users.map((user) => (
+                  {filteredUsers.map((user) => (
                     <option key={user.id} value={user.email}>
                       {user.name} ({user.email})
                     </option>

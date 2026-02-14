@@ -1334,6 +1334,49 @@ const DashboardPage = () => {
 
         };
 
+        const unreadKey = `unread_comments:${userId}`;
+        const readUnreadMap = (): Record<string, number> => {
+            try {
+                const raw = localStorage.getItem(unreadKey);
+                const parsed = raw ? JSON.parse(raw) : {};
+                return parsed && typeof parsed === 'object' ? parsed : {};
+            } catch {
+                return {};
+            }
+        };
+        const writeUnreadMap = (map: Record<string, number>) => {
+            try {
+                localStorage.setItem(unreadKey, JSON.stringify(map || {}));
+            } catch {
+                // ignore
+            }
+        };
+
+        const onCommentAdded = (payload: any) => {
+            try {
+                const taskId = String(payload?.taskId || '').trim();
+                if (!taskId) return;
+
+                const comment = payload?.comment;
+                const actorId = String(comment?.userId || '').trim();
+                const actorEmail = String(comment?.userEmail || '').trim().toLowerCase();
+
+                if ((actorId && actorId === userId) || (actorEmail && actorEmail === email)) return;
+
+                const map = readUnreadMap();
+                map[taskId] = Date.now();
+                writeUnreadMap(map);
+
+                try {
+                    window.dispatchEvent(new CustomEvent('taskCommentUnread', { detail: { taskId } }));
+                } catch {
+                    // ignore
+                }
+            } catch {
+                return;
+            }
+        };
+
         socket.on('task:upserted', onUpserted);
 
         socket.on('brand:upserted', onBrandUpserted);
@@ -1344,6 +1387,8 @@ const DashboardPage = () => {
 
         socket.on('assignment:upserted', onAssignmentChanged);
         socket.on('assignment:bulk-upserted', onAssignmentChanged);
+
+        socket.on('comment:added', onCommentAdded);
 
         return () => {
 
@@ -1359,6 +1404,8 @@ const DashboardPage = () => {
 
                 socket.off('assignment:upserted', onAssignmentChanged);
                 socket.off('assignment:bulk-upserted', onAssignmentChanged);
+
+                socket.off('comment:added', onCommentAdded);
 
                 socket.disconnect();
 
@@ -4764,7 +4811,8 @@ const DashboardPage = () => {
             return false;
         } catch (e: any) {
             console.error('Speed E Com reassign failed:', e);
-            toast.error('Failed to reassign task');
+            const message = e?.response?.data?.message || e?.message || 'Failed to reassign task';
+            toast.error(message);
             return false;
         } finally {
             setIsSpeedEcomReassignSubmitting(false);
@@ -5745,6 +5793,7 @@ const DashboardPage = () => {
             const normalizeEmailSafe = (v: unknown): string => stripDeletedEmailSuffix(v).trim().toLowerCase();
 
             const myEmail = normalizeEmailSafe((currentUser as any)?.email);
+            const myId = String((currentUser as any)?.id || (currentUser as any)?._id || '').trim();
 
             const KEYURI_EMAIL = 'keyurismartbiz@gmail.com';
 
@@ -5773,6 +5822,9 @@ const DashboardPage = () => {
 
             const normalizeCompanyKey = (value: unknown): string => String(value || '').trim().toLowerCase().replace(/\s+/g, '');
             const isSpeedEcomTask = normalizeCompanyKey((task as any)?.companyName || (task as any)?.company) === 'speedecom';
+
+            const taskStatusKey = String((task as any)?.status || '').trim().toLowerCase();
+            const isTaskCompleted = taskStatusKey === 'completed';
 
 
 
@@ -5836,12 +5888,102 @@ const DashboardPage = () => {
             const isAssistantCandidate = Boolean(nextAssigneeEmail && (isAssistantRole(nextAssigneeRole) || isAssistantRole((newAssignee as any)?.role)));
             const isObManagerDirectEmail = Boolean(isObManager && directEmail);
 
+            const allowedPairUserIds = (() => {
+                const ids = new Set<string>();
+                if (myId) ids.add(myId);
+                const list = Array.isArray(users) ? users : [];
+                const myManagerIdKey = String((currentUser as any)?.managerId || '').trim();
+                if (myRoleKey === 'rm' && myId) {
+                    list.forEach((u: any) => {
+                        const uid = String(u?.id || u?._id || '').trim();
+                        const urole = normalizeRole(u?.role);
+                        const mgr = String(u?.managerId || '').trim();
+                        if (uid && urole === 'am' && mgr && mgr === myId) ids.add(uid);
+                    });
+                }
+                if (myRoleKey === 'am' && myManagerIdKey) ids.add(myManagerIdKey);
+                return ids;
+            })();
+
+            const assignedToCandidate: any = (task as any)?.assignedToUser || (task as any)?.assignedTo;
+            const assignedToId = typeof assignedToCandidate === 'object'
+                ? String(assignedToCandidate?.id || assignedToCandidate?._id || '').trim()
+                : '';
+            const assignedToEmail = normalizeEmailSafe(
+                typeof assignedToCandidate === 'string'
+                    ? (assignedToCandidate.includes('@') ? assignedToCandidate : '')
+                    : (assignedToCandidate?.email || '')
+            );
+            const isTaskAssignee = Boolean(
+                (myEmail && assignedToEmail && myEmail === assignedToEmail) ||
+                (myId && assignedToId && myId === assignedToId)
+            );
+
+            const assignedByCandidateResolved: any = (task as any)?.assignedByUser || (task as any)?.assignedBy;
+            const assignedById = typeof assignedByCandidateResolved === 'object'
+                ? String(assignedByCandidateResolved?.id || assignedByCandidateResolved?._id || '').trim()
+                : '';
+            const assignedByEmailKey = normalizeEmailSafe(
+                typeof assignedByCandidateResolved === 'string'
+                    ? (assignedByCandidateResolved.includes('@') ? assignedByCandidateResolved : '')
+                    : (assignedByCandidateResolved?.email || '')
+            );
+            const assignedByUser = (assignedById || assignedByEmailKey)
+                ? findUserByIdOrEmail(assignedById || assignedByEmailKey)
+                : undefined;
+            const assignedByUserId = String((assignedByUser as any)?.id || (assignedByUser as any)?._id || assignedById || '').trim();
+
+            const canReassignByPairEmailFallback = (() => {
+                if (!isRmOrAmRole || !isTaskCompleted) return false;
+                const creatorEmailKey = normalizeEmailSafe(assignedByEmailKey || assignedByEmail);
+                if (!creatorEmailKey) return false;
+
+                const list = Array.isArray(users) ? users : [];
+
+                if (myRoleKey === 'rm' && myId) {
+                    return list.some((u: any) => {
+                        const urole = normalizeRole(u?.role);
+                        const mgr = String(u?.managerId || '').trim();
+                        const uemail = normalizeEmailSafe(u?.email);
+                        return urole === 'am' && mgr === myId && uemail && uemail === creatorEmailKey;
+                    });
+                }
+
+                if (myRoleKey === 'am') {
+                    const myManagerIdKey = String((currentUser as any)?.managerId || '').trim();
+                    const myManager = myManagerIdKey ? list.find((u: any) => String(u?.id || u?._id || '').trim() === myManagerIdKey) : undefined;
+                    const managerEmail = normalizeEmailSafe((myManager as any)?.email);
+                    return Boolean(managerEmail && managerEmail === creatorEmailKey);
+                }
+
+                return false;
+            })();
+
+            const canReassignByPair = Boolean(
+                isRmOrAmRole &&
+                isTaskCompleted &&
+                (
+                    isTaskAssigner ||
+                    (assignedByUserId && allowedPairUserIds.has(assignedByUserId)) ||
+                    canReassignByPairEmailFallback
+                )
+            );
+
             const isAllowedReassign = isSpeedEcomTask
-                ? Boolean(isTaskAssigner && (isRmOrAmRole || isSbmRole) && nextAssigneeEmail)
+                ? Boolean(
+                    nextAssigneeEmail &&
+                    isTaskCompleted &&
+                    (
+                        isTaskAssigner ||
+                        (isSbmRole && isTaskAssigner) ||
+                        (isRmOrAmRole && (isTaskAssignee || (assignedByUserId && allowedPairUserIds.has(assignedByUserId))))
+                    )
+                )
                 : Boolean(
                     (isManagerRole && isTaskAssigner && nextAssigneeEmail) ||
                     (myEmail && myEmail === KEYURI_EMAIL && nextAssigneeEmail && (isRutuDirect || isSubAssistance)) ||
-                    (isObManager && nextAssigneeEmail && (isAssistantCandidate || isObManagerDirectEmail))
+                    (isObManager && nextAssigneeEmail && (isAssistantCandidate || isObManagerDirectEmail)) ||
+                    (nextAssigneeEmail && canReassignByPair)
                 );
 
             if (!isAllowedReassign) {
@@ -5895,7 +6037,9 @@ const DashboardPage = () => {
 
             console.error('Error reassigning task:', error);
 
-            toast.error('Failed to reassign task');
+            const anyErr: any = error as any;
+            const message = anyErr?.response?.data?.message || anyErr?.message || 'Failed to reassign task';
+            toast.error(message);
 
         }
 
@@ -9415,6 +9559,29 @@ const DashboardPage = () => {
 
                 updateTaskInState(response.data as Task);
 
+                try {
+                    const prevStatus = String((editingTask as any)?.status || '').trim();
+                    const nextStatus = String((editFormData as any)?.status || '').trim();
+                    if (prevStatus && nextStatus && prevStatus !== nextStatus) {
+                        const historyPayload: any = {
+                            taskId: editFormData.id,
+                            action: 'status_changed',
+                            message: `Task status changed by ${currentUser.name} (${String(currentUser.role || '').toLowerCase()})`,
+                            userId: currentUser.id,
+                            userName: currentUser.name,
+                            userEmail: currentUser.email,
+                            userRole: currentUser.role,
+                            additionalData: {
+                                fromStatus: prevStatus,
+                                toStatus: nextStatus,
+                            }
+                        };
+                        await taskService.addTaskHistory(editFormData.id, historyPayload);
+                    }
+                } catch {
+                    // ignore history failure
+                }
+
                 setShowEditTaskModal(false);
 
                 setEditingTask(null);
@@ -9516,6 +9683,25 @@ const DashboardPage = () => {
 
 
             toast.success(`Task marked as ${newStatus}`);
+
+            try {
+                const historyPayload: any = {
+                    taskId,
+                    action: 'status_changed',
+                    message: `Task status changed by ${currentUser.name} (${String(currentUser.role || '').toLowerCase()})`,
+                    userId: currentUser.id,
+                    userName: currentUser.name,
+                    userEmail: currentUser.email,
+                    userRole: currentUser.role,
+                    additionalData: {
+                        fromStatus: currentStatus,
+                        toStatus: newStatus,
+                    }
+                };
+                await taskService.addTaskHistory(taskId, historyPayload);
+            } catch {
+                // ignore history failure
+            }
 
         } catch (error) {
 
@@ -11647,6 +11833,8 @@ const DashboardPage = () => {
                 disableDueDate={true}
 
                 currentUserEmail={(currentUser as any)?.email || ''}
+
+                currentUser={currentUser as any}
 
             />
 
