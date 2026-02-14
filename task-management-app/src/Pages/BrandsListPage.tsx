@@ -89,8 +89,16 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
     }, [currentUser]);
 
     const canViewBrands = useMemo(() => hasAccess('brands_page'), [hasAccess]);
-    const canEditBrand = useMemo(() => hasAccess('brand_edit'), [hasAccess]);
-    const canDeleteBrand = useMemo(() => hasAccess('brand_delete'), [hasAccess]);
+    const canEditBrand = useMemo(() => {
+        const r = String((currentUser as any)?.role || '').trim().toLowerCase();
+        if (r === 'manager') return false;
+        return hasAccess('brand_edit');
+    }, [currentUser, hasAccess]);
+    const canDeleteBrand = useMemo(() => {
+        const r = String((currentUser as any)?.role || '').trim().toLowerCase();
+        if (r === 'manager') return false;
+        return hasAccess('brand_delete');
+    }, [currentUser, hasAccess]);
     const canBulkAddCompanies = useMemo(() => hasAccess('company_bulk_add'), [hasAccess]);
     const canEditCompany = useMemo(() => {
         const r = String((currentUser as any)?.role || '').trim().toLowerCase();
@@ -603,6 +611,13 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         const fromBrands = (accessibleBrands || []).map(brand => (brand.company || '').toString().trim()).filter(Boolean);
         const fromCompaniesApi = (companyDocs || []).map((c: any) => (c?.name || '').toString().trim()).filter(Boolean);
         const list = [...new Set([...fromBrands, ...fromCompaniesApi])].sort((a, b) => a.localeCompare(b));
+
+        if (role === 'manager') {
+            const raw = 'MD Impex';
+            const rawKey = raw.replace(/\s+/g, '').toLowerCase();
+            const match = list.find((c) => String(c || '').trim().replace(/\s+/g, '').toLowerCase() === rawKey);
+            return [match || raw];
+        }
 
         if (role !== 'sbm') return list;
 
@@ -2115,9 +2130,9 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                             </div>
 
                                             <div className="flex flex-wrap gap-2 mb-4">
-                                                <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border ${getStatusColor(brand.status)}`}>
-                                                    {getStatusIcon(brand.status)}
-                                                    <span className="ml-1.5 capitalize">{brand.status}</span>
+                                                <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border ${getStatusColor(brand.status ?? 'active')}`}>
+                                                    {getStatusIcon(brand.status ?? 'active')}
+                                                    <span className="ml-1.5 capitalize">{brand.status ?? 'active'}</span>
                                                 </div>
                                             </div>
 
@@ -2256,9 +2271,9 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                                             <div className="text-sm font-medium text-gray-900">{brand.company}</div>
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap">
-                                                            <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border ${getStatusColor(brand.status)}`}>
-                                                                {getStatusIcon(brand.status)}
-                                                                <span className="ml-1.5 capitalize">{brand.status}</span>
+                                                            <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border ${getStatusColor(brand.status ?? 'active')}`}>
+                                                                {getStatusIcon(brand.status ?? 'active')}
+                                                                <span className="ml-1.5 capitalize">{brand.status ?? 'active'}</span>
                                                             </div>
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap">

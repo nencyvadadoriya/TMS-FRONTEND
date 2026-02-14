@@ -216,31 +216,19 @@ const AddTaskModal = ({
                 )}
               </div>
               <select
-                className={`w-full px-4 py-3 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${availableTaskTypesForNewTask.length === 0
-                  ? 'border-gray-200 bg-gray-50 text-gray-400'
-                  : 'border-gray-300 hover:border-gray-400'}`}
+                className="w-full px-4 py-3 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors border-gray-300 hover:border-gray-400"
                 value={newTask.taskType}
                 onChange={(e) => onChange('taskType', e.target.value)}
-                disabled={availableTaskTypesForNewTask.length === 0}
               >
-                {availableTaskTypesForNewTask.length === 0 ? (
-                  <option value="">No task types available</option>
-                ) : (
-                  <>
-                    <option value="" disabled>
-                      Select task type
-                    </option>
-                    {availableTaskTypesForNewTask.map((typeName) => (
-                      <option key={typeName} value={typeName.toLowerCase()}>
-                        {typeName}
-                      </option>
-                    ))}
-                  </>
-                )}
+                <option value="" disabled>
+                  Select task type
+                </option>
+                {(availableTaskTypesForNewTask.length > 0 ? availableTaskTypesForNewTask : ['google', 'regular', 'other work', 'Troubleshoot']).map((typeName) => (
+                  <option key={typeName} value={String(typeName || '').toLowerCase()}>
+                    {typeName}
+                  </option>
+                ))}
               </select>
-              {availableTaskTypesForNewTask.length === 0 && canBulkAddTaskTypes && (
-                <p className="mt-1 text-xs text-amber-600">Add task types to continue</p>
-              )}
             </div>
 
             <div className="md:col-span-2">

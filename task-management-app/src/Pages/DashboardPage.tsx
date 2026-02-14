@@ -82,6 +82,12 @@ import ReviewsPage from './ReviewsPage';
 
 import OtherWorkPage from './OtherWorkPage';
 
+import MdImpexStrikePage from './MdImpexStrikePage';
+
+import ManagerMonthlyRankingPage from './ManagerMonthlyRankingPage';
+
+import PowerStarOfTheMonthPage from './PowerStarOfTheMonthPage';
+
 import SpeedEcomReassignPage from './SpeedEcomReassignPage';
 
 import AdvancedFilters from './AdvancedFilters';
@@ -93,6 +99,8 @@ import { DashboardPageSkeleton } from '../Components/LoadingSkeletons';
 
 
 import EmployeeOfTheMonthCard from '../Components/EmployeeOfTheMonthCard';
+
+import { useTaskFilters } from '../Hooks/useTaskFilters';
 
 
 
@@ -184,7 +192,7 @@ const resolveSocketUrl = () => {
 
             ? envBaseUrl
 
-            : (isDev ? 'http://localhost:8100/api' : 'https://tms-backend-sand.vercel.app/api');
+            : (isDev ? 'http://localhost:9000/api' : 'https://tms-backend-sand.vercel.app/api');
 
     const trimmed = String(apiBase || '').trim().replace(/\/+$/, '');
 
@@ -372,7 +380,7 @@ const DashboardPage = () => {
 
     const SUPPORTING_FETCH_TTL_MS = 5 * 60_000;
 
-    const MD_IMPEX_COMPANY_NAME = 'MD Impex';
+    const MD_IMPEX_COMPANY_NAME = 'md impex';
 
     const usersFetchedAtRef = useRef<number | null>(null);
 
@@ -423,7 +431,9 @@ const DashboardPage = () => {
 
     const [isUpdatingTask, setIsUpdatingTask] = useState(false);
 
-    const [currentView, setCurrentView] = useState<'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'access' | 'company-brand-task-types' | 'assign' | 'reviews' | 'other-work' | 'speed-ecom-reassign'>('dashboard');
+    const [currentView, setCurrentView] = useState<'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'access' | 'company-brand-task-types' | 'assign' | 'reviews' | 'manager-monthly-rankings' | 'other-work' | 'speed-ecom-reassign' | 'md-impex-strike'>('dashboard');
+
+    const [dashboardSpotlight, setDashboardSpotlight] = useState<'employee-of-month' | 'manager-monthly-ranking' | 'power-star-of-month'>('employee-of-month');
 
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
@@ -2158,9 +2168,17 @@ const DashboardPage = () => {
 
             });
 
-        } catch {
+        } catch (err: any) {
 
-            toast.error('Failed to save task types for company');
+            console.error('Failed to save task types for company:', err);
+
+            const message =
+
+                (err?.response?.data?.message || err?.message || '').toString().trim() ||
+
+                'Failed to save task types for company';
+
+            toast.error(message);
 
         }
 
@@ -2680,7 +2698,7 @@ const DashboardPage = () => {
 
             // Keep 2 default task types visible in Manager filter even when no tasks/assignments exist yet
 
-            return new Set<string>(['other work', 'trubbleshot']);
+            return new Set<string>([]);
 
         }
 
@@ -2929,18 +2947,12 @@ const DashboardPage = () => {
 
 
     const getTaskTypesForCompany = useCallback((companyName: string): string[] => {
-
         const companyKey = normalizeText(companyName);
-
         if (!companyKey) return [];
 
-        const fromTasks = Array.from(taskTypesByCompanyFromTasks.get(companyKey) || []);
-
+        // Only show task types that were explicitly added for this company via backend
         const fromOverrides = Array.isArray(taskTypeCompanyOverrides?.[companyKey]) ? taskTypeCompanyOverrides[companyKey] : [];
-
-        const merged = Array.from(new Set([...fromOverrides, ...fromTasks]));
-
-
+        const merged = Array.from(new Set([...fromOverrides]));
 
         const role = (currentUser?.role || '').toString().toLowerCase();
 
@@ -2960,8 +2972,7 @@ const DashboardPage = () => {
 
         return merged.sort((a, b) => a.localeCompare(b));
 
-    }, [allowedTaskTypeKeysForManager, currentUser?.role, normalizeText, taskTypeCompanyOverrides, taskTypesByCompanyFromTasks]);
-
+    }, [allowedTaskTypeKeysForManager, currentUser?.role, normalizeText, taskTypeCompanyOverrides, taskTypesByCompanyFromTasks])
 
 
     function getBrandCompanyNameSafe(b: any): string {
@@ -3460,6 +3471,12 @@ const DashboardPage = () => {
 
         const role = (currentUser?.role || '').toString().toLowerCase();
 
+        if (role === 'md_manager') {
+
+            return ['google', 'regular', 'other work', 'Troubleshoot'];
+
+        }
+
         const isPersonScoped = role === 'assistant' || role === 'sbm' || role === 'rm' || role === 'am' || role === 'ar';
 
 
@@ -3535,10 +3552,19 @@ const DashboardPage = () => {
         }
 
         const fromOverrides = Object.values(taskTypeCompanyOverrides || {}).flatMap((arr) => (Array.isArray(arr) ? arr : []));
+        const canonicalize = (value: unknown): string => {
+            const raw = (value || '').toString().trim();
+            if (!raw) return '';
+            const key = raw.toLowerCase().replace(/[\s-]+/g, ' ').trim();
+            if (key === 'troubleshoot' || key === 'trouble shoot' || key === 'trubbleshot' || key === 'trubble shoot') return 'Troubleshoot';
+            return raw;
+        };
 
-        const fromTasks = Array.from(taskTypesByCompanyFromTasks.values()).flatMap((set) => Array.from(set));
-
-        const merged = ensureBrandAssignment(Array.from(new Set([...availableTaskTypes, ...fromOverrides, ...fromTasks])));
+        const merged = ensureBrandAssignment(
+            Array.from(new Set([...availableTaskTypes, ...fromOverrides]))
+                .map((t) => canonicalize(t))
+                .filter(Boolean)
+        );
 
 
 
@@ -3634,8 +3660,6 @@ const DashboardPage = () => {
 
         }
 
-
-
         return ensureManagerOtherWork(baseCompany());
 
     }, [currentUser, currentUser?.email, getTaskTypesForCompany, getTaskTypesForCompanyBrand, getTaskTypesForCompanyUser, getTaskTypesForCompanyUserBrand, newTask.brand, newTask.companyName, restrictTaskTypesForCompany]);
@@ -3687,216 +3711,104 @@ const DashboardPage = () => {
 
 
     const fetchCompanyBrandTaskTypeMapping = useCallback(async (companyName: string, brandName: string) => {
-
         try {
-
             const company = (companyName || '').toString().trim();
-
             const brand = (brandName || '').toString().trim();
-
             if (!company || !brand) return;
 
-
-
             const brandDoc: any = (apiBrands || []).find((b: any) => {
-
                 const bCompany = getBrandCompanyNameSafe(b);
-
                 const bName = getBrandNameSafe(b);
-
                 return normalizeCompanyKey(bCompany) === normalizeCompanyKey(company) && normalizeText(bName) === normalizeText(brand);
-
             });
-
             const brandId = (brandDoc?.id || brandDoc?._id || '').toString();
-
             if (!brandId) return;
 
-
-
-            const res = await companyBrandTaskTypeService.getMapping({ companyName: company, brandId, brandName: brand });
-
-            const ids = (res?.data?.taskTypes || [])
-
+            const res = await taskTypeService.getTaskTypes({ companyName: company, brandId, brandName: brand });
+            const ids = (res?.data || [])
                 .map((t: any) => (t?.id || t?._id || '').toString())
-
                 .filter(Boolean);
 
-
-
             setTaskTypeIdsByBrandId((prev) => ({ ...prev, [brandId]: ids }));
-
         } catch {
-
             // ignore
-
         }
-
-    }, [apiBrands, normalizeCompanyKey, normalizeText]);
+    }, [taskTypeService]);
 
 
 
     const fetchUserBrandTaskTypeMappings = useCallback(async (companyName: string, assignedToEmail: string) => {
-
         try {
-
             const company = (companyName || '').toString().trim();
-
             const email = stripDeletedEmailSuffix(assignedToEmail).trim().toLowerCase();
-
             if (!company || !email) return;
 
-
-
             const userDoc: any = (usersRef.current || []).find((u: any) => {
-
                 const uEmail = stripDeletedEmailSuffix(u?.email).trim().toLowerCase();
-
                 return uEmail && uEmail === email;
-
             });
-
-            let userId = (userDoc?.id || userDoc?._id || '').toString();
-
-            if (!userId) {
-
-                const myEmailKey = stripDeletedEmailSuffix(currentUser?.email || '').trim().toLowerCase();
-
-                if (myEmailKey && myEmailKey === email) {
-
-                    userId = ((currentUser as any)?.id || (currentUser as any)?._id || '').toString();
-
-                }
-
-            }
-
+            const userId = (userDoc?.id || userDoc?._id || '').toString();
             if (!userId) return;
 
+            const res = await taskTypeService.getTaskTypes({ companyName: company, email });
+            const items = (res?.data || []);
 
-
-            const res = await assignService.getUserMappings({ companyName: company, userId });
-
-            const next: Record<string, string[]> = {};
-
+            const nextMap: Record<string, string[]> = {};
+            const extraTaskTypes: any[] = [];
             const brandNames = new Set<string>();
 
-            const extraTaskTypes: any[] = [];
+            items.forEach((t: any) => {
+                const id = (t.id || t._id).toString();
+                const name = (t.name || '').toString().trim();
+                if (id && name) extraTaskTypes.push({ id, name });
 
-            (res?.data || []).forEach((m: any) => {
-
-                const brandId = (m?.brandId || '').toString();
-
-                if (!brandId) return;
-
-                const ids = Array.isArray(m?.taskTypeIds) ? m.taskTypeIds.map((x: any) => (x || '').toString()).filter(Boolean) : [];
-
-                const key = `${normalizeCompanyKey(m?.companyName || company)}::${userId}::${brandId}`;
-
-                next[key] = ids;
-
-
-
-                const tts = Array.isArray(m?.taskTypes) ? m.taskTypes : [];
-
-                tts.forEach((t: any) => {
-
-                    const id = (t?.id || t?._id || '').toString();
-
-                    const name = (t?.name || '').toString().trim();
-
-                    if (id && name) extraTaskTypes.push({ id, name });
-
-                });
-
-
-
-                if (ids.length > 0) {
-
-                    const bName = (m?.brandName || '').toString().trim();
-
+                if (t.brandId) {
+                    const bName = (t.brandName || '').toString().trim();
                     if (bName) brandNames.add(bName);
 
+                    const key = `${normalizeCompanyKey(company)}::${userId}::${normalizeText(bName)}`;
+                    if (!nextMap[key]) nextMap[key] = [];
+                    nextMap[key].push(id);
                 }
-
             });
-
-
 
             if (extraTaskTypes.length > 0) {
-
                 setTaskTypes((prev) => {
-
                     const list = Array.isArray(prev) ? [...prev] : [];
-
                     const byId = new Map<string, any>();
-
                     list.forEach((t: any) => {
-
                         const id = (t?.id || t?._id || '').toString();
-
                         if (id && !byId.has(id)) byId.set(id, t);
-
                     });
-
-
 
                     extraTaskTypes.forEach((t: any) => {
-
                         const id = (t?.id || t?._id || '').toString();
-
                         if (!id) return;
-
                         if (!byId.has(id)) {
-
                             byId.set(id, t);
-
                             return;
-
                         }
-
                         const existing = byId.get(id);
-
                         const existingName = (existing?.name || '').toString().trim();
-
                         const nextName = (t?.name || '').toString().trim();
-
                         if (!existingName && nextName) {
-
                             byId.set(id, { ...existing, name: nextName });
-
                         }
-
                     });
-
-
-
                     return Array.from(byId.values());
-
                 });
-
             }
 
-
-
-            setTaskTypeIdsByCompanyUserBrandKey((prev) => ({ ...prev, ...next }));
-
+            setTaskTypeIdsByCompanyUserBrandKey((prev) => ({ ...prev, ...nextMap }));
             setBrandNamesByCompanyUserKey((prev) => {
-
-                const cuKey = `${normalizeCompanyKey(res?.data?.[0]?.companyName || company)}::${userId}`;
-
+                const cuKey = `${normalizeCompanyKey(company)}::${userId}`;
                 const sorted = Array.from(brandNames).filter(Boolean).sort((a, b) => a.localeCompare(b));
-
                 return { ...prev, [cuKey]: sorted };
-
             });
-
-        } catch {
-
-            // ignore
-
+        } catch (error) {
+            console.error('Error fetching user brand task type mappings:', error);
         }
-
-    }, [currentUser, normalizeCompanyKey]);
+    }, [normalizeCompanyKey, normalizeText, stripDeletedEmailSuffix, taskTypeService]);
 
 
 
@@ -4090,7 +4002,7 @@ const DashboardPage = () => {
 
     const navigateTo = (page: string) => {
 
-        const viewMap: Record<string, 'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'access' | 'company-brand-task-types' | 'assign' | 'speed-ecom-reassign' | 'reviews' | 'other-work'> = {
+        const viewMap: Record<string, 'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'access' | 'company-brand-task-types' | 'assign' | 'speed-ecom-reassign' | 'reviews' | 'manager-monthly-rankings' | 'other-work' | 'md-impex-strike'> = {
 
             'dashboard': 'dashboard',
 
@@ -4120,7 +4032,11 @@ const DashboardPage = () => {
 
             'reviews': 'reviews',
 
-            'other-work': 'other-work'
+            'manager-monthly-rankings': 'manager-monthly-rankings',
+
+            'other-work': 'other-work',
+
+            'md-impex-strike': 'md-impex-strike'
 
         };
 
@@ -4160,7 +4076,11 @@ const DashboardPage = () => {
 
             'reviews': 'reviews_page',
 
+            'manager-monthly-rankings': '',
+
             'other-work': 'other_work_page',
+
+            'md-impex-strike': '',
 
         };
 
@@ -4208,7 +4128,11 @@ const DashboardPage = () => {
 
             reviews: routepath.reviews,
 
+            'manager-monthly-rankings': routepath.managerMonthlyRankings,
+
             'other-work': routepath.otherWork,
+
+            'md-impex-strike': routepath.mdImpexStrike,
 
         };
 
@@ -4480,6 +4404,21 @@ const DashboardPage = () => {
 
         }
 
+        if (path === routepath.mdImpexStrike) {
+
+            const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
+            if (roleKey !== 'manager' && roleKey !== 'md_manager') {
+                toast.error('Access denied');
+                navigate(routepath.dashboard);
+                return;
+            }
+
+            setCurrentView('md-impex-strike');
+
+            return;
+
+        }
+
         if (path === routepath.access) {
 
             if (!hasAccess('access_management')) {
@@ -4598,7 +4537,26 @@ const DashboardPage = () => {
 
         try {
 
-            return new Date(dueDate) < new Date();
+            const raw = String(dueDate || '').trim();
+            const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            const due = m
+                ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+                : new Date(raw);
+            if (Number.isNaN(due.getTime())) return false;
+
+            // Mark overdue only after the due date has fully passed (end of due day).
+            // Example: dueDate = 12th => it becomes overdue starting 13th (local time).
+            const dueEndOfDay = new Date(
+                due.getFullYear(),
+                due.getMonth(),
+                due.getDate(),
+                23,
+                59,
+                59,
+                999
+            );
+
+            return dueEndOfDay.getTime() < Date.now();
 
         } catch {
 
@@ -4798,7 +4756,7 @@ const DashboardPage = () => {
 
             } else if (requesterRole === 'ob_manager') {
 
-                if (targetRole !== 'assistant') throw new Error('Only administrators can edit users');
+                if (targetRole !== 'assistant' && targetRole !== 'sub_assistance') throw new Error('Only administrators can edit users');
 
             } else if (requesterRole === 'manager') {
 
@@ -6000,20 +5958,15 @@ const DashboardPage = () => {
 
 
 
-    const getFilteredTasksByStat = useCallback(() => {
+    const roleScopedTasks = useMemo(() => {
 
-        if (!currentUser?.email) return [];
-
-
+        if (!currentUser?.email) return [] as Task[];
 
         const role = String((currentUser as any)?.role || '').trim().toLowerCase();
-
         const myEmail = (currentUser.email || '').toString().trim().toLowerCase();
 
         const normalizeTaskTypeKey = (t: any) => String(t?.taskType || t?.type || '').trim().toLowerCase();
-
         const isOtherWorkTask = (t: any) => normalizeTaskTypeKey(t) === 'other work';
-
         const resolveAssignerRole = (t: any) => String((t as any)?.assignedByUser?.role || (t as any)?.assignedBy?.role || '').trim().toLowerCase();
 
         const normalizeRoleKey = (v: unknown) => String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
@@ -6047,7 +6000,7 @@ const DashboardPage = () => {
             return Boolean(myEmail && email && email === myEmail);
         };
 
-        let filtered = tasks.filter((task) => {
+        return (tasks || []).filter((task: any) => {
 
             if (role === 'ob_manager') {
                 return isAssignedToMe(task) || isAssistantAssignee(task);
@@ -6058,184 +6011,46 @@ const DashboardPage = () => {
                 if (isOtherWorkTask(task)) return false;
 
                 const assignedToMe = String(task.assignedTo || '').trim().toLowerCase() === myEmail;
-
                 const assignedByMe = String(task.assignedBy || '').trim().toLowerCase() === myEmail;
 
                 if (assignedByMe) return true;
-
                 if (!assignedToMe) return false;
-
                 return resolveAssignerRole(task) === 'md_manager';
 
             }
 
             if (canViewAllTasks || role === 'rm' || role === 'am') return true;
-
             return task.assignedTo === currentUser.email || task.assignedBy === currentUser.email;
 
-        });
+        }) as Task[];
 
+    }, [canViewAllTasks, currentUser, tasks]);
 
+    const { filteredTasks: baseFilteredTasks } = useTaskFilters({
+        tasks: roleScopedTasks,
+        filters: filters as any,
+        searchTerm,
+        currentUserEmail: currentUser?.email || '',
+        currentUserRole: (currentUser as any)?.role || '',
+        isOverdue,
+        applyRoleVisibility: false,
+    });
+
+    const displayTasks = useMemo(() => {
+
+        let filtered = baseFilteredTasks;
 
         if (selectedStatFilter === 'completed') {
-
             filtered = filtered.filter((task) => task.status === 'completed');
-
         } else if (selectedStatFilter === 'pending') {
-
             filtered = filtered.filter((task) => task.status !== 'completed');
-
         } else if (selectedStatFilter === 'overdue') {
-
             filtered = filtered.filter((task) => task.status !== 'completed' && isOverdue(task.dueDate, task.status));
-
         }
-
-
-
-        if (filters.status !== 'all') {
-
-            filtered = filtered.filter((task) => task.status === filters.status);
-
-        }
-
-
-
-        if (filters.priority !== 'all') {
-
-            filtered = filtered.filter((task) => task.priority === filters.priority);
-
-        }
-
-
-
-        if (filters.taskType !== 'all') {
-
-            const filterType = filters.taskType.toLowerCase();
-
-            filtered = filtered.filter((task) => {
-
-                const taskType = (task.taskType || (task as any).type || '').toLowerCase();
-
-                return taskType === filterType;
-
-            });
-
-        }
-
-
-
-        if (filters.company !== 'all') {
-
-            const filterCompanyKey = normalizeCompanyKey(filters.company);
-
-            filtered = filtered.filter((task) => {
-
-                const taskCompany = (task.companyName || (task as any).company || '');
-
-                return normalizeCompanyKey(taskCompany) === filterCompanyKey;
-
-            });
-
-        }
-
-
-
-        if (filters.brand !== 'all') {
-
-            const filterBrand = filters.brand.toLowerCase();
-
-            filtered = filtered.filter((task) => {
-
-                const taskBrand = (task.brand || '').toLowerCase();
-
-                return taskBrand === filterBrand;
-
-            });
-
-        }
-
-
-
-        if (filters.date === 'today') {
-
-            filtered = filtered.filter((task) => new Date(task.dueDate).toDateString() === new Date().toDateString());
-
-        } else if (filters.date === 'week') {
-
-            filtered = filtered.filter((task) => {
-
-                const taskDate = new Date(task.dueDate);
-
-                const today = new Date();
-
-                const nextWeek = new Date(today);
-
-                nextWeek.setDate(today.getDate() + 7);
-
-                return taskDate >= today && taskDate <= nextWeek;
-
-            });
-
-        } else if (filters.date === 'overdue') {
-
-            filtered = filtered.filter((task) => isOverdue(task.dueDate, task.status));
-
-        }
-
-
-
-        if (filters.assigned === 'assigned-to-me') {
-
-            filtered = filtered.filter((task) => task.assignedTo === currentUser.email);
-
-        } else if (filters.assigned === 'assigned-by-me') {
-
-            filtered = filtered.filter((task) => task.assignedBy === currentUser.email);
-
-        }
-
-
-
-        if (searchTerm) {
-
-            const term = searchTerm.toLowerCase();
-
-            filtered = filtered.filter((task) => {
-
-                const title = (task.title || '').toLowerCase();
-
-                const company = (task.companyName || (task as any).company || '').toLowerCase();
-
-                const brand = (task.brand || '').toLowerCase();
-
-                const typeVal = (task.taskType || (task as any).type || '').toLowerCase();
-
-                return (
-
-                    title.includes(term) ||
-
-                    company.includes(term) ||
-
-                    brand.includes(term) ||
-
-                    typeVal.includes(term)
-
-                );
-
-            });
-
-        }
-
-
 
         return filtered;
 
-    }, [canViewAllTasks, currentUser, filters, isOverdue, normalizeCompanyKey, searchTerm, selectedStatFilter, tasks]);
-
-
-
-    const displayTasks = useMemo(() => getFilteredTasksByStat(), [getFilteredTasksByStat]);
+    }, [baseFilteredTasks, isOverdue, selectedStatFilter]);
 
 
 
@@ -6339,213 +6154,6 @@ const DashboardPage = () => {
         return displayTasks.some((t: Task) => canEditTask(t) || canEditDeleteTask(t));
 
     }, [displayTasks, canEditTask, canEditDeleteTask]);
-
-
-
-    const baseFilteredTasks = useMemo(() => {
-
-        if (!currentUser?.email) return [];
-
-
-
-        const role = String((currentUser as any)?.role || '').trim().toLowerCase();
-
-        const myEmail = (currentUser.email || '').toString().trim().toLowerCase();
-
-        const normalizeTaskTypeKey = (t: any) => String(t?.taskType || t?.type || '').trim().toLowerCase();
-
-        const isOtherWorkTask = (t: any) => normalizeTaskTypeKey(t) === 'other work';
-
-        const resolveAssignerRole = (t: any) => String((t as any)?.assignedByUser?.role || (t as any)?.assignedBy?.role || '').trim().toLowerCase();
-
-        const normalizeRoleKey = (v: unknown) => String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
-        const resolveAssigneeRoleKey = (t: any): string => {
-            const direct = normalizeRoleKey((t as any)?.assignedToUser?.role);
-            if (direct) return direct;
-
-            const candidate = (t as any)?.assignedToUser || (t as any)?.assignedTo;
-            const idOrEmail = typeof candidate === 'string'
-                ? candidate
-                : (candidate?.id || candidate?._id || candidate?.email || '');
-            const key = String(idOrEmail || '').trim().toLowerCase();
-            if (!key) return '';
-
-            const found = (usersRef.current || []).find((u: any) => {
-                const id = String(u?.id || u?._id || '').trim().toLowerCase();
-                const email = String(u?.email || '').trim().toLowerCase();
-                return (id && id === key) || (email && email === key);
-            });
-
-            return normalizeRoleKey((found as any)?.role);
-        };
-        const isAssistantAssignee = (t: any): boolean => {
-            const r = resolveAssigneeRoleKey(t);
-            return r === 'assistant' || r === 'assistance' || r === 'sub_assistance' || r.includes('assistant');
-        };
-
-
-
-        let filtered = tasks.filter((task) => {
-
-            if (role === 'ob_manager') {
-                return isAssistantAssignee(task);
-            }
-
-            if (role === 'manager') {
-
-                if (isOtherWorkTask(task)) return false;
-
-                const assignedToMe = String(task.assignedTo || '').trim().toLowerCase() === myEmail;
-
-                const assignedByMe = String(task.assignedBy || '').trim().toLowerCase() === myEmail;
-
-                if (assignedByMe) return true;
-
-                if (!assignedToMe) return false;
-
-                return resolveAssignerRole(task) === 'md_manager';
-
-            }
-
-
-
-            if (canViewAllTasks || role === 'rm' || role === 'am') return true;
-
-            return task.assignedTo === currentUser.email || task.assignedBy === currentUser.email;
-
-        });
-
-
-
-        if (filters.status !== 'all') {
-
-            filtered = filtered.filter((task) => task.status === filters.status);
-
-        }
-
-
-
-        if (filters.priority !== 'all') {
-
-            filtered = filtered.filter((task) => task.priority === filters.priority);
-
-        }
-
-
-
-        if (filters.taskType !== 'all') {
-
-            const filterType = filters.taskType.toLowerCase();
-
-            filtered = filtered.filter((task) => {
-
-                const taskType = (task.taskType || (task as any).type || '').toLowerCase();
-
-                return taskType === filterType;
-
-            });
-
-        }
-
-
-
-        if (filters.company !== 'all') {
-
-            const filterCompanyKey = normalizeCompanyKey(filters.company);
-
-            filtered = filtered.filter((task) => {
-
-                const taskCompany = (task.companyName || (task as any).company || '');
-
-                return normalizeCompanyKey(taskCompany) === filterCompanyKey;
-
-            });
-
-        }
-
-
-
-        if (filters.brand !== 'all') {
-
-            const filterBrand = filters.brand.toLowerCase();
-
-            filtered = filtered.filter((task) => {
-
-                const taskBrand = (task.brand || '').toLowerCase();
-
-                return taskBrand === filterBrand;
-
-            });
-
-        }
-
-
-
-        if (filters.date === 'today') {
-
-            filtered = filtered.filter((task) => new Date(task.dueDate).toDateString() === new Date().toDateString());
-
-        } else if (filters.date === 'week') {
-
-            filtered = filtered.filter((task) => {
-
-                const taskDate = new Date(task.dueDate);
-
-                const today = new Date();
-
-                const nextWeek = new Date(today);
-
-                nextWeek.setDate(today.getDate() + 7);
-
-                return taskDate >= today && taskDate <= nextWeek;
-
-            });
-
-        } else if (filters.date === 'overdue') {
-
-            filtered = filtered.filter((task) => isOverdue(task.dueDate, task.status));
-
-        }
-
-
-
-        if (filters.assigned === 'assigned-to-me') {
-
-            filtered = filtered.filter((task) => task.assignedTo === currentUser.email);
-
-        } else if (filters.assigned === 'assigned-by-me') {
-
-            filtered = filtered.filter((task) => task.assignedBy === currentUser.email);
-
-        }
-
-
-
-        if (searchTerm) {
-
-            const term = searchTerm.toLowerCase();
-
-            filtered = filtered.filter((task) => {
-
-                const title = (task.title || '').toLowerCase();
-
-                const company = (task.companyName || (task as any).company || '').toLowerCase();
-
-                const brand = (task.brand || '').toLowerCase();
-
-                const typeVal = (task.taskType || (task as any).type || '').toLowerCase();
-
-                return title.includes(term) || company.includes(term) || brand.includes(term) || typeVal.includes(term);
-
-            });
-
-        }
-
-
-
-        return filtered;
-
-    }, [canViewAllTasks, currentUser, filters, isOverdue, normalizeCompanyKey, searchTerm, tasks]);
 
 
 
@@ -9078,7 +8686,7 @@ const DashboardPage = () => {
 
                 dueDate: newTask.dueDate,
 
-                priority: newTask.priority === 'urgent' ? 'high' : newTask.priority,
+                priority: newTask.priority === newTask.priority,
 
                 taskType: newTask.taskType,
 
@@ -10179,45 +9787,134 @@ const DashboardPage = () => {
 
                                         <>
 
-                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
 
-                                                <div>
+                                                <button
 
-                                                    <h2 className="text-sm font-semibold text-gray-900">Employee of the Month</h2>
+                                                    type="button"
 
-                                                    <p className="text-xs text-gray-500">Based on manager reviews (month wise)</p>
+                                                    onClick={() => setDashboardSpotlight('employee-of-month')}
 
-                                                </div>
+                                                    className={`bg-white p-6 rounded-2xl shadow-sm border-2 transition-all duration-200 hover:shadow-md ${dashboardSpotlight === 'employee-of-month'
 
-                                                <input
+                                                        ? 'border-blue-500 shadow-lg shadow-blue-50'
 
-                                                    type="month"
+                                                        : 'border-transparent hover:border-gray-200'
 
-                                                    value={reviewsMonth}
+                                                        }`}
 
-                                                    onChange={(e) => setReviewsMonth(e.target.value)}
+                                                >
 
-                                                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                                                    <div className="flex items-start justify-between">
 
-                                                />
+                                                        <div>
+
+                                                            <h2 className="text-sm font-semibold text-gray-900">Employee of the Month</h2>
+
+                                                            <p className="text-xs text-gray-500 mt-1">Based on manager reviews (month wise)</p>
+
+                                                        </div>
+
+                                                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${dashboardSpotlight === 'employee-of-month'
+
+                                                            ? 'bg-blue-100 text-blue-600'
+
+                                                            : 'bg-gray-100 text-gray-600'
+
+                                                            }`}>
+
+                                                            {dashboardSpotlight === 'employee-of-month' ? 'Selected' : 'Select'}
+
+                                                        </span>
+
+                                                    </div>
+
+                                                </button>
+
+                                                {(() => {
+                                                    const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
+                                                    const canSee = roleKey === 'manager' || roleKey === 'md_manager' || roleKey === 'all_manager';
+                                                    if (!canSee) return null;
+                                                    return (
+                                                        <>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setDashboardSpotlight('manager-monthly-ranking')}
+                                                                className={`bg-white p-6 rounded-2xl shadow-sm border-2 transition-all duration-200 hover:shadow-md ${dashboardSpotlight === 'manager-monthly-ranking'
+                                                                    ? 'border-blue-500 shadow-lg shadow-blue-50'
+                                                                    : 'border-transparent hover:border-gray-200'
+                                                                    }`}
+                                                            >
+                                                                <div className="flex items-start justify-between">
+                                                                    <div>
+                                                                        <h2 className="text-sm font-semibold text-gray-900">Employee of the Month Marketer</h2>
+                                                                        <p className="text-xs text-gray-500 mt-1">Assign vs Achieved (month wise)</p>
+                                                                    </div>
+                                                                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${dashboardSpotlight === 'manager-monthly-ranking'
+                                                                        ? 'bg-blue-100 text-blue-600'
+                                                                        : 'bg-gray-100 text-gray-600'
+                                                                        }`}>
+                                                                        {dashboardSpotlight === 'manager-monthly-ranking' ? 'Selected' : 'Select'}
+                                                                    </span>
+                                                                </div>
+                                                            </button>
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setDashboardSpotlight('power-star-of-month')}
+                                                                className={`bg-white p-6 rounded-2xl shadow-sm border-2 transition-all duration-200 hover:shadow-md ${dashboardSpotlight === 'power-star-of-month'
+                                                                    ? 'border-blue-500 shadow-lg shadow-blue-50'
+                                                                    : 'border-transparent hover:border-gray-200'
+                                                                    }`}
+                                                            >
+                                                                <div className="flex items-start justify-between">
+                                                                    <div>
+                                                                        <h2 className="text-sm font-semibold text-gray-900">Power Star of the Month</h2>
+                                                                        <p className="text-xs text-gray-500 mt-1">Week wise (Churn / Live-Assign% / Hits)</p>
+                                                                    </div>
+                                                                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${dashboardSpotlight === 'power-star-of-month'
+                                                                        ? 'bg-blue-100 text-blue-600'
+                                                                        : 'bg-gray-100 text-gray-600'
+                                                                        }`}>
+                                                                        {dashboardSpotlight === 'power-star-of-month' ? 'Selected' : 'Select'}
+                                                                    </span>
+                                                                </div>
+                                                            </button>
+                                                        </>
+                                                    );
+                                                })()}
 
                                             </div>
 
-                                            <EmployeeOfTheMonthCard
+                                            {dashboardSpotlight === 'employee-of-month' ? (
+                                                <>
+                                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+                                                        <div>
+                                                            <h2 className="text-sm font-semibold text-gray-900">Employee of the Month</h2>
+                                                            <p className="text-xs text-gray-500">Based on manager reviews (month wise)</p>
+                                                        </div>
+                                                        <input
+                                                            type="month"
+                                                            value={reviewsMonth}
+                                                            onChange={(e) => setReviewsMonth(e.target.value)}
+                                                            className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                                                        />
+                                                    </div>
 
-                                                name={employeeOfTheMonth?.name || 'Not any yet'}
-
-                                                rating={employeeOfTheMonth?.rating || 0}
-
-                                                performance={employeeOfTheMonth?.performance || 'Not any yet'}
-
-                                                avg={employeeOfTheMonth?.avg || 'Not any yet'}
-
-                                                photoUrl={employeeOfTheMonth?.photoUrl}
-
-                                                summaryRows={employeeOfTheMonth?.summaryRows}
-
-                                            />
+                                                    <EmployeeOfTheMonthCard
+                                                        name={employeeOfTheMonth?.name || 'Not any yet'}
+                                                        rating={employeeOfTheMonth?.rating || 0}
+                                                        performance={employeeOfTheMonth?.performance || 'Not any yet'}
+                                                        avg={employeeOfTheMonth?.avg || 'Not any yet'}
+                                                        photoUrl={employeeOfTheMonth?.photoUrl}
+                                                        summaryRows={employeeOfTheMonth?.summaryRows}
+                                                    />
+                                                </>
+                                            ) : dashboardSpotlight === 'manager-monthly-ranking' ? (
+                                                <ManagerMonthlyRankingPage currentUser={currentUser} />
+                                            ) : (
+                                                <PowerStarOfTheMonthPage currentUser={currentUser} />
+                                            )}
 
                                         </>
 
@@ -11343,6 +11040,14 @@ const DashboardPage = () => {
 
                                 />
 
+                            ) : currentView === 'manager-monthly-rankings' ? (
+
+                                <ManagerMonthlyRankingPage
+
+                                    currentUser={currentUser}
+
+                                />
+
                             ) : currentView === 'other-work' ? (
 
                                 <OtherWorkPage
@@ -11352,6 +11057,20 @@ const DashboardPage = () => {
                                     tasks={tasks}
 
                                     onRefreshTasks={fetchTasks}
+
+                                />
+
+                            ) : currentView === 'md-impex-strike' ? (
+
+                                <MdImpexStrikePage
+
+                                    currentUser={currentUser}
+
+                                    users={users}
+
+                                    tasks={tasks}
+
+                                    isOverdue={isOverdue}
 
                                 />
 

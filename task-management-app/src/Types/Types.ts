@@ -1,5 +1,5 @@
-export type TaskStatus = 'in-progress' | 'completed' | 'pending' | 'reassigned' | 'cancelled' | 'on-hold';
-export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
+export type TaskStatus = 'in-progress' | 'completed' | 'pending' | 'reassigned';
+export type TaskPriority = 'low' | 'medium' | 'high' ;
 
 // Brand-related types
 export type BrandStatus = 'active' | 'inactive' | 'archived' | 'deleted';
@@ -18,7 +18,7 @@ export interface Brand {
     rmName?: string;
     amName?: string;
     website?: string;
-    status: BrandStatus;
+    status?: BrandStatus;
     createdAt: string;
     updatedAt?: string;
     deletedAt?: string; // New field for soft delete
@@ -27,7 +27,6 @@ export interface Brand {
     history?: BrandHistory[];
     tasks?: Task[];
 }
-
 
 export interface CreateBrandDto {
     name: string;

@@ -768,9 +768,7 @@ const BrandDetailPage: React.FC<BrandDetailPageProps> = ({
                                         >
                                             <option value="all">All Types</option>
                                             <option value="regular">Regular</option>
-                                            <option value="troubleshoot">Troubleshoot</option>
-                                            <option value="maintenance">Maintenance</option>
-                                            <option value="development">Development</option>
+                                            <option value="Troubleshoot">Troubleshoot</option>
                                         </select>
                                     </div>
                                 </div>

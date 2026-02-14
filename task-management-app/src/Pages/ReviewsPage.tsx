@@ -59,6 +59,9 @@ const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: Us
 
   const [tableStatFilter, setTableStatFilter] = useState<'all' | 'done' | 'pending' | 'reviewed'>('all');
 
+  const [tablePage, setTablePage] = useState<number>(1);
+  const tablePageSize = 10;
+
   const normalizeEmailKey = useCallback((v: unknown): string => {
     const raw = String(v || '').trim().toLowerCase();
     if (!raw) return '';
@@ -232,6 +235,29 @@ const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: Us
     }
     return list;
   }, [filteredTasks, tableStatFilter]);
+
+  useEffect(() => {
+    setTablePage(1);
+  }, [filter, assigneeFilter, month, tableStatFilter, selectedAssigneeKey]);
+
+  const totalTablePages = useMemo(() => {
+    const total = (tableTasks || []).length;
+    return Math.max(1, Math.ceil(total / tablePageSize));
+  }, [tableTasks]);
+
+  useEffect(() => {
+    setTablePage((prev) => {
+      if (prev < 1) return 1;
+      if (prev > totalTablePages) return totalTablePages;
+      return prev;
+    });
+  }, [totalTablePages]);
+
+  const pagedTableTasks = useMemo(() => {
+    const list = tableTasks || [];
+    const start = (tablePage - 1) * tablePageSize;
+    return list.slice(start, start + tablePageSize);
+  }, [tablePage, tableTasks]);
 
   const filteredStats = useMemo(() => {
     const list = filteredTasks || [];
@@ -573,7 +599,7 @@ const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: Us
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {tableTasks.map((t) => {
+              {pagedTableTasks.map((t) => {
                 const reviewedStars = (t as any).reviewStars;
                 const isReviewed = reviewedStars != null;
                 const isEditing = editingId === t.id;
@@ -666,7 +692,7 @@ const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: Us
                 );
               })}
 
-              {tableTasks.length === 0 && (
+              {pagedTableTasks.length === 0 && (
                 <tr>
                   <td className="px-6 py-8 text-sm text-gray-500" colSpan={8}>
                     {loading ? 'Loading…' : 'No tasks found'}
@@ -675,6 +701,48 @@ const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: Us
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="px-6 py-4 border-t border-gray-100 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="text-sm text-gray-600">
+            Showing
+            {' '}
+            <span className="font-semibold text-gray-900">{pagedTableTasks.length}</span>
+            {' '}
+            of
+            {' '}
+            <span className="font-semibold text-gray-900">{(tableTasks || []).length}</span>
+            {' '}
+            tasks
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              onClick={() => setTablePage((p) => Math.max(1, p - 1))}
+              disabled={loading || tablePage <= 1}
+            >
+              Prev
+            </button>
+            <div className="text-sm text-gray-700">
+              Page
+              {' '}
+              <span className="font-semibold">{tablePage}</span>
+              {' '}
+              of
+              {' '}
+              <span className="font-semibold">{totalTablePages}</span>
+            </div>
+            <button
+              type="button"
+              className="px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              onClick={() => setTablePage((p) => Math.min(totalTablePages, p + 1))}
+              disabled={loading || tablePage >= totalTablePages}
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
     </div>

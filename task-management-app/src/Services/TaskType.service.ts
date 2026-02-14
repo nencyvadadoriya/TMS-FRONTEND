@@ -4,6 +4,8 @@ export type TaskTypeItem = {
   id: string;
   _id?: string;
   companyId?: string | null;
+  brandId?: string | null;
+  userId?: string | null;
   name: string;
   isActive?: boolean;
   createdAt?: string;
@@ -11,23 +13,40 @@ export type TaskTypeItem = {
 };
 
 export const taskTypeService = {
-  async getTaskTypes(params?: { companyName?: string; companyId?: string }): Promise<{ success: boolean; data: TaskTypeItem[] }> {
-    const query: any = {};
-    const companyName = (params?.companyName || '').toString().trim();
-    const companyId = (params?.companyId || '').toString().trim();
-    if (companyName) query.companyName = companyName;
-    if (companyId) query.companyId = companyId;
-
-    const response = await apiClient.get('/task-types', { params: query });
+  async getTaskTypes(params?: { 
+    companyName?: string; 
+    companyId?: string;
+    brandName?: string;
+    brandId?: string;
+    email?: string;
+    userId?: string;
+  }): Promise<{ success: boolean; data: TaskTypeItem[] }> {
+    const response = await apiClient.get('/task-types', { params });
     return response.data;
   },
 
-  async createTaskType(payload: { name: string; companyName?: string; companyId?: string }): Promise<{ success: boolean; data: TaskTypeItem }> {
+  async createTaskType(payload: { 
+    name: string; 
+    companyName?: string; 
+    companyId?: string;
+    brandName?: string;
+    brandId?: string;
+    email?: string;
+    userId?: string;
+  }): Promise<{ success: boolean; data: TaskTypeItem }> {
     const response = await apiClient.post('/task-types', payload);
     return response.data;
   },
 
-  async bulkUpsertTaskTypes(payload: { types: Array<{ name: string; clientId?: string } | string>; companyName?: string; companyId?: string }): Promise<{ success: boolean; data: TaskTypeItem[] }> {
+  async bulkUpsertTaskTypes(payload: { 
+    types: Array<{ name: string; clientId?: string } | string>; 
+    companyName?: string; 
+    companyId?: string;
+    brandName?: string;
+    brandId?: string;
+    email?: string;
+    userId?: string;
+  }): Promise<{ success: boolean; data: TaskTypeItem[] }> {
     const response = await apiClient.post('/task-types/bulk', payload);
     return response.data;
   },

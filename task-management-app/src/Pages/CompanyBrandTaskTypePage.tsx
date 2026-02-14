@@ -192,6 +192,18 @@ const CompanyBrandTaskTypePage = ({ currentUser }: Props) => {
     );
   }
 
+  const filteredCompanies = useMemo(() => {
+    const list = companies || [];
+    const role = (currentUser?.role || '').toLowerCase();
+    if (role === 'manager') {
+      const raw = 'MD Impex';
+      const rawKey = raw.replace(/\s+/g, '').toLowerCase();
+      const match = list.find((c: any) => String(c?.name || '').trim().replace(/\s+/g, '').toLowerCase() === rawKey);
+      return match ? [match] : [{ name: raw } as Company];
+    }
+    return list;
+  }, [companies, currentUser]);
+
   return (
     <div className="w-full min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 p-4 md:p-6">
       <div className="w-full">
@@ -212,8 +224,8 @@ const CompanyBrandTaskTypePage = ({ currentUser }: Props) => {
                   disabled={loadingCompanies}
                 >
                   <option value="">Select company</option>
-                  {companies.map((c: any) => (
-                    <option key={String(c.id || c._id)} value={String(c.name || '').trim()}>
+                  {filteredCompanies.map((c: any) => (
+                    <option key={String(c.id || c._id || c.name)} value={String(c.name || '').trim()}>
                       {String(c.name || '').trim()}
                     </option>
                   ))}

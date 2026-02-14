@@ -37,6 +37,7 @@ import { companyService } from '../Services/Company.service';
 import { assignService } from '../Services/Assign.service';
 import { TasksPageSkeleton } from '../Components/LoadingSkeletons';
 import AdvancedFiltersPanel from './AdvancedFilters';
+import { useTaskFilters } from '../Hooks/useTaskFilters';
 
 const SPEED_E_COM_COMPANY_KEY = 'speed e com';
 const SPEED_E_COM_FIXED_TASK_TYPES = ['Meeting Pending', 'CP Pending', 'Recharge Negative'];
@@ -908,20 +909,13 @@ const BulkImporter = memo(({
                 value={defaults.taskType}
                 onChange={(e) => onDefaultsChange({ taskType: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                disabled={availableTaskTypes.length === 0}
               >
-                {availableTaskTypes.length === 0 ? (
-                  <option value="">No task types available</option>
-                ) : (
-                  <>
-                    <option value="">Select type</option>
-                    {availableTaskTypes.map((typeName) => (
-                      <option key={typeName} value={typeName.toLowerCase()}>
-                        {typeName}
-                      </option>
-                    ))}
-                  </>
-                )}
+                <option value="">Select type</option>
+                {['google', 'regular', 'other work', 'Troubleshoot'].map((type) => (
+                  <option key={type} value={type.toLowerCase()}>
+                    {type}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -1244,11 +1238,12 @@ const MobileTaskItem = memo(({
   const isPermanentlyApproved = isTaskPermanentlyApproved(task.id);
   const userIsAssigner = isTaskAssigner(task);
   const role = String((currentUser as any)?.role || '').trim().toLowerCase();
+  const isManager = role === 'manager';
   const taskCompanyKey = String((task as any)?.companyName || (task as any)?.company || '').trim().toLowerCase().replace(/\s+/g, '');
   const isSpeedEcomTask = taskCompanyKey === 'speedecom';
-  const canDeleteThisTask = isSpeedEcomTask
+  const canDeleteThisTask = isManager ? false : (isSpeedEcomTask
     ? (role === 'admin' || role === 'super_admin')
-    : (role !== 'rm' && role !== 'am') && (role === 'admin' || role === 'super_admin' || userIsAssigner);
+    : (role !== 'rm' && role !== 'am') && (role === 'admin' || role === 'super_admin' || userIsAssigner));
   const isOverdueTask = isOverdue(task.dueDate, task.status);
   const statusKey = String(task.status || '').trim().toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-');
   const isReassignedTask = statusKey === 'reassigned';
@@ -1315,7 +1310,7 @@ const MobileTaskItem = memo(({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {showAssignButton && (
+            {!isManager && showAssignButton && (
               <button
                 onClick={() => onAssignClick(task)}
                 className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -1414,13 +1409,20 @@ const DesktopTaskItem = memo(({
   const isCompleted = isTaskCompleted(task.id);
   const isPermanentlyApproved = isTaskPermanentlyApproved(task.id);
   const userIsAssigner = isTaskAssigner(task);
-  const canEditThisTask = typeof canEditTask === 'function' ? canEditTask(task) : userIsAssigner;
   const role = String((currentUser as any)?.role || '').trim().toLowerCase();
+  const isManager = role === 'manager';
+  const isObManager = role === 'ob_manager';
   const taskCompanyKey = String((task as any)?.companyName || (task as any)?.company || '').trim().toLowerCase().replace(/\s+/g, '');
+  const isMdImpexTask = taskCompanyKey === 'mdimpex';
+  const canEditThisTask = isObManager
+    ? true
+    : (isManager
+      ? Boolean(isMdImpexTask && userIsAssigner)
+      : (typeof canEditTask === 'function' ? canEditTask(task) : userIsAssigner));
   const isSpeedEcomTask = taskCompanyKey === 'speedecom';
-  const canDeleteThisTask = isSpeedEcomTask
-    ? (role === 'admin' || role === 'super_admin')
-    : (role !== 'rm' && role !== 'am') && (role === 'admin' || role === 'super_admin' || userIsAssigner);
+  const canDeleteThisTask = (role === 'admin' || role === 'super_admin' || role === 'ob_manager') 
+    ? true 
+    : (isManager ? false : (!isSpeedEcomTask && userIsAssigner));
   const isOverdueTask = isOverdue(task.dueDate, task.status);
   const statusKey = String(task.status || '').trim().toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-');
   const isReassignedTask = statusKey === 'reassigned';
@@ -1546,7 +1548,7 @@ const DesktopTaskItem = memo(({
 
             {/* Action Buttons */}
             <div className="flex items-center gap-1">
-              {showAssignButton && typeof onAssignClick === 'function' && (
+              {!isManager && showAssignButton && typeof onAssignClick === 'function' && (
                 <button
                   onClick={() => onAssignClick(task)}
                   className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -2965,7 +2967,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       if (key) allowed.add(key);
     });
     if (allowed.size === 0) {
-      return new Set<string>(['other work', 'trubbleshot', 'troubleshoot']);
+      return new Set<string>([]);
     }
     return allowed;
   }, [currentUser, tasks, users]);
@@ -3026,112 +3028,23 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   }, [assistantManagerEmail, currentUser, tasks]);
 
   const availableTaskTypes = useMemo(() => {
-    const normalizeLabel = (v: unknown) => (v || '').toString().trim();
-    const normalizeKey = (v: unknown) => normalizeLabel(v).toLowerCase();
-
-    const apiLabels = (taskTypes || [])
-      .map(t => normalizeLabel(t?.name))
-      .filter(Boolean);
-
-    const apiLabelByKey = new Map<string, string>();
-    apiLabels.forEach(label => {
-      const key = normalizeKey(label);
-      if (!key) return;
-      if (!apiLabelByKey.has(key)) apiLabelByKey.set(key, label);
-    });
-
     const role = (currentUser?.role || '').toString().toLowerCase();
-    if (role === 'assistant' || role === 'md_manager' || role === 'ob_manager') {
-      const myEmail = (currentUser?.email || '').toString().trim().toLowerCase();
-      const myId = ((currentUser as any)?.id || (currentUser as any)?._id || '').toString().trim();
 
-      const isMine = (t: any) => {
-        if (role === 'md_manager' || role === 'ob_manager') {
-          const assignedTo = t?.assignedTo;
-          const assignedToUser = t?.assignedToUser;
-          const assignedBy = t?.assignedBy;
-          const assignedByUser = t?.assignedByUser;
+    // Define the canonicalization function once to ensure consistency
+    const canonicalize = (value: unknown): string => {
+      const raw = (value || '').toString().trim();
+      if (!raw) return '';
+      const key = raw.toLowerCase().replace(/[\s-]+/g, ' ').trim();
+      if (key === 'troubleshoot' || key === 'trouble shoot' || key === 'trubbleshot' || key === 'trubble shoot') return 'Troubleshoot';
+      return raw;
+    };
 
-          const assignedToId =
-            (typeof assignedTo === 'string' ? assignedTo : assignedTo?._id || assignedTo?.id) ||
-            (typeof assignedToUser === 'string' ? assignedToUser : assignedToUser?._id || assignedToUser?.id) ||
-            '';
-          const assignedToEmail =
-            (typeof assignedTo === 'string' && assignedTo.includes('@') ? assignedTo : assignedTo?.email) ||
-            (typeof assignedToUser === 'string' && assignedToUser.includes('@') ? assignedToUser : assignedToUser?.email) ||
-            '';
-
-          const assignedById =
-            (typeof assignedBy === 'string' ? assignedBy : assignedBy?._id || assignedBy?.id) ||
-            (typeof assignedByUser === 'string' ? assignedByUser : assignedByUser?._id || assignedByUser?.id) ||
-            '';
-          const assignedByEmail =
-            (typeof assignedBy === 'string' && assignedBy.includes('@') ? assignedBy : assignedBy?.email) ||
-            (typeof assignedByUser === 'string' && assignedByUser.includes('@') ? assignedByUser : assignedByUser?.email) ||
-            '';
-
-          if (myId && assignedToId && assignedToId.toString().trim() === myId) return true;
-          if (myEmail && assignedToEmail && assignedToEmail.toString().trim().toLowerCase() === myEmail) return true;
-          if (myId && assignedById && assignedById.toString().trim() === myId) return true;
-          if (myEmail && assignedByEmail && assignedByEmail.toString().trim().toLowerCase() === myEmail) return true;
-          return false;
-        }
-
-        const assignedTo = t?.assignedTo;
-        const assignedToUser = t?.assignedToUser;
-        const assignedToId =
-          (typeof assignedTo === 'string' ? assignedTo : assignedTo?._id || assignedTo?.id) ||
-          (typeof assignedToUser === 'string' ? assignedToUser : assignedToUser?._id || assignedToUser?.id) ||
-          '';
-        const assignedToEmail =
-          (typeof assignedTo === 'string' && assignedTo.includes('@') ? assignedTo : assignedTo?.email) ||
-          (typeof assignedToUser === 'string' && assignedToUser.includes('@') ? assignedToUser : assignedToUser?.email) ||
-          '';
-
-        if (myId && assignedToId && assignedToId.toString().trim() === myId) return true;
-        if (myEmail && assignedToEmail && assignedToEmail.toString().trim().toLowerCase() === myEmail) return true;
-        return false;
-      };
-
-      const taskLabelByKey = new Map<string, string>();
-      (tasks || []).forEach((t: any) => {
-        if (!isMine(t)) return;
-        const label = normalizeLabel(t?.taskType || t?.type || '');
-        const key = normalizeKey(label);
-        if (!key) return;
-        if (!taskLabelByKey.has(key)) taskLabelByKey.set(key, label);
-      });
-
-      const mergedLabelByKey = new Map<string, string>(apiLabelByKey);
-      taskLabelByKey.forEach((label, key) => {
-        if (!mergedLabelByKey.has(key)) mergedLabelByKey.set(key, label);
-      });
-
-      const labels = Array.from(mergedLabelByKey.values()).filter(Boolean);
-      return [...new Set(labels)].sort((a, b) => a.localeCompare(b));
+    if (role === 'md_manager') {
+      return ['google', 'regular', 'other work', 'Troubleshoot'].map((t) => canonicalize(t)).filter(Boolean);
     }
-
-    if (role === 'manager') {
-      const managerDefaultTypeLabels = ['Other Work', 'Trubbleshot'];
-      const allowedKeys = allowedTaskTypeKeysForManager;
-      const mergedLabelByKey = new Map<string, string>();
-      apiLabelByKey.forEach((label, key) => {
-        if (allowedKeys.has(key)) mergedLabelByKey.set(key, label);
-      });
-      (tasks || []).forEach((t: any) => {
-        const label = normalizeLabel(t?.taskType || t?.type || '');
-        const key = normalizeKey(label);
-        if (!key) return;
-        if (!allowedKeys.has(key)) return;
-        if (!mergedLabelByKey.has(key)) mergedLabelByKey.set(key, label);
-      });
-
-      const labels = Array.from(mergedLabelByKey.values()).filter(Boolean);
-      return [...new Set([...labels, ...managerDefaultTypeLabels])].sort((a, b) => a.localeCompare(b));
-    }
-
-    return [...new Set(apiLabels)].sort((a, b) => a.localeCompare(b));
-  }, [allowedTaskTypeKeysForManager, currentUser, taskTypes, tasks]);
+    const baseTypes = ['google', 'regular', 'other work', 'Troubleshoot'];
+    return baseTypes.map((t) => canonicalize(t)).filter(Boolean);
+  }, [currentUser]);
 
   const uniqueLabelsByKey = useCallback((items: string[]): string[] => {
     const map = new Map<string, string>();
@@ -3186,7 +3099,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     const merged = uniqueLabelsByKey(Array.from(new Set([...fromOverrides, ...fromTasks, ...fromMappings])));
 
     if (role === 'manager') {
-      const managerDefaultTypeLabels = ['Other Work', 'Trubbleshot'];
+      const managerDefaultTypeLabels = ['Other Work'];
       const mergedWithDefaults = uniqueLabelsByKey(Array.from(new Set([...merged, ...managerDefaultTypeLabels])));
       const allowedKeys = allowedTaskTypeKeysForManager;
       return restrictTaskTypesForCompany(companyName, mergedWithDefaults
@@ -3199,6 +3112,20 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
 
   const availableTaskTypesForFilters = useMemo(() => {
     const role = (currentUser?.role || '').toString().toLowerCase();
+
+    // Define the canonicalization function
+    const canonicalize = (value: unknown): string => {
+      const raw = (value || '').toString().trim();
+      if (!raw) return '';
+      const key = raw.toLowerCase().replace(/[\s-]+/g, ' ').trim();
+      if (key === 'troubleshoot' || key === 'trouble shoot' || key === 'trubbleshot' || key === 'trubble shoot') return 'Troubleshoot';
+      return raw;
+    };
+
+    if (role === 'md_manager') {
+      return ['google', 'regular', 'other work', 'Troubleshoot'];
+    }
+
     if (role === 'assistant') {
       const companyKey = normalizeText(effectiveAdvancedFilters.company);
       const taskTypesFromTasks = (assistantScopedTasks || [])
@@ -3215,22 +3142,28 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         : Object.values(taskTypeCompanyOverrides || {}).flatMap((arr) => (Array.isArray(arr) ? arr : []));
 
       const merged = uniqueLabelsByKey(Array.from(new Set([...(taskTypesFromTasks || []), ...(fromOverrides || [])])));
-      return restrictTaskTypesForCompany(effectiveAdvancedFilters.company, merged.sort((a, b) => a.localeCompare(b)));
+      return restrictTaskTypesForCompany(effectiveAdvancedFilters.company, merged.map(t => canonicalize(t)).sort((a, b) => a.localeCompare(b)));
     }
 
-    if (effectiveAdvancedFilters.company !== 'all') return getTaskTypesForCompany(effectiveAdvancedFilters.company);
+    if (effectiveAdvancedFilters.company !== 'all') {
+      const types = getTaskTypesForCompany(effectiveAdvancedFilters.company);
+      return Array.from(new Set(types.map(t => canonicalize(t)))).sort((a, b) => a.localeCompare(b));
+    }
+
     const fromOverrides = Object.values(taskTypeCompanyOverrides || {}).flatMap((arr) => (Array.isArray(arr) ? arr : []));
     const fromTasks = Array.from(taskTypesByCompanyFromTasks.values()).flatMap((set) => Array.from(set));
     const merged = uniqueLabelsByKey(Array.from(new Set([...availableTaskTypes, ...fromOverrides, ...fromTasks])));
 
+    const canonicalized = Array.from(new Set(merged.map(t => canonicalize(t))));
+
     if (role === 'manager') {
       const allowedKeys = allowedTaskTypeKeysForManager;
-      return restrictTaskTypesForCompany(effectiveAdvancedFilters.company, merged
+      return restrictTaskTypesForCompany(effectiveAdvancedFilters.company, canonicalized
         .filter((t) => allowedKeys.has((t || '').toString().trim().toLowerCase()))
         .sort((a, b) => a.localeCompare(b)));
     }
 
-    return restrictTaskTypesForCompany(effectiveAdvancedFilters.company, merged.sort((a, b) => a.localeCompare(b)));
+    return restrictTaskTypesForCompany(effectiveAdvancedFilters.company, canonicalized.sort((a, b) => a.localeCompare(b)));
   }, [allowedTaskTypeKeysForManager, assistantScopedTasks, availableTaskTypes, currentUser?.role, effectiveAdvancedFilters.company, getTaskTypesForCompany, normalizeText, restrictTaskTypesForCompany, taskTypeCompanyOverrides, taskTypesByCompanyFromTasks, uniqueLabelsByKey]);
   const fetchTaskTypes = useCallback(async () => {
     const isFresh = taskTypesFetchedAtRef.current && Date.now() - taskTypesFetchedAtRef.current < TASK_TYPES_TTL_MS;
@@ -3304,7 +3237,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     assigner: currentUser.email || '',
     dueDate: new Date().toISOString().split('T')[0],
     priority: 'medium',
-    taskType: '',
+    taskType: 'regular',
     companyName: '',
     brand: ''
   });
@@ -3443,6 +3376,13 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
 
     const normalizeCompanyKey = (v: unknown): string => String(v || '').trim().toLowerCase().replace(/\s+/g, '');
     const isSpeedEcomTask = normalizeCompanyKey(task?.companyName || (task as any)?.company) === 'speedecom';
+    const isMdImpexTask = normalizeCompanyKey(task?.companyName || (task as any)?.company) === 'mdimpex';
+    const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
+
+    // Manager: only allow edit for their own created tasks, and only for MD Impex.
+    if (roleKey === 'manager') {
+      return Boolean(isMdImpexTask && isTaskAssigner(task));
+    }
 
     // Speed E Com: Allow assignee to edit (limited fields in modal handled by EditTaskModal)
     if (isSpeedEcomTask && isTaskAssignee(task)) {
@@ -3935,7 +3875,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
 
     setShowAdvancedFilters(false);
     toast.success('All filters cleared');
-  }, [setFilter, setAssignedFilter, setDateFilter, setSearchTerm, onAdvancedFilterChange, getBrandsByCompanyInternal]);
+  }, [currentUser?.role, setFilter, setAssignedFilter, setDateFilter, setSearchTerm, onAdvancedFilterChange, getBrandsByCompanyInternal]);
 
   useEffect(() => {
     const role = (currentUser?.role || '').toString().trim().toLowerCase();
@@ -4536,17 +4476,19 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   }, [refreshTaskTypeCompanyOverrides]);
 
   // ==================== FILTERED TASKS ====================
-  const filteredTasks = useMemo(() => {
-    const tasksWithDemoData = tasks.map(task => getTaskWithDemoData(task));
+  const tasksWithDemoData = useMemo(() => tasks.map(task => getTaskWithDemoData(task)), [tasks]);
 
-    let filtered = tasksWithDemoData.filter((task: Task) => {
-      const isCompleted = isTaskCompleted(task.id);
+  const visibleTasks = useMemo(() => {
+    const roleKey = normalizeRoleKey((currentUser as any)?.role);
+    const myEmail = normalizeText((currentUser as any)?.email);
 
-      const roleKey = normalizeRoleKey(currentUser?.role);
-      const myEmail = normalizeText(currentUser?.email);
+    if (!roleKey || !myEmail) return tasksWithDemoData;
 
-      if (roleKey === 'ob_manager') {
-        const assignedToEmail = normalizeText(
+    const normalizeEmailSafe = (v: unknown): string => String(v || '').trim().toLowerCase();
+
+    if (roleKey === 'ob_manager') {
+      return (tasksWithDemoData || []).filter((task: Task) => {
+        const assignedToEmail = normalizeEmailSafe(
           (task as any)?.assignedToUser?.email ||
           (typeof (task as any)?.assignedTo === 'string' ? (task as any)?.assignedTo : (task as any)?.assignedTo?.email) ||
           (task as any)?.assignedTo ||
@@ -4554,158 +4496,48 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         );
         const isAssignedToMe = Boolean(myEmail && assignedToEmail && assignedToEmail === myEmail);
 
-        const direct = normalizeRoleKey((task as any)?.assignedToUser?.role);
-        let assigneeRoleKey = direct;
-        if (!assigneeRoleKey) {
-          const candidate = (task as any)?.assignedToUser || (task as any)?.assignedTo;
-          const idOrEmail = typeof candidate === 'string'
-            ? candidate
-            : (candidate?.id || candidate?._id || candidate?.email || '');
-          const key = String(idOrEmail || '').trim().toLowerCase();
-          const found = (users || []).find((u: any) => {
-            const id = String(u?.id || u?._id || '').trim().toLowerCase();
-            const email = String(u?.email || '').trim().toLowerCase();
-            return (id && id === key) || (email && email === key);
-          });
-          assigneeRoleKey = normalizeRoleKey((found as any)?.role);
-        }
-
+        const assigneeRoleKey = normalizeRoleKey((task as any)?.assignedToUser?.role);
         const isAssistantAssignee = assigneeRoleKey === 'assistant'
           || assigneeRoleKey === 'assistance'
           || assigneeRoleKey === 'sub_assistance'
           || assigneeRoleKey.includes('assistant');
 
-        if (!isAssignedToMe && !isAssistantAssignee) return false;
-      }
+        return isAssignedToMe || isAssistantAssignee;
+      });
+    }
 
-      if (roleKey === 'manager') {
+    if (roleKey === 'manager') {
+      return (tasksWithDemoData || []).filter((task: Task) => {
         const assignedByMe = normalizeText(getAssignerEmail(task)) === myEmail;
         const assignedToMe = normalizeText(getEmailByIdInternal(task.assignedTo)) === myEmail;
 
-        if (!assignedByMe) {
-          if (!assignedToMe) return false;
-          if (resolveAssignerRole(task) !== 'md_manager') return false;
-        }
-      }
+        if (assignedByMe) return true;
+        if (!assignedToMe) return false;
+        return resolveAssignerRole(task) === 'md_manager';
+      });
+    }
 
-      // 🔥 CRITICAL FIX: Handle assigned filter correctly
-      if (assignedFilter && assignedFilter !== 'all') {
-        if (assignedFilter === 'assigned-to-me' && !isTaskAssignee(task)) {
-          return false;
-        }
-        if (assignedFilter === 'assigned-by-me' && !isTaskAssigner(task)) {
-          return false;
-        }
-      }
+    return tasksWithDemoData;
+  }, [currentUser, getAssignerEmail, getEmailByIdInternal, normalizeRoleKey, normalizeText, resolveAssignerRole, tasksWithDemoData]);
 
-      // Apply advanced filters for assigned if set
-      if (effectiveAdvancedFilters.assigned !== 'all') {
-        if (effectiveAdvancedFilters.assigned === 'assigned-to-me' && !isTaskAssignee(task)) return false;
-        if (effectiveAdvancedFilters.assigned === 'assigned-by-me' && !isTaskAssigner(task)) return false;
-      }
+  const mergedFilters = useMemo(() => {
+    return {
+      ...effectiveAdvancedFilters,
+      status: effectiveAdvancedFilters.status !== 'all' ? effectiveAdvancedFilters.status : filter,
+      date: effectiveAdvancedFilters.date !== 'all' ? effectiveAdvancedFilters.date : dateFilter,
+      assigned: effectiveAdvancedFilters.assigned !== 'all' ? effectiveAdvancedFilters.assigned : assignedFilter,
+    };
+  }, [assignedFilter, dateFilter, effectiveAdvancedFilters, filter]);
 
-      // Status Filter
-      let statusPass = true;
-      if (effectiveAdvancedFilters.status !== 'all') {
-        const status = effectiveAdvancedFilters.status.toLowerCase();
-        if (status === 'completed' && !isCompleted) statusPass = false;
-        else if (status === 'pending' && (isCompleted || String(task.status || '').toLowerCase() !== 'pending')) statusPass = false;
-        else if (status === 'in-progress' && String(task.status || '').toLowerCase() !== 'in-progress') statusPass = false;
-        else if (status === 'reassigned' && String(task.status || '').toLowerCase() !== 'reassigned') statusPass = false;
-      } else if (filter !== 'all') {
-        if (filter === 'completed' && !isCompleted) statusPass = false;
-        else if (filter === 'pending' && isCompleted) statusPass = false;
-      }
-      if (!statusPass) return false;
-
-      // Priority Filter
-      if (effectiveAdvancedFilters.priority !== 'all') {
-        const filterPriority = effectiveAdvancedFilters.priority.toLowerCase();
-        const taskPriority = task.priority?.toLowerCase() || '';
-        if (taskPriority !== filterPriority) return false;
-      }
-
-      // Task Type Filter
-      if (effectiveAdvancedFilters.taskType !== 'all') {
-        const filterType = effectiveAdvancedFilters.taskType.toLowerCase();
-        const taskType = ((task as any).taskType || (task as any).type || '').toString().toLowerCase();
-        if (taskType !== filterType) return false;
-      }
-
-      // Company Filter
-      if (effectiveAdvancedFilters.company !== 'all') {
-        const filterCompanyKey = normalizeCompanyKey(effectiveAdvancedFilters.company);
-        const taskCompanyKey = normalizeCompanyKey((task as any).companyName || (task as any).company || '');
-        if (taskCompanyKey !== filterCompanyKey) return false;
-      }
-
-      // Brand Filter
-      if (effectiveAdvancedFilters.brand !== 'all') {
-        const filterBrand = effectiveAdvancedFilters.brand.toLowerCase();
-        const taskBrand = task.brand?.toLowerCase() || '';
-        if (taskBrand !== filterBrand) return false;
-      }
-
-      // Date Filter
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const taskDate = new Date(task.dueDate);
-      taskDate.setHours(0, 0, 0, 0);
-
-      const dateFilterToUse = effectiveAdvancedFilters.date !== 'all' ? effectiveAdvancedFilters.date : dateFilter;
-
-      if (dateFilterToUse === 'today' && taskDate.getTime() !== today.getTime()) return false;
-      if (dateFilterToUse === 'week') {
-        const weekFromNow = new Date(today);
-        weekFromNow.setDate(weekFromNow.getDate() + 7);
-        if (taskDate > weekFromNow || taskDate < today) return false;
-      }
-      if (dateFilterToUse === 'overdue') {
-        const isTaskOverdue = isOverdue(task.dueDate, task.status);
-        if (!isTaskOverdue) return false;
-      }
-
-      // Search Filter
-      if (searchTerm) {
-        const searchLower = searchTerm.toLowerCase();
-        const matchesTitle = task.title?.toLowerCase().includes(searchLower);
-        const matchesAssignee = getEmailByIdInternal(task.assignedTo)?.toLowerCase().includes(searchLower);
-        const matchesAssigner = getAssignerEmail(task)?.toLowerCase().includes(searchLower);
-        const matchesType = task.type?.toLowerCase().includes(searchLower) || false;
-        const matchesCompany = task.company?.toLowerCase().includes(searchLower) || false;
-        const matchesBrand = task.brand?.toLowerCase().includes(searchLower) || false;
-
-        if (!matchesTitle && !matchesAssignee && !matchesAssigner &&
-          !matchesType && !matchesCompany && !matchesBrand) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-
-    // Sorting - Show newest tasks first by creation date
-    filtered.sort((a, b) => {
-      const aValue = new Date(a.createdAt || a.id).getTime();
-      const bValue = new Date(b.createdAt || b.id).getTime();
-      return bValue - aValue; // Descending order (newest first)
-    });
-
-    return filtered;
-  }, [
-    tasks,
-    filter,
-    dateFilter,
-    assignedFilter,
+  const { filteredTasks } = useTaskFilters({
+    tasks: visibleTasks,
+    filters: mergedFilters,
     searchTerm,
-    effectiveAdvancedFilters,
-    isTaskCompleted,
-    isTaskAssignee,
-    isTaskAssigner,
+    currentUserEmail: (currentUser as any)?.email || '',
+    currentUserRole: (currentUser as any)?.role || '',
     isOverdue,
-    getEmailByIdInternal,
-    getAssignerEmail
-  ]);
+    applyRoleVisibility: false,
+  });
 
   useEffect(() => {
     setCurrentPage(1);

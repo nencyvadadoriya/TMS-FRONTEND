@@ -31,7 +31,9 @@ export const routepath = {
     assign: '/assign',
     speedEcomReassign: '/speed-ecom-reassign',
     reviews: '/reviews',
-    otherWork: '/other-work'
+    managerMonthlyRankings: '/manager-monthly-rankings',
+    otherWork: '/other-work',
+    mdImpexStrike: '/md-impex-strike'
 };
 
 export const route = createHashRouter([
@@ -120,7 +122,15 @@ export const route = createHashRouter([
                 lazy: lazyComponent(() => import("../Pages/DashboardPage"))
             },
             {
+                path: routepath.managerMonthlyRankings,
+                lazy: lazyComponent(() => import("../Pages/DashboardPage"))
+            },
+            {
                 path: routepath.otherWork,
+                lazy: lazyComponent(() => import("../Pages/DashboardPage"))
+            },
+            {
+                path: routepath.mdImpexStrike,
                 lazy: lazyComponent(() => import("../Pages/DashboardPage"))
             }
         ]

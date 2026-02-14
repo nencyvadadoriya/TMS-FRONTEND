@@ -681,7 +681,8 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
     const canManageUsersAsManager = useMemo(() => {
 
-        return isCurrentUserManager || isCurrentUserSbm || isCurrentUserRm;
+        // Manager can only add assistants. They cannot edit or delete any user.
+        return isCurrentUserSbm || isCurrentUserRm;
 
     }, [isCurrentUserManager, isCurrentUserSbm, isCurrentUserRm]);
 
@@ -717,7 +718,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
             const targetRole = normalizeRole(target?.role);
 
-            if (targetRole !== 'assistant') return false;
+            if (targetRole !== 'assistant' && targetRole !== 'sub_assistance') return false;
 
             return true;
 
@@ -1191,11 +1192,11 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
         if (requester === 'admin') return target !== 'admin' && target !== 'super_admin';
 
-        if (requester === 'md_manager') return target === 'manager' || target === 'assistant';
+        if (requester === 'md_manager') return target === 'manager' || target === 'assistant' || target === 'sub_assistance';
 
-        if (requester === 'ob_manager') return target === 'assistant';
+        if (requester === 'ob_manager') return target === 'assistant' || target === 'sub_assistance';
 
-        if (requester === 'manager') return target === 'assistant';
+        if (requester === 'manager') return target === 'assistant' || target === 'sub_assistance';
 
         if (requester === 'sbm') return target === 'rm';
 
@@ -1396,19 +1397,29 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
         if (role === 'md_manager') {
 
-            return [{ key: 'manager', name: 'Manager' }, { key: 'assistant', name: 'Assistant' }];
+            return [
+                { key: 'manager', name: 'Manager' },
+                { key: 'assistant', name: 'Assistant' },
+                { key: 'sub_assistance', name: 'Sub Assistance' }
+            ];
 
         }
 
         if (role === 'ob_manager') {
 
-            return [{ key: 'assistant', name: 'Assistant' }];
+            return [
+                { key: 'assistant', name: 'Assistant' },
+                { key: 'sub_assistance', name: 'Sub Assistance' }
+            ];
 
         }
 
-        if (role === 'sbm') {
+        if (isCurrentUserManager) {
 
-            return [{ key: 'rm', name: 'RM' }, { key: 'am', name: 'AM' }];
+            return [
+                { key: 'assistant', name: 'Assistant' },
+                { key: 'sub_assistance', name: 'Sub Assistance' }
+            ];
 
         }
 
@@ -1420,7 +1431,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
         return [{ key: 'assistant', name: 'Assistant' }];
 
-    }, [currentUserRole, effectiveRoleOptions, isCurrentUserAdmin, normalizeRole]);
+    }, [currentUserRole, effectiveRoleOptions, isCurrentUserAdmin, isCurrentUserManager, normalizeRole]);
 
 
 
@@ -1830,6 +1841,11 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
     const handleEditClick = (user: UserType) => {
 
+        if (isCurrentUserManager) {
+            toast.error('You do not have permission to edit users');
+            return;
+        }
+
         if (!canManageUsers && !canManageUsersAsManager) {
 
             toast.error('You do not have permission to edit users');
@@ -1989,6 +2005,11 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
     const handleDeleteClick = (userId: string) => {
+
+        if (isCurrentUserManager) {
+            toast.error('You do not have permission to delete users');
+            return;
+        }
 
         if (!canManageUsers && !canManageUsersAsManager) {
 
@@ -3243,7 +3264,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
                                         {/* Edit/Delete Buttons */}
 
-                                        {(canManageUsers || canManageUsersAsManager) && !isSelf && canManageTargetUser(user) && (
+                                        {(!isCurrentUserManager && (canManageUsers || canManageUsersAsManager)) && !isSelf && canManageTargetUser(user) && (
 
                                             <div className="flex justify-end gap-3 mt-5 pt-5 border-t border-gray-100">
 

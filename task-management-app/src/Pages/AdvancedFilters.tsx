@@ -231,8 +231,8 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                         <option value="all">
                             {filters.company === 'all' ? 'All Brands' : `All ${filters.company} Brands`}
                         </option>
-                        {availableBrands.map(brand => (
-                            <option key={brand} value={brand}>
+                        {availableBrands.map((brand, index) => (
+                            <option key={`${brand}-${index}`} value={brand}>
                                 {formatBrandOptionLabel(brand)}
                             </option>
                         ))}

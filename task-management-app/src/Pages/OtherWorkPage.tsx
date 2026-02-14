@@ -125,16 +125,15 @@ const OtherWorkPage = ({ currentUser, tasks, onRefreshTasks }: { currentUser: Us
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full">
+          <table className="w-full table-fixed">
             <thead className="bg-gray-50">
               <tr className="text-left text-sm font-semibold text-gray-700">
-                <th className="px-6 py-4">Task</th>
-                <th className="px-6 py-4">Assigned By</th>
-                <th className="px-6 py-4">Current Assignee</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4">Review</th>
-                <th className="px-6 py-4 text-right">Action</th>
+                <th className="px-4 py-4 w-[26%]">Task</th>
+                <th className="px-4 py-4 w-[16%]">Assigned By</th>
+                <th className="px-4 py-4 w-[16%]">Assignee</th>
+                <th className="px-4 py-4 w-[10%]">Status</th>
+                <th className="px-4 py-4 w-[22%]">Review</th>
+                <th className="px-4 py-4 w-[10%] text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -157,23 +156,23 @@ const OtherWorkPage = ({ currentUser, tasks, onRefreshTasks }: { currentUser: Us
 
                 return (
                   <tr key={taskId} className="hover:bg-gray-50">
-                    <td className="px-6 py-5">
+                    <td className="px-4 py-5">
                       <div className="font-semibold text-gray-900">{t.title}</div>
                       <div className="text-xs text-gray-500 mt-1">Due: {t.dueDate ? new Date(t.dueDate).toLocaleDateString() : '—'}</div>
                     </td>
-                    <td className="px-6 py-5 text-sm text-gray-700">{assignedByEmail || '—'}</td>
-                    <td className="px-6 py-5 text-sm text-gray-700">{assigneeEmail || '—'}</td>
-                    <td className="px-6 py-5">
+                    <td className="px-4 py-5 text-sm text-gray-700 truncate" title={assignedByEmail || '—'}>{assignedByEmail || '—'}</td>
+                    <td className="px-4 py-5 text-sm text-gray-700 truncate" title={assigneeEmail || '—'}>{assigneeEmail || '—'}</td>
+                    <td className="px-4 py-5">
                       <span className="inline-flex px-3 py-1 text-xs font-semibold rounded-full border bg-gray-50 text-gray-700">{t.status}</span>
                     </td>
-                    <td className="px-6 py-5">
+                    <td className="px-4 py-5">
                       {isManagerRole ? (
                         <>
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-col gap-2">
                             <select
                               value={stars}
                               onChange={(e) => setStars(taskId, Number(e.target.value))}
-                              className="px-2 py-1 border border-gray-300 rounded text-sm"
+                              className="px-2 py-2 border border-gray-300 rounded text-sm"
                               disabled={saving || !isCompleted}
                             >
                               {[1, 2, 3, 4, 5].map((n) => (
@@ -183,7 +182,7 @@ const OtherWorkPage = ({ currentUser, tasks, onRefreshTasks }: { currentUser: Us
                             <input
                               value={comment}
                               onChange={(e) => setComment(taskId, e.target.value)}
-                              className="px-3 py-2 border border-gray-300 rounded text-sm w-full min-w-[240px]"
+                              className="px-3 py-2 border border-gray-300 rounded text-sm w-full"
                               placeholder="Comment"
                               disabled={saving || !isCompleted}
                             />
@@ -204,7 +203,7 @@ const OtherWorkPage = ({ currentUser, tasks, onRefreshTasks }: { currentUser: Us
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-5 text-right">
+                    <td className="px-4 py-5 text-right">
                       {isManagerRole ? (
                         <button
                           type="button"
@@ -231,7 +230,6 @@ const OtherWorkPage = ({ currentUser, tasks, onRefreshTasks }: { currentUser: Us
               )}
             </tbody>
           </table>
-        </div>
       </div>
     </div>
   );

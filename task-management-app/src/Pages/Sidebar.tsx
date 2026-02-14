@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   X, LogOut, ListTodo, ChevronLeft, ChevronRight, Menu, Sun, Moon,
-  Users, Home, Calendar, CheckSquare, User, Building, BarChart3, Shield, Star, Briefcase
+  Users, Home, Calendar, CheckSquare, User, Building, BarChart3, Shield, Star, Briefcase, AlertTriangle
 } from 'lucide-react';
 import type { UserType } from '../Types/Types';
 
@@ -14,7 +14,7 @@ interface SidebarProps {
   isCollapsed: boolean;
   setIsCollapsed: (collapsed: boolean) => void;
   navigateTo: (page: string) => void;
-  currentView?: 'dashboard' | 'all-tasks' | 'calendar' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'analyze' | 'access' | 'assign' | 'speed-ecom-reassign' | 'company-brand-task-types' | 'reviews' | 'other-work';
+  currentView?: 'dashboard' | 'all-tasks' | 'calendar' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'analyze' | 'access' | 'assign' | 'speed-ecom-reassign' | 'company-brand-task-types' | 'reviews' | 'manager-monthly-rankings' | 'other-work' | 'md-impex-strike';
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -52,6 +52,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   const canSeeAssignPage = hasAccess('assign_page');
   const canSeeReviews = hasAccess('reviews_page');
   const canSeeOtherWork = hasAccess('other_work_page');
+
+  const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
+  const canSeeMdImpexStrike = roleKey === 'manager' || roleKey === 'md_manager';
 
   const getDisplayInitial = () => {
     if (!currentUser) return 'U';
@@ -129,6 +132,17 @@ const Sidebar: React.FC<SidebarProps> = ({
 
     return [
       ...itemsWithRoleGated,
+      ...(canSeeMdImpexStrike
+        ? [
+          {
+            name: 'Strike',
+            icon: AlertTriangle,
+            current: currentView === 'md-impex-strike',
+            onClick: () => navigateTo('md-impex-strike'),
+            badge: 0
+          }
+        ]
+        : []),
       ...(canSeeOtherWork
         ? [
           {

@@ -61,6 +61,13 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({
         return userAvatarUrl(profileUser);
     }, [profileUser]);
 
+    const profilePositionLabel = useMemo(() => {
+        const pos = String((profileUser as any)?.position || '').trim();
+        if (pos) return pos;
+        const role = String((profileUser as any)?.role || '').trim();
+        return role;
+    }, [profileUser]);
+
     const isPlaceholderUser = useMemo(() => {
         const name = (user as any)?.name;
         if (!name) return false;
@@ -260,7 +267,12 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({
                             </div>
                             <div>
                                 <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
-                                    {profileUser.name}'s Profile
+                                    <span>{profileUser.name}'s Profile</span>
+                                    {profilePositionLabel ? (
+                                        <span className="ml-3 inline-flex items-center px-3 py-1 text-sm font-semibold rounded-full bg-gray-100 text-gray-800">
+                                            {profilePositionLabel}
+                                        </span>
+                                    ) : null}
                                 </h1>
                                 <p className="text-gray-600 mt-2">
                                     View user profile information and activity
@@ -312,7 +324,12 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({
                                     {/* Basic Info */}
                                     <div className="flex-1">
                                         <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-                                            {profileUser.name}
+                                            <span>{profileUser.name}</span>
+                                            {profilePositionLabel ? (
+                                                <span className="ml-3 inline-flex items-center px-3 py-1 text-sm font-semibold rounded-full bg-gray-100 text-gray-800">
+                                                    {profilePositionLabel}
+                                                </span>
+                                            ) : null}
                                         </h2>
                                         <div className="flex flex-wrap items-center gap-3">
 
@@ -400,48 +417,6 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Right Column - Summary & Stats */}
-                    <div className="lg:col-span-4 space-y-6">
-                        {/* Quick Stats Card */}
-                        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="p-2 bg-white/20 rounded-xl">
-                                    <User className="h-5 w-5" />
-                                </div>
-                                <h3 className="text-lg font-semibold">Profile Overview</h3>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div>
-                                    <p className="text-blue-100 text-sm mb-1">Full Name</p>
-                                    <p className="font-medium truncate">{profileUser.name}</p>
-                                </div>
-                                <div>
-                                    <p className="text-blue-100 text-sm mb-1">Email</p>
-                                    <p className="font-medium truncate">{profileUser.email}</p>
-                                </div>
-                                {profileUser.department && (
-                                    <div>
-                                        <p className="text-blue-100 text-sm mb-1">Department</p>
-                                        <p className="font-medium">{profileUser.department}</p>
-                                    </div>
-                                )}
-                                {profileUser.position && (
-                                    <div>
-                                        <p className="text-blue-100 text-sm mb-1">Position</p>
-                                        <p className="font-medium">{profileUser.position}</p>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="mt-6 pt-6 border-t border-blue-400">
-                                <p className="text-sm text-blue-100">
-                                    This profile information is read-only.
-                                </p>
                             </div>
                         </div>
                     </div>
