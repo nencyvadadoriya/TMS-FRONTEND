@@ -136,6 +136,30 @@ class TaskService {
         }
     }
 
+    async mdImpexReassignTask(id: string, assignedTo: string) {
+        try {
+            if (isDev) console.log('📝 MD Impex reassign task:', id, assignedTo);
+
+            const res = await apiClient.put(`${this.baseUrl}md-impex/reassign/${id}`, { assignedTo });
+
+            const task = res.data.data;
+            return {
+                success: Boolean(res.data.success),
+                data: task ? normalizeTask(task) : null,
+                message: res.data.message || res.data.msg || 'Task reassigned successfully'
+            };
+        } catch (err: any) {
+            console.error("❌ MD Impex Reassign Error:", describeAxiosError(err));
+            const backendMessage = err.response?.data?.message || err.response?.data?.msg;
+            const backendError = err.response?.data?.error;
+            return {
+                success: false,
+                data: null,
+                message: backendMessage || backendError || err.message || 'Failed to reassign task'
+            };
+        }
+    }
+
     async deleteTask(id: string) {
         try {
             if (isDev) console.log('Sending DELETE request for task ID:', id);

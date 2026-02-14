@@ -76,6 +76,7 @@ interface AllTasksPageProps {
   onUpdateTaskApproval?: (taskId: string, completedApproval: boolean) => Promise<void>;
   onFetchTaskHistory?: (taskId: string) => Promise<TaskHistory[]>;
   onBulkCreateTasks?: (tasks: BulkTaskPayload[]) => Promise<BulkCreateResult>;
+  onMdImpexReassignTask?: (taskId: string, newAssigneeEmail: string) => Promise<void>;
   // Optional sidebar collapsed state from DashboardPage
   isSidebarCollapsed?: boolean;
   brands: Brand[];
@@ -314,6 +315,164 @@ const formatDateTime = (timestamp: string): string => {
     return '—';
   }
 };
+
+// ==================== MD IMPEX REASSIGN MODAL ====================
+const MdImpexReassignModal = memo(({
+  show,
+  task,
+  users,
+  currentUser,
+  newAssigneeEmail,
+  isSubmitting,
+  onClose,
+  onAssigneeChange,
+  onSubmit,
+}: {
+  show: boolean;
+  task: Task | null;
+  users: UserType[];
+  currentUser: UserType;
+  newAssigneeEmail: string;
+  isSubmitting: boolean;
+  onClose: () => void;
+  onAssigneeChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  onSubmit: () => Promise<void>;
+}) => {
+  const normalizeText = useCallback((v: unknown) => String(v || '').trim().toLowerCase(), []);
+  const normalizeRoleKey = useCallback((v: unknown) => normalizeText(v).replace(/[\s-]+/g, '_'), [normalizeText]);
+  const normalizeCompanyKey = useCallback((v: unknown) => normalizeText(v).replace(/\s+/g, ''), [normalizeText]);
+
+  const myRoleKey = useMemo(() => normalizeRoleKey((currentUser as any)?.role), [currentUser, normalizeRoleKey]);
+  const myCompanyKey = useMemo(
+    () => normalizeCompanyKey((currentUser as any)?.companyName || (currentUser as any)?.company || ''),
+    [currentUser, normalizeCompanyKey]
+  );
+  const taskCompanyKey = useMemo(() => normalizeCompanyKey((task as any)?.companyName || (task as any)?.company || ''), [normalizeCompanyKey, task]);
+
+  const currentAssigneeEmail = useMemo(() => {
+    const candidate: any = (task as any)?.assignedToUser || (task as any)?.assignedTo;
+    const email =
+      (typeof candidate === 'string' && candidate.includes('@') ? candidate : candidate?.email) ||
+      '';
+    return normalizeText(email);
+  }, [normalizeText, task]);
+
+  const canReassign = useMemo(() => {
+    if (!task) return false;
+    if (taskCompanyKey !== 'mdimpex') return false;
+    if (myRoleKey === 'admin' || myRoleKey === 'super_admin') return true;
+    // MD Impex: any MD Impex user can reassign in any status
+    return myCompanyKey === 'mdimpex';
+  }, [myCompanyKey, myRoleKey, task, taskCompanyKey]);
+
+  const availableUsers = useMemo(() => {
+    if (taskCompanyKey !== 'mdimpex') return [];
+    const list = Array.isArray(users) ? users : [];
+    const mdImpexUsers = list
+      .filter((u: any) => normalizeCompanyKey((u as any)?.companyName || (u as any)?.company || '') === 'mdimpex')
+      .filter((u: any) => {
+        const email = normalizeText(u?.email);
+        if (!email) return false;
+        // Don't list current assignee (no-op reassignment is blocked by backend anyway)
+        if (currentAssigneeEmail && email === currentAssigneeEmail) return false;
+
+        // Assistant: only allow assigning to sub-assistant within MD Impex
+        if (myRoleKey === 'assistant') {
+          const rk = normalizeRoleKey((u as any)?.role);
+          const isSubAssistant = rk === 'sub_assistance'
+            || rk === 'sub_assistence'
+            || rk === 'sub_assist'
+            || rk === 'sub_assistant';
+          if (!isSubAssistant) return false;
+        }
+
+        // OB Manager: only allow assigning to assistant/sub-assistant within MD Impex
+        if (myRoleKey === 'ob_manager') {
+          const rk = normalizeRoleKey((u as any)?.role);
+          const isAssistantLike = rk === 'assistant'
+            || rk === 'assistance'
+            || rk === 'sub_assistance'
+            || rk === 'sub_assistence'
+            || rk === 'sub_assist'
+            || rk === 'sub_assistant'
+            || rk.includes('assistant');
+          if (!isAssistantLike) return false;
+        }
+
+        return true;
+      })
+      .sort((a: any, b: any) => String(a?.email || '').localeCompare(String(b?.email || '')));
+
+    return mdImpexUsers;
+  }, [currentAssigneeEmail, myRoleKey, normalizeCompanyKey, normalizeRoleKey, normalizeText, taskCompanyKey, users]);
+
+  if (!show) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg">
+        <div className="flex items-center justify-between p-6 border-b">
+          <h3 className="text-lg font-semibold">MD Impex Reassign</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {!task ? (
+            <div className="text-sm text-gray-700">Task not found.</div>
+          ) : taskCompanyKey !== 'mdimpex' ? (
+            <div className="text-sm text-gray-700">This reassignment flow is only for MD Impex tasks.</div>
+          ) : !canReassign ? (
+            <div className="text-sm text-red-600">You do not have permission to reassign this MD Impex task.</div>
+          ) : (
+            <>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="text-sm font-medium text-gray-700 mb-1">Task</div>
+                <div className="text-sm text-gray-900">{(task as any)?.title || '—'}</div>
+                <div className="text-xs text-gray-600 mt-1">Current assignee: {currentAssigneeEmail || '—'}</div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Reassign to (email)</label>
+                <select
+                  value={newAssigneeEmail}
+                  onChange={onAssigneeChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Select email</option>
+                  {availableUsers.map((u: any) => (
+                    <option key={String(u?.id || u?._id || u?.email)} value={normalizeText(u?.email)}>
+                      {String(u?.email || '').trim()}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-3 p-6 border-t bg-gray-50">
+          <button
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="px-4 py-2 text-sm border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => void onSubmit()}
+            disabled={isSubmitting || !task || taskCompanyKey !== 'mdimpex' || !canReassign || !newAssigneeEmail}
+            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 inline-flex items-center gap-2"
+          >
+            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+            Reassign
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+});
 
 const getTaskWithDemoData = (task: Task): Task => {
   const rawCompany = (task.companyName || (task as any).company || (task as any).companyName || '').toString();
@@ -2742,6 +2901,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   onDeleteComment,
   onFetchTaskComments,
   onReassignTask,
+  onMdImpexReassignTask,
   onApproveTask,
   onUpdateTaskApproval,
   onFetchTaskHistory,
@@ -3514,6 +3674,10 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   const [newDueDate, setNewDueDate] = useState('');
   const [reassignComment, setReassignComment] = useState('');
   const [reassignLoading, setReassignLoading] = useState(false);
+  const [showMdImpexReassignModal, setShowMdImpexReassignModal] = useState(false);
+  const [mdImpexReassignTask, setMdImpexReassignTask] = useState<Task | null>(null);
+  const [mdImpexAssigneeEmail, setMdImpexAssigneeEmail] = useState('');
+  const [mdImpexSubmitting, setMdImpexSubmitting] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [historyTask, setHistoryTask] = useState<Task | null>(null);
 
@@ -4092,8 +4256,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       void refreshTaskTypeCompanyOverrides();
       handleAdvancedFilterChange(filterType, value);
       handleAdvancedFilterChange('brand', 'all');
-      const role = (currentUser?.role || '').toString().trim().toLowerCase();
-      handleAdvancedFilterChange('taskType', role === 'assistant' ? 'other work' : 'all');
+      handleAdvancedFilterChange('taskType', 'all');
 
       const brands = getBrandsByCompanyInternal(value);
       setAvailableBrands(brands);
@@ -4126,13 +4289,12 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   }, [effectiveAdvancedFilters, setFilter, setAssignedFilter, setDateFilter]);
 
   const resetFilters = useCallback(() => {
-    const role = (currentUser?.role || '').toString().trim().toLowerCase();
     const emptyFilters = {
       status: 'all',
       priority: 'all',
       assigned: 'all',
       date: 'all',
-      taskType: role === 'assistant' ? 'other work' : 'all',
+      taskType: 'all',
       company: 'all',
       brand: 'all'
     };
@@ -4156,16 +4318,12 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     toast.success('All filters cleared');
   }, [setFilter, setAssignedFilter, setDateFilter, setSearchTerm, onAdvancedFilterChange, getBrandsByCompanyInternal]);
 
-  useEffect(() => {
-    const role = (currentUser?.role || '').toString().trim().toLowerCase();
-    if (role !== 'assistant') return;
-    if ((effectiveAdvancedFilters.taskType || '').toString().trim().toLowerCase() !== 'all') return;
-    handleAdvancedFilterChange('taskType', 'other work');
-  }, [currentUser?.role, effectiveAdvancedFilters.taskType, handleAdvancedFilterChange]);
-
   const handleBulkStatusChange = useCallback(async (status: 'completed' | 'pending') => {
-    if (selectedTasks.length === 0) return;
-
+    if (!onToggleTaskStatus) return;
+    if (!selectedTasks.length) {
+      toast.error('No tasks selected');
+      return;
+    }
     const role = (currentUser?.role || '').toString().trim().toLowerCase();
     if (role === 'ob_manager') {
       toast.error('You do not have permission to update task status');
@@ -4669,6 +4827,23 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   }, [taskToApprove, onApproveTask, addHistoryRecord, currentUser, handleCloseApprovalModal]);
 
   const handleOpenReassignModal = useCallback((task: Task) => {
+    try {
+      const taskCompanyKey = String((task as any)?.companyName || (task as any)?.company || '')
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, '');
+      const isMdImpexTask = taskCompanyKey === 'mdimpex';
+
+      if (isMdImpexTask) {
+        setMdImpexReassignTask(task);
+        setMdImpexAssigneeEmail('');
+        setShowMdImpexReassignModal(true);
+        return;
+      }
+    } catch {
+      // fall back to existing modal
+    }
+
     setReassignTask(task);
     setReassignComment('');
     try {
@@ -4700,6 +4875,29 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     }
     setShowReassignModal(true);
   }, []);
+
+  const handleCloseMdImpexReassignModal = useCallback(() => {
+    setShowMdImpexReassignModal(false);
+    setMdImpexReassignTask(null);
+    setMdImpexAssigneeEmail('');
+    setMdImpexSubmitting(false);
+  }, []);
+
+  const handleSubmitMdImpexReassign = useCallback(async () => {
+    if (!mdImpexReassignTask?.id || !mdImpexAssigneeEmail || !onMdImpexReassignTask) return;
+
+    setMdImpexSubmitting(true);
+    try {
+      await onMdImpexReassignTask(mdImpexReassignTask.id, mdImpexAssigneeEmail);
+      handleCloseMdImpexReassignModal();
+      toast.success('Task reassigned successfully');
+    } catch (error) {
+      console.error('Error reassigning MD Impex task:', error);
+      toast.error('Failed to reassign task');
+    } finally {
+      setMdImpexSubmitting(false);
+    }
+  }, [handleCloseMdImpexReassignModal, mdImpexAssigneeEmail, mdImpexReassignTask?.id, onMdImpexReassignTask]);
 
   const normalizeRoleValue = useCallback((v: unknown) => String(v || '').trim().toLowerCase(), []);
 
@@ -5188,6 +5386,8 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
               const taskCompanyKey = normalizeCompanyKey((task as any)?.companyName || (task as any)?.company || '');
               const speedCompanyKey = normalizeCompanyKey(SPEED_E_COM_COMPANY_KEY);
               const isSpeedEcomTask = Boolean(taskCompanyKey && taskCompanyKey === speedCompanyKey);
+              const isMdImpexTask = taskCompanyKey === 'mdimpex';
+              const myCompanyKey = normalizeCompanyKey((currentUser as any)?.companyName || (currentUser as any)?.company || '');
 
               const myUserId = String((currentUser as any)?.id || (currentUser as any)?._id || '').trim();
               const myManagerId = String((currentUser as any)?.managerId || '').trim();
@@ -5242,7 +5442,9 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                 canAmReassignByChain
               );
 
-              const showAssignButton = isCompleted && (isSpeedEcomTask
+              const showAssignButton = (isMdImpexTask
+                ? Boolean(myCompanyKey === 'mdimpex')
+                : isCompleted && (isSpeedEcomTask
                 ? Boolean(
                   // Speed E Com: allow creator OR RM/AM pair members (including assignee) after completion
                   (myEmail && assignedByEmail && myEmail === assignedByEmail) ||
@@ -5253,7 +5455,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                 : Boolean(
                   canReassignNonSpeedEcom ||
                   (isAmRole && isAssignee)
-                ));
+                )));
 
               return (
                 <div key={`${task.id}-${idx}`}>
@@ -5446,6 +5648,18 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         onDueDateChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewDueDate(e.target.value)}
         onCommentChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setReassignComment(e.target.value)}
         onReassign={handleReassignTask}
+      />
+
+      <MdImpexReassignModal
+        show={showMdImpexReassignModal}
+        task={mdImpexReassignTask}
+        users={users}
+        currentUser={currentUser}
+        newAssigneeEmail={mdImpexAssigneeEmail}
+        isSubmitting={mdImpexSubmitting}
+        onClose={handleCloseMdImpexReassignModal}
+        onAssigneeChange={(e: React.ChangeEvent<HTMLSelectElement>) => setMdImpexAssigneeEmail(e.target.value)}
+        onSubmit={handleSubmitMdImpexReassign}
       />
 
       {/* Task History Modal - UPDATED WITH NEW PROPS */}

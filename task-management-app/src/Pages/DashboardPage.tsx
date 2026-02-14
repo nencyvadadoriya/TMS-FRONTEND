@@ -4516,6 +4516,28 @@ const DashboardPage = () => {
 
                     setSearchTerm(params.get('q') || '');
 
+                } else {
+
+                    setFilters({
+
+                        status: 'all',
+
+                        priority: 'all',
+
+                        assigned: 'all',
+
+                        date: 'all',
+
+                        taskType: 'all',
+
+                        company: 'all',
+
+                        brand: 'all',
+
+                    });
+
+                    setSearchTerm('');
+
                 }
 
             } catch {
@@ -6044,6 +6066,34 @@ const DashboardPage = () => {
         }
 
     }, [tasks, users, currentUser, dispatch]);
+
+
+
+    const handleMdImpexReassignTask = useCallback(async (taskId: string, newAssigneeEmail: string) => {
+
+        try {
+
+            const response = await taskService.mdImpexReassignTask(taskId, newAssigneeEmail);
+
+            if (response.success && response.data) {
+
+                dispatch(taskUpserted(response.data as Task));
+
+                return;
+
+            }
+
+            toast.error(response.message || 'Failed to reassign task');
+
+        } catch (error: any) {
+
+            console.error('MD Impex reassignment failed:', error);
+
+            toast.error(error?.message || 'Failed to reassign task');
+
+        }
+
+    }, [dispatch]);
 
 
 
@@ -11433,6 +11483,8 @@ const DashboardPage = () => {
                                     onFetchTaskComments={handleFetchTaskComments}
 
                                     onReassignTask={handleReassignTask}
+
+                                    onMdImpexReassignTask={handleMdImpexReassignTask}
 
                                     onAddTaskHistory={handleAddTaskHistory}
 
