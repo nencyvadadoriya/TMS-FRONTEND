@@ -2280,7 +2280,21 @@ const ReassignModal = memo(({
   }, [assignedByEmail, currentUser, isRmOrAmRole, isTaskCompleted, myId, myRoleKey, normalizeEmail, normalizeRole, users]);
 
   const canReassign = isSpeedEcomTask
-    ? Boolean(isTaskCompleted && (isTaskAssigner || (isRmOrAmRole && isTaskAssignee) || (isSbmRole && isTaskAssigner)))
+    ? Boolean(
+      isTaskCompleted &&
+      (
+        isTaskAssigner ||
+        (isSbmRole && isTaskAssigner) ||
+        (
+          isRmOrAmRole &&
+          (
+            isTaskAssignee ||
+            (assignedByUserId && allowedPairUserIds.has(assignedByUserId)) ||
+            canReassignByPairEmailFallback
+          )
+        )
+      )
+    )
     : Boolean(
       isObManager ||
       isKeyuri ||
