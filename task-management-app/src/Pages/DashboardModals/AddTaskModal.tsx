@@ -41,6 +41,7 @@ type Props = {
   isSubmitting: boolean;
   isSbmUser?: boolean;
   showCompanyDropdownIcon?: boolean;
+  allowPastDueDate?: boolean;
 };
 
 const AddTaskModal = ({
@@ -64,6 +65,7 @@ const AddTaskModal = ({
   isSubmitting,
   isSbmUser,
   showCompanyDropdownIcon = false,
+  allowPastDueDate = false,
 }: Props) => {
   if (!open) return null;
 
@@ -110,7 +112,7 @@ const AddTaskModal = ({
                 className={`w-full px-4 py-3 md:py-3.5 text-sm md:text-base border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.dueDate ? 'border-red-500' : 'border-gray-300'}`}
                 value={newTask.dueDate}
                 onChange={(e) => onChange('dueDate', e.target.value)}
-                min={new Date().toISOString().split('T')[0]}
+                min={allowPastDueDate ? undefined : new Date().toISOString().split('T')[0]}
               />
               {formErrors.dueDate && <p className="mt-1 text-sm text-red-600">{formErrors.dueDate}</p>}
             </div>

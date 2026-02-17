@@ -56,7 +56,11 @@ const formatMetricTotal = (metric: MetricKey, n: number) => {
 
 const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => {
     const roleKey = useMemo(() => normalizeRoleKey((currentUser as any)?.role), [currentUser]);
-    const canEdit = useMemo(() => roleKey === 'md_manager' || roleKey === 'all_manager', [roleKey]);
+    const canEdit = useMemo(() => {
+        const email = String((currentUser as any)?.email || '').trim().toLowerCase();
+        if (email === 'snehasmartbiz@gmail.com') return true;
+        return roleKey === 'md_manager' || roleKey === 'all_manager';
+    }, [currentUser, roleKey]);
 
     const [monthKey, setMonthKey] = useState<string>(() => monthKeyOfDate(new Date()));
     const [activeMetric, setActiveMetric] = useState<MetricKey>('churn');
@@ -150,7 +154,6 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
             const sorted = [...rowsNormalized].sort((a, b) => {
                 const ta = metricTotal(key, (a as any)[key]);
                 const tb = metricTotal(key, (b as any)[key]);
-                if (key === 'churn') return ta - tb;
                 return tb - ta;
             });
             out[key] = sorted[0] || null;
@@ -158,6 +161,38 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
 
         return out as Record<MetricKey, PowerStarMonthlyRow | null>;
     }, [rowsNormalized]);
+
+    const topMetricKey = useMemo<MetricKey>(() => {
+        const totals = metricMeta.map((m) => {
+            const key = m.key;
+            const grandWeeks = [0, 0, 0, 0].map((_, idx) => {
+                return rowsNormalized.reduce((acc, r) => acc + toNumberSafe(((r as any)[key] as number[])?.[idx]), 0);
+            });
+            const grandTotal = metricTotal(key, grandWeeks);
+
+            // Highest total is Top for all metrics.
+            return { key, score: grandTotal };
+        });
+
+        const best = totals.sort((a, b) => b.score - a.score)[0];
+        return (best?.key || 'churn') as MetricKey;
+    }, [rowsNormalized]);
+
+    const topActiveRow = useMemo(() => {
+        const sorted = [...rowsNormalized].sort((a, b) => {
+            const ta = metricTotal(activeMetric, (a as any)[activeMetric]);
+            const tb = metricTotal(activeMetric, (b as any)[activeMetric]);
+            return tb - ta;
+        });
+        return sorted[0] || null;
+    }, [activeMetric, rowsNormalized]);
+
+    const topActiveTotalLabel = useMemo(() => {
+        if (!topActiveRow) return formatMetricTotal(activeMetric, 0);
+        const weeks = normalizeWeekArray((topActiveRow as any)?.[activeMetric]);
+        const total = metricTotal(activeMetric, weeks);
+        return formatMetricTotal(activeMetric, total);
+    }, [activeMetric, topActiveRow]);
 
     return (
         <div className="space-y-5 mb-15 overflow-x-hidden">
@@ -210,11 +245,50 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
                 ) : null}
             </div>
 
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                    <div>
+                        <div className="text-sm font-semibold text-gray-900">Top Manager</div>
+                        <div className="text-xs text-gray-500 mt-1">Top based on {metricMeta.find((x) => x.key === activeMetric)?.title || 'Metric'} for selected month</div>
+                    </div>
+
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 text-amber-800 border border-amber-100">
+                        <span className="text-xs font-semibold">Total:</span>
+                        <span className="text-sm font-semibold">{topActiveTotalLabel}</span>
+                    </div>
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                            <div className="w-11 h-11 rounded-full bg-white overflow-hidden border border-amber-200 shadow-sm flex-shrink-0">
+                                {(topActiveRow as any)?.avatar ? (
+                                    <img src={(topActiveRow as any).avatar} alt={topActiveRow?.name} className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-base font-black text-amber-700 bg-amber-100 uppercase">
+                                        {topActiveRow?.name?.[0] || 'U'}
+                                    </div>
+                                )}
+                            </div>
+                            <div>
+                                <div className="text-base font-semibold text-gray-900">{topActiveRow?.name || 'Not any yet'}</div>
+                                <div className="text-xs text-gray-600 mt-1">{topActiveRow?.email || ''}</div>
+                            </div>
+                        </div>
+
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-amber-200 text-amber-800">
+                            <span className="text-sm font-semibold">{topActiveTotalLabel}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
                 <div className="p-3 border-b border-gray-200">
                     <div className="grid grid-cols-3 gap-2">
                         {metricMeta.map((m) => {
                             const isActive = activeMetric === m.key;
+                            const isTopMetric = topMetricKey === m.key;
                             return (
                                 <button
                                     key={m.key}
@@ -224,7 +298,9 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
                                         `px-3 py-2 rounded-lg text-sm font-semibold border transition-colors ` +
                                         (isActive
                                             ? 'bg-blue-600 text-white border-blue-600'
-                                            : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50')
+                                            : isTopMetric
+                                                ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                                                : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50')
                                     }
                                 >
                                     {m.title}
@@ -251,9 +327,7 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
                                 <div className="flex items-start justify-between gap-4">
                                     <div>
                                         <h3 className="text-sm font-semibold text-gray-900">{m.title}</h3>
-                                        <p className="text-xs text-gray-500 mt-1">
-                                            {m.key === 'churn' ? 'Lowest total is Top' : 'Highest total is Top'}
-                                        </p>
+                                        <p className="text-xs text-gray-500 mt-1">Highest total is Top</p>
                                     </div>
                                     <div className="text-right">
                                         <div className="text-xs text-gray-500">Top</div>

@@ -8204,7 +8204,7 @@ const DashboardPage = () => {
 
 
 
-            if (selectedDate < yesterday) {
+            if (!isSpeedEcomUser && selectedDate < yesterday) {
 
                 errors.dueDate = 'Due date cannot be in the past';
 
@@ -8238,7 +8238,7 @@ const DashboardPage = () => {
 
         return Object.keys(errors).length === 0;
 
-    }, [newTask]);
+    }, [isSpeedEcomUser, newTask]);
 
 
 
@@ -12150,6 +12150,8 @@ const DashboardPage = () => {
                 isSubmitting={isCreatingTask}
 
                 isSbmUser={isSbmRole}
+
+                allowPastDueDate={isSpeedEcomUser}
 
                 showCompanyDropdownIcon={(() => {
 
