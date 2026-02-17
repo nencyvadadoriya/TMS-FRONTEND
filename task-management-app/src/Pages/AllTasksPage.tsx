@@ -82,15 +82,7 @@ interface AllTasksPageProps {
   brands: Brand[];
 
   // NEW PROPS FOR INTEGRATION
-  advancedFilters?: {
-    status: string;
-    priority: string;
-    assigned: string;
-    date: string;
-    taskType: string;
-    company: string;
-    brand: string;
-  };
+  advancedFilters?: AdvancedFilters;
   onAdvancedFilterChange?: (filterType: string, value: string) => void;
   showEditModal?: boolean;
   editingTask?: Task | null;
@@ -155,6 +147,7 @@ interface AdvancedFilters {
   taskType: string;
   company: string;
   brand: string;
+  rm: string;
 }
 
 interface HistoryDisplayItem {
@@ -1417,7 +1410,7 @@ const MobileTaskItem = memo(({
   const userIsAssigner = isTaskAssigner(task);
   const role = String((currentUser as any)?.role || '').trim().toLowerCase();
   const taskCompanyKey = String((task as any)?.companyName || (task as any)?.company || '').trim().toLowerCase().replace(/\s+/g, '');
-   taskCompanyKey === 'speedecom';
+  taskCompanyKey === 'speedecom';
   const canDeleteThisTask = (role === 'admin' || role === 'super_admin' || role === 'manager' || role === 'md_manager') && userIsAssigner;
   const isOverdueTask = isOverdue(task.dueDate, task.status);
   const statusKey = String(task.status || '').trim().toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-');
@@ -1599,7 +1592,7 @@ const DesktopTaskItem = memo(({
   const canEditThisTask = typeof canEditTask === 'function' ? canEditTask(task) : userIsAssigner;
   const role = String((currentUser as any)?.role || '').trim().toLowerCase();
   const taskCompanyKey = String((task as any)?.companyName || (task as any)?.company || '').trim().toLowerCase().replace(/\s+/g, '');
- taskCompanyKey === 'speedecom';
+  taskCompanyKey === 'speedecom';
   const canDeleteThisTask = (role === 'admin' || role === 'super_admin' || role === 'manager' || role === 'md_manager') && userIsAssigner;
   const isOverdueTask = isOverdue(task.dueDate, task.status);
   const statusKey = String(task.status || '').trim().toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-');
@@ -3004,7 +2997,8 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     date: 'all',
     taskType: 'all',
     company: 'all',
-    brand: 'all'
+    brand: 'all',
+    rm: 'all'
   });
 
   const effectiveAdvancedFilters = advancedFilters || localAdvancedFilters;
@@ -3527,7 +3521,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       });
       return Array.from(uniqueByKey.values()).sort((a, b) => a.localeCompare(b));
     }
-    
+
     if (roleKey === 'assistant') {
       const companyKey = normalizeText(effectiveAdvancedFilters.company);
       const taskTypesFromTasks = (assistantScopedTasks || [])
@@ -3550,7 +3544,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     if (effectiveAdvancedFilters.company !== 'all') {
       return getTaskTypesForCompany(effectiveAdvancedFilters.company);
     }
-    
+
     const fromOverrides = Object.values(taskTypeCompanyOverrides || {}).flatMap((arr) => (Array.isArray(arr) ? arr : []));
     const fromTasks = Array.from(taskTypesByCompanyFromTasks.values()).flatMap((set) => Array.from(set));
     const merged = uniqueLabelsByKey(Array.from(new Set([...availableTaskTypes, ...fromOverrides, ...fromTasks])));
@@ -4304,7 +4298,8 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       date: 'all',
       taskType: 'all',
       company: 'all',
-      brand: 'all'
+      brand: 'all',
+      rm: 'all'
     };
 
     // Reset both local and DashboardPage filters
@@ -4325,6 +4320,24 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     setShowAdvancedFilters(false);
     toast.success('All filters cleared');
   }, [setFilter, setAssignedFilter, setDateFilter, setSearchTerm, onAdvancedFilterChange, getBrandsByCompanyInternal]);
+
+  const availableRmUsersForFilters = useMemo(() => {
+    const roleKey = normalizeRoleKey(currentUser?.role);
+    if (roleKey !== 'sbm') return [] as UserType[];
+
+    const selectedCompanyKey = normalizeCompanyKey(effectiveAdvancedFilters.company);
+    const fallbackCompanyKey = normalizeCompanyKey((currentUser as any)?.companyName || (currentUser as any)?.company);
+    const companyKeyForRms = selectedCompanyKey && selectedCompanyKey !== 'all' ? selectedCompanyKey : fallbackCompanyKey;
+
+    return (users || [])
+      .filter((u: any) => normalizeRoleKey(u?.role) === 'rm')
+      .filter((u: any) => {
+        if (!companyKeyForRms) return true;
+        const uCompanyKey = normalizeCompanyKey(u?.companyName || u?.company);
+        return Boolean(uCompanyKey && uCompanyKey === companyKeyForRms);
+      })
+      .sort((a: any, b: any) => String(a?.name || a?.email || '').localeCompare(String(b?.name || b?.email || '')));
+  }, [currentUser, effectiveAdvancedFilters.company, normalizeCompanyKey, normalizeRoleKey, users]);
 
   const handleBulkStatusChange = useCallback(async (status: 'completed' | 'pending') => {
     if (!onToggleTaskStatus) return;
@@ -5003,6 +5016,40 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       const roleKey = normalizeRoleKey(currentUser?.role);
       const myEmail = normalizeText(currentUser?.email);
 
+      // SBM-only RM filter: show tasks assigned by selected RM to (1) me (SBM) OR (2) selected RM's AM/AR team
+      if (roleKey === 'sbm' && effectiveAdvancedFilters.rm && effectiveAdvancedFilters.rm !== 'all') {
+        const selectedRmEmail = normalizeText(effectiveAdvancedFilters.rm);
+        if (selectedRmEmail) {
+          const assignedByEmail = normalizeText(getAssignerEmail(task));
+          if (assignedByEmail !== selectedRmEmail) return false;
+
+          const selectedRmDoc: any = (users || []).find((u: any) => normalizeText(u?.email) === selectedRmEmail);
+          const selectedRmId = String(selectedRmDoc?.id || selectedRmDoc?._id || '').trim();
+
+          const teamEmails = selectedRmId
+            ? (users || [])
+              .filter((u: any) => String(u?.managerId || '').trim() === selectedRmId)
+              .filter((u: any) => {
+                const r = normalizeRoleKey(u?.role);
+                return r === 'am' || r === 'ar';
+              })
+              .map((u: any) => normalizeText(u?.email))
+              .filter(Boolean)
+            : [];
+
+          const assignedToEmail = normalizeText(
+            (task as any)?.assignedToUser?.email ||
+            (typeof (task as any)?.assignedTo === 'string' ? (task as any)?.assignedTo : (task as any)?.assignedTo?.email) ||
+            (task as any)?.assignedTo ||
+            ''
+          );
+
+          const isToMe = Boolean(myEmail && assignedToEmail && assignedToEmail === myEmail);
+          const isToTeam = Boolean(assignedToEmail && teamEmails.includes(assignedToEmail));
+          if (!isToMe && !isToTeam) return false;
+        }
+      }
+
       if (roleKey === 'ob_manager') {
         const assignedToEmail = normalizeText(
           (task as any)?.assignedToUser?.email ||
@@ -5171,7 +5218,11 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     isTaskAssigner,
     isOverdue,
     getEmailByIdInternal,
-    getAssignerEmail
+    getAssignerEmail,
+    currentUser,
+    normalizeRoleKey,
+    normalizeText,
+    users
   ]);
 
   useEffect(() => {
@@ -5188,6 +5239,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     effectiveAdvancedFilters.taskType,
     effectiveAdvancedFilters.company,
     effectiveAdvancedFilters.brand,
+    effectiveAdvancedFilters.rm,
     tasksPerPage
   ]);
 
@@ -5292,6 +5344,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                 availableTaskTypes={availableTaskTypesForFilters}
                 availableBrands={availableBrands}
                 getBrandLabel={getBrandLabelForFilter}
+                availableRms={availableRmUsersForFilters}
                 currentUser={currentUser}
                 onFilterChange={handleFilterChange}
                 onResetFilters={resetFilters}
@@ -5462,17 +5515,17 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
               const showAssignButton = (isMdImpexTask
                 ? Boolean(myCompanyKey === 'mdimpex' && roleKey !== 'manager' && roleKey !== 'md_manager')
                 : isCompleted && (isSpeedEcomTask
-                ? Boolean(
-                  // Speed E Com: allow creator OR RM/AM pair members (including assignee) after completion
-                  (myEmail && assignedByEmail && myEmail === assignedByEmail) ||
-                  (isAssignee && (isRmRole || isAmRole)) ||
-                  canRmReassignByChain ||
-                  canAmReassignByChain
-                )
-                : Boolean(
-                  canReassignNonSpeedEcom ||
-                  (isAmRole && isAssignee)
-                )));
+                  ? Boolean(
+                    // Speed E Com: allow creator OR RM/AM pair members (including assignee) after completion
+                    (myEmail && assignedByEmail && myEmail === assignedByEmail) ||
+                    (isAssignee && (isRmRole || isAmRole)) ||
+                    canRmReassignByChain ||
+                    canAmReassignByChain
+                  )
+                  : Boolean(
+                    canReassignNonSpeedEcom ||
+                    (isAmRole && isAssignee)
+                  )));
 
               return (
                 <div key={`${task.id}-${idx}`}>

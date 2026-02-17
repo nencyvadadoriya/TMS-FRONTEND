@@ -55,6 +55,11 @@ import {
     Trophy,
     Crown,
 
+    MessageSquare,
+    X,
+    Send,
+    Loader2,
+
 } from 'lucide-react';
 
 import toast from 'react-hot-toast';
@@ -361,6 +366,8 @@ interface FilterState {
 
     brand: string;
 
+    rm: string;
+
 }
 
 
@@ -440,6 +447,13 @@ const DashboardPage = () => {
     const taskTypesFetchInFlightRef = useRef<Promise<void> | null>(null);
 
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+    const [showTaskCommentSidebar, setShowTaskCommentSidebar] = useState(false);
+    const [commentSidebarTask, setCommentSidebarTask] = useState<Task | null>(null);
+    const [commentDraft, setCommentDraft] = useState('');
+    const [commentSidebarLoading, setCommentSidebarLoading] = useState(false);
+    const [commentSidebarLoadingComments, setCommentSidebarLoadingComments] = useState(false);
+    const [commentSidebarCommentsByTaskId, setCommentSidebarCommentsByTaskId] = useState<Record<string, CommentType[]>>({});
 
     const [speedEcomReassignTask, setSpeedEcomReassignTask] = useState<Task | null>(null);
     const [isSpeedEcomReassignSubmitting, setIsSpeedEcomReassignSubmitting] = useState<boolean>(false);
@@ -2119,6 +2133,8 @@ const DashboardPage = () => {
 
         brand: 'all',
 
+        rm: 'all',
+
     });
 
 
@@ -2552,6 +2568,60 @@ const DashboardPage = () => {
         (currentUser as any)?.companyName
 
     ]);
+
+
+
+    const availableRmUsersForFilters = useMemo(() => {
+
+        const roleKey = normalizeRoleKey(currentUser?.role);
+
+        if (roleKey !== 'sbm') return [] as Array<{ id: string; name: string; email: string }>;
+
+        const selectedCompanyKey = normalizeCompanyKey(filters.company);
+
+        const fallbackCompanyKey = normalizeCompanyKey((currentUser as any)?.companyName || (currentUser as any)?.company);
+
+        const companyKeyForRms = selectedCompanyKey && selectedCompanyKey !== 'all' ? selectedCompanyKey : fallbackCompanyKey;
+
+        const list: any[] = Array.isArray(usersRef.current) ? (usersRef.current as any[]) : (users as any[]);
+
+        const normalizeRole = (v: unknown) => String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+
+        const allRms = (list || [])
+
+            .filter((u: any) => normalizeRole(u?.role) === 'rm')
+
+            .map((u: any) => ({
+
+                id: String(u?.id || u?._id || u?.email || '').trim(),
+
+                name: String(u?.name || u?.fullName || u?.email || '').trim(),
+
+                email: String(u?.email || '').trim(),
+
+                companyKey: normalizeCompanyKey(u?.companyName || u?.company),
+
+            }))
+
+            .filter((u: any) => Boolean(u?.email));
+
+        // Prefer company-matched RMs; if none, fallback to all RMs
+
+        const companyMatched = companyKeyForRms
+
+            ? allRms.filter((u: any) => Boolean(u?.companyKey) && u.companyKey === companyKeyForRms)
+
+            : [];
+
+        const source = companyMatched.length > 0 ? companyMatched : allRms;
+
+        return source
+
+            .map(({ id, name, email }: any) => ({ id, name, email }))
+
+            .sort((a: any, b: any) => String(a?.name || a?.email || '').localeCompare(String(b?.name || b?.email || '')));
+
+    }, [currentUser, filters.company, normalizeCompanyKey, normalizeRoleKey, users, usersRef, filters]);
 
 
 
@@ -4580,7 +4650,7 @@ const DashboardPage = () => {
 
                 const params = new URLSearchParams(location.search || '');
 
-                const hasAny = ['status', 'priority', 'assigned', 'date', 'taskType', 'company', 'brand', 'q'].some((k) =>
+                const hasAny = ['status', 'priority', 'assigned', 'date', 'taskType', 'company', 'brand', 'rm', 'q'].some((k) =>
 
                     params.has(k)
 
@@ -4605,6 +4675,8 @@ const DashboardPage = () => {
                         company: params.get('company') || 'all',
 
                         brand: params.get('brand') || 'all',
+
+                        rm: params.get('rm') || 'all',
 
                     };
 
@@ -4631,6 +4703,8 @@ const DashboardPage = () => {
                         company: 'all',
 
                         brand: 'all',
+
+                        rm: 'all',
 
                     });
 
@@ -5927,6 +6001,77 @@ const DashboardPage = () => {
 
     }, []);
 
+    const isSbmUser = useMemo(() => {
+
+        const roleKey = String((currentUser as any)?.role || '')
+
+            .trim()
+
+            .toLowerCase()
+
+            .replace(/[\s-]+/g, '_');
+
+        return roleKey === 'sbm';
+
+    }, [currentUser]);
+
+    const getCommentSidebarComments = useCallback((taskId: string): CommentType[] => {
+        const key = String(taskId || '').trim();
+        if (!key) return [];
+        return Array.isArray(commentSidebarCommentsByTaskId[key]) ? commentSidebarCommentsByTaskId[key] : [];
+    }, [commentSidebarCommentsByTaskId]);
+
+    const handleOpenTaskCommentSidebar = useCallback(async (task: Task) => {
+        if (!task?.id) return;
+        if (!isSbmUser) return;
+
+        setCommentSidebarTask(task);
+        setShowTaskCommentSidebar(true);
+        setCommentDraft('');
+
+        setCommentSidebarLoadingComments(true);
+        try {
+            const comments = await handleFetchTaskComments(String(task.id));
+            setCommentSidebarCommentsByTaskId(prev => ({
+                ...prev,
+                [String(task.id)]: comments
+            }));
+        } finally {
+            setCommentSidebarLoadingComments(false);
+        }
+    }, [handleFetchTaskComments, isSbmUser]);
+
+    const handleCloseTaskCommentSidebar = useCallback(() => {
+        setShowTaskCommentSidebar(false);
+        setCommentSidebarTask(null);
+        setCommentDraft('');
+        setCommentSidebarLoading(false);
+        setCommentSidebarLoadingComments(false);
+    }, []);
+
+    const handleSubmitTaskComment = useCallback(async () => {
+        if (!commentSidebarTask?.id) return;
+        if (!isSbmUser) return;
+
+        const content = (commentDraft || '').trim();
+        if (!content) return;
+
+        const taskId = String(commentSidebarTask.id);
+        setCommentSidebarLoading(true);
+        try {
+            const saved = await handleSaveComment(taskId, content);
+            setCommentSidebarCommentsByTaskId(prev => {
+                const next = { ...prev };
+                const current = Array.isArray(next[taskId]) ? next[taskId] : [];
+                next[taskId] = [...current, saved];
+                return next;
+            });
+            setCommentDraft('');
+        } finally {
+            setCommentSidebarLoading(false);
+        }
+    }, [commentDraft, commentSidebarTask, handleSaveComment, isSbmUser]);
+
 
 
     const handleReassignTask = useCallback(async (taskId: string, newAssigneeId: string, dueDate?: string) => {
@@ -6582,6 +6727,194 @@ const DashboardPage = () => {
 
 
 
+        if (normalizeRoleKey(role) === 'sbm') {
+
+            const selectedRm = String((filters as any)?.rm || '').trim().toLowerCase();
+
+            if (selectedRm && selectedRm !== 'all') {
+
+                const list: any[] = Array.isArray(usersRef.current) ? (usersRef.current as any[]) : (users as any[]);
+
+                const selectedRmDoc: any = (list || []).find((u: any) => String(u?.email || '').trim().toLowerCase() === selectedRm);
+
+                const selectedRmId = String(selectedRmDoc?.id || selectedRmDoc?._id || '').trim();
+
+                const teamEmails = selectedRmId
+
+                    ? (list || [])
+
+                        .filter((u: any) => String(u?.managerId || '').trim() === selectedRmId)
+
+                        .filter((u: any) => {
+
+                            const r = normalizeRoleKey(u?.role);
+
+                            return r === 'am' || r === 'ar';
+
+                        })
+
+                        .map((u: any) => String(u?.email || '').trim().toLowerCase())
+
+                        .filter(Boolean)
+
+                    : [];
+
+                const getAssignedByEmail = (t: any) => {
+
+                    const assignedBy = (t as any)?.assignedBy;
+
+                    const assignedByUser = (t as any)?.assignedByUser;
+
+                    const email =
+
+                        (typeof assignedBy === 'string' && assignedBy.includes('@') ? assignedBy : assignedBy?.email) ||
+
+                        (typeof assignedByUser === 'string' && assignedByUser.includes('@') ? assignedByUser : assignedByUser?.email) ||
+
+                        (typeof assignedBy === 'string' ? assignedBy : '') ||
+
+                        '';
+
+                    return String(email || '').trim().toLowerCase();
+
+                };
+
+                const getAssignedToEmail = (t: any) => {
+
+                    const assignedTo = (t as any)?.assignedTo;
+
+                    const assignedToUser = (t as any)?.assignedToUser;
+
+                    const email =
+
+                        (typeof assignedTo === 'string' && assignedTo.includes('@') ? assignedTo : assignedTo?.email) ||
+
+                        (typeof assignedToUser === 'string' && assignedToUser.includes('@') ? assignedToUser : assignedToUser?.email) ||
+
+                        (typeof assignedTo === 'string' ? assignedTo : '') ||
+
+                        '';
+
+                    return String(email || '').trim().toLowerCase();
+
+                };
+
+                filtered = filtered.filter((t: any) => {
+
+                    const assignedByEmail = getAssignedByEmail(t);
+
+                    if (!assignedByEmail || assignedByEmail !== selectedRm) return false;
+
+                    const assignedToEmail = getAssignedToEmail(t);
+
+                    const isToMe = Boolean(myEmail && assignedToEmail && assignedToEmail === myEmail);
+
+                    const isToTeam = Boolean(assignedToEmail && teamEmails.includes(assignedToEmail));
+
+                    return isToMe || isToTeam;
+
+                });
+
+            }
+
+        }
+
+
+
+        if (normalizeRoleKey(role) === 'sbm') {
+
+            const selectedRm = String((filters as any)?.rm || '').trim().toLowerCase();
+
+            if (selectedRm && selectedRm !== 'all') {
+
+                const list: any[] = Array.isArray(usersRef.current) ? (usersRef.current as any[]) : (users as any[]);
+
+                const selectedRmDoc: any = (list || []).find((u: any) => String(u?.email || '').trim().toLowerCase() === selectedRm);
+
+                const selectedRmId = String(selectedRmDoc?.id || selectedRmDoc?._id || '').trim();
+
+                const teamEmails = selectedRmId
+
+                    ? (list || [])
+
+                        .filter((u: any) => String(u?.managerId || '').trim() === selectedRmId)
+
+                        .filter((u: any) => {
+
+                            const r = normalizeRoleKey(u?.role);
+
+                            return r === 'am' || r === 'ar';
+
+                        })
+
+                        .map((u: any) => String(u?.email || '').trim().toLowerCase())
+
+                        .filter(Boolean)
+
+                    : [];
+
+                const getAssignedByEmail = (t: any) => {
+
+                    const assignedBy = (t as any)?.assignedBy;
+
+                    const assignedByUser = (t as any)?.assignedByUser;
+
+                    const email =
+
+                        (typeof assignedBy === 'string' && assignedBy.includes('@') ? assignedBy : assignedBy?.email) ||
+
+                        (typeof assignedByUser === 'string' && assignedByUser.includes('@') ? assignedByUser : assignedByUser?.email) ||
+
+                        (typeof assignedBy === 'string' ? assignedBy : '') ||
+
+                        '';
+
+                    return String(email || '').trim().toLowerCase();
+
+                };
+
+                const getAssignedToEmail = (t: any) => {
+
+                    const assignedTo = (t as any)?.assignedTo;
+
+                    const assignedToUser = (t as any)?.assignedToUser;
+
+                    const email =
+
+                        (typeof assignedTo === 'string' && assignedTo.includes('@') ? assignedTo : assignedTo?.email) ||
+
+                        (typeof assignedToUser === 'string' && assignedToUser.includes('@') ? assignedToUser : assignedToUser?.email) ||
+
+                        (typeof assignedTo === 'string' ? assignedTo : '') ||
+
+                        '';
+
+                    return String(email || '').trim().toLowerCase();
+
+                };
+
+                filtered = filtered.filter((t: any) => {
+
+                    const assignedByEmail = getAssignedByEmail(t);
+
+                    if (!assignedByEmail || assignedByEmail !== selectedRm) return false;
+
+                    const assignedToEmail = getAssignedToEmail(t);
+
+                    const isToMe = Boolean(myEmail && assignedToEmail && assignedToEmail === myEmail);
+
+                    const isToTeam = Boolean(assignedToEmail && teamEmails.includes(assignedToEmail));
+
+                    return isToMe || isToTeam;
+
+                });
+
+            }
+
+        }
+
+
+
         if (selectedStatFilter === 'completed') {
 
             filtered = filtered.filter((task) => task.status === 'completed');
@@ -6852,7 +7185,7 @@ const DashboardPage = () => {
 
 
 
-    const baseFilteredTasks = useMemo(() => {
+   useMemo(() => {
 
         if (!currentUser?.email) return [];
 
@@ -7060,105 +7393,220 @@ const DashboardPage = () => {
 
         return filtered;
 
-    }, [canViewAllTasks, currentUser, filters, isOverdue, normalizeCompanyKey, searchTerm, tasks]);
+    }, [canViewAllTasks, currentUser, filters, isOverdue, normalizeCompanyKey, normalizeRoleKey, searchTerm, tasks, usersRef]);
 
 
 
     const stats: StatMeta[] = useMemo(() => {
 
-        const completedTasks = baseFilteredTasks.filter((t) => t.status === 'completed');
+        // Use baseFilteredTasks without selectedStatFilter for stats
+        const role = String((currentUser as any)?.role || '').trim().toLowerCase();
+        const myEmail = (currentUser.email || '').toString().trim().toLowerCase();
+        const normalizeRoleKey = (v: unknown) => String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
 
-        const pendingTasks = baseFilteredTasks.filter((t) => t.status !== 'completed');
-
-        const overdueTasks = baseFilteredTasks.filter((t) => t.status !== 'completed' && isOverdue(t.dueDate, t.status));
-
-
-
-        return [
-
-            {
-
-                name: 'Total Tasks',
-
-                value: baseFilteredTasks.length,
-
-                change: '+12%',
-
-                changeType: 'positive',
-
-                icon: BarChart3,
-
-                id: 'total',
-
-                color: 'text-blue-600',
-
-                bgColor: 'bg-blue-50',
-
-            },
-
-            {
-
-                name: 'Completed',
-
-                value: completedTasks.length,
-
-                change: '+8%',
-
-                changeType: 'positive',
-
-                icon: CheckCircle,
-
-                id: 'completed',
-
-                color: 'text-emerald-600',
-
-                bgColor: 'bg-emerald-50',
-
-            },
-
-            {
-
-                name: 'Pending',
-
-                value: pendingTasks.length,
-
-                change: '-3%',
-
-                changeType: 'negative',
-
-                icon: Clock,
-
-                id: 'pending',
-
-                color: 'text-amber-600',
-
-                bgColor: 'bg-amber-50',
-
-            },
-
-            {
-
-                name: 'Overdue',
-
-                value: overdueTasks.length,
-
-                change: '+5%',
-
-                changeType: 'negative',
-
-                icon: AlertCircle,
-
-                id: 'overdue',
-
-                color: 'text-rose-600',
-
-                bgColor: 'bg-rose-50',
-
+        let filtered = tasks.filter((task) => {
+            if (role === 'ob_manager') {
+                const normalizeTaskTypeKey = (t: any) => String(t?.taskType || t?.type || '').trim().toLowerCase();
+                (t: any) => normalizeTaskTypeKey(t) === 'other work';
+                const resolveAssigneeRoleKey = (t: any): string => {
+                    const direct = normalizeRoleKey((t as any)?.assignedToUser?.role);
+                    if (direct) return direct;
+                    const candidate = (t as any)?.assignedToUser || (t as any)?.assignedTo;
+                    const idOrEmail = typeof candidate === 'string' ? candidate : (candidate?.id || candidate?._id || candidate?.email || '');
+                    const key = String(idOrEmail || '').trim().toLowerCase();
+                    if (!key) return '';
+                    const found = (usersRef.current || []).find((u: any) => {
+                        const id = String(u?.id || u?._id || '').trim().toLowerCase();
+                        const email = String(u?.email || '').trim().toLowerCase();
+                        return (id && id === key) || (email && email === key);
+                    });
+                    return normalizeRoleKey((found as any)?.role);
+                };
+                const isAssistantAssignee = (t: any): boolean => {
+                    const r = resolveAssigneeRoleKey(t);
+                    return r === 'assistant' || r === 'assistance' || r === 'sub_assistance' || r.includes('assistant');
+                };
+                return isAssistantAssignee(task);
             }
 
+            if (role === 'manager') {
+                const normalizeTaskTypeKey = (t: any) => String(t?.taskType || t?.type || '').trim().toLowerCase();
+                const isOtherWorkTask = (t: any) => normalizeTaskTypeKey(t) === 'other work';
+                if (isOtherWorkTask(task)) return false;
+                const assignedToMe = String(task.assignedTo || '').trim().toLowerCase() === myEmail;
+                const assignedByMe = String(task.assignedBy || '').trim().toLowerCase() === myEmail;
+                if (assignedByMe) return true;
+                if (!assignedToMe) return false;
+                const resolveAssignerRole = (t: any) => String((t as any)?.assignedByUser?.role || (t as any)?.assignedBy?.role || '').trim().toLowerCase();
+                return resolveAssignerRole(task) === 'md_manager';
+            }
+
+            if (canViewAllTasks || role === 'rm' || role === 'am') return true;
+
+            return task.assignedTo === currentUser.email || task.assignedBy === currentUser.email;
+        });
+
+        // Apply SBM RM filter for stats
+        if (normalizeRoleKey(role) === 'sbm') {
+            const selectedRm = String((filters as any)?.rm || '').trim().toLowerCase();
+            if (selectedRm && selectedRm !== 'all') {
+                const list: any[] = Array.isArray(usersRef.current) ? (usersRef.current as any[]) : (users as any[]);
+                const selectedRmDoc: any = (list || []).find((u: any) => String(u?.email || '').trim().toLowerCase() === selectedRm);
+                const selectedRmId = String(selectedRmDoc?.id || selectedRmDoc?._id || '').trim();
+                const teamEmails = selectedRmId
+                    ? (list || [])
+                        .filter((u: any) => String(u?.managerId || '').trim() === selectedRmId)
+                        .filter((u: any) => {
+                            const r = normalizeRoleKey(u?.role);
+                            return r === 'am' || r === 'ar';
+                        })
+                        .map((u: any) => String(u?.email || '').trim().toLowerCase())
+                        .filter(Boolean)
+                    : [];
+                const getAssignedByEmail = (t: any) => {
+                    const assignedBy = (t as any)?.assignedBy;
+                    const assignedByUser = (t as any)?.assignedByUser;
+                    const email =
+                        (typeof assignedBy === 'string' && assignedBy.includes('@') ? assignedBy : assignedBy?.email) ||
+                        (typeof assignedByUser === 'string' && assignedByUser.includes('@') ? assignedByUser : assignedByUser?.email) ||
+                        (typeof assignedBy === 'string' ? assignedBy : '') ||
+                        '';
+                    return String(email || '').trim().toLowerCase();
+                };
+                const getAssignedToEmail = (t: any) => {
+                    const assignedTo = (t as any)?.assignedTo;
+                    const assignedToUser = (t as any)?.assignedToUser;
+                    const email =
+                        (typeof assignedTo === 'string' && assignedTo.includes('@') ? assignedTo : assignedTo?.email) ||
+                        (typeof assignedToUser === 'string' && assignedToUser.includes('@') ? assignedToUser : assignedToUser?.email) ||
+                        (typeof assignedTo === 'string' ? assignedTo : '') ||
+                        '';
+                    return String(email || '').trim().toLowerCase();
+                };
+                filtered = filtered.filter((t: any) => {
+                    const assignedByEmail = getAssignedByEmail(t);
+                    if (!assignedByEmail || assignedByEmail !== selectedRm) return false;
+                    const assignedToEmail = getAssignedToEmail(t);
+                    const isToMe = Boolean(myEmail && assignedToEmail && assignedToEmail === myEmail);
+                    const isToTeam = Boolean(assignedToEmail && teamEmails.includes(assignedToEmail));
+                    return isToMe || isToTeam;
+                });
+            }
+        }
+
+        // Apply other filters for stats (except selectedStatFilter)
+        if (filters.status !== 'all') {
+            filtered = filtered.filter((task) => task.status === filters.status);
+        }
+        if (filters.priority !== 'all') {
+            filtered = filtered.filter((task) => task.priority === filters.priority);
+        }
+        if (filters.taskType !== 'all') {
+            const canonicalizeTypeKey = (value: unknown): string => {
+                const raw = (value == null ? '' : String(value)).trim();
+                if (!raw) return '';
+                const key = raw.toLowerCase().replace(/[\s-]+/g, ' ').trim();
+                if (key === 'troubleshoot' || key === 'trouble shoot' || key === 'trubbleshot' || key === 'trubble shoot') return 'troubleshoot';
+                return raw.toLowerCase();
+            };
+            const filterTypeKey = canonicalizeTypeKey(filters.taskType);
+            filtered = filtered.filter((task) => {
+                const taskTypeKey = canonicalizeTypeKey(task.taskType || (task as any).type || '');
+                if (!filterTypeKey || !taskTypeKey) return false;
+                return taskTypeKey === filterTypeKey;
+            });
+        }
+        if (filters.company !== 'all') {
+            const filterCompanyKey = normalizeCompanyKey(filters.company);
+            filtered = filtered.filter((task) => {
+                const taskCompany = (task.companyName || (task as any).company || '');
+                return normalizeCompanyKey(taskCompany) === filterCompanyKey;
+            });
+        }
+        if (filters.brand !== 'all') {
+            const filterBrand = filters.brand.toLowerCase();
+            filtered = filtered.filter((task) => {
+                const taskBrand = (task.brand || '').toLowerCase();
+                return taskBrand === filterBrand;
+            });
+        }
+        if (filters.date === 'today') {
+            filtered = filtered.filter((task) => new Date(task.dueDate).toDateString() === new Date().toDateString());
+        } else if (filters.date === 'week') {
+            filtered = filtered.filter((task) => {
+                const taskDate = new Date(task.dueDate);
+                const today = new Date();
+                const nextWeek = new Date(today);
+                nextWeek.setDate(today.getDate() + 7);
+                return taskDate >= today && taskDate <= nextWeek;
+            });
+        } else if (filters.date === 'overdue') {
+            filtered = filtered.filter((task) => isOverdue(task.dueDate, task.status));
+        }
+        if (filters.assigned === 'assigned-to-me') {
+            filtered = filtered.filter((task) => task.assignedTo === currentUser.email);
+        } else if (filters.assigned === 'assigned-by-me') {
+            filtered = filtered.filter((task) => task.assignedBy === currentUser.email);
+        }
+        if (searchTerm) {
+            const term = searchTerm.toLowerCase();
+            filtered = filtered.filter((task) => {
+                const title = (task.title || '').toLowerCase();
+                const company = (task.companyName || (task as any).company || '').toLowerCase();
+                const brand = (task.brand || '').toLowerCase();
+                const typeVal = (task.taskType || (task as any).type || '').toLowerCase();
+                return title.includes(term) || company.includes(term) || brand.includes(term) || typeVal.includes(term);
+            });
+        }
+
+        const completedTasks = filtered.filter((t) => t.status === 'completed');
+        const pendingTasks = filtered.filter((t) => t.status !== 'completed');
+        const overdueTasks = filtered.filter((t) => t.status !== 'completed' && isOverdue(t.dueDate, t.status));
+
+        return [
+            {
+                name: 'Total Tasks',
+                value: filtered.length,
+                change: '+12%',
+                changeType: 'positive',
+                icon: BarChart3,
+                id: 'total',
+                color: 'text-blue-600',
+                bgColor: 'bg-blue-50',
+            },
+            {
+                name: 'Completed',
+                value: completedTasks.length,
+                change: '+8%',
+                changeType: 'positive',
+                icon: CheckCircle,
+                id: 'completed',
+                color: 'text-emerald-600',
+                bgColor: 'bg-emerald-50',
+            },
+            {
+                name: 'Pending',
+                value: pendingTasks.length,
+                change: '-3%',
+                changeType: 'negative',
+                icon: Clock,
+                id: 'pending',
+                color: 'text-amber-600',
+                bgColor: 'bg-amber-50',
+            },
+            {
+                name: 'Overdue',
+                value: overdueTasks.length,
+                change: '+5%',
+                changeType: 'negative',
+                icon: AlertCircle,
+                id: 'overdue',
+                color: 'text-rose-600',
+                bgColor: 'bg-rose-50',
+            }
         ];
 
-    }, [baseFilteredTasks, isOverdue]);
+    }, [canViewAllTasks, currentUser, filters, isOverdue, normalizeCompanyKey, normalizeRoleKey, searchTerm, tasks, usersRef]);
 
 
 
@@ -7386,6 +7834,8 @@ const DashboardPage = () => {
             company: 'all',
 
             brand: 'all',
+
+            rm: 'all',
 
         });
 
@@ -9394,7 +9844,7 @@ const DashboardPage = () => {
         if (isMdImpexTask) {
             // Use MD Impex specific modal
             const dueDate = task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '';
-            
+
             setEditFormData({
                 id: resolvedTaskId,
                 title: task.title || '',
@@ -9406,7 +9856,7 @@ const DashboardPage = () => {
                 brand: task.brand || '',
                 status: task.status || 'pending'
             });
-            
+
             setEditFormErrors({});
             setShowMdImpexEditModal(true);
         } else {
@@ -10560,6 +11010,8 @@ const DashboardPage = () => {
 
                                         availableBrands={availableBrands}
 
+                                        availableRms={availableRmUsersForFilters}
+
                                         getBrandLabel={getBrandLabelForFilter}
 
                                         users={users}
@@ -10575,6 +11027,108 @@ const DashboardPage = () => {
                                         onToggleFilters={() => setShowAdvancedFilters(!showAdvancedFilters)}
 
                                     />
+
+                                    {showTaskCommentSidebar && commentSidebarTask ? (
+                                        <div className="fixed inset-0 z-50">
+                                            <div
+                                                className="absolute inset-0 bg-black/20 backdrop-blur-sm"
+                                                onClick={handleCloseTaskCommentSidebar}
+                                            />
+                                            <div className="absolute inset-0 right-0">
+                                                <div className="h-full bg-white shadow-xl overflow-y-auto w-full md:w-[500px]">
+                                                    <div className="sticky top-0 bg-white border-b z-10">
+                                                        <div className="px-4 py-4">
+                                                            <div className="flex items-center justify-between">
+                                                                <div>
+                                                                    <h2 className="text-lg font-bold text-gray-900">Comments</h2>
+                                                                    <p className="text-gray-600 text-sm mt-1">{commentSidebarTask.title}</p>
+                                                                </div>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={handleCloseTaskCommentSidebar}
+                                                                    className="p-2 hover:bg-gray-100 rounded-lg"
+                                                                >
+                                                                    <X className="h-5 w-5 text-gray-500" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="p-4">
+                                                        <div className="mb-4">
+                                                            <h4 className="font-medium text-gray-900 mb-2">Add Comment</h4>
+                                                            <textarea
+                                                                value={commentDraft}
+                                                                onChange={(e) => setCommentDraft(e.target.value)}
+                                                                placeholder="Type your comment here..."
+                                                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[90px] resize-none"
+                                                                rows={3}
+                                                            />
+                                                            <div className="flex justify-end mt-3">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={handleSubmitTaskComment}
+                                                                    disabled={!commentDraft.trim() || commentSidebarLoading}
+                                                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2 transition-colors"
+                                                                >
+                                                                    {commentSidebarLoading ? (
+                                                                        <>
+                                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                                            Sending...
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <Send className="h-4 w-4" />
+                                                                            Add Comment
+                                                                        </>
+                                                                    )}
+                                                                </button>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="border-t pt-4">
+                                                            <div className="flex items-center justify-between mb-3">
+                                                                <h4 className="font-medium text-gray-900">All Comments</h4>
+                                                                <span className="text-xs text-gray-500">
+                                                                    {getCommentSidebarComments(String(commentSidebarTask.id)).length} total
+                                                                </span>
+                                                            </div>
+
+                                                            {commentSidebarLoadingComments ? (
+                                                                <div className="text-center py-8">
+                                                                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-gray-400" />
+                                                                    <p className="mt-2 text-gray-500">Loading comments...</p>
+                                                                </div>
+                                                            ) : getCommentSidebarComments(String(commentSidebarTask.id)).length === 0 ? (
+                                                                <div className="text-center py-8">
+                                                                    <MessageSquare className="h-10 w-10 mx-auto text-gray-300" />
+                                                                    <p className="mt-2 text-gray-500">No comments yet</p>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="space-y-3">
+                                                                    {getCommentSidebarComments(String(commentSidebarTask.id)).map((c) => (
+                                                                        <div key={c.id} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                                                            <div className="flex items-center justify-between gap-3 mb-1">
+                                                                                <div className="text-xs font-semibold text-gray-700 truncate" title={c.userEmail}>
+                                                                                    {c.userName || c.userEmail}
+                                                                                </div>
+                                                                                <div className="text-[11px] text-gray-500 shrink-0">
+                                                                                    {c.createdAt ? formatDate(c.createdAt) : ''}
+                                                                                </div>
+                                                                            </div>
+                                                                            <div className="text-sm text-gray-800 whitespace-pre-wrap break-words">
+                                                                                {(c.content || '').trim()}
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : null}
 
 
 
@@ -10747,15 +11301,15 @@ const DashboardPage = () => {
                                                     <div className="flex items-start justify-between">
 
                                                         <div>
-                                                                                    
+
                                                             <h2 className="text-sm font-semibold text-gray-900">
-                                                                            <span className="inline-flex items-center gap-2">
-                                                                                <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-amber-100/70 text-amber-700 ring-1 ring-amber-200 shadow-sm">
-                                                                                    <Crown className="h-4 w-4" />
-                                                                                </span>
-                                                                                <span>Employee of the Month </span>
-                                                                            </span>
-                                                                        </h2>
+                                                                <span className="inline-flex items-center gap-2">
+                                                                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-amber-100/70 text-amber-700 ring-1 ring-amber-200 shadow-sm">
+                                                                        <Crown className="h-4 w-4" />
+                                                                    </span>
+                                                                    <span>Employee of the Month </span>
+                                                                </span>
+                                                            </h2>
 
                                                             <p className="text-xs text-gray-500 mt-1 ">Based on manager reviews (month wise)</p>
 
@@ -10850,7 +11404,7 @@ const DashboardPage = () => {
                                                 <>
                                                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
                                                         <div>
-                                                           
+
                                                             <h2 className="text-sm font-semibold text-gray-900">Employee of the Month</h2>
                                                             <p className="text-xs text-gray-500">Based on manager reviews (month wise)</p>
                                                         </div>
@@ -11335,6 +11889,17 @@ const DashboardPage = () => {
 
                                                         )}
 
+                                                        {isSbmUser ? (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleOpenTaskCommentSidebar(task)}
+                                                                title="Comments"
+                                                                className="px-3 py-2 rounded-lg border transition-colors bg-gray-50 text-gray-600 border-gray-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200"
+                                                            >
+                                                                <MessageSquare className="h-4 w-4" />
+                                                            </button>
+                                                        ) : null}
+
                                                     </div>
 
 
@@ -11550,6 +12115,17 @@ const DashboardPage = () => {
                                                                             </button>
 
                                                                         )}
+
+                                                                        {isSbmUser ? (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleOpenTaskCommentSidebar(task)}
+                                                                                className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-gray-500 hover:text-blue-700 hover:bg-blue-50"
+                                                                                title="Comments"
+                                                                            >
+                                                                                <MessageSquare className="h-4 w-4" />
+                                                                            </button>
+                                                                        ) : null}
 
                                                                     </td>
 

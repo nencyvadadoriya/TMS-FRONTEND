@@ -10,10 +10,12 @@ interface AdvancedFiltersProps {
         taskType: string;
         company: string;
         brand: string;
+        rm?: string;
     };
     availableCompanies: string[];
     availableTaskTypes: string[];
     availableBrands: string[];
+    availableRms?: Array<{ id: string; name: string; email: string }>;
     getBrandLabel?: (brandName: string) => string;
     users?: Array<{ id: string; name: string; email: string }>;
     currentUser?: { email: string; role: string };
@@ -29,6 +31,7 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
     availableCompanies,
     availableTaskTypes,
     availableBrands,
+    availableRms,
     getBrandLabel,
     currentUser,
     onFilterChange,
@@ -75,6 +78,7 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
         Object.entries(filters).forEach(([key, value]) => {
             if (key === 'brand') return;
             if (key === 'company' && !canSeeCompanyFilter) return;
+            if (key === 'rm' && roleKey !== 'sbm') return;
             if (value !== 'all') count++;
         });
         return count;
@@ -238,6 +242,26 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                         ))}
                     </select>
                 </div>
+
+                {roleKey === 'sbm' ? (
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">
+                            RM
+                        </label>
+                        <select
+                            value={(filters as any).rm || 'all'}
+                            onChange={(e) => onFilterChange('rm', e.target.value)}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                            <option value="all">All RM</option>
+                            {(availableRms || []).map((rm) => (
+                                <option key={rm.id || rm.email} value={rm.email}>
+                                    {rm.name || rm.email}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                ) : null}
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
