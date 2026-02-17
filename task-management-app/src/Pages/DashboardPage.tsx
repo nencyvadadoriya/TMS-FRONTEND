@@ -52,6 +52,9 @@ import {
 
     Star,
 
+    Trophy,
+    Crown,
+
 } from 'lucide-react';
 
 import toast from 'react-hot-toast';
@@ -10744,10 +10747,17 @@ const DashboardPage = () => {
                                                     <div className="flex items-start justify-between">
 
                                                         <div>
+                                                                                    
+                                                            <h2 className="text-sm font-semibold text-gray-900">
+                                                                            <span className="inline-flex items-center gap-2">
+                                                                                <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-amber-100/70 text-amber-700 ring-1 ring-amber-200 shadow-sm">
+                                                                                    <Crown className="h-4 w-4" />
+                                                                                </span>
+                                                                                <span>Employee of the Month </span>
+                                                                            </span>
+                                                                        </h2>
 
-                                                            <h2 className="text-sm font-semibold text-gray-900">Employee of the Month</h2>
-
-                                                            <p className="text-xs text-gray-500 mt-1">Based on manager reviews (month wise)</p>
+                                                            <p className="text-xs text-gray-500 mt-1 ">Based on manager reviews (month wise)</p>
 
                                                         </div>
 
@@ -10783,8 +10793,15 @@ const DashboardPage = () => {
                                                             >
                                                                 <div className="flex items-start justify-between">
                                                                     <div>
-                                                                        <h2 className="text-sm font-semibold text-gray-900">Employee of the Month Marketer</h2>
-                                                                        <p className="text-xs text-gray-500 mt-1">Assign vs Achieved (month wise)</p>
+                                                                        <h2 className="text-sm font-semibold text-gray-900">
+                                                                            <span className="inline-flex items-center gap-2">
+                                                                                <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-amber-100/70 text-amber-700 ring-1 ring-amber-200 shadow-sm">
+                                                                                    <Trophy className="h-4 w-4" />
+                                                                                </span>
+                                                                                <span>Employee of the Month Marketer</span>
+                                                                            </span>
+                                                                        </h2>
+                                                                        <p className="text-xs text-gray-500">Assign vs Achieved (month wise)</p>
                                                                     </div>
                                                                     <span className={`text-xs font-medium px-2 py-1 rounded-full ${dashboardSpotlight === 'manager-monthly-ranking'
                                                                         ? 'bg-blue-100 text-blue-600'
@@ -10805,7 +10822,14 @@ const DashboardPage = () => {
                                                             >
                                                                 <div className="flex items-start justify-between">
                                                                     <div>
-                                                                        <h2 className="text-sm font-semibold text-gray-900">Power Star of the Month</h2>
+                                                                        <h2 className="text-sm font-semibold text-gray-900">
+                                                                            <span className="inline-flex items-center gap-2">
+                                                                                <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-amber-100/70 text-amber-700 ring-1 ring-amber-200 shadow-sm">
+                                                                                    <Star className="h-4 w-4" />
+                                                                                </span>
+                                                                                <span>Power Star of the Month</span>
+                                                                            </span>
+                                                                        </h2>
                                                                         <p className="text-xs text-gray-500 mt-1">Week wise (Churn / Live-Assign% / Hits)</p>
                                                                     </div>
                                                                     <span className={`text-xs font-medium px-2 py-1 rounded-full ${dashboardSpotlight === 'power-star-of-month'
@@ -10826,6 +10850,7 @@ const DashboardPage = () => {
                                                 <>
                                                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
                                                         <div>
+                                                           
                                                             <h2 className="text-sm font-semibold text-gray-900">Employee of the Month</h2>
                                                             <p className="text-xs text-gray-500">Based on manager reviews (month wise)</p>
                                                         </div>

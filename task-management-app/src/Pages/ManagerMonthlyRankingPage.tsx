@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
+import { Trophy } from 'lucide-react';
 
 import type { UserType } from '../Types/Types';
 import { managerMonthlyRankingService, type ManagerMonthlyRankingResponse, type ManagerMonthlyRankingRow } from '../Services/ManagerMonthlyRanking.service';
@@ -155,10 +156,17 @@ const ManagerMonthlyRankingPage = ({ currentUser }: { currentUser: UserType }) =
 
     return (
         <div className="space-y-5 mb-15">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-gradient-to-r from-amber-50/60 to-white rounded-2xl shadow-sm border border-amber-100 p-6">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div>
-                        <h2 className="text-xl font-semibold text-gray-900">Employee of the Month Marketer</h2>
+                        <h2 className="text-xl font-semibold text-gray-900">
+                            <span className="inline-flex items-center gap-2">
+                                <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-amber-100/70 text-amber-700 ring-1 ring-amber-200 shadow-sm">
+                                    <Trophy className="h-5 w-5" />
+                                </span>
+                                <span>Employee of the Month Marketer</span>
+                            </span>
+                        </h2>
                         <p className="text-sm text-gray-500 mt-1">Assign vs Achieved (auto %) • Sorted by highest %</p>
                     </div>
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
+import { Star } from 'lucide-react';
 
 import type { UserType } from '../Types/Types';
 import { powerStarMonthlyService, type PowerStarMonthlyResponse, type PowerStarMonthlyRow } from '../Services/PowerStarMonthly.service';
@@ -160,10 +161,17 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
 
     return (
         <div className="space-y-5 mb-15 overflow-x-hidden">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-gradient-to-r from-amber-50/60 to-white rounded-2xl shadow-sm border border-amber-100 p-6">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div>
-                        <h2 className="text-xl font-semibold text-gray-900">Power Star of the Month</h2>
+                        <h2 className="text-xl font-semibold text-gray-900">
+                            <span className="inline-flex items-center gap-2">
+                                <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-amber-100/70 text-amber-700 ring-1 ring-amber-200 shadow-sm">
+                                    <Star className="h-5 w-5" />
+                                </span>
+                                <span>Power Star of the Month</span>
+                            </span>
+                        </h2>
                         <p className="text-sm text-gray-500 mt-1">Week wise (W-1 to W-4) • Churn / Live-Assign% / Hits</p>
                     </div>
 

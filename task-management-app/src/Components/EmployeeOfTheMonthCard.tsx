@@ -1,4 +1,4 @@
-import { Star, TrendingUp } from 'lucide-react';
+import { Crown, Star, TrendingUp } from 'lucide-react';
 import { toAvatarUrl } from '../utils/avatar';
 
 type EmployeeOfTheMonthCardProps = {
@@ -41,7 +41,14 @@ const EmployeeOfTheMonthCard = ({
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+          <h2 className="text-lg font-semibold text-gray-900">
+            <span className="inline-flex items-center gap-2">
+              <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-amber-100/70 text-amber-700 ring-1 ring-amber-200 shadow-sm">
+                <Crown className="h-4 w-4" />
+              </span>
+              <span>{title}</span>
+            </span>
+          </h2>
           <p className="text-sm text-gray-500 mt-1">Top performer for this month</p>
         </div>
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
