@@ -208,6 +208,7 @@ interface DesktopTaskItemProps {
   getTaskStatusIcon: (taskId: string, isCompleted: boolean) => React.ReactNode;
   getUserInfoForDisplay: (userId: any) => { name: string; email: string };
   brandLabel?: string;
+  brands?: Brand[];
   onToggleStatus: (taskId: string, originalTask: Task) => Promise<void>;
   onEditTaskClick: (task: Task) => void;
   onOpenCommentSidebar: (task: Task) => Promise<void>;
@@ -1554,6 +1555,7 @@ const DesktopTaskItem = memo(({
   getTaskStatusIcon,
   getUserInfoForDisplay,
   brandLabel,
+  brands,
   onToggleStatus,
   onEditTaskClick,
   onOpenCommentSidebar,
@@ -1600,7 +1602,29 @@ const DesktopTaskItem = memo(({
   const isInProgressTask = statusKey === 'in-progress';
 
   const taskTypeLabel = (task.taskType || (task as any).type || (task as any).task_type || '').toString();
-  const brandLabelText = (brandLabel || (task.brand || '')).toString();
+  const brandLabelText = useMemo(() => {
+    if (brandLabel) return String(brandLabel || '');
+
+    const taskBrandId = (task as any)?.brandId;
+    const taskBrandRaw = (task.brand || '').toString();
+    const taskBrandKey = taskBrandRaw.trim().toLowerCase();
+
+    const list = brands || [];
+    if (!list.length) return taskBrandRaw;
+
+    if (taskBrandId != null && String(taskBrandId).trim()) {
+      const idKey = String(taskBrandId).trim();
+      const byId = list.find((b) => String((b as any)?._id || (b as any)?.id || '').trim() === idKey);
+      if (byId?.name) return String(byId.name);
+    }
+
+    if (taskBrandKey) {
+      const byName = list.find((b) => String((b as any)?.name || '').trim().toLowerCase() === taskBrandKey);
+      if (byName?.name) return String(byName.name);
+    }
+
+    return taskBrandRaw;
+  }, [brandLabel, brands, task]);
 
   return (
     <div className={`relative bg-white rounded-lg border-l-4 ${getTaskBorderColor(task)} border shadow-sm hover:shadow-md transition-all duration-200 mb-3`}>
@@ -1633,8 +1657,17 @@ const DesktopTaskItem = memo(({
           )}
         </div>
 
+        {/* Brand Column - FIXED WIDTH */}
+        <div className="col-span-1 min-w-0 flex items-center justify-center">
+          <div className="w-full max-w-[100px]">
+            <span className="text-xs text-blue-700 px-2 py-1 bg-blue-50 rounded-md truncate block w-full text-center" title={brandLabelText}>
+              {brandLabelText || "—"}
+            </span>
+          </div>
+        </div>
+
         {/* Task Title Column - INCREASED WIDTH */}
-        <div className="col-span-3 min-w-0 pr-2"> {/* Changed: col-span-3 और pr-2 */}
+        <div className="col-span-3 min-w-0 pr-2"> 
           <div className="flex flex-col gap-1">
             <h3 className="font-semibold text-gray-900 text-sm whitespace-normal break-words leading-tight" title={task.title}>
               {task.title}
@@ -1691,15 +1724,6 @@ const DesktopTaskItem = memo(({
           <div className="w-full max-w-[100px]">
             <span className="text-xs text-gray-700 font-medium px-2 py-1 bg-gray-100 rounded-md truncate block w-full text-center" title={taskTypeLabel}>
               {taskTypeLabel || "—"}
-            </span>
-          </div>
-        </div>
-
-        {/* Brand Column - FIXED WIDTH */}
-        <div className="col-span-1 min-w-0 flex items-center justify-center">
-          <div className="w-full max-w-[100px]">
-            <span className="text-xs text-blue-700 px-2 py-1 bg-blue-50 rounded-md truncate block w-full text-center" title={brandLabelText}>
-              {brandLabelText || "—"}
             </span>
           </div>
         </div>
@@ -5414,12 +5438,12 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
             <div className="hidden md:grid grid-cols-12 gap-3 px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 text-sm font-semibold text-gray-700">
               <div className="col-span-1 text-center">#</div>
               <div className="col-span-1 text-center">Status</div>
+              <div className="col-span-1 text-center">Brand</div>
               <div className="col-span-2">Task Title</div>
               <div className="col-span-2">Assign To</div>
               <div className="col-span-2">Assign By</div>
               <div className="col-span-1">Due Date</div>
               <div className="col-span-1 text-center">Type</div>
-              <div className="col-span-1 text-center">Brand</div>
               <div className="col-span-1 text-right pr-4">Actions</div>
             </div>
 
@@ -5579,6 +5603,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                       getTaskStatusIcon={(taskId: string, isCompleted: boolean) => getTaskStatusIcon(taskId, isCompleted, isToggling)}
                       getUserInfoForDisplay={getUserInfoForDisplay}
                       brandLabel={brandLabel}
+                      brands={brands}
                       onToggleStatus={handleToggleTaskStatus}
                       onEditTaskClick={handleOpenEditModal}
                       onOpenCommentSidebar={handleOpenCommentSidebar}

@@ -7185,7 +7185,7 @@ const DashboardPage = () => {
 
 
 
-   useMemo(() => {
+    useMemo(() => {
 
         if (!currentUser?.email) return [];
 
@@ -7199,7 +7199,7 @@ const DashboardPage = () => {
 
         const isOtherWorkTask = (t: any) => normalizeTaskTypeKey(t) === 'other work';
 
-        const resolveAssignerRole = (t: any) => String((t as any)?.assignedByUser?.role || (t as any)?.assignedBy?.role || '').trim().toLowerCase();
+        const resolveAssignerRole = (t: any) => String((t as any)?.assignedByUser?.role || (t as any)?.assilgnedBy?.role || '').trim().toLowerCase();
 
         const normalizeRoleKey = (v: unknown) => String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
         const resolveAssigneeRoleKey = (t: any): string => {
