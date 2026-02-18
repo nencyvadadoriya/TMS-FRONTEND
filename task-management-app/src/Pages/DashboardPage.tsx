@@ -3273,6 +3273,32 @@ const DashboardPage = () => {
 
         const merged = Array.from(new Set([...fromOverrides, ...fromTasks]));
 
+        const selectedCompanyKey = normalizeCompanyKey(companyName);
+
+        if (selectedCompanyKey === SPEED_E_COM_COMPANY_KEY) {
+
+            const speedCompanyId = (companies || []).find((c: any) => {
+                const name = String(c?.name || c?.companyName || c?.title || '').trim();
+                return normalizeCompanyKey(name) === SPEED_E_COM_COMPANY_KEY;
+            })?._id || (companies || []).find((c: any) => {
+                const name = String(c?.name || c?.companyName || c?.title || '').trim();
+                return normalizeCompanyKey(name) === SPEED_E_COM_COMPANY_KEY;
+            })?.id;
+
+            const fromApi = (taskTypes || [])
+                .filter((t: any) => {
+                    const companyId = String(t?.companyId || '').trim();
+                    if (!companyId || !speedCompanyId) return false;
+                    return companyId === String(speedCompanyId);
+                })
+                .map((t: any) => (t?.name || '').toString().trim())
+                .filter(Boolean);
+
+            const combined = Array.from(new Set([...fromApi, ...merged]));
+            return restrictTaskTypesForCompany(companyName, combined).sort((a, b) => a.localeCompare(b));
+
+        }
+
 
 
         const role = (currentUser?.role || '').toString().toLowerCase();
@@ -3293,7 +3319,7 @@ const DashboardPage = () => {
 
         return merged.sort((a, b) => a.localeCompare(b));
 
-    }, [allowedTaskTypeKeysForManager, currentUser?.role, normalizeText, taskTypeCompanyOverrides, taskTypesByCompanyFromTasks]);
+    }, [allowedTaskTypeKeysForManager, companies, currentUser?.role, normalizeCompanyKey, normalizeText, restrictTaskTypesForCompany, taskTypeCompanyOverrides, taskTypes, taskTypesByCompanyFromTasks]);
 
 
 
