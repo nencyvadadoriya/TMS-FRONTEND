@@ -563,7 +563,7 @@ const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: Us
             <thead className="bg-gray-50">
               <tr className="text-left text-sm font-semibold text-gray-700">
                 <th className="px-6 py-4">Task</th>
-                <th className="px-6 py-4">Assignee</th>
+                {roleKey === 'ob_manager' && <th className="px-6 py-4">Assignee</th>}
                 <th className="px-6 py-4">Creator</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4">Stars</th>
@@ -590,7 +590,7 @@ const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: Us
                       <div className="font-semibold text-gray-900">{t.title}</div>
                       <div className="text-xs text-gray-500 mt-1">Due: {t.dueDate ? new Date(t.dueDate).toLocaleDateString() : '—'}</div>
                     </td>
-                    <td className="px-6 py-5 text-sm text-gray-700">{assigneeEmail || '—'}</td>
+                    {roleKey === 'ob_manager' && <td className="px-6 py-5 text-sm text-gray-700">{assigneeEmail || '—'}</td>}
                     <td className="px-6 py-5 text-sm text-gray-700">{creatorEmail || '—'}</td>
                     <td className="px-6 py-5">
                       <span className="inline-flex px-3 py-1 text-xs font-semibold rounded-full border bg-gray-50 text-gray-700">
