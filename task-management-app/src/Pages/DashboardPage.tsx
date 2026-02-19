@@ -60,6 +60,13 @@ import {
     Send,
     Loader2,
 
+    ChevronLeft,
+    ChevronRight,
+    Plus,
+    ChevronDown,
+    ChevronUp,
+    ChevronRight as ChevronRightIcon,
+
 } from 'lucide-react';
 
 import toast from 'react-hot-toast';
@@ -97,6 +104,7 @@ import MdImpexStrikePage from './MdImpexStrikePage';
 import ManagerMonthlyRankingPage from './ManagerMonthlyRankingPage';
 
 import PowerStarOfTheMonthPage from './PowerStarOfTheMonthPage';
+
 import SpeedEcomReassignPage from './SpeedEcomReassignPage';
 
 import AdvancedFilters from './AdvancedFilters';
@@ -109,12 +117,15 @@ import { DashboardPageSkeleton } from '../Components/LoadingSkeletons';
 
 import EmployeeOfTheMonthCard from '../Components/EmployeeOfTheMonthCard';
 
+import TaskReminderCard from '../Components/TaskReminderCard';
+
 
 
 import AddTaskModal from './DashboardModals/AddTaskModal';
 
 import EditTaskModal from './DashboardModals/EditTaskModal';
 import MdImpexEditTaskModal from './DashboardModals/MdImpexEditTaskModal';
+import SendReminderModal from './DashboardModals/SendReminderModal';
 
 import BulkAddBrandsModal from './DashboardModals/BulkAddBrandsModal';
 
@@ -422,6 +433,9 @@ const DashboardPage = () => {
 
     const [sendingReminderByTaskId, setSendingReminderByTaskId] = useState<Record<string, boolean>>({});
 
+    const [sendReminderTask, setSendReminderTask] = useState<Task | null>(null);
+    const [sendReminderOpen, setSendReminderOpen] = useState(false);
+
     const [unreadReminders, setUnreadReminders] = useState<TaskReminderClientItem[]>([]);
 
     const [activeReminderId, setActiveReminderId] = useState<string>('');
@@ -544,7 +558,7 @@ const DashboardPage = () => {
 
         try {
 
-            const res = await apiClient.get('/reminder/my');
+            const res = await apiClient.get('/reminders/my');
 
             const list = Array.isArray(res?.data?.data) ? (res.data.data as any[]) : [];
 
@@ -596,7 +610,7 @@ const DashboardPage = () => {
 
         try {
 
-            await apiClient.patch(`/reminder/${id}/seen`);
+            await apiClient.patch(`/reminders/${id}/seen`);
 
         } catch {
 
@@ -1369,6 +1383,32 @@ const DashboardPage = () => {
                 return {};
             }
         };
+
+        const onReminderNew = (payload: any) => {
+            try {
+                const raw = payload?.reminder || payload;
+                const id = String(raw?.id || raw?._id || '').trim();
+                if (!id) return;
+
+                const next: TaskReminderClientItem = {
+                    id,
+                    taskId: String(raw?.taskId || '').trim(),
+                    fromEmail: String(raw?.fromEmail || '').trim(),
+                    message: String(raw?.message || '').trim(),
+                    createdAt: raw?.createdAt || null,
+                    task: raw?.task || raw?.taskSnapshot || {},
+                };
+
+                setUnreadReminders((prev) => {
+                    const list = Array.isArray(prev) ? prev : [];
+                    const merged = [next, ...list.filter((x) => String(x?.id || '').trim() !== id)];
+                    return merged;
+                });
+                setActiveReminderId((prev) => (prev ? prev : id));
+            } catch {
+                // ignore
+            }
+        };
         const writeUnreadMap = (map: Record<string, number>) => {
             try {
                 localStorage.setItem(unreadKey, JSON.stringify(map || {}));
@@ -1415,6 +1455,8 @@ const DashboardPage = () => {
 
         socket.on('comment:added', onCommentAdded);
 
+        socket.on('reminder:new', onReminderNew);
+
         return () => {
 
             try {
@@ -1431,6 +1473,8 @@ const DashboardPage = () => {
                 socket.off('assignment:bulk-upserted', onAssignmentChanged);
 
                 socket.off('comment:added', onCommentAdded);
+
+                socket.off('reminder:new', onReminderNew);
 
                 socket.disconnect();
 
@@ -1526,9 +1570,36 @@ const DashboardPage = () => {
 
 
 
+    const canSendReminderForTask = useCallback((task: Task): boolean => {
+
+        if (isAdminLike) return true;
+
+        const myEmail = String((currentUser as any)?.email || '').trim().toLowerCase();
+
+        if (!myEmail) return false;
+
+        const assignedByRaw = (task as any)?.assignedBy;
+        const creatorEmail = String(
+            (typeof assignedByRaw === 'string'
+                ? assignedByRaw
+                : assignedByRaw?.email || assignedByRaw?.userEmail || '') ||
+            (task as any)?.assignedByUser?.email ||
+            (task as any)?.createdBy?.email ||
+            (task as any)?.createdByEmail ||
+            ''
+        )
+            .trim()
+            .toLowerCase();
+
+        return Boolean(creatorEmail && creatorEmail === myEmail);
+
+    }, [currentUser, isAdminLike]);
+
+
+
     const handleSendReminder = useCallback(async (task: Task) => {
 
-        if (!isAdminLike) return;
+        if (!canSendReminderForTask(task)) return;
 
         const taskId = String((task as any)?.id || (task as any)?._id || '').trim();
 
@@ -1536,15 +1607,36 @@ const DashboardPage = () => {
 
         if (sendingReminderByTaskId[taskId]) return;
 
-        const messageRaw = window.prompt('Reminder message (optional)');
+        setSendReminderTask(task);
+        setSendReminderOpen(true);
 
-        const message = (messageRaw == null ? '' : String(messageRaw)).trim();
+    }, [canSendReminderForTask, sendingReminderByTaskId]);
+
+
+
+    const closeSendReminderModal = useCallback(() => {
+
+        setSendReminderOpen(false);
+
+        setSendReminderTask(null);
+
+    }, []);
+
+
+
+    const submitSendReminder = useCallback(async (message: string) => {
+
+        const taskId = String((sendReminderTask as any)?.id || (sendReminderTask as any)?._id || '').trim();
+
+        if (!taskId) return;
+
+        if (sendingReminderByTaskId[taskId]) return;
 
         setSendingReminderByTaskId((prev) => ({ ...prev, [taskId]: true }));
 
         try {
 
-            const res = await apiClient.post('/reminder/send', { taskId, message });
+            const res = await apiClient.post('/reminders/send', { taskId, message });
 
             if (res?.data?.success) {
 
@@ -1564,9 +1656,11 @@ const DashboardPage = () => {
 
             setSendingReminderByTaskId((prev) => ({ ...prev, [taskId]: false }));
 
+            closeSendReminderModal();
+
         }
 
-    }, [isAdminLike, sendingReminderByTaskId]);
+    }, [closeSendReminderModal, sendReminderTask, sendingReminderByTaskId]);
 
 
 
@@ -6759,13 +6853,25 @@ const DashboardPage = () => {
 
             if (selectedRm && selectedRm !== 'all') {
 
+                const rmTeamRaw = String((filters as any)?.rmTeam || '').trim();
+
                 const list: any[] = Array.isArray(usersRef.current) ? (usersRef.current as any[]) : (users as any[]);
 
                 const selectedRmDoc: any = (list || []).find((u: any) => String(u?.email || '').trim().toLowerCase() === selectedRm);
 
                 const selectedRmId = String(selectedRmDoc?.id || selectedRmDoc?._id || '').trim();
 
-                const teamEmails = selectedRmId
+                const teamEmails = rmTeamRaw
+
+                    ? rmTeamRaw
+
+                        .split(',')
+
+                        .map((s) => String(s || '').trim().toLowerCase())
+
+                        .filter(Boolean)
+
+                    : (selectedRmId
 
                     ? (list || [])
 
@@ -6783,7 +6889,7 @@ const DashboardPage = () => {
 
                         .filter(Boolean)
 
-                    : [];
+                    : []);
 
                 const getAssignedByEmail = (t: any) => {
 
@@ -6826,18 +6932,11 @@ const DashboardPage = () => {
                 };
 
                 filtered = filtered.filter((t: any) => {
-
-                    const assignedByEmail = getAssignedByEmail(t);
-
-                    if (!assignedByEmail || assignedByEmail !== selectedRm) return false;
-
                     const assignedToEmail = getAssignedToEmail(t);
 
-                    const isToMe = Boolean(myEmail && assignedToEmail && assignedToEmail === myEmail);
+                    const allowed = teamEmails.length > 0 ? teamEmails : [selectedRm];
 
-                    const isToTeam = Boolean(assignedToEmail && teamEmails.includes(assignedToEmail));
-
-                    return isToMe || isToTeam;
+                    return Boolean(assignedToEmail && allowed.includes(assignedToEmail));
 
                 });
 
@@ -6853,13 +6952,25 @@ const DashboardPage = () => {
 
             if (selectedRm && selectedRm !== 'all') {
 
+                const rmTeamRaw = String((filters as any)?.rmTeam || '').trim();
+
                 const list: any[] = Array.isArray(usersRef.current) ? (usersRef.current as any[]) : (users as any[]);
 
                 const selectedRmDoc: any = (list || []).find((u: any) => String(u?.email || '').trim().toLowerCase() === selectedRm);
 
                 const selectedRmId = String(selectedRmDoc?.id || selectedRmDoc?._id || '').trim();
 
-                const teamEmails = selectedRmId
+                const teamEmails = rmTeamRaw
+
+                    ? rmTeamRaw
+
+                        .split(',')
+
+                        .map((s) => String(s || '').trim().toLowerCase())
+
+                        .filter(Boolean)
+
+                    : (selectedRmId
 
                     ? (list || [])
 
@@ -6877,7 +6988,7 @@ const DashboardPage = () => {
 
                         .filter(Boolean)
 
-                    : [];
+                    : []);
 
                 const getAssignedByEmail = (t: any) => {
 
@@ -6920,18 +7031,11 @@ const DashboardPage = () => {
                 };
 
                 filtered = filtered.filter((t: any) => {
-
-                    const assignedByEmail = getAssignedByEmail(t);
-
-                    if (!assignedByEmail || assignedByEmail !== selectedRm) return false;
-
                     const assignedToEmail = getAssignedToEmail(t);
 
-                    const isToMe = Boolean(myEmail && assignedToEmail && assignedToEmail === myEmail);
+                    const allowed = teamEmails.length > 0 ? teamEmails : [selectedRm];
 
-                    const isToTeam = Boolean(assignedToEmail && teamEmails.includes(assignedToEmail));
-
-                    return isToMe || isToTeam;
+                    return Boolean(assignedToEmail && allowed.includes(assignedToEmail));
 
                 });
 
@@ -10719,81 +10823,26 @@ const DashboardPage = () => {
 
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex">
 
+            <SendReminderModal
+                open={sendReminderOpen}
+                task={sendReminderTask}
+                onClose={closeSendReminderModal}
+                onSend={submitSendReminder}
+                isSending={Boolean(sendingReminderByTaskId[String((sendReminderTask as any)?.id || (sendReminderTask as any)?._id || '')])}
+            />
+
             {activeReminder && (
 
-                <div className="fixed top-4 right-4 z-[9999] w-[92vw] max-w-md">
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
 
-                    <div className="bg-white border border-blue-200 shadow-xl rounded-2xl p-4">
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
 
-                        <div className="flex items-start justify-between gap-3">
+                    <div className="relative w-[92vw] max-w-md">
 
-                            <div className="flex items-start gap-3">
-
-                                <div className="mt-0.5 h-9 w-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-700">
-
-                                    <Bell className="h-5 w-5" />
-
-                                </div>
-
-                                <div>
-
-                                    <div className="text-sm font-semibold text-gray-900">Task Reminder</div>
-
-                                    <div className="text-xs text-gray-500">From: {activeReminder.fromEmail || '—'}</div>
-
-                                </div>
-
-                            </div>
-
-                            <button
-
-                                type="button"
-
-                                onClick={() => acknowledgeReminder(activeReminder.id)}
-
-                                className="text-xs text-gray-500 hover:text-gray-700"
-
-                            >
-
-                                Accept
-
-                            </button>
-
-                        </div>
-
-                        <div className="mt-3 text-sm text-gray-800">
-
-                            {activeReminder.message || activeReminder.task?.title || 'Reminder'}
-
-                        </div>
-
-                        {activeReminder.task?.title && (
-
-                            <div className="mt-2 text-xs text-gray-500">
-
-                                Task: {activeReminder.task.title}
-
-                            </div>
-
-                        )}
-
-                        <div className="mt-4 flex items-center justify-end gap-2">
-
-                            <button
-
-                                type="button"
-
-                                onClick={() => acknowledgeReminder(activeReminder.id)}
-
-                                className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
-
-                            >
-
-                                Accept
-
-                            </button>
-
-                        </div>
+                        <TaskReminderCard
+                            reminder={activeReminder as any}
+                            onAcknowledge={() => acknowledgeReminder(activeReminder.id)}
+                        />
 
                     </div>
 
@@ -11887,7 +11936,7 @@ const DashboardPage = () => {
 
                                                         )}
 
-                                                        {isAdminLike && (
+                                                        {canSendReminderForTask(task) && (
 
                                                             <button
 

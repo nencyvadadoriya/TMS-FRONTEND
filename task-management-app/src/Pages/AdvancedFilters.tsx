@@ -11,16 +11,19 @@ interface AdvancedFiltersProps {
         company: string;
         brand: string;
         rm?: string;
+        rmTeam?: string;
     };
+
     availableCompanies: string[];
     availableTaskTypes: string[];
     availableBrands: string[];
     availableRms?: Array<{ id: string; name: string; email: string }>;
     getBrandLabel?: (brandName: string) => string;
-    users?: Array<{ id: string; name: string; email: string }>;
+    users?: any[];
     currentUser?: { email: string; role: string };
     onFilterChange: (filterType: string, value: string) => void;
     onResetFilters: () => void;
+
     onApplyFilters?: () => void;
     showFilters: boolean;
     onToggleFilters: () => void;
@@ -33,6 +36,7 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
     availableBrands,
     availableRms,
     getBrandLabel,
+    users,
     currentUser,
     onFilterChange,
     onResetFilters,
@@ -85,6 +89,47 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
     };
 
     const activeFilterCount = getActiveFilterCount();
+
+    const normalizeText = (value: unknown): string => {
+        return (value == null ? '' : String(value)).trim().toLowerCase();
+    };
+
+    const normalizeRoleKey = (value: unknown): string => {
+        return String(value || '')
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '_')
+            .replace(/^_+|_+$/g, '');
+    };
+
+    const handleRmChange = (nextRmEmail: string) => {
+        const email = normalizeText(nextRmEmail);
+        if (!email || email === 'all') {
+            onFilterChange('rm', 'all');
+            onFilterChange('rmTeam', '');
+            return;
+        }
+
+        const list: any[] = Array.isArray(users) ? users : [];
+        const selectedRmDoc: any = list.find((u: any) => normalizeText(u?.email) === email);
+        const selectedRmId = String(selectedRmDoc?.id || selectedRmDoc?._id || '').trim();
+
+        const teamEmails = selectedRmId
+            ? list
+                .filter((u: any) => String(u?.managerId || '').trim() === selectedRmId)
+                .filter((u: any) => {
+                    const r = normalizeRoleKey(u?.role);
+                    return r === 'am' || r === 'ar';
+                })
+                .map((u: any) => normalizeText(u?.email))
+                .filter(Boolean)
+            : [];
+
+        const allowedAssignees = [email, ...teamEmails].filter(Boolean);
+
+        onFilterChange('rm', email);
+        onFilterChange('rmTeam', allowedAssignees.join(','));
+    };
 
     return (
         <div className="mt-4 mb-8 bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
@@ -235,7 +280,7 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                         <option value="all">
                             {filters.company === 'all' ? 'All Brands' : `All ${filters.company} Brands`}
                         </option>
-                        {availableBrands.map(brand => (
+                        {availableBrands.map((brand) => (
                             <option key={brand} value={brand}>
                                 {formatBrandOptionLabel(brand)}
                             </option>
@@ -249,13 +294,13 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                             RM
                         </label>
                         <select
-                            value={(filters as any).rm || 'all'}
-                            onChange={(e) => onFilterChange('rm', e.target.value)}
+                            value={normalizeText((filters as any).rm || '') || 'all'}
+                            onChange={(e) => handleRmChange(e.target.value)}
                             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         >
                             <option value="all">All RM</option>
                             {(availableRms || []).map((rm) => (
-                                <option key={rm.id || rm.email} value={rm.email}>
+                                <option key={rm.id || rm.email} value={normalizeText(rm.email)}>
                                     {rm.name || rm.email}
                                 </option>
                             ))}
