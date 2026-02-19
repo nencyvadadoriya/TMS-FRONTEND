@@ -14,6 +14,7 @@ class AuthServices {
     authGetCurrentUser = "/auth/currentUser";
     authDeleteUser = "/auth/deleteUser";
     authUpdateUser = "/auth/updateUser";
+    authUpdateAmHierarchy = "/auth/am";
     authCreateUser = "/auth/createUser";
     authUploadProfileAvatar = "/auth/profile/avatar";
 
@@ -260,6 +261,29 @@ class AuthServices {
                 data: null,
                 error: true
             };
+        }
+    }
+
+
+
+    async updateAmHierarchy(amId: string, managerId: string) {
+        try {
+            if (!amId || !managerId) {
+                return { success: false, message: 'AM id and managerId are required', data: null };
+            }
+
+            const res = await apiClient.put(`${this.authUpdateAmHierarchy}/${amId}/hierarchy`, { managerId });
+
+            return {
+                success: Boolean(res.data?.success),
+                message: res.data?.message || 'Hierarchy updated successfully',
+                data: res.data?.user || res.data
+            };
+
+        } catch (error: any) {
+            const message = error?.response?.data?.message || error?.response?.data?.msg || error?.message || 'Failed to update hierarchy';
+            toast.error(message);
+            return { success: false, message, data: null, error: true };
         }
     }
 

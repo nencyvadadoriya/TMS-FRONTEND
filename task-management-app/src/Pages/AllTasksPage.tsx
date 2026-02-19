@@ -3010,6 +3010,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [isLoading,] = useState(false);
+  const [groupNumberSearch, setGroupNumberSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [tasksPerPage, setTasksPerPage] = useState<number>(DEFAULT_TASKS_PER_PAGE);
 
@@ -3064,6 +3065,12 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   const normalizeCompanyKey = useCallback((value: unknown): string => {
     return normalizeText(value).replace(/\s+/g, '');
   }, [normalizeText]);
+
+  const isSpeedEcomUser = useMemo(() => {
+    const myKey = normalizeCompanyKey((currentUser as any)?.companyName || (currentUser as any)?.company || '');
+    const speedKey = normalizeCompanyKey(SPEED_E_COM_COMPANY_KEY);
+    return Boolean(myKey && speedKey && myKey === speedKey);
+  }, [currentUser, normalizeCompanyKey]);
 
   const formatBrandWithGroupNumber = useCallback((task: any): string => {
     const plain = String(task?.brand || '').trim();
@@ -4340,6 +4347,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     setDateFilter('all');
     if (setAssignedFilter) setAssignedFilter('all');
     setSearchTerm('');
+    setGroupNumberSearch('');
 
     setShowAdvancedFilters(false);
     toast.success('All filters cleared');
@@ -5203,6 +5211,34 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         if (!isTaskOverdue) return false;
       }
 
+      // Speed E Com - Group Number Search (brand.groupNumber)
+      if (isSpeedEcomUser && groupNumberSearch.trim()) {
+        const query = groupNumberSearch.trim().toLowerCase();
+        const speedKey = normalizeCompanyKey(SPEED_E_COM_COMPANY_KEY);
+        const taskCompanyKey = normalizeCompanyKey((task as any)?.companyName || (task as any)?.company || '');
+
+        if (taskCompanyKey !== speedKey) return false;
+
+        const taskBrandId = String((task as any)?.brandId || '').trim();
+        const taskBrandName = String((task as any)?.brand || '').trim().toLowerCase();
+
+        const list = Array.isArray(brands) ? (brands as any[]) : [];
+        const matchingBrand = taskBrandId
+          ? list.find((b: any) => String(b?._id || b?.id || '').trim() === taskBrandId)
+          : (taskBrandName
+            ? list.find((b: any) => (
+              normalizeCompanyKey(b?.company) === speedKey &&
+              String(b?.name || '').trim().toLowerCase() === taskBrandName
+            ))
+            : undefined);
+
+        const groupNumberValue = matchingBrand?.groupNumber;
+        const groupNumberText = groupNumberValue == null ? '' : String(groupNumberValue).trim().toLowerCase();
+
+        if (!groupNumberText) return false;
+        if (!groupNumberText.includes(query)) return false;
+      }
+
       // Search Filter
       if (searchTerm) {
         const searchLower = searchTerm.toLowerCase();
@@ -5236,6 +5272,10 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     dateFilter,
     assignedFilter,
     searchTerm,
+    groupNumberSearch,
+    isSpeedEcomUser,
+    brands,
+    normalizeCompanyKey,
     effectiveAdvancedFilters,
     isTaskCompleted,
     isTaskAssignee,
@@ -5256,6 +5296,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     dateFilter,
     assignedFilter,
     searchTerm,
+    groupNumberSearch,
     effectiveAdvancedFilters.status,
     effectiveAdvancedFilters.priority,
     effectiveAdvancedFilters.assigned,
@@ -5328,6 +5369,17 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
 
             {!isObManagerViewOnly && !isAssistantViewOnly && (
               <div className="flex items-center gap-3">
+                {isSpeedEcomUser ? (
+                  <div className="hidden sm:block">
+                    <input
+                      type="text"
+                      value={groupNumberSearch}
+                      onChange={(e) => setGroupNumberSearch(e.target.value)}
+                      placeholder="Search Group #"
+                      className="w-44 px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                ) : null}
                 <button
                   onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
                   className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"

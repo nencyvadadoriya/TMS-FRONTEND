@@ -1508,6 +1508,20 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+    const rmCandidatesForEditing = useMemo(() => {
+
+        const list = (users || internalUsers || []) as UserType[];
+
+        return list
+
+            .filter((u) => normalizeRole((u as any)?.role) === 'rm')
+
+            .sort((a, b) => (a?.name || '').localeCompare(b?.name || ''));
+
+    }, [users, internalUsers, normalizeRole]);
+
+
+
     const handleAddClick = () => {
 
         if (!canManageUsers && !canManageUsersAsManager) {
@@ -2001,6 +2015,12 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
         try {
 
+            const isAmUser = normalizeRole((editingUser as any)?.role) === 'am';
+
+            const prevManagerId = ((usersById.get(userId) as any)?.managerId || (usersById.get(String(userId)) as any)?.managerId || '').toString();
+
+            const nextManagerId = ((editingUser as any)?.managerId || '').toString();
+
             const payload: Partial<UserType> = {
 
                 name: editingUser.name,
@@ -2014,6 +2034,36 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                 phone: (editingUser as any)?.phone,
 
             };
+
+            if (isAmUser && nextManagerId && nextManagerId !== prevManagerId) {
+
+                const hRes = await authService.updateAmHierarchy(userId, nextManagerId);
+
+                if (!(hRes as any)?.success) {
+
+                    const msg = ((hRes as any)?.message || (hRes as any)?.msg || 'Failed to update hierarchy').toString();
+
+                    toast.error(msg);
+
+                    return;
+
+                }
+
+                const updated = (hRes as any)?.data || (hRes as any)?.user;
+
+                if (!hasExternalUsers && updated) {
+
+                    setInternalUsers((prev) => prev.map((u) => {
+
+                        if (getUserIdValue(u) !== userId) return u;
+
+                        return { ...(u as any), ...(updated as any) } as UserType;
+
+                    }));
+
+                }
+
+            }
 
             if (onUpdateUser) {
 
@@ -3118,6 +3168,52 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                                 </select>
 
                             </div>
+
+
+
+                            {normalizeRole((editingUser as any)?.role) === 'am' && (
+
+                                <div>
+
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">RM</label>
+
+                                    <select
+
+                                        value={((editingUser as any)?.managerId || '').toString()}
+
+                                        onChange={(e) => setEditingUser(editingUser ? { ...editingUser, managerId: e.target.value } as any : null)}
+
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+
+                                        disabled={!!savingUserId}
+
+                                    >
+
+                                        <option value="">Select RM</option>
+
+                                        {(rmCandidatesForEditing || []).map((rm) => {
+
+                                            const id = (rm?.id || (rm as any)?._id || '').toString();
+
+                                            if (!id) return null;
+
+                                            return (
+
+                                                <option key={id} value={id}>
+
+                                                    {(rm?.name || rm?.email || 'RM').toString()}
+
+                                                </option>
+
+                                            );
+
+                                        })}
+
+                                    </select>
+
+                                </div>
+
+                            )}
 
 
 
