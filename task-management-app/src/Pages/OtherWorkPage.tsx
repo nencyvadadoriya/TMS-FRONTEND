@@ -131,7 +131,7 @@ const OtherWorkPage = ({ currentUser, tasks, onRefreshTasks }: { currentUser: Us
               <tr className="text-left text-sm font-semibold text-gray-700">
                 <th className="px-6 py-4">Task</th>
                 <th className="px-6 py-4">Assigned By</th>
-                <th className="px-6 py-4">Current Assignee</th>
+                {isObManagerRole && <th className="px-6 py-4">Current Assignee</th>}
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4">Review</th>
                 <th className="px-6 py-4 text-right">Action</th>
@@ -162,7 +162,7 @@ const OtherWorkPage = ({ currentUser, tasks, onRefreshTasks }: { currentUser: Us
                       <div className="text-xs text-gray-500 mt-1">Due: {t.dueDate ? new Date(t.dueDate).toLocaleDateString() : '—'}</div>
                     </td>
                     <td className="px-6 py-5 text-sm text-gray-700">{assignedByEmail || '—'}</td>
-                    <td className="px-6 py-5 text-sm text-gray-700">{assigneeEmail || '—'}</td>
+                    {isObManagerRole && <td className="px-6 py-5 text-sm text-gray-700">{assigneeEmail || '—'}</td>}
                     <td className="px-6 py-5">
                       <span className="inline-flex px-3 py-1 text-xs font-semibold rounded-full border bg-gray-50 text-gray-700">{t.status}</span>
                     </td>

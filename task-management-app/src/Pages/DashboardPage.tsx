@@ -463,12 +463,10 @@ const DashboardPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
 
     const [taskPage, setTaskPage] = useState(1);
-
-
-
-    const [reviewsMonth, setReviewsMonth] = useState<string>(() => monthKeyOfDate(new Date()));
+    const [reviewsMonth,setReviewsMonth ] = useState<string>(() => monthKeyOfDate(new Date()));
 
     const [reviewedTasksForSummary, setReviewedTasksForSummary] = useState<Task[]>([]);
+    const [allMdImpexUsers, setAllMdImpexUsers] = useState<any[]>([]); // New state for comprehensive user data
 
     const [reviewModalTaskId, setReviewModalTaskId] = useState<string | null>(null);
 
@@ -690,9 +688,35 @@ const DashboardPage = () => {
 
         const monthRange = parseMonth(reviewsMonth);
 
+        // For all MDIMPEX users, show comprehensive data regardless of role restrictions
+        const currentUserCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase();
+        const isMdImpexUser = currentUserCompany.includes('mdimpex') || currentUserCompany.includes('md_impex');
 
+        console.log('EmployeeOfTheMonth Debug:', {
+            currentUserCompany,
+            isMdImpexUser,
+            totalUsersAvailable: users?.length,
+            totalMdImpexUsersAvailable: allMdImpexUsers?.length,
+            usersList: users?.map(u => ({ email: u.email, name: u.name, hasAvatar: !!u.avatar, avatar: u.avatar }))
+        });
 
-        const reviewed = (reviewedTasksForSummary || []).filter((t) => {
+        let reviewedData = reviewedTasksForSummary || [];
+
+        // If user is from MDIMPEX, use all tasks data to show comprehensive view
+        if (isMdImpexUser) {
+            reviewedData = (tasks || []).filter((t) => {
+                const stars = (t as any).reviewStars;
+                const reviewedAtRaw = (t as any).reviewedAt;
+                if (stars == null) return false;
+                if (!reviewedAtRaw) return false;
+                if (!monthRange) return true;
+                const reviewedAt = new Date(reviewedAtRaw);
+                if (Number.isNaN(reviewedAt.getTime())) return false;
+                return reviewedAt >= monthRange.start && reviewedAt < monthRange.endExclusive;
+            });
+        }
+
+        const reviewed = reviewedData.filter((t) => {
 
             const stars = (t as any).reviewStars;
 
@@ -810,6 +834,24 @@ const DashboardPage = () => {
 
         })?.avatar;
 
+        console.log('Photo search debug:', {
+            lookingFor: top.email,
+            foundPhotoUrl: photoUrl,
+            isMdImpexUser
+        });
+
+        // For MDIMPEX users, if no photo found in restricted users, try comprehensive user data
+        let finalPhotoUrl = photoUrl;
+        if (!finalPhotoUrl && isMdImpexUser && allMdImpexUsers?.length > 0) {
+            console.log('MDIMPEX user: searching comprehensive user data for photo');
+            const comprehensivePhotoUrl = (allMdImpexUsers || []).find((u: any) => {
+                const uemail = String(u?.email || '').trim().toLowerCase();
+                return uemail && uemail === top.email;
+            })?.avatar;
+            finalPhotoUrl = comprehensivePhotoUrl;
+            console.log('Found photo in comprehensive data:', finalPhotoUrl);
+        }
+
 
 
         return {
@@ -824,13 +866,21 @@ const DashboardPage = () => {
 
             avg: top.ratingPctLabel,
 
-            photoUrl: photoUrl ? String(photoUrl) : undefined,
+            photoUrl: finalPhotoUrl ? String(finalPhotoUrl) : undefined,
 
             summaryRows: rows.slice(0, 10).map((r) => {
-                const avatar = (users || []).find((u: any) => {
+                let avatar = (users || []).find((u: any) => {
                     const uemail = String(u?.email || '').trim().toLowerCase();
                     return uemail && uemail === r.email;
                 })?.avatar;
+
+                // For MDIMPEX users, if no avatar found in restricted users, try comprehensive user data
+                if (!avatar && isMdImpexUser && allMdImpexUsers?.length > 0) {
+                    avatar = (allMdImpexUsers || []).find((u: any) => {
+                        const uemail = String(u?.email || '').trim().toLowerCase();
+                        return uemail && uemail === r.email;
+                    })?.avatar;
+                }
 
                 return {
 
@@ -851,7 +901,7 @@ const DashboardPage = () => {
 
         };
 
-    }, [reviewedTasksForSummary, reviewsMonth, users]);
+    }, [reviewedTasksForSummary, reviewsMonth, users, allMdImpexUsers, tasks, currentUser?.companyName, currentUser?.company]);
 
     const pendingManagerReviewTasks = useMemo(() => {
         const normalizeEmailSafe = (v: unknown): string => String(v || '').trim().toLowerCase();
@@ -9050,7 +9100,14 @@ const DashboardPage = () => {
 
             });
 
-
+            // Store comprehensive user data for MDIMPEX users
+            const currentUserCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase();
+            const isMdImpexUser = currentUserCompany.includes('mdimpex') || currentUserCompany.includes('md_impex');
+            
+            if (isMdImpexUser) {
+                console.log('Storing comprehensive user data for MDIMPEX user');
+                setAllMdImpexUsers(normalizedUsers);
+            }
 
             setUsers(normalizedUsers);
 
@@ -11282,58 +11339,71 @@ const DashboardPage = () => {
 
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
 
-                                                <button
+                                                {(() => {
+                                                    const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
+                                                    const canSee = roleKey === 'admin' || roleKey === 'super_admin' || roleKey === 'manager' || roleKey === 'md_manager' || roleKey === 'ob_manager' || roleKey === 'all_manager';
+                                                    if (!canSee) return null;
+                                                    return (
+                                                        <button
 
-                                                    type="button"
+                                                            type="button"
 
-                                                    onClick={() => setDashboardSpotlight('employee-of-month')}
+                                                            onClick={() => setDashboardSpotlight('employee-of-month')}
 
-                                                    className={`bg-white p-6 rounded-2xl shadow-sm border-2 transition-all duration-200 hover:shadow-md ${dashboardSpotlight === 'employee-of-month'
+                                                            className={`bg-white p-6 rounded-2xl shadow-sm border-2 transition-all duration-200 hover:shadow-md ${dashboardSpotlight === 'employee-of-month'
 
-                                                        ? 'border-blue-500 shadow-lg shadow-blue-50'
+                                                                ? 'border-blue-500 shadow-lg shadow-blue-50'
 
-                                                        : 'border-transparent hover:border-gray-200'
+                                                                : 'border-transparent hover:border-gray-200'
 
-                                                        }`}
+                                                                }`}
+                                                        >
 
-                                                >
+                                                            <div className="flex items-start justify-between">
 
-                                                    <div className="flex items-start justify-between">
+                                                                <div>
 
-                                                        <div>
+                                                                    <h2 className="text-sm font-semibold text-gray-900">
 
-                                                            <h2 className="text-sm font-semibold text-gray-900">
-                                                                <span className="inline-flex items-center gap-2">
-                                                                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-amber-100/70 text-amber-700 ring-1 ring-amber-200 shadow-sm">
-                                                                        <Crown className="h-4 w-4" />
-                                                                    </span>
-                                                                    <span>Employee of the Month </span>
+                                                                        <span className="inline-flex items-center gap-2">
+
+                                                                            <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-amber-100/70 text-amber-700 ring-1 ring-amber-200 shadow-sm">
+
+                                                                                <Crown className="h-4 w-4" />
+
+                                                                            </span>
+
+                                                                            <span>Employee of the Month </span>
+
+                                                                        </span>
+
+                                                                    </h2>
+
+                                                                    <p className="text-xs text-gray-500 mt-1 ">Based on manager reviews (month wise)</p>
+
+                                                                </div>
+
+                                                                <span className={`text-xs font-medium px-2 py-1 rounded-full ${dashboardSpotlight === 'employee-of-month'
+
+                                                                    ? 'bg-blue-100 text-blue-600'
+
+                                                                    : 'bg-gray-100 text-gray-600'
+
+                                                                    }`}>
+
+                                                                    {dashboardSpotlight === 'employee-of-month' ? 'Selected' : 'Select'}
+
                                                                 </span>
-                                                            </h2>
 
-                                                            <p className="text-xs text-gray-500 mt-1 ">Based on manager reviews (month wise)</p>
+                                                            </div>
 
-                                                        </div>
-
-                                                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${dashboardSpotlight === 'employee-of-month'
-
-                                                            ? 'bg-blue-100 text-blue-600'
-
-                                                            : 'bg-gray-100 text-gray-600'
-
-                                                            }`}>
-
-                                                            {dashboardSpotlight === 'employee-of-month' ? 'Selected' : 'Select'}
-
-                                                        </span>
-
-                                                    </div>
-
-                                                </button>
+                                                        </button>
+                                                    );
+                                                })()}
 
                                                 {(() => {
                                                     const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
-                                                    const canSee = roleKey === 'manager' || roleKey === 'md_manager' || roleKey === 'all_manager';
+                                                    const canSee = roleKey === 'manager' || roleKey === 'md_manager' || roleKey === 'ob_manager' || roleKey === 'all_manager';
                                                     if (!canSee) return null;
                                                     return (
                                                         <>
@@ -11402,20 +11472,6 @@ const DashboardPage = () => {
 
                                             {dashboardSpotlight === 'employee-of-month' ? (
                                                 <>
-                                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-                                                        <div>
-
-                                                            <h2 className="text-sm font-semibold text-gray-900">Employee of the Month</h2>
-                                                            <p className="text-xs text-gray-500">Based on manager reviews (month wise)</p>
-                                                        </div>
-                                                        <input
-                                                            type="month"
-                                                            value={reviewsMonth}
-                                                            onChange={(e) => setReviewsMonth(e.target.value)}
-                                                            className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
-                                                        />
-                                                    </div>
-
                                                     <EmployeeOfTheMonthCard
                                                         name={employeeOfTheMonth?.name || 'Not any yet'}
                                                         rating={employeeOfTheMonth?.rating || 0}
@@ -11423,6 +11479,8 @@ const DashboardPage = () => {
                                                         avg={employeeOfTheMonth?.avg || 'Not any yet'}
                                                         photoUrl={employeeOfTheMonth?.photoUrl}
                                                         summaryRows={employeeOfTheMonth?.summaryRows}
+                                                        monthValue={reviewsMonth}
+                                                        onMonthChange={setReviewsMonth}
                                                     />
                                                 </>
                                             ) : dashboardSpotlight === 'manager-monthly-ranking' ? (

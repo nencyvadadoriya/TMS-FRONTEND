@@ -253,6 +253,10 @@ export interface UserType {
     // Optional avatar / initial used in some views
     avatar?: string;
 
+    // Company information
+    companyName?: string;
+    company?: string;
+
     // Task statistics
     assignedTasks?: number;
     completedTasks?: number;
