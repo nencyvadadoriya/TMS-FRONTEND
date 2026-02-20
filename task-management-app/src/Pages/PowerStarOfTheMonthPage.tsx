@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Star } from 'lucide-react';
+import { Star, Award, CheckCircle, Users, Trophy } from 'lucide-react';
 
 import type { UserType } from '../Types/Types';
 import { powerStarMonthlyService, type PowerStarMonthlyResponse, type PowerStarMonthlyRow } from '../Services/PowerStarMonthly.service';
+import { toAvatarUrl } from '../utils/avatar';
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
 const monthKeyOfDate = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
@@ -142,26 +143,6 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
         }
     }, [canEdit, fetchMonthly, monthKey, rowsNormalized]);
 
-    const bestByMetric = useMemo(() => {
-        const out: Record<string, PowerStarMonthlyRow | null> = {
-            churn: null,
-            liveAssign: null,
-            hits: null
-        };
-
-        for (const metric of metricMeta) {
-            const key = metric.key;
-            const sorted = [...rowsNormalized].sort((a, b) => {
-                const ta = metricTotal(key, (a as any)[key]);
-                const tb = metricTotal(key, (b as any)[key]);
-                return tb - ta;
-            });
-            out[key] = sorted[0] || null;
-        }
-
-        return out as Record<MetricKey, PowerStarMonthlyRow | null>;
-    }, [rowsNormalized]);
-
     const topMetricKey = useMemo<MetricKey>(() => {
         const totals = metricMeta.map((m) => {
             const key = m.key;
@@ -194,228 +175,615 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
         return formatMetricTotal(activeMetric, total);
     }, [activeMetric, topActiveRow]);
 
+    const formatMonthLabel = (value?: string): string => {
+        const raw = String(value || '').trim();
+        const [y, m] = raw.split('-').map((x) => Number(x));
+        if (!Number.isFinite(y) || !Number.isFinite(m) || y < 1970 || m < 1 || m > 12) {
+            return new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+        }
+        return new Date(y, m - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+    };
+
     return (
-        <div className="space-y-5 mb-15 overflow-x-hidden">
-            <div className="bg-gradient-to-r from-amber-50/60 to-white rounded-2xl shadow-sm border border-amber-100 p-6">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div>
-                        <h2 className="text-xl font-semibold text-gray-900">
-                            <span className="inline-flex items-center gap-2">
-                                <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-amber-100/70 text-amber-700 ring-1 ring-amber-200 shadow-sm">
-                                    <Star className="h-5 w-5" />
-                                </span>
-                                <span>Power Star of the Month</span>
-                            </span>
-                        </h2>
-                        <p className="text-sm text-gray-500 mt-1">Week wise (W-1 to W-4) • Churn / Live-Assign% / Hits</p>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        <input
-                            type="month"
-                            value={monthKey}
-                            onChange={(e) => setMonthKey(e.target.value)}
-                            className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
-                            disabled={loading || saving}
-                        />
-
-                        {canEdit ? (
-                            <button
-                                type="button"
-                                onClick={() => void save()}
-                                disabled={saving || loading}
-                                className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-60"
-                            >
-                                {saving ? 'Saving...' : 'Save'}
-                            </button>
-                        ) : null}
-                    </div>
+        <div className="space-y-6 mb-5">
+            {/* ─── MAIN CARD ─── */}
+            {/* Calendar outside the card - right side */}
+            <div className="flex justify-end mb-6">
+                <div className="relative">
+                    <input
+                        type="month"
+                        value={monthKey || ''}
+                        onChange={(e) => setMonthKey(e.target.value)}
+                        className="px-3 py-2 rounded-xl border border-slate-200 bg-white/60 text-slate-600 text-sm font-semibold shadow-sm cursor-pointer"
+                        disabled={loading || saving}
+                    />
                 </div>
-
-                {data?.companyName ? (
-                    <div className="mt-4 text-xs text-gray-500">
-                        Company: <span className="font-semibold text-gray-800">{data.companyName}</span>
-                        {data?.updatedAt ? (
-                            <span>
-                                {' '}
-                                • Last updated: <span className="font-semibold text-gray-800">{new Date(String(data.updatedAt)).toLocaleString()}</span>
-                            </span>
-                        ) : null}
-                    </div>
-                ) : null}
             </div>
+            <div className="relative overflow-hidden rounded-3xl shadow-2xl border border-white/80">
+                
+                {/* ✅ SOFT PASTEL GRADIENT BACKGROUND — sky blue → yellow → pink → white → green */}
+                <div
+                    className="absolute inset-0"
+                    style={{
+                        background:
+                            'linear-gradient(135deg, #e0f4ff 0%, #fef9c3 25%, #fce7f3 50%, #f0fdf4 75%, #e0f4ff 100%)',
+                    }}
+                />
+    
+                {/* Soft glow blob — sky blue top right */}
+                <div
+                    className="absolute -top-20 -right-20 w-80 h-80 rounded-full pointer-events-none"
+                    style={{
+                        background: 'radial-gradient(circle, #bae6fd 0%, transparent 70%)',
+                        filter: 'blur(40px)',
+                        opacity: 0.7,
+                    }}
+                />
+                {/* Soft glow blob — pink left */}
+                <div
+                    className="absolute top-1/2 -left-16 w-64 h-64 rounded-full pointer-events-none"
+                    style={{
+                        background: 'radial-gradient(circle, #fbcfe8 0%, transparent 70%)',
+                        filter: 'blur(40px)',
+                        opacity: 0.6,
+                    }}
+                />
+                {/* Soft glow blob — yellow bottom center */}
+                <div
+                    className="absolute -bottom-16 right-1/3 w-72 h-72 rounded-full pointer-events-none"
+                    style={{
+                        background: 'radial-gradient(circle, #fde68a 0%, transparent 70%)',
+                        filter: 'blur(48px)',
+                        opacity: 0.5,
+                    }}
+                />
+                {/* Soft glow blob — green bottom right */}
+                <div
+                    className="absolute bottom-0 -right-10 w-56 h-56 rounded-full pointer-events-none"
+                    style={{
+                        background: 'radial-gradient(circle, #bbf7d0 0%, transparent 70%)',
+                        filter: 'blur(36px)',
+                        opacity: 0.55,
+                    }}
+                />
 
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                    <div>
-                        <div className="text-sm font-semibold text-gray-900">Top Manager</div>
-                        <div className="text-xs text-gray-500 mt-1">Top based on {metricMeta.find((x) => x.key === activeMetric)?.title || 'Metric'} for selected month</div>
-                    </div>
+                {/* Dot grid texture */}
+                <div
+                    className="absolute inset-0 opacity-20 pointer-events-none"
+                    style={{
+                        backgroundImage: `radial-gradient(circle at 1px 1px, #94a3b8 1px, transparent 0)`,
+                        backgroundSize: '36px 36px',
+                    }}
+                />
 
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 text-amber-800 border border-amber-100">
-                        <span className="text-xs font-semibold">Total:</span>
-                        <span className="text-sm font-semibold">{topActiveTotalLabel}</span>
-                    </div>
-                </div>
+                {/* ─── CONTENT ─── */}
+                <div className="relative p-8">
 
-                <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 p-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    {/* Top Bar */}
+                    <div className="flex items-center justify-between mb-8">
                         <div className="flex items-center gap-3">
-                            <div className="w-11 h-11 rounded-full bg-white overflow-hidden border border-amber-200 shadow-sm flex-shrink-0">
-                                {(topActiveRow as any)?.avatar ? (
-                                    <img src={(topActiveRow as any).avatar} alt={topActiveRow?.name} className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-base font-black text-amber-700 bg-amber-100 uppercase">
-                                        {topActiveRow?.name?.[0] || 'U'}
-                                    </div>
-                                )}
+                            <div
+                                className="p-2.5 rounded-xl shadow-md"
+                                style={{ background: 'linear-gradient(135deg, #fbbf24, #f9a8d4)' }}
+                            >
+                                <Award className="h-5 w-5 text-white drop-shadow" />
                             </div>
                             <div>
-                                <div className="text-base font-semibold text-gray-900">{topActiveRow?.name || 'Not any yet'}</div>
-                                <div className="text-xs text-gray-600 mt-1">{topActiveRow?.email || ''}</div>
+                                <span className="text-xs font-semibold text-sky-500 uppercase tracking-widest">
+                                    {formatMonthLabel(monthKey)}
+                                </span>
+                                <h3 className="text-lg font-bold text-slate-700">Power Star of the Month</h3>
                             </div>
                         </div>
-
-                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-amber-200 text-amber-800">
-                            <span className="text-sm font-semibold">{topActiveTotalLabel}</span>
-                        </div>
                     </div>
-                </div>
-            </div>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="p-3 border-b border-gray-200">
-                    <div className="grid grid-cols-3 gap-2">
-                        {metricMeta.map((m) => {
-                            const isActive = activeMetric === m.key;
-                            const isTopMetric = topMetricKey === m.key;
-                            return (
-                                <button
-                                    key={m.key}
-                                    type="button"
-                                    onClick={() => setActiveMetric(m.key)}
-                                    className={
-                                        `px-3 py-2 rounded-lg text-sm font-semibold border transition-colors ` +
-                                        (isActive
-                                            ? 'bg-blue-600 text-white border-blue-600'
-                                            : isTopMetric
-                                                ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
-                                                : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50')
-                                    }
-                                >
-                                    {m.title}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
+                    {/* Main Grid */}
+                    <div className="grid lg:grid-cols-2 gap-8 items-center">
 
-                {(() => {
-                    const m = metricMeta.find((x) => x.key === activeMetric) || metricMeta[0];
-                    const top = bestByMetric[m.key];
-                    const topWeeks = normalizeWeekArray((top as any)?.[m.key]);
-                    const topTotal = metricTotal(m.key, topWeeks);
+                        {/* Left Column */}
+                        <div className="space-y-6">
 
-                    const grandWeeks = [0, 0, 0, 0].map((_, idx) => {
-                        return rowsNormalized.reduce((acc, r) => acc + toNumberSafe(((r as any)[m.key] as number[])?.[idx]), 0);
-                    });
-                    const grandTotal = metricTotal(m.key, grandWeeks);
-
-                    return (
-                        <div className="w-full">
-                            <div className="p-6 border-b border-gray-200">
-                                <div className="flex items-start justify-between gap-4">
-                                    <div>
-                                        <h3 className="text-sm font-semibold text-gray-900">{m.title}</h3>
-                                        <p className="text-xs text-gray-500 mt-1">Highest total is Top</p>
+                            {/* Name & Performance */}
+                            <div>
+                                <h1 className="text-4xl lg:text-5xl font-extrabold text-slate-800 mb-3 drop-shadow-sm">
+                                    {topActiveRow?.name || 'Not any yet'}
+                                </h1>
+                                <div className="flex items-center gap-4 flex-wrap">
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex">
+                                            {[...Array(5)].map((_, i) => (
+                                                <Star
+                                                    key={i}
+                                                    className={`h-5 w-5 ${
+                                                        i < Math.floor((topActiveRow ? 4 : 0))
+                                                            ? 'text-amber-400 fill-amber-400'
+                                                            : 'text-slate-300'
+                                                    }`}
+                                                />
+                                            ))}
+                                        </div>
+                                        <span className="text-sm font-medium text-slate-500">
+                                            ({topActiveTotalLabel})
+                                        </span>
                                     </div>
-                                    <div className="text-right">
-                                        <div className="text-xs text-gray-500">Top</div>
-                                        <div className="text-sm font-semibold text-gray-900">{top?.name || 'Not any yet'}</div>
-                                        <div className="text-xs font-semibold text-gray-700">Total: {formatMetricTotal(m.key, topTotal)}</div>
+                                    <div className="h-1 w-1 bg-slate-300 rounded-full" />
+                                    <div className="flex items-center gap-1 text-sm text-slate-500">
+                                        <CheckCircle className="h-4 w-4 text-emerald-400" />
+                                        <span>Verified Performance</span>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="w-full">
-                                <table className="w-full table-auto">
-                                    <thead className="bg-gray-50">
-                                        <tr className="text-left text-xs font-semibold text-gray-700">
-                                            <th className="px-3 py-2">Manager</th>
-                                            {weekLabels.map((wl) => (
-                                                <th key={wl} className="px-1 py-2 text-center whitespace-nowrap">{wl}</th>
-                                            ))}
-                                            <th className="px-3 py-2 text-right whitespace-nowrap">Total</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                        {rowsNormalized.map((r) => {
-                                            const weeks = normalizeWeekArray((r as any)[m.key]);
-                                            const total = metricTotal(m.key, weeks);
-                                            return (
-                                                <tr key={r.userId} className="hover:bg-gray-50">
-                                                    <td className="px-3 py-2">
-                                                        <div className="flex items-center gap-3 min-w-0">
-                                                            <div className="w-8 h-8 rounded-full overflow-hidden border border-gray-200 bg-white flex-shrink-0">
-                                                                {(r as any).avatar ? (
-                                                                    <img src={(r as any).avatar} alt={r.name} className="w-full h-full object-cover" />
-                                                                ) : (
-                                                                    <div className="w-full h-full flex items-center justify-center text-[11px] font-black text-blue-600 bg-blue-50 uppercase">
-                                                                        {r.name?.[0] || 'U'}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                            <div className="min-w-0">
-                                                                <div className="font-semibold text-gray-900 text-xs leading-4 truncate" title={r.name}>{r.name}</div>
-                                                                <div className="hidden sm:block text-[10px] text-gray-500 leading-4 truncate" title={r.email}>{r.email}</div>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    {weekLabels.map((wl, weekIndex) => {
-                                                        const val = toNumberSafe(weeks?.[weekIndex]);
-                                                        return (
-                                                            <td key={wl} className="px-1 py-2 text-center">
-                                                                <input
-                                                                    type="number"
-                                                                    inputMode="decimal"
-                                                                    className="w-16 px-2 py-1.5 border border-gray-300 rounded-md text-[12px] bg-white text-center font-medium"
-                                                                    value={String(val ?? 0)}
-                                                                    disabled={!canEdit || saving || loading}
-                                                                    onChange={(e) => handleWeekChange(r.userId, m.key, weekIndex, e.target.value)}
-                                                                    min={0}
-                                                                />
-                                                            </td>
-                                                        );
-                                                    })}
-                                                    <td className="px-3 py-2 text-xs font-semibold text-gray-900 text-right whitespace-nowrap">
-                                                        {formatMetricTotal(m.key, total)}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
+                            {/* Quote */}
+                            <p
+                                className="text-slate-600 text-base border-l-4 pl-4 italic"
+                                style={{ borderColor: '#f9a8d4' }}
+                            >
+                                {topActiveRow ? `"Outstanding performance with ${topActiveTotalLabel} in ${metricMeta.find((x) => x.key === activeMetric)?.title || 'Metric'}"` : '"No top performer selected yet"'}
+                            </p>
 
-                                        {rowsNormalized.length === 0 ? (
-                                            <tr>
-                                                <td colSpan={6} className="px-4 py-10 text-sm text-gray-500">{loading ? 'Loading…' : 'No managers found'}</td>
-                                            </tr>
-                                        ) : null}
+                            {/* Performance Stats */}
+                            <div className="grid grid-cols-2 gap-3">
+                                {/* light pink */}
+                                <div
+                                    className="rounded-2xl p-4 border shadow-sm"
+                                    style={{
+                                        background: 'linear-gradient(135deg, #fce7f3, #fbcfe840)',
+                                        borderColor: '#fbcfe8',
+                                    }}
+                                >
+                                    <p className="text-xs text-pink-500 font-semibold mb-1">Active Metric</p>
+                                    <p className="text-base font-bold text-slate-800">{metricMeta.find((x) => x.key === activeMetric)?.title || 'Metric'}</p>
+                                </div>
 
-                                        {rowsNormalized.length > 0 ? (
-                                            <tr className="bg-gray-50">
-                                                <td className="px-3 py-2 text-xs font-semibold text-gray-900 whitespace-nowrap">Grand Total</td>
-                                                {grandWeeks.map((v, idx) => (
-                                                    <td key={idx} className="px-1 py-2 text-xs font-semibold text-gray-900 text-center">{Math.round(v)}</td>
-                                                ))}
-                                                <td className="px-3 py-2 text-xs font-semibold text-gray-900 text-right whitespace-nowrap">{formatMetricTotal(m.key, grandTotal)}</td>
-                                            </tr>
-                                        ) : null}
-                                    </tbody>
-                                </table>
+                                {/* light yellow */}
+                                <div
+                                    className="rounded-2xl p-4 border shadow-sm"
+                                    style={{
+                                        background: 'linear-gradient(135deg, #fefce8, #fde68a40)',
+                                        borderColor: '#fde68a',
+                                    }}
+                                >
+                                    <p className="text-xs text-amber-500 font-semibold mb-1">Total Score</p>
+                                    <p className="text-base font-bold text-slate-800">{topActiveTotalLabel}</p>
+                                </div>
+                            </div>
+
+                            {/* Company Info */}
+                            {data?.companyName && (
+                                <div className="text-xs text-slate-500">
+                                    Company: <span className="font-semibold text-slate-700">{data.companyName}</span>
+                                    {data?.updatedAt && (
+                                        <span>
+                                            {' '}• Last updated: <span className="font-semibold text-slate-700">{new Date(String(data.updatedAt)).toLocaleString()}</span>
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Right Column — Trophy Profile */}
+                        <div className="relative flex justify-center lg:justify-end">
+                            <div className="relative w-80 h-80 lg:w-96 lg:h-96">
+
+                                {/* Pastel rainbow glow */}
+                                <div
+                                    className="absolute inset-0 rounded-full opacity-50 pointer-events-none"
+                                    style={{
+                                        background:
+                                            'conic-gradient(from 0deg, #bae6fd, #fde68a, #fbcfe8, #bbf7d0, #bae6fd)',
+                                        filter: 'blur(20px)',
+                                    }}
+                                />
+
+                                {/* Thin conic ring */}
+                                <div
+                                    className="absolute inset-3 rounded-full"
+                                    style={{
+                                        padding: '3px',
+                                        background:
+                                            'conic-gradient(from 0deg, #7dd3fc, #fbbf24, #f9a8d4, #6ee7b7, #7dd3fc)',
+                                    }}
+                                >
+                                    <div
+                                        className="w-full h-full rounded-full"
+                                        style={{ background: 'linear-gradient(135deg, #f0f9ff, #fef9ee)' }}
+                                    />
+                                </div>
+
+                                {/* Profile Image */}
+                                <div className="absolute inset-10 rounded-full overflow-hidden shadow-xl">
+                                    {toAvatarUrl((topActiveRow as any)?.avatar) ? (
+                                        <div className="relative w-full h-full">
+                                            <img
+                                                src={toAvatarUrl((topActiveRow as any)?.avatar)}
+                                                alt={topActiveRow?.name}
+                                                className="w-full h-full object-cover object-center"
+                                                style={{
+                                                    objectPosition: 'center 20%',
+                                                    transform: 'scale(1.05)'
+                                                }}
+                                                loading="lazy"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div
+                                            className="w-full h-full flex items-center justify-center"
+                                            style={{
+                                                background: 'linear-gradient(135deg, #7dd3fc, #fde68a, #f9a8d4)',
+                                            }}
+                                        >
+                                            <span className="text-white text-8xl font-black drop-shadow-lg">
+                                                {(topActiveRow?.name || 'U').trim().charAt(0).toUpperCase()}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {/* Soft bottom overlay */}
+                                    <div
+                                        className="absolute inset-0"
+                                        style={{
+                                            background: 'linear-gradient(to top, rgba(253,230,138,0.35) 0%, transparent 60%)',
+                                        }}
+                                    />
+
+                                    {/* Champion badge */}
+                                    <div className="absolute bottom-4 left-0 right-0 text-center">
+                                        <span
+                                            className="px-4 py-1 rounded-full text-sm font-bold border shadow-sm"
+                                            style={{
+                                                background: 'rgba(255,255,255,0.80)',
+                                                borderColor: '#fde68a',
+                                                color: '#d97706',
+                                                backdropFilter: 'blur(6px)',
+                                            }}
+                                        >
+                                            ⭐ POWER STAR ⭐
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Pastel sparkles — fixed positions */}
+                                {[
+                                    { color: '#7dd3fc', top: '8%',  left: '50%' },
+                                    { color: '#fbbf24', top: '20%', left: '88%' },
+                                    { color: '#f9a8d4', top: '50%', left: '92%' },
+                                    { color: '#6ee7b7', top: '78%', left: '80%' },
+                                    { color: '#7dd3fc', top: '85%', left: '30%' },
+                                    { color: '#fbbf24', top: '65%', left: '5%'  },
+                                    { color: '#f9a8d4', top: '30%', left: '3%'  },
+                                    { color: '#6ee7b7', top: '10%', left: '18%' },
+                                ].map((s, i) => (
+                                    <div
+                                        key={i}
+                                        className="absolute w-2 h-2 rounded-full animate-ping pointer-events-none"
+                                        style={{
+                                            background: s.color,
+                                            top: s.top,
+                                            left: s.left,
+                                            animationDelay: `${i * 0.28}s`,
+                                            animationDuration: `${1.6 + (i % 3) * 0.5}s`,
+                                            opacity: 0.85,
+                                        }}
+                                    />
+                                ))}
                             </div>
                         </div>
-                    );
-                })()}
+                    </div>
+                </div>
             </div>
+
+            {/* ─── METRIC SELECTION ─── */}
+            <div className="relative overflow-hidden rounded-3xl shadow-xl border border-white/80 mb-10">
+
+                {/* ✅ SOFT PASTEL METRIC SECTION GRADIENT */}
+                <div
+                    className="absolute inset-0"
+                    style={{
+                        background:
+                            'linear-gradient(160deg, #f0f9ff 0%, #fef9c3 35%, #fce7f3 65%, #f0fdf4 100%)',
+                    }}
+                />
+
+                {/* Dot grid */}
+                <div
+                    className="absolute inset-0 opacity-20 pointer-events-none"
+                    style={{
+                        backgroundImage: `radial-gradient(circle at 1px 1px, #94a3b8 1px, transparent 0)`,
+                        backgroundSize: '28px 28px',
+                    }}
+                />
+
+                {/* Corner blobs */}
+                <div
+                    className="absolute -top-12 -left-12 w-48 h-48 rounded-full pointer-events-none"
+                    style={{ background: 'radial-gradient(circle, #bae6fd 0%, transparent 70%)', filter: 'blur(30px)', opacity: 0.5 }}
+                />
+                <div
+                    className="absolute -bottom-12 -right-12 w-48 h-48 rounded-full pointer-events-none"
+                    style={{ background: 'radial-gradient(circle, #bbf7d0 0%, transparent 70%)', filter: 'blur(30px)', opacity: 0.5 }}
+                />
+
+                <div className="relative">
+                    {/* Header */}
+                    <div className="px-6 py-4 border-b border-slate-200/70 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div
+                                className="p-2 rounded-lg shadow-sm"
+                                style={{ background: 'linear-gradient(135deg, #bae6fd, #bbf7d0)' }}
+                            >
+                                <Trophy className="h-5 w-5 text-slate-600" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-slate-700">Performance Metrics</h3>
+                                <p className="text-xs text-slate-400">Select metric to view rankings</p>
+                            </div>
+                        </div>
+                        <span
+                            className="text-xs px-3 py-1.5 rounded-full font-semibold border shadow-sm"
+                            style={{
+                                background: 'linear-gradient(135deg, #e0f4ff, #fce7f3)',
+                                borderColor: '#bae6fd',
+                                color: '#0369a1',
+                            }}
+                        >
+                            {metricMeta.length} Metrics
+                        </span>
+                    </div>
+
+                    {/* Metric Buttons */}
+                    <div className="p-6">
+                        <div className="grid grid-cols-3 gap-3">
+                            {metricMeta.map((m) => {
+                                const isActive = activeMetric === m.key;
+                                const isTopMetric = topMetricKey === m.key;
+                                return (
+                                    <button
+                                        key={m.key}
+                                        type="button"
+                                        onClick={() => setActiveMetric(m.key)}
+                                        className={`px-4 py-3 rounded-xl text-sm font-semibold border transition-all duration-300 ${
+                                            isActive
+                                                ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-50 scale-105'
+                                                : isTopMetric
+                                                    ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100 hover:shadow-md'
+                                                    : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50 hover:shadow-md'
+                                        }`}
+                                    >
+                                        <div className="flex flex-col items-center gap-1">
+                                            <span className="font-bold">{m.title}</span>
+                                            {isTopMetric && !isActive && (
+                                                <span className="text-xs px-2 py-0.5 rounded-full bg-amber-200 text-amber-800">Top</span>
+                                            )}
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* ─── TEAM SECTION ─── */}
+            {rowsNormalized.length > 0 && (
+                <div className="relative overflow-hidden rounded-3xl shadow-xl border border-white/80 mb-10">
+
+                    {/* ✅ SOFT PASTEL TEAM SECTION GRADIENT */}
+                    <div
+                        className="absolute inset-0"
+                        style={{
+                            background:
+                                'linear-gradient(160deg, #f0f9ff 0%, #fef9c3 35%, #fce7f3 65%, #f0fdf4 100%)',
+                        }}
+                    />
+
+                    {/* Dot grid */}
+                    <div
+                        className="absolute inset-0 opacity-20 pointer-events-none"
+                        style={{
+                            backgroundImage: `radial-gradient(circle at 1px 1px, #94a3b8 1px, transparent 0)`,
+                            backgroundSize: '28px 28px',
+                        }}
+                    />
+
+                    {/* Corner blobs */}
+                    <div
+                        className="absolute -top-12 -left-12 w-48 h-48 rounded-full pointer-events-none"
+                        style={{ background: 'radial-gradient(circle, #bae6fd 0%, transparent 70%)', filter: 'blur(30px)', opacity: 0.5 }}
+                    />
+                    <div
+                        className="absolute -bottom-12 -right-12 w-48 h-48 rounded-full pointer-events-none"
+                        style={{ background: 'radial-gradient(circle, #bbf7d0 0%, transparent 70%)', filter: 'blur(30px)', opacity: 0.5 }}
+                    />
+
+                    <div className="relative">
+                        {/* Header */}
+                        <div className="px-6 py-4 border-b border-slate-200/70 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div
+                                    className="p-2 rounded-lg shadow-sm"
+                                    style={{ background: 'linear-gradient(135deg, #bae6fd, #bbf7d0)' }}
+                                >
+                                    <Users className="h-5 w-5 text-slate-600" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-slate-700">Team Performance Dashboard</h3>
+                                    <p className="text-xs text-slate-400">{metricMeta.find((x) => x.key === activeMetric)?.title || 'Metric'} • This month</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span
+                                    className="text-xs px-3 py-1.5 rounded-full font-semibold border shadow-sm"
+                                    style={{
+                                        background: 'linear-gradient(135deg, #e0f4ff, #fce7f3)',
+                                        borderColor: '#bae6fd',
+                                        color: '#0369a1',
+                                    }}
+                                >
+                                    {rowsNormalized.length} Team Members
+                                </span>
+                                {canEdit && (
+                                    <button
+                                        type="button"
+                                        onClick={() => void save()}
+                                        disabled={saving || loading}
+                                        className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 disabled:opacity-60 shadow-md"
+                                    >
+                                        {saving ? 'Saving...' : 'Save'}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Team Grid */}
+                        <div className="p-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {rowsNormalized.map((r, index) => {
+                                    const cardGradients = [
+                                        'linear-gradient(135deg, #e0f4ff, #fce7f3)',
+                                        'linear-gradient(135deg, #fef9c3, #f0fdf4)',
+                                        'linear-gradient(135deg, #fce7f3, #e0f4ff)',
+                                        'linear-gradient(135deg, #f0fdf4, #fef9c3)',
+                                        'linear-gradient(135deg, #fef9c3, #fce7f3)',
+                                        'linear-gradient(135deg, #e0f4ff, #f0fdf4)',
+                                    ];
+                                    const cardBorders = ['#bae6fd', '#fde68a', '#fbcfe8', '#bbf7d0', '#fbbf24', '#7dd3fc'];
+                                    const badgeGrads  = [
+                                        'linear-gradient(135deg, #38bdf8, #bae6fd)',
+                                        'linear-gradient(135deg, #fbbf24, #fde68a)',
+                                        'linear-gradient(135deg, #f472b6, #fbcfe8)',
+                                        'linear-gradient(135deg, #34d399, #bbf7d0)',
+                                        'linear-gradient(135deg, #fbbf24, #fef9c3)',
+                                        'linear-gradient(135deg, #38bdf8, #e0f4ff)',
+                                    ];
+                                    const badgeTextColors = ['#0369a1','#92400e','#be185d','#065f46','#92400e','#0369a1'];
+
+                                    const ci = index % cardGradients.length;
+                                    const weeks = normalizeWeekArray((r as any)[activeMetric]);
+                                    const total = metricTotal(activeMetric, weeks);
+                                    const isTop = index === 0;
+
+                                    return (
+                                        <div key={r.userId} className="group relative">
+                                            <div
+                                                className={`rounded-2xl border p-4 hover:shadow-lg transition-all duration-300 ${
+                                                    isTop ? 'ring-2 ring-amber-400 ring-offset-2' : ''
+                                                }`}
+                                                style={{ background: cardGradients[ci], borderColor: isTop ? '#fbbf24' : cardBorders[ci] }}
+                                            >
+                                                {/* Rank badge */}
+                                                <div
+                                                    className={`absolute -top-2.5 -right-2.5 w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold text-white shadow-md ${
+                                                        isTop ? 'ring-2 ring-amber-400' : ''
+                                                    }`}
+                                                    style={{ background: isTop ? 'linear-gradient(135deg, #fbbf24, #f59e0b)' : badgeGrads[ci] }}
+                                                >
+                                                    <span style={{ color: isTop ? '#92400e' : badgeTextColors[ci] }}>#{index + 1}</span>
+                                                </div>
+
+                                                <div className="flex items-start gap-3">
+                                                    {/* Avatar */}
+                                                    <div className="relative">
+                                                        <div
+                                                            className="w-12 h-12 rounded-xl overflow-hidden"
+                                                            style={{ border: `2px solid ${isTop ? '#fbbf24' : cardBorders[ci]}` }}
+                                                        >
+                                                            {toAvatarUrl((r as any)?.avatar) ? (
+                                                                <img
+                                                                    src={toAvatarUrl((r as any)?.avatar)}
+                                                                    alt={r.name}
+                                                                    className="w-full h-full object-cover"
+                                                                    loading="lazy"
+                                                                />
+                                                            ) : (
+                                                                <div
+                                                                    className="w-full h-full flex items-center justify-center"
+                                                                    style={{ background: cardGradients[(ci + 2) % cardGradients.length] }}
+                                                                >
+                                                                    <span className="font-bold text-lg text-slate-600">
+                                                                        {(r.name || 'U').trim().charAt(0).toUpperCase()}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-400 rounded-full border-2 border-white" />
+                                                    </div>
+
+                                                    {/* Info */}
+                                                    <div className="flex-1 min-w-0">
+                                                        <h4 className="font-bold text-slate-800 text-sm mb-0.5 truncate">{r.name}</h4>
+                                                        <p className="text-xs text-slate-400 mb-2 truncate">{r.email}</p>
+
+                                                        <div className="flex items-center gap-2 text-xs mb-2 flex-wrap">
+                                                            <div className="flex items-center gap-1">
+                                                                <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
+                                                                <span className="font-semibold text-slate-700">{formatMetricTotal(activeMetric, total)}</span>
+                                                            </div>
+                                                            <span className="text-slate-300">•</span>
+                                                            <span className="text-slate-500">Rank #{index + 1}</span>
+                                                        </div>
+
+                                                        {/* Week data */}
+                                                        <div className="grid grid-cols-4 gap-1 mb-2">
+                                                            {weekLabels.map((wl, weekIndex) => {
+                                                                const val = toNumberSafe(weeks?.[weekIndex]);
+                                                                return (
+                                                                    <div key={wl} className="text-center">
+                                                                        <p className="text-xs font-bold text-slate-700">{val}</p>
+                                                                        <p className="text-[8px] text-slate-400">{wl}</p>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+
+                                                        {/* Performance tag */}
+                                                        <span
+                                                            className="inline-block text-xs px-2.5 py-1 rounded-lg font-semibold border"
+                                                            style={
+                                                                isTop
+                                                                    ? { background: '#fef3c7', color: '#92400e', borderColor: '#fbbf24' }
+                                                                    : index < 3
+                                                                    ? { background: '#e0f4ff', color: '#0369a1', borderColor: '#bae6fd' }
+                                                                    : { background: '#f0fdf4', color: '#16a34a', borderColor: '#bbf7d0' }
+                                                            }
+                                                        >
+                                                            {isTop ? '⭐ Top' : index < 3 ? '🏆 Excellent' : 'Good'}
+                                                        </span>
+
+                                                        {/* Editable fields for admins */}
+                                                        {canEdit && (
+                                                            <div className="mt-2 space-y-1">
+                                                                <div className="text-[10px] text-slate-400 font-semibold mb-1">Weekly Data:</div>
+                                                                <div className="grid grid-cols-4 gap-1">
+                                                                    {weekLabels.map((wl, weekIndex) => {
+                                                                        const val = toNumberSafe(weeks?.[weekIndex]);
+                                                                        return (
+                                                                            <input
+                                                                                key={wl}
+                                                                                type="number"
+                                                                                inputMode="decimal"
+                                                                                className="w-full px-1 py-0.5 border border-gray-300 rounded text-xs bg-white text-center"
+                                                                                value={String(val ?? 0)}
+                                                                                disabled={saving || loading}
+                                                                                onChange={(e) => handleWeekChange(r.userId, activeMetric, weekIndex, e.target.value)}
+                                                                                min={0}
+                                                                            />
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

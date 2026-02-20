@@ -1,4 +1,4 @@
-import { Star, Award, CheckCircle, Users, CalendarDays } from 'lucide-react';
+import { Star, Award, CheckCircle, Users } from 'lucide-react';
 import { toAvatarUrl } from '../utils/avatar';
 
 type EmployeeOfTheMonthCardProps = {
@@ -84,15 +84,11 @@ const EmployeeOfTheMonthCard = ({
        {/* Calendar outside the card - right side */}
       <div className="flex justify-end mb-6">
         <div className="relative">
-          <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/60 px-3 py-2 text-slate-600 shadow-sm">
-            <span className="text-sm font-semibold">{formatMonthLabel(monthValue)}</span>
-            <CalendarDays className="h-4 w-4 text-sky-400" />
-          </div>
           <input
             type="month"
             value={monthValue || ''}
             onChange={(e) => onMonthChange?.(e.target.value)}
-            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            className="px-3 py-2 rounded-xl border border-slate-200 bg-white/60 text-slate-600 text-sm font-semibold shadow-sm cursor-pointer"
           />
         </div>
       </div>
@@ -290,7 +286,7 @@ const EmployeeOfTheMonthCard = ({
                     <img
                       src={topAvatarUrl}
                       alt={name}
-                      className="w-full h-full object-cover scale-110 hover:scale-100 transition-transform duration-700"
+                      className="w-full h-full object-cover"
                       loading="lazy"
                     />
                   ) : (

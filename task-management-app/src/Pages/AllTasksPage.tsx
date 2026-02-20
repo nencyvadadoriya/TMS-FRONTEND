@@ -343,6 +343,9 @@ const MdImpexReassignModal = memo(({
   );
   const taskCompanyKey = useMemo(() => normalizeCompanyKey((task as any)?.companyName || (task as any)?.company || ''), [normalizeCompanyKey, task]);
 
+  const myEmailKey = useMemo(() => normalizeText((currentUser as any)?.email || ''), [currentUser, normalizeText]);
+  const isKeyuriUser = useMemo(() => myEmailKey === 'keyurismartbiz@gmail.com', [myEmailKey]);
+
   const currentAssigneeEmail = useMemo(() => {
     const candidate: any = (task as any)?.assignedToUser || (task as any)?.assignedTo;
     const email =
@@ -355,8 +358,9 @@ const MdImpexReassignModal = memo(({
     if (!task) return false;
     if (taskCompanyKey !== 'mdimpex') return false;
     if (myRoleKey === 'admin' || myRoleKey === 'super_admin') return true;
-    // MD Impex: any MD Impex user can reassign in any status
-    return myCompanyKey === 'mdimpex';
+    // MD Impex: only OB Manager and Keyuri can reassign (legacy behavior)
+    if (myRoleKey === 'ob_manager') return true;
+    return isKeyuriUser;
   }, [myCompanyKey, myRoleKey, task, taskCompanyKey]);
 
   const availableUsers = useMemo(() => {
@@ -5588,8 +5592,15 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                 canAmReassignByChain
               );
 
+              const canReassignMdImpex = Boolean(
+                roleKey === 'admin' ||
+                roleKey === 'super_admin' ||
+                roleKey === 'ob_manager' ||
+                myEmail === 'keyurismartbiz@gmail.com'
+              );
+
               const showAssignButton = (isMdImpexTask
-                ? Boolean(myCompanyKey === 'mdimpex' && roleKey !== 'manager' && roleKey !== 'md_manager')
+                ? Boolean(myCompanyKey === 'mdimpex' && canReassignMdImpex)
                 : isCompleted && (isSpeedEcomTask
                   ? Boolean(
                     // Speed E Com: allow creator OR RM/AM pair members (including assignee) after completion
