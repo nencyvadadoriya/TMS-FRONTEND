@@ -159,6 +159,48 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
         return (best?.key || 'churn') as MetricKey;
     }, [rowsNormalized]);
 
+    const topRowsByMetric = useMemo(() => {
+        const out: Record<MetricKey, PowerStarMonthlyRow | null> = {
+            churn: null,
+            liveAssign: null,
+            hits: null
+        };
+
+        (metricMeta || []).forEach((m) => {
+            const key = m.key;
+            const sorted = [...rowsNormalized].sort((a, b) => {
+                const ta = metricTotal(key, (a as any)[key]);
+                const tb = metricTotal(key, (b as any)[key]);
+                return tb - ta;
+            });
+            out[key] = (sorted[0] as any) || null;
+        });
+
+        return out;
+    }, [rowsNormalized]);
+
+    const topTotalLabelByMetric = useMemo(() => {
+        const out: Record<MetricKey, string> = {
+            churn: formatMetricTotal('churn', 0),
+            liveAssign: formatMetricTotal('liveAssign', 0),
+            hits: formatMetricTotal('hits', 0)
+        };
+
+        (metricMeta || []).forEach((m) => {
+            const key = m.key;
+            const row = topRowsByMetric[key];
+            if (!row) {
+                out[key] = formatMetricTotal(key, 0);
+                return;
+            }
+            const weeks = normalizeWeekArray((row as any)?.[key]);
+            const total = metricTotal(key, weeks);
+            out[key] = formatMetricTotal(key, total);
+        });
+
+        return out;
+    }, [topRowsByMetric]);
+
     const topActiveRow = useMemo(() => {
         const sorted = [...rowsNormalized].sort((a, b) => {
             const ta = metricTotal(activeMetric, (a as any)[activeMetric]);
@@ -198,6 +240,57 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
                         disabled={loading || saving}
                     />
                 </div>
+
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {metricMeta.map((m) => {
+                    const row = topRowsByMetric[m.key];
+                    const avatar = toAvatarUrl((row as any)?.avatar);
+                    const label = topTotalLabelByMetric[m.key];
+
+                    return (
+                        <div
+                            key={m.key}
+                            className="relative overflow-hidden rounded-2xl border border-white/70 shadow-lg"
+                            style={{ background: 'linear-gradient(160deg, rgba(240,249,255,0.85) 0%, rgba(254,249,195,0.70) 35%, rgba(252,231,243,0.70) 65%, rgba(240,253,244,0.85) 100%)' }}
+                        >
+                            <div className="p-5">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div>
+                                        <div className="text-xs font-semibold text-slate-500 uppercase tracking-widest">{m.title}</div>
+                                        <div className="text-sm font-bold text-slate-700">Top Performer</div>
+                                    </div>
+                                    <div className="text-sm font-extrabold text-slate-800">{label}</div>
+                                </div>
+
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 rounded-2xl overflow-hidden border border-white/80 shadow-sm bg-white">
+                                        {avatar ? (
+                                            <img
+                                                src={avatar}
+                                                alt={row?.name || m.title}
+                                                className="w-full h-full object-cover"
+                                                loading="lazy"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #7dd3fc, #fde68a, #f9a8d4)' }}>
+                                                <span className="text-white text-2xl font-black">
+                                                    {String(row?.name || 'U').trim().charAt(0).toUpperCase()}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="min-w-0">
+                                        <div className="text-base font-extrabold text-slate-800 truncate">{row?.name || 'Not any yet'}</div>
+                                        <div className="text-xs text-slate-500 truncate">{row?.email || ''}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
             <div className="relative overflow-hidden rounded-3xl shadow-2xl border border-white/80">
                 
@@ -552,9 +645,6 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
                                     >
                                         <div className="flex flex-col items-center gap-1">
                                             <span className="font-bold">{m.title}</span>
-                                            {isTopMetric && !isActive && (
-                                                <span className="text-xs px-2 py-0.5 rounded-full bg-amber-200 text-amber-800">Top</span>
-                                            )}
                                         </div>
                                     </button>
                                 );

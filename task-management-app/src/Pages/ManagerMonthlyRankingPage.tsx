@@ -6,6 +6,12 @@ import type { UserType } from '../Types/Types';
 import { managerMonthlyRankingService, type ManagerMonthlyRankingResponse, type ManagerMonthlyRankingRow } from '../Services/ManagerMonthlyRanking.service';
 import { toAvatarUrl } from '../utils/avatar';
 
+const ALLOWED_MARKETER_MANAGER_EMAILS = new Set([
+    'drashtismartbiz@gmail.com',
+    'krunalsmartbiz@gmail.com',
+    'harshsmartbiz@gmail.com'
+]);
+
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
 const monthKeyOfDate = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
@@ -22,6 +28,8 @@ const clampNonNegativeInt = (n: number): number => {
     if (!Number.isFinite(n)) return 0;
     return Math.max(0, Math.floor(n));
 };
+
+const normalizeEmailKey = (v: unknown): string => String(v || '').trim().toLowerCase();
 
 const calcPercent = (assign: number, achieved: number): number => {
     if (assign <= 0) return 0;
@@ -68,7 +76,8 @@ const ManagerMonthlyRankingPage = ({ currentUser }: { currentUser: UserType }) =
 
     const computedRows = useMemo(() => {
         const list = Array.isArray(rowsDraft) ? rowsDraft : [];
-        const mapped = list.map((r) => {
+        const filtered = list.filter((r) => ALLOWED_MARKETER_MANAGER_EMAILS.has(normalizeEmailKey((r as any).email)));
+        const mapped = filtered.map((r) => {
             const assign = clampNonNegativeInt(toNumberSafe((r as any).assign));
             const achieved = clampNonNegativeInt(toNumberSafe((r as any).achieved));
             const percent = calcPercent(assign, achieved);
