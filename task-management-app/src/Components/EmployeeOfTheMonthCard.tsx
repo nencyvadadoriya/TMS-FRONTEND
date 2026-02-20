@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Star, Award, CheckCircle, Users } from 'lucide-react';
 import { toAvatarUrl } from '../utils/avatar';
 
@@ -12,12 +13,7 @@ type EmployeeOfTheMonthCardProps = {
   monthValue?: string;
   onMonthChange?: (value: string) => void;
 
-  taskStats?: {
-    tasksCompleted: number;
-    hoursLogged: number;
-    efficiency: number;
-    monthlyProgress: number;
-  };
+  totalReviews?: number;
 
   backgroundUrl?: string;
 
@@ -50,11 +46,21 @@ const EmployeeOfTheMonthCard = ({
   photoUrl,
   monthValue,
   onMonthChange,
+  totalReviews,
   summaryRows = [],
 }: EmployeeOfTheMonthCardProps) => {
   const safeRating = clampRating(rating);
   const topAvatarUrl = toAvatarUrl(photoUrl);
-  const remainingRows = Array.isArray(summaryRows) ? summaryRows.slice(1) : [];
+  const remainingRows = useMemo(() => {
+    const list = Array.isArray(summaryRows) ? summaryRows : [];
+    const topNameKey = String(name || '').trim().toLowerCase();
+
+    return list.filter((r, idx) => {
+      if (String(r?.email || '') === '__top_placeholder__') return false;
+      if (idx === 0 && topNameKey && String(r?.name || '').trim().toLowerCase() === topNameKey) return false;
+      return true;
+    });
+  }, [name, summaryRows]);
 
   const formatMonthLabel = (value?: string): string => {
     const raw = String(value || '').trim();
@@ -224,7 +230,7 @@ const EmployeeOfTheMonthCard = ({
               
 
               {/* Performance & Average */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 {/* light pink */}
                 <div
                   className="rounded-2xl p-4 border shadow-sm"
@@ -247,6 +253,18 @@ const EmployeeOfTheMonthCard = ({
                 >
                   <p className="text-xs text-amber-500 font-semibold mb-1">Monthly Average</p>
                   <p className="text-base font-bold text-slate-800">{avg}</p>
+                </div>
+
+                {/* light blue */}
+                <div
+                  className="rounded-2xl p-4 border shadow-sm"
+                  style={{
+                    background: 'linear-gradient(135deg, #e0f4ff, #bae6fd40)',
+                    borderColor: '#bae6fd',
+                  }}
+                >
+                  <p className="text-xs text-sky-500 font-semibold mb-1">Reviews</p>
+                  <p className="text-base font-bold text-slate-800">{totalReviews ?? 0}</p>
                 </div>
               </div>
             </div>

@@ -105,10 +105,12 @@ const ManagerMonthlyRankingPage = ({ currentUser }: { currentUser: UserType }) =
                 const currentAchieved = clampNonNegativeInt(toNumberSafe((r as any).achieved));
 
                 if (field === 'assign') {
-                    const nextAssign = clampNonNegativeInt(toNumberSafe(value));
+                      const nextAssign = clampNonNegativeInt(toNumberSafe(value));
                     const nextAchieved = Math.min(currentAchieved, nextAssign);
                     return { ...r, assign: nextAssign, achieved: nextAchieved } as any;
-                }
+                }   
+
+                
 
                 const nextAchievedRaw = clampNonNegativeInt(toNumberSafe(value));
                 const nextAchieved = Math.min(nextAchievedRaw, currentAssign);
