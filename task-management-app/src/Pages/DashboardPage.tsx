@@ -60,13 +60,6 @@ import {
     Send,
     Loader2,
 
-    ChevronLeft,
-    ChevronRight,
-    Plus,
-    ChevronDown,
-    ChevronUp,
-    ChevronRight as ChevronRightIcon,
-
 } from 'lucide-react';
 
 import toast from 'react-hot-toast';
@@ -477,7 +470,7 @@ const DashboardPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
 
     const [taskPage, setTaskPage] = useState(1);
-    const [reviewsMonth,setReviewsMonth ] = useState<string>(() => monthKeyOfDate(new Date()));
+    const [reviewsMonth, setReviewsMonth] = useState<string>(() => monthKeyOfDate(new Date()));
 
     const [reviewedTasksForSummary, setReviewedTasksForSummary] = useState<Task[]>([]);
     const [allMdImpexUsers, setAllMdImpexUsers] = useState<any[]>([]); // New state for comprehensive user data
@@ -6923,43 +6916,23 @@ const DashboardPage = () => {
 
                     : (selectedRmId
 
-                    ? (list || [])
+                        ? (list || [])
 
-                        .filter((u: any) => String(u?.managerId || '').trim() === selectedRmId)
+                            .filter((u: any) => String(u?.managerId || '').trim() === selectedRmId)
 
-                        .filter((u: any) => {
+                            .filter((u: any) => {
 
-                            const r = normalizeRoleKey(u?.role);
+                                const r = normalizeRoleKey(u?.role);
 
-                            return r === 'am' || r === 'ar';
+                                return r === 'am' || r === 'ar';
 
-                        })
+                            })
 
-                        .map((u: any) => String(u?.email || '').trim().toLowerCase())
+                            .map((u: any) => String(u?.email || '').trim().toLowerCase())
 
-                        .filter(Boolean)
+                            .filter(Boolean)
 
-                    : []);
-
-                const getAssignedByEmail = (t: any) => {
-
-                    const assignedBy = (t as any)?.assignedBy;
-
-                    const assignedByUser = (t as any)?.assignedByUser;
-
-                    const email =
-
-                        (typeof assignedBy === 'string' && assignedBy.includes('@') ? assignedBy : assignedBy?.email) ||
-
-                        (typeof assignedByUser === 'string' && assignedByUser.includes('@') ? assignedByUser : assignedByUser?.email) ||
-
-                        (typeof assignedBy === 'string' ? assignedBy : '') ||
-
-                        '';
-
-                    return String(email || '').trim().toLowerCase();
-
-                };
+                        : []);
 
                 const getAssignedToEmail = (t: any) => {
 
@@ -6984,106 +6957,10 @@ const DashboardPage = () => {
                 filtered = filtered.filter((t: any) => {
                     const assignedToEmail = getAssignedToEmail(t);
 
-                    const allowed = teamEmails.length > 0 ? teamEmails : [selectedRm];
-
-                    return Boolean(assignedToEmail && allowed.includes(assignedToEmail));
-
-                });
-
-            }
-
-        }
-
-
-
-        if (normalizeRoleKey(role) === 'sbm') {
-
-            const selectedRm = String((filters as any)?.rm || '').trim().toLowerCase();
-
-            if (selectedRm && selectedRm !== 'all') {
-
-                const rmTeamRaw = String((filters as any)?.rmTeam || '').trim();
-
-                const list: any[] = Array.isArray(usersRef.current) ? (usersRef.current as any[]) : (users as any[]);
-
-                const selectedRmDoc: any = (list || []).find((u: any) => String(u?.email || '').trim().toLowerCase() === selectedRm);
-
-                const selectedRmId = String(selectedRmDoc?.id || selectedRmDoc?._id || '').trim();
-
-                const teamEmails = rmTeamRaw
-
-                    ? rmTeamRaw
-
-                        .split(',')
-
-                        .map((s) => String(s || '').trim().toLowerCase())
-
-                        .filter(Boolean)
-
-                    : (selectedRmId
-
-                    ? (list || [])
-
-                        .filter((u: any) => String(u?.managerId || '').trim() === selectedRmId)
-
-                        .filter((u: any) => {
-
-                            const r = normalizeRoleKey(u?.role);
-
-                            return r === 'am' || r === 'ar';
-
-                        })
-
-                        .map((u: any) => String(u?.email || '').trim().toLowerCase())
-
-                        .filter(Boolean)
-
-                    : []);
-
-                const getAssignedByEmail = (t: any) => {
-
-                    const assignedBy = (t as any)?.assignedBy;
-
-                    const assignedByUser = (t as any)?.assignedByUser;
-
-                    const email =
-
-                        (typeof assignedBy === 'string' && assignedBy.includes('@') ? assignedBy : assignedBy?.email) ||
-
-                        (typeof assignedByUser === 'string' && assignedByUser.includes('@') ? assignedByUser : assignedByUser?.email) ||
-
-                        (typeof assignedBy === 'string' ? assignedBy : '') ||
-
-                        '';
-
-                    return String(email || '').trim().toLowerCase();
-
-                };
-
-                const getAssignedToEmail = (t: any) => {
-
-                    const assignedTo = (t as any)?.assignedTo;
-
-                    const assignedToUser = (t as any)?.assignedToUser;
-
-                    const email =
-
-                        (typeof assignedTo === 'string' && assignedTo.includes('@') ? assignedTo : assignedTo?.email) ||
-
-                        (typeof assignedToUser === 'string' && assignedToUser.includes('@') ? assignedToUser : assignedToUser?.email) ||
-
-                        (typeof assignedTo === 'string' ? assignedTo : '') ||
-
-                        '';
-
-                    return String(email || '').trim().toLowerCase();
-
-                };
-
-                filtered = filtered.filter((t: any) => {
-                    const assignedToEmail = getAssignedToEmail(t);
-
-                    const allowed = teamEmails.length > 0 ? teamEmails : [selectedRm];
+                    const allowed = Array.from(new Set([
+                        selectedRm,
+                        ...(teamEmails || []),
+                    ].map((s) => String(s || '').trim().toLowerCase()).filter(Boolean)));
 
                     return Boolean(assignedToEmail && allowed.includes(assignedToEmail));
 
@@ -9233,7 +9110,7 @@ const DashboardPage = () => {
             // Store comprehensive user data for MDIMPEX users
             const currentUserCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase();
             const isMdImpexUser = currentUserCompany.includes('mdimpex') || currentUserCompany.includes('md_impex');
-            
+
             if (isMdImpexUser) {
                 console.log('Storing comprehensive user data for MDIMPEX user');
                 setAllMdImpexUsers(normalizedUsers);
