@@ -148,6 +148,7 @@ interface AdvancedFilters {
   company: string;
   brand: string;
   rm: string;
+  rmTeam?: string;
 }
 
 interface HistoryDisplayItem {
@@ -3027,7 +3028,8 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     taskType: 'all',
     company: 'all',
     brand: 'all',
-    rm: 'all'
+    rm: 'all',
+    rmTeam: ''
   });
 
   const effectiveAdvancedFilters = advancedFilters || localAdvancedFilters;
@@ -4334,7 +4336,8 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       taskType: 'all',
       company: 'all',
       brand: 'all',
-      rm: 'all'
+      rm: 'all',
+      rmTeam: ''
     };
 
     // Reset both local and DashboardPage filters
@@ -5052,37 +5055,67 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       const roleKey = normalizeRoleKey(currentUser?.role);
       const myEmail = normalizeText(currentUser?.email);
 
-      // SBM-only RM filter: show tasks assigned by selected RM to (1) me (SBM) OR (2) selected RM's AM/AR team
+      // SBM-only RM filter: show tasks assigned TO me (SBM) where the assigner is the selected RM or their AM/AR team
       if (roleKey === 'sbm' && effectiveAdvancedFilters.rm && effectiveAdvancedFilters.rm !== 'all') {
         const selectedRmEmail = normalizeText(effectiveAdvancedFilters.rm);
         if (selectedRmEmail) {
-          const assignedByEmail = normalizeText(getAssignerEmail(task));
-          if (assignedByEmail !== selectedRmEmail) return false;
-
-          const selectedRmDoc: any = (users || []).find((u: any) => normalizeText(u?.email) === selectedRmEmail);
-          const selectedRmId = String(selectedRmDoc?.id || selectedRmDoc?._id || '').trim();
-
-          const teamEmails = selectedRmId
-            ? (users || [])
-              .filter((u: any) => String(u?.managerId || '').trim() === selectedRmId)
-              .filter((u: any) => {
-                const r = normalizeRoleKey(u?.role);
-                return r === 'am' || r === 'ar';
-              })
-              .map((u: any) => normalizeText(u?.email))
+          const rmTeamRaw = String((effectiveAdvancedFilters as any)?.rmTeam || '').trim();
+          const teamEmails = rmTeamRaw
+            ? rmTeamRaw
+              .split(',')
+              .map((s) => normalizeText(s))
               .filter(Boolean)
-            : [];
+            : (() => {
+              const selectedRmDoc: any = (users || []).find((u: any) => normalizeText(u?.email) === selectedRmEmail);
+              const selectedRmId = String(selectedRmDoc?.id || selectedRmDoc?._id || '').trim();
+              return selectedRmId
+                ? (users || [])
+                  .filter((u: any) => String(u?.managerId || '').trim() === selectedRmId)
+                  .filter((u: any) => {
+                    const r = normalizeRoleKey(u?.role);
+                    return r === 'am' || r === 'ar';
+                  })
+                  .map((u: any) => normalizeText(u?.email))
+                  .filter(Boolean)
+                : [];
+            })();
+
+          const allowedAssignees = Array.from(new Set([
+            selectedRmEmail,
+            ...teamEmails,
+          ].map((s) => normalizeText(s)).filter(Boolean)));
 
           const assignedToEmail = normalizeText(
             (task as any)?.assignedToUser?.email ||
-            (typeof (task as any)?.assignedTo === 'string' ? (task as any)?.assignedTo : (task as any)?.assignedTo?.email) ||
-            (task as any)?.assignedTo ||
+            (() => {
+              const assignedTo: any = (task as any)?.assignedTo;
+              if (!assignedTo) return '';
+              if (typeof assignedTo === 'string') {
+                if (assignedTo.includes('@')) return assignedTo;
+                return getEmailByIdInternal(assignedTo) || '';
+              }
+              const directEmail = String(assignedTo?.email || '').trim();
+              if (directEmail) return directEmail;
+              const id = String(assignedTo?.id || assignedTo?._id || '').trim();
+              if (id) return getEmailByIdInternal(id) || '';
+              return '';
+            })() ||
             ''
           );
 
-          const isToMe = Boolean(myEmail && assignedToEmail && assignedToEmail === myEmail);
-          const isToTeam = Boolean(assignedToEmail && teamEmails.includes(assignedToEmail));
-          if (!isToMe && !isToTeam) return false;
+          const isAssignedToMe = Boolean(myEmail && assignedToEmail && assignedToEmail === myEmail);
+          if (!isAssignedToMe) return false;
+
+          const assignedByEmail = normalizeText(
+            (task as any)?.assignedByUser?.email ||
+            (typeof (task as any)?.assignedBy === 'string' ? (task as any)?.assignedBy : (task as any)?.assignedBy?.email) ||
+            (task as any)?.createdByEmail ||
+            (typeof (task as any)?.createdBy === 'string' ? (task as any)?.createdBy : (task as any)?.createdBy?.email) ||
+            ''
+          );
+
+          const isFromAllowed = Boolean(assignedByEmail && allowedAssignees.includes(assignedByEmail));
+          if (!isFromAllowed) return false;
         }
       }
 
@@ -5425,6 +5458,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                 availableBrands={availableBrands}
                 getBrandLabel={getBrandLabelForFilter}
                 availableRms={availableRmUsersForFilters}
+                users={users}
                 currentUser={currentUser}
                 onFilterChange={handleFilterChange}
                 onResetFilters={resetFilters}
