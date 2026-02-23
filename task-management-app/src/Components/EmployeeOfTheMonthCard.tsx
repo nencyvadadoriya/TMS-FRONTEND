@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Star, Award, CheckCircle, Users } from 'lucide-react';
 import { toAvatarUrl } from '../utils/avatar';
 
@@ -12,12 +13,7 @@ type EmployeeOfTheMonthCardProps = {
   monthValue?: string;
   onMonthChange?: (value: string) => void;
 
-  taskStats?: {
-    tasksCompleted: number;
-    hoursLogged: number;
-    efficiency: number;
-    monthlyProgress: number;
-  };
+  totalReviews?: number;
 
   backgroundUrl?: string;
 
@@ -41,6 +37,18 @@ const clampRating = (value: number): number => {
   return Math.max(0, Math.min(5, value));
 };
 
+const toNumberSafe = (value: unknown): number => {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return n;
+};
+
+const parseStarsLabel = (label: unknown): number => {
+  const raw = String(label ?? '').trim();
+  const m = raw.match(/\d+(?:\.\d+)?/);
+  return clampRating(m ? Number(m[0]) : 0);
+};
+
 const EmployeeOfTheMonthCard = ({
   title = 'Top Performer of the Month',
   name,
@@ -50,11 +58,52 @@ const EmployeeOfTheMonthCard = ({
   photoUrl,
   monthValue,
   onMonthChange,
+  totalReviews,
   summaryRows = [],
 }: EmployeeOfTheMonthCardProps) => {
   const safeRating = clampRating(rating);
   const topAvatarUrl = toAvatarUrl(photoUrl);
-  const remainingRows = Array.isArray(summaryRows) ? summaryRows.slice(1) : [];
+  const remainingRows = useMemo(() => {
+    const list = Array.isArray(summaryRows) ? summaryRows : [];
+    const topNameKey = String(name || '').trim().toLowerCase();
+
+    return list.filter((r) => {
+      if (String(r?.email || '') === '__top_placeholder__') return false;
+      if (topNameKey && String(r?.name || '').trim().toLowerCase() === topNameKey) return false;
+      return true;
+    });
+  }, [name, summaryRows]);
+
+  const sortedRows = useMemo(() => {
+    const list = Array.isArray(remainingRows) ? remainingRows : [];
+    const copy = [...list];
+
+    copy.sort((a, b) => {
+      const aRating = parseStarsLabel(a?.avgStarsLabel);
+      const bRating = parseStarsLabel(b?.avgStarsLabel);
+
+      const aReviews = toNumberSafe(a?.total);
+      const bReviews = toNumberSafe(b?.total);
+
+      const aTasks = toNumberSafe(a?.taskStats?.tasksCompleted);
+      const bTasks = toNumberSafe(b?.taskStats?.tasksCompleted);
+
+      if (aRating !== bRating) {
+        if (aRating > bRating) {
+          if (aReviews < bReviews && aTasks <= 30) return 1;
+          return -1;
+        }
+        if (bReviews < aReviews && bTasks <= 30) return -1;
+        return 1;
+      }
+
+      if (aReviews !== bReviews) return bReviews - aReviews;
+      if (aTasks !== bTasks) return bTasks - aTasks;
+      return String(a?.name || '').localeCompare(String(b?.name || ''));
+    });
+
+    return copy;
+  }, [remainingRows]);
 
   const formatMonthLabel = (value?: string): string => {
     const raw = String(value || '').trim();
@@ -224,7 +273,7 @@ const EmployeeOfTheMonthCard = ({
               
 
               {/* Performance & Average */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 {/* light pink */}
                 <div
                   className="rounded-2xl p-4 border shadow-sm"
@@ -247,6 +296,18 @@ const EmployeeOfTheMonthCard = ({
                 >
                   <p className="text-xs text-amber-500 font-semibold mb-1">Monthly Average</p>
                   <p className="text-base font-bold text-slate-800">{avg}</p>
+                </div>
+
+                {/* light blue */}
+                <div
+                  className="rounded-2xl p-4 border shadow-sm"
+                  style={{
+                    background: 'linear-gradient(135deg, #e0f4ff, #bae6fd40)',
+                    borderColor: '#bae6fd',
+                  }}
+                >
+                  <p className="text-xs text-sky-500 font-semibold mb-1">Reviews</p>
+                  <p className="text-base font-bold text-slate-800">{totalReviews ?? 0}</p>
                 </div>
               </div>
             </div>
@@ -359,7 +420,7 @@ const EmployeeOfTheMonthCard = ({
      
 
       {/* ─── TEAM SECTION ─── */}
-      {remainingRows.length > 0 && (
+      {sortedRows.length > 0 && (
         <div className="relative overflow-hidden rounded-3xl shadow-xl border border-white/80 mb-10">
 
           {/* ✅ SOFT PASTEL TEAM SECTION GRADIENT */}
@@ -413,14 +474,14 @@ const EmployeeOfTheMonthCard = ({
                   color: '#0369a1',
                 }}
               >
-                {remainingRows.length} Team Members
+                {sortedRows.length} Team Members
               </span>
             </div>
 
             {/* Team Grid */}
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {remainingRows.map((r, index) => {
+                {sortedRows.map((r, index) => {
                   const cardGradients = [
                     'linear-gradient(135deg, #e0f4ff, #fce7f3)',
                     'linear-gradient(135deg, #fef9c3, #f0fdf4)',

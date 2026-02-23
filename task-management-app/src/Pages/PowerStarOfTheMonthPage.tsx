@@ -6,6 +6,14 @@ import type { UserType } from '../Types/Types';
 import { powerStarMonthlyService, type PowerStarMonthlyResponse, type PowerStarMonthlyRow } from '../Services/PowerStarMonthly.service';
 import { toAvatarUrl } from '../utils/avatar';
 
+const EXCLUDED_POWERSTAR_EMAILS = new Set([
+    'drashtismartbiz@gmail.com',
+    'krunalsmartbiz@gmail.com',
+    'harshsmartbiz@gmail.com',
+    'vadadoriyanency8@gmail.com',
+    'ysiddhapura6@gmail.com'
+].map((e) => e.trim().toLowerCase()));
+
 const pad2 = (n: number) => String(n).padStart(2, '0');
 const monthKeyOfDate = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
 
@@ -55,6 +63,26 @@ const formatMetricTotal = (metric: MetricKey, n: number) => {
     return String(Math.round(n));
 };
 
+// Helper to get Employee of the Month emails (stored from DashboardPage)
+const getEmployeeOfTheMonthEmails = (): Set<string> => {
+    try {
+        const stored = localStorage.getItem('employeeOfTheMonthEmails');
+        if (stored) {
+            const emails = JSON.parse(stored);
+            return new Set(Array.isArray(emails) ? emails.map(String) : []);
+        }
+    } catch (e) {
+        console.warn('Failed to parse employeeOfTheMonthEmails from localStorage', e);
+    }
+    return new Set();
+};
+
+const isExcludedFromPowerStar = (email: unknown): boolean => {
+    const key = String(email || '').trim().toLowerCase();
+    if (!key) return false;
+    return EXCLUDED_POWERSTAR_EMAILS.has(key);
+};
+
 const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => {
     const roleKey = useMemo(() => normalizeRoleKey((currentUser as any)?.role), [currentUser]);
     const canEdit = useMemo(() => {
@@ -99,7 +127,8 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
             ...r,
             churn: normalizeWeekArray((r as any).churn),
             liveAssign: normalizeWeekArray((r as any).liveAssign),
-            hits: normalizeWeekArray((r as any).hits)
+            hits: normalizeWeekArray((r as any).hits),
+            freeze: Boolean((r as any).freeze)
         }));
     }, [rowsDraft]);
 
@@ -115,6 +144,16 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
         });
     }, []);
 
+    const handleFreezeToggle = useCallback((userId: string) => {
+        setRowsDraft((prev) => {
+            const list = Array.isArray(prev) ? prev : [];
+            return list.map((r) => {
+                if (String((r as any).userId) !== String(userId)) return r;
+                return { ...r, freeze: !(r as any).freeze } as any;
+            });
+        });
+    }, []);
+
     const save = useCallback(async () => {
         if (!canEdit) return;
         setSaving(true);
@@ -125,10 +164,13 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
                     userId: String(r.userId),
                     churn: normalizeWeekArray(r.churn),
                     liveAssign: normalizeWeekArray(r.liveAssign),
-                    hits: normalizeWeekArray(r.hits)
+                    hits: normalizeWeekArray(r.hits),
+                    freeze: Boolean((r as any).freeze)
                 }))
             };
+            console.log('SAVE PAYLOAD:', payload);
             const res = await powerStarMonthlyService.saveMonthly(payload);
+            console.log('SAVE RESPONSE:', res);
             if (!res?.success) {
                 toast.error(res?.message || 'Failed to save');
                 return;
@@ -166,13 +208,20 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
             hits: null
         };
 
+        const employeeOfTheMonthEmails = getEmployeeOfTheMonthEmails();
+
         (metricMeta || []).forEach((m) => {
             const key = m.key;
-            const sorted = [...rowsNormalized].sort((a, b) => {
-                const ta = metricTotal(key, (a as any)[key]);
-                const tb = metricTotal(key, (b as any)[key]);
-                return tb - ta;
-            });
+            const sorted = [...rowsNormalized]
+                .filter((r) => !(r as any).freeze) // exclude frozen
+                .filter((r) => !employeeOfTheMonthEmails.has(String(r?.email || '').trim().toLowerCase())) // exclude Employee of the Month
+                .filter((r) => !isExcludedFromPowerStar((r as any)?.email))
+                .sort((a, b) => {
+                    const ta = metricTotal(key, (a as any)[key]);
+                    const tb = metricTotal(key, (b as any)[key]);
+                    // Low churn = top; high liveAssign/hits = top
+                    return key === 'churn' ? ta - tb : tb - ta;
+                });
             out[key] = (sorted[0] as any) || null;
         });
 
@@ -202,12 +251,41 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
     }, [topRowsByMetric]);
 
     const topActiveRow = useMemo(() => {
-        const sorted = [...rowsNormalized].sort((a, b) => {
+        const employeeOfTheMonthEmails = getEmployeeOfTheMonthEmails();
+        const sorted = [...rowsNormalized]
+            .filter((r) => !(r as any).freeze) // exclude frozen
+            .filter((r) => !employeeOfTheMonthEmails.has(String(r?.email || '').trim().toLowerCase())) // exclude Employee of the Month
+            .filter((r) => !isExcludedFromPowerStar((r as any)?.email))
+            .sort((a, b) => {
+                const ta = metricTotal(activeMetric, (a as any)[activeMetric]);
+                const tb = metricTotal(activeMetric, (b as any)[activeMetric]);
+                // Low churn = top; high liveAssign/hits = top
+                return activeMetric === 'churn' ? ta - tb : tb - ta;
+            });
+        return sorted[0] || null;
+    }, [activeMetric, rowsNormalized]);
+
+    const rowsSortedForActiveMetric = useMemo(() => {
+        const employeeOfTheMonthEmails = getEmployeeOfTheMonthEmails();
+        const unfrozen = [...rowsNormalized].filter((r) => !(r as any).freeze);
+        const frozen = [...rowsNormalized].filter((r) => (r as any).freeze);
+        const all = [...unfrozen, ...frozen];
+        const filtered = all
+            .filter((r) => !employeeOfTheMonthEmails.has(String(r?.email || '').trim().toLowerCase()))
+            .filter((r) => !isExcludedFromPowerStar((r as any)?.email));
+        const sortFn = (a: any, b: any) => {
             const ta = metricTotal(activeMetric, (a as any)[activeMetric]);
             const tb = metricTotal(activeMetric, (b as any)[activeMetric]);
-            return tb - ta;
-        });
-        return sorted[0] || null;
+            // Low churn = top; high liveAssign/hits = top
+            if (tb !== ta) return activeMetric === 'churn' ? ta - tb : tb - ta;
+            const an = String((a as any)?.name || '').trim().toLowerCase();
+            const bn = String((b as any)?.name || '').trim().toLowerCase();
+            if (an && bn && an !== bn) return an.localeCompare(bn);
+            const ae = String((a as any)?.email || '').trim().toLowerCase();
+            const be = String((b as any)?.email || '').trim().toLowerCase();
+            return ae.localeCompare(be);
+        };
+        return filtered.sort(sortFn);
     }, [activeMetric, rowsNormalized]);
 
     const topActiveTotalLabel = useMemo(() => {
@@ -284,7 +362,6 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
 
                                     <div className="min-w-0">
                                         <div className="text-base font-extrabold text-slate-800 truncate">{row?.name || 'Not any yet'}</div>
-                                        <div className="text-xs text-slate-500 truncate">{row?.email || ''}</div>
                                     </div>
                                 </div>
                             </div>
@@ -710,7 +787,7 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
                                         color: '#0369a1',
                                     }}
                                 >
-                                    {rowsNormalized.length} Team Members
+                                    {rowsSortedForActiveMetric.length} Team Members
                                 </span>
                                 {canEdit && (
                                     <button
@@ -728,7 +805,7 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
                         {/* Team Grid */}
                         <div className="p-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {rowsNormalized.map((r, index) => {
+                                {rowsSortedForActiveMetric.map((r, index) => {
                                     const cardGradients = [
                                         'linear-gradient(135deg, #e0f4ff, #fce7f3)',
                                         'linear-gradient(135deg, #fef9c3, #f0fdf4)',
@@ -754,13 +831,21 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
                                     const isTop = index === 0;
 
                                     return (
-                                        <div key={r.userId} className="group relative">
+                                        <div key={r.userId} className="group relative ">
                                             <div
-                                                className={`rounded-2xl border p-4 hover:shadow-lg transition-all duration-300 ${
+                                                className={`  rounded-2xl border p-4 hover:shadow-lg transition-all duration-300 ${
                                                     isTop ? 'ring-2 ring-amber-400 ring-offset-2' : ''
-                                                }`}
-                                                style={{ background: cardGradients[ci], borderColor: isTop ? '#fbbf24' : cardBorders[ci] }}
+                                                } ${(r as any).freeze ? 'opacity-75 ring-2 ring-rose-200' : ''}`}
+                                                style={{ background: cardGradients[ci], borderColor: isTop ? '#fbbf24' : (r as any).freeze ? '#fbcfe8' : cardBorders[ci] }}
                                             >
+                                                {/* Freeze indicator on top of card */}
+                                                {(r as any).freeze && (
+                                                    <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 z-10">
+                                                        <span className="text-xs font-bold text-rose-700 px-3 py-1 bg-rose-100 rounded-full border border-rose-200 shadow-sm">
+                                                            Freeze by MD Manager
+                                                        </span>
+                                                    </div>
+                                                )}
                                                 {/* Rank badge */}
                                                 <div
                                                     className={`absolute -top-2.5 -right-2.5 w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold text-white shadow-md ${
@@ -802,7 +887,6 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
                                                     {/* Info */}
                                                     <div className="flex-1 min-w-0">
                                                         <h4 className="font-bold text-slate-800 text-sm mb-0.5 truncate">{r.name}</h4>
-                                                        <p className="text-xs text-slate-400 mb-2 truncate">{r.email}</p>
 
                                                         <div className="flex items-center gap-2 text-xs mb-2 flex-wrap">
                                                             <div className="flex items-center gap-1">
@@ -839,6 +923,34 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
                                                         >
                                                             {isTop ? '⭐ Top' : index < 3 ? '🏆 Excellent' : 'Good'}
                                                         </span>
+
+                                                        {/* Freeze button for MD Manager only on all metrics */}
+                                                        {canEdit && (activeMetric === 'liveAssign' || activeMetric === 'churn' || activeMetric === 'hits') && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleFreezeToggle(r.userId)}
+                                                                disabled={saving || loading}
+                                                                className={`mt-2 ml-2 text-xs px-3 py-1 rounded-full font-medium transition-all ${
+                                                                    (r as any).freeze
+                                                                        ? 'bg-rose-100 text-rose-700 border border-rose-200 hover:bg-rose-200'
+                                                                        : 'bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200'
+                                                                } disabled:opacity-60`}
+                                                            >
+                                                                {(r as any).freeze ? 'Unfreeze' : 'Freeze'}
+                                                            </button>
+                                                        )}
+
+                                                        {/* Extra Unfreeze button for frozen users (always visible on all metrics) */}
+                                                        {canEdit && (activeMetric === 'liveAssign' || activeMetric === 'churn' || activeMetric === 'hits') && (r as any).freeze && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleFreezeToggle(r.userId)}
+                                                                disabled={saving || loading}
+                                                                className="mt-1 text-xs px-2 py-0.5 rounded-full font-medium bg-white border border-rose-300 text-rose-600 hover:bg-rose-50 transition-all disabled:opacity-60"
+                                                            >
+                                                                🔄 Unfreeze Now
+                                                            </button>
+                                                        )}
 
                                                         {/* Editable fields for admins */}
                                                         {canEdit && (
