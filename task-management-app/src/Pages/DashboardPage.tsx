@@ -372,6 +372,8 @@ interface FilterState {
 
     rm: string;
 
+    rmTeam?: string;
+
 }
 
 
@@ -2271,6 +2273,8 @@ const DashboardPage = () => {
         brand: 'all',
 
         rm: 'all',
+
+        rmTeam: '',
 
     });
 
@@ -6882,6 +6886,8 @@ const DashboardPage = () => {
 
             }
 
+            if (normalizeRoleKey(role) === 'sbm') return true;
+
             if (canViewAllTasks || role === 'rm' || role === 'am') return true;
 
             return task.assignedTo === currentUser.email || task.assignedBy === currentUser.email;
@@ -6918,14 +6924,15 @@ const DashboardPage = () => {
 
                         ? (list || [])
 
-                            .filter((u: any) => String(u?.managerId || '').trim() === selectedRmId)
-
                             .filter((u: any) => {
-
-                                const r = normalizeRoleKey(u?.role);
-
-                                return r === 'am' || r === 'ar';
-
+                                const mid = String(u?.managerId || '').trim();
+                                const midKey = mid.toLowerCase();
+                                const rmIdKey = String(selectedRmId || '').trim().toLowerCase();
+                                const rmEmailKey = String(selectedRm || '').trim().toLowerCase();
+                                return Boolean(
+                                    (rmIdKey && mid && midKey === rmIdKey)
+                                    || (rmEmailKey && mid && midKey === rmEmailKey)
+                                );
                             })
 
                             .map((u: any) => String(u?.email || '').trim().toLowerCase())
@@ -6940,13 +6947,29 @@ const DashboardPage = () => {
 
                     const assignedToUser = (t as any)?.assignedToUser;
 
+                    const resolveEmailByIdOrEmail = (value: any): string => {
+                        const key = String(value || '').trim().toLowerCase();
+                        if (!key) return '';
+                        if (key.includes('@')) return key;
+                        const found = (list || []).find((u: any) => {
+                            const id = String(u?.id || u?._id || '').trim().toLowerCase();
+                            const email = String(u?.email || '').trim().toLowerCase();
+                            return (id && id === key) || (email && email === key);
+                        });
+                        return String((found as any)?.email || '').trim().toLowerCase();
+                    };
+
                     const email =
 
-                        (typeof assignedTo === 'string' && assignedTo.includes('@') ? assignedTo : assignedTo?.email) ||
+                        (typeof assignedTo === 'string'
+                            ? resolveEmailByIdOrEmail(assignedTo)
+                            : resolveEmailByIdOrEmail(assignedTo?.email) || resolveEmailByIdOrEmail(assignedTo?.id || assignedTo?._id)) ||
 
-                        (typeof assignedToUser === 'string' && assignedToUser.includes('@') ? assignedToUser : assignedToUser?.email) ||
+                        (typeof assignedToUser === 'string'
+                            ? resolveEmailByIdOrEmail(assignedToUser)
+                            : resolveEmailByIdOrEmail(assignedToUser?.email) || resolveEmailByIdOrEmail(assignedToUser?.id || assignedToUser?._id)) ||
 
-                        (typeof assignedTo === 'string' ? assignedTo : '') ||
+                        resolveEmailByIdOrEmail(assignedTo) ||
 
                         '';
 
@@ -6954,16 +6977,101 @@ const DashboardPage = () => {
 
                 };
 
+                const getAssignedByEmail = (t: any) => {
+                    const assignedBy = (t as any)?.assignedBy;
+                    const assignedByUser = (t as any)?.assignedByUser;
+                    const createdBy = (t as any)?.createdBy;
+                    const createdByUser = (t as any)?.createdByUser;
+
+                    const resolveEmailByIdOrEmail = (value: any): string => {
+                        const key = String(value || '').trim().toLowerCase();
+                        if (!key) return '';
+                        if (key.includes('@')) return key;
+                        const found = (list || []).find((u: any) => {
+                            const id = String(u?.id || u?._id || '').trim().toLowerCase();
+                            const email = String(u?.email || '').trim().toLowerCase();
+                            return (id && id === key) || (email && email === key);
+                        });
+                        return String((found as any)?.email || '').trim().toLowerCase();
+                    };
+
+                    const email =
+                        (typeof assignedBy === 'string'
+                            ? resolveEmailByIdOrEmail(assignedBy)
+                            : resolveEmailByIdOrEmail(assignedBy?.email) || resolveEmailByIdOrEmail(assignedBy?.id || assignedBy?._id)) ||
+                        (typeof assignedByUser === 'string'
+                            ? resolveEmailByIdOrEmail(assignedByUser)
+                            : resolveEmailByIdOrEmail(assignedByUser?.email) || resolveEmailByIdOrEmail(assignedByUser?.id || assignedByUser?._id)) ||
+                        (typeof createdBy === 'string'
+                            ? resolveEmailByIdOrEmail(createdBy)
+                            : resolveEmailByIdOrEmail(createdBy?.email) || resolveEmailByIdOrEmail(createdBy?.id || createdBy?._id)) ||
+                        (typeof createdByUser === 'string'
+                            ? resolveEmailByIdOrEmail(createdByUser)
+                            : resolveEmailByIdOrEmail(createdByUser?.email) || resolveEmailByIdOrEmail(createdByUser?.id || createdByUser?._id)) ||
+                        '';
+
+                    return String(email || '').trim().toLowerCase();
+                };
+
+                console.log('🔍 Dashboard RM Filter Debug:', {
+                    selectedRm,
+                    rmTeamRaw,
+                    selectedRmDoc: selectedRmDoc ? { email: selectedRmDoc.email, id: selectedRmDoc.id || selectedRmDoc._id } : null,
+                    selectedRmId,
+                    teamEmails,
+                    totalTasksBeforeFilter: filtered.length,
+                    sampleTasks: filtered.slice(0, 3).map(t => ({
+                        id: t.id,
+                        title: t.title,
+                        assignedTo: t.assignedTo,
+                        assignedToUser: t.assignedToUser,
+                        assignedBy: t.assignedBy,
+                        resolvedAssignedToEmail: getAssignedToEmail(t),
+                        resolvedAssignedByEmail: getAssignedByEmail(t)
+                    }))
+                });
+
                 filtered = filtered.filter((t: any) => {
                     const assignedToEmail = getAssignedToEmail(t);
+                    const assignedByEmail = getAssignedByEmail(t);
 
                     const allowed = Array.from(new Set([
                         selectedRm,
                         ...(teamEmails || []),
                     ].map((s) => String(s || '').trim().toLowerCase()).filter(Boolean)));
 
-                    return Boolean(assignedToEmail && allowed.includes(assignedToEmail));
+                    // Show tasks assigned TO me (SBM) BY selected RM or their AM team
+                    const isAssignedToMe = Boolean(assignedToEmail && assignedToEmail === myEmail);
+                    const isFromAllowed = Boolean(assignedByEmail && allowed.includes(assignedByEmail));
 
+                    const passes = isAssignedToMe && isFromAllowed;
+
+                    if (!passes && t.assignedTo) {
+                        console.log('❌ Task filtered out:', {
+                            id: t.id,
+                            title: t.title,
+                            assignedTo: t.assignedTo,
+                            assignedToUser: t.assignedToUser,
+                            assignedBy: t.assignedBy,
+                            assignedByUser: t.assignedByUser,
+                            resolvedAssignedToEmail: assignedToEmail,
+                            resolvedAssignedByEmail: assignedByEmail,
+                            isAssignedToMe,
+                            isFromAllowed,
+                            allowed,
+                            myEmail
+                        });
+                    }
+
+                    return passes;
+                });
+
+                console.log('✅ After RM filter:', {
+                    remainingTasks: filtered.length,
+                    allowedEmails: Array.from(new Set([
+                        selectedRm,
+                        ...(teamEmails || []),
+                    ].map((s) => String(s || '').trim().toLowerCase()).filter(Boolean)))
                 });
 
             }
@@ -7500,53 +7608,120 @@ const DashboardPage = () => {
 
             if (canViewAllTasks || role === 'rm' || role === 'am') return true;
 
+            if (normalizeRoleKey(role) === 'sbm') return true;
+
             return task.assignedTo === currentUser.email || task.assignedBy === currentUser.email;
         });
 
-        // Apply SBM RM filter for stats
+        // Apply SBM RM filter for stats (match Dashboard list behavior)
         if (normalizeRoleKey(role) === 'sbm') {
             const selectedRm = String((filters as any)?.rm || '').trim().toLowerCase();
             if (selectedRm && selectedRm !== 'all') {
+                const rmTeamRaw = String((filters as any)?.rmTeam || '').trim();
                 const list: any[] = Array.isArray(usersRef.current) ? (usersRef.current as any[]) : (users as any[]);
                 const selectedRmDoc: any = (list || []).find((u: any) => String(u?.email || '').trim().toLowerCase() === selectedRm);
                 const selectedRmId = String(selectedRmDoc?.id || selectedRmDoc?._id || '').trim();
-                const teamEmails = selectedRmId
-                    ? (list || [])
-                        .filter((u: any) => String(u?.managerId || '').trim() === selectedRmId)
-                        .filter((u: any) => {
-                            const r = normalizeRoleKey(u?.role);
-                            return r === 'am' || r === 'ar';
-                        })
-                        .map((u: any) => String(u?.email || '').trim().toLowerCase())
+
+                const teamEmails = rmTeamRaw
+                    ? rmTeamRaw
+                        .split(',')
+                        .map((s) => String(s || '').trim().toLowerCase())
                         .filter(Boolean)
-                    : [];
-                const getAssignedByEmail = (t: any) => {
-                    const assignedBy = (t as any)?.assignedBy;
-                    const assignedByUser = (t as any)?.assignedByUser;
-                    const email =
-                        (typeof assignedBy === 'string' && assignedBy.includes('@') ? assignedBy : assignedBy?.email) ||
-                        (typeof assignedByUser === 'string' && assignedByUser.includes('@') ? assignedByUser : assignedByUser?.email) ||
-                        (typeof assignedBy === 'string' ? assignedBy : '') ||
-                        '';
-                    return String(email || '').trim().toLowerCase();
-                };
+                    : (selectedRmId
+                        ? (list || [])
+                            .filter((u: any) => {
+                                const mid = String(u?.managerId || '').trim();
+                                const midKey = mid.toLowerCase();
+                                const rmIdKey = String(selectedRmId || '').trim().toLowerCase();
+                                const rmEmailKey = String(selectedRm || '').trim().toLowerCase();
+                                return Boolean(
+                                    (rmIdKey && mid && midKey === rmIdKey)
+                                    || (rmEmailKey && mid && midKey === rmEmailKey)
+                                );
+                            })
+                            .map((u: any) => String(u?.email || '').trim().toLowerCase())
+                            .filter(Boolean)
+                        : []);
+
                 const getAssignedToEmail = (t: any) => {
                     const assignedTo = (t as any)?.assignedTo;
                     const assignedToUser = (t as any)?.assignedToUser;
+
+                    const resolveEmailByIdOrEmail = (value: any): string => {
+                        const key = String(value || '').trim().toLowerCase();
+                        if (!key) return '';
+                        if (key.includes('@')) return key;
+                        const found = (list || []).find((u: any) => {
+                            const id = String(u?.id || u?._id || '').trim().toLowerCase();
+                            const email = String(u?.email || '').trim().toLowerCase();
+                            return (id && id === key) || (email && email === key);
+                        });
+                        return String((found as any)?.email || '').trim().toLowerCase();
+                    };
+
                     const email =
-                        (typeof assignedTo === 'string' && assignedTo.includes('@') ? assignedTo : assignedTo?.email) ||
-                        (typeof assignedToUser === 'string' && assignedToUser.includes('@') ? assignedToUser : assignedToUser?.email) ||
-                        (typeof assignedTo === 'string' ? assignedTo : '') ||
+                        (typeof assignedTo === 'string'
+                            ? resolveEmailByIdOrEmail(assignedTo)
+                            : resolveEmailByIdOrEmail(assignedTo?.email) || resolveEmailByIdOrEmail(assignedTo?.id || assignedTo?._id)) ||
+                        (typeof assignedToUser === 'string'
+                            ? resolveEmailByIdOrEmail(assignedToUser)
+                            : resolveEmailByIdOrEmail(assignedToUser?.email) || resolveEmailByIdOrEmail(assignedToUser?.id || assignedToUser?._id)) ||
+                        resolveEmailByIdOrEmail(assignedTo) ||
                         '';
+
                     return String(email || '').trim().toLowerCase();
                 };
+
+                const getAssignedByEmail = (t: any) => {
+                    const assignedBy = (t as any)?.assignedBy;
+                    const assignedByUser = (t as any)?.assignedByUser;
+                    const createdBy = (t as any)?.createdBy;
+                    const createdByUser = (t as any)?.createdByUser;
+
+                    const resolveEmailByIdOrEmail = (value: any): string => {
+                        const key = String(value || '').trim().toLowerCase();
+                        if (!key) return '';
+                        if (key.includes('@')) return key;
+                        const found = (list || []).find((u: any) => {
+                            const id = String(u?.id || u?._id || '').trim().toLowerCase();
+                            const email = String(u?.email || '').trim().toLowerCase();
+                            return (id && id === key) || (email && email === key);
+                        });
+                        return String((found as any)?.email || '').trim().toLowerCase();
+                    };
+
+                    const email =
+                        (typeof assignedBy === 'string'
+                            ? resolveEmailByIdOrEmail(assignedBy)
+                            : resolveEmailByIdOrEmail(assignedBy?.email) || resolveEmailByIdOrEmail(assignedBy?.id || assignedBy?._id)) ||
+                        (typeof assignedByUser === 'string'
+                            ? resolveEmailByIdOrEmail(assignedByUser)
+                            : resolveEmailByIdOrEmail(assignedByUser?.email) || resolveEmailByIdOrEmail(assignedByUser?.id || assignedByUser?._id)) ||
+                        (typeof createdBy === 'string'
+                            ? resolveEmailByIdOrEmail(createdBy)
+                            : resolveEmailByIdOrEmail(createdBy?.email) || resolveEmailByIdOrEmail(createdBy?.id || createdBy?._id)) ||
+                        (typeof createdByUser === 'string'
+                            ? resolveEmailByIdOrEmail(createdByUser)
+                            : resolveEmailByIdOrEmail(createdByUser?.email) || resolveEmailByIdOrEmail(createdByUser?.id || createdByUser?._id)) ||
+                        '';
+
+                    return String(email || '').trim().toLowerCase();
+                };
+
+                const allowed = Array.from(new Set([
+                    selectedRm,
+                    ...(teamEmails || []),
+                ].map((s) => String(s || '').trim().toLowerCase()).filter(Boolean)));
+
                 filtered = filtered.filter((t: any) => {
-                    const assignedByEmail = getAssignedByEmail(t);
-                    if (!assignedByEmail || assignedByEmail !== selectedRm) return false;
                     const assignedToEmail = getAssignedToEmail(t);
-                    const isToMe = Boolean(myEmail && assignedToEmail && assignedToEmail === myEmail);
-                    const isToTeam = Boolean(assignedToEmail && teamEmails.includes(assignedToEmail));
-                    return isToMe || isToTeam;
+                    const assignedByEmail = getAssignedByEmail(t);
+
+                    // Show tasks assigned TO me (SBM) BY selected RM or their AM team
+                    const isAssignedToMe = Boolean(assignedToEmail && assignedToEmail === myEmail);
+                    const isFromAllowed = Boolean(assignedByEmail && allowed.includes(assignedByEmail));
+
+                    return isAssignedToMe && isFromAllowed;
                 });
             }
         }
@@ -7893,6 +8068,8 @@ const DashboardPage = () => {
             brand: 'all',
 
             rm: 'all',
+
+            rmTeam: '',
 
         });
 
@@ -12736,8 +12913,6 @@ const DashboardPage = () => {
                 isSubmitting={isCreatingTask}
 
                 isSbmUser={isSbmRole}
-
-                allowPastDueDate={isSpeedEcomUser}
 
                 showCompanyDropdownIcon={(() => {
 

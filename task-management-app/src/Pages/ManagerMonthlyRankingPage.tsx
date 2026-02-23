@@ -56,7 +56,7 @@ const ManagerMonthlyRankingPage = ({ currentUser }: { currentUser: UserType }) =
             const res = await managerMonthlyRankingService.getMonthlyRanking(monthKey);
             console.log('Fetch response:', res);
             if (!res?.success || !res.data) {
-                setData(null);
+                setData(null); 
                 setRowsDraft([]);
                 return;
             }
