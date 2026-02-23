@@ -5120,14 +5120,21 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       }
 
       if (roleKey === 'ob_manager') {
-        const assignedToEmail = normalizeText(
+        const assignedByMe = normalizeText(getAssignerEmail(task)) === myEmail;
+        const assignedToMe = normalizeText(
           (task as any)?.assignedToUser?.email ||
           (typeof (task as any)?.assignedTo === 'string' ? (task as any)?.assignedTo : (task as any)?.assignedTo?.email) ||
           (task as any)?.assignedTo ||
           ''
-        );
-        const isAssignedToMe = Boolean(myEmail && assignedToEmail && assignedToEmail === myEmail);
+        ) === myEmail;
 
+        if (assignedByMe) return true;
+        if (assignedToMe) return true;
+
+        const assignerRole = resolveAssignerRole(task);
+        if (assignerRole === 'ob_manager' || assignerRole === 'md_manager') return true;
+
+        // fallback: allow assistant-assigned tasks
         const direct = normalizeRoleKey((task as any)?.assignedToUser?.role);
         let assigneeRoleKey = direct;
         if (!assigneeRoleKey) {
@@ -5149,7 +5156,8 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
           || assigneeRoleKey === 'sub_assistance'
           || assigneeRoleKey.includes('assistant');
 
-        if (!isAssignedToMe && !isAssistantAssignee) return false;
+        if (isAssistantAssignee) return true;
+        return false;
       }
 
       if (roleKey === 'manager') {
@@ -5158,7 +5166,8 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
 
         if (!assignedByMe) {
           if (!assignedToMe) return false;
-          if (resolveAssignerRole(task) !== 'md_manager') return false;
+          const assignerRole = resolveAssignerRole(task);
+          if (assignerRole !== 'md_manager' && assignerRole !== 'ob_manager') return false;
         }
       }
 
