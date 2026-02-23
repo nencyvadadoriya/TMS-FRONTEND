@@ -1672,7 +1672,7 @@ const DesktopTaskItem = memo(({
         </div>
 
         {/* Task Title Column - INCREASED WIDTH */}
-        <div className="col-span-3 min-w-0 pr-2"> 
+        <div className="col-span-3 min-w-0 pr-2">
           <div className="flex flex-col gap-1">
             <h3 className="font-semibold text-gray-900 text-sm whitespace-normal break-words leading-tight" title={task.title}>
               {task.title}
@@ -5368,7 +5368,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
 
   // ==================== RENDER ====================
   const roleKey = normalizeRoleKey(currentUser?.role);
-  const isObManagerViewOnly = roleKey === 'ob_manager';
+  const isObManagerRole = roleKey === 'ob_manager';
   const isAssistantViewOnly = roleKey === 'assistant';
   const isSubAssistanceRole = roleKey === 'sub_assistance'
     || roleKey === 'sub_assistence'
@@ -5379,7 +5379,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     || roleKey === 'sub_assistence'
     || roleKey === 'sub_assist'
     || roleKey === 'sub_assistant';
-  const isBulkImportDisabled = isObManagerViewOnly || isAssistantLikeRole;
+  const isBulkImportDisabled = isAssistantLikeRole;
   const isCreateTaskDisabled = isSubAssistanceRole;
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
@@ -5404,7 +5404,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
               </p>
             </div>
 
-            {!isObManagerViewOnly && !isAssistantViewOnly && (
+            {!isAssistantViewOnly && (
               <div className="flex items-center gap-3">
                 {isSpeedEcomUser ? (
                   <div className="hidden sm:block">
@@ -5448,7 +5448,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
             )}
           </div>
 
-          {!isObManagerViewOnly && !isAssistantViewOnly && (
+          {!isAssistantViewOnly && (
             <>
               {/* Advanced Filters */}
               <AdvancedFiltersPanel
@@ -5499,7 +5499,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                 ? 'Try changing your filters or search term to find what you\'re looking for'
                 : 'Get started by creating your first task or importing tasks in bulk'}
             </p>
-            {!isObManagerViewOnly && !isAssistantViewOnly && (
+            {!isAssistantViewOnly && (
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 {!isBulkImportDisabled && (
                   <button
@@ -5682,10 +5682,11 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                       onOpenHistoryModal={handleOpenHistoryModal}
                       showAssignButton={showAssignButton}
                       onAssignClick={handleOpenReassignModal}
-                      disableStatusToggle={isObManagerViewOnly || !isTaskAssignee(task)}
+                      disableStatusToggle={isObManagerRole || !isTaskAssignee(task)}
                       hasUnreadComments={(taskId: string) => Boolean(unreadCommentsMap && (unreadCommentsMap as any)[taskId])}
                     />
                   </div>
+                  
 
                   {/* Desktop View */}
                   <div className="hidden md:block">
@@ -5715,7 +5716,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                       isUpdatingApproval={isUpdatingApproval}
                       showAssignButton={showAssignButton}
                       onAssignClick={handleOpenReassignModal}
-                      disableStatusToggle={isObManagerViewOnly || !isTaskAssignee(task)}
+                      disableStatusToggle={isObManagerRole || !isTaskAssignee(task)}
                       hasUnreadComments={(taskId: string) => Boolean(unreadCommentsMap && (unreadCommentsMap as any)[taskId])}
                     />
                   </div>

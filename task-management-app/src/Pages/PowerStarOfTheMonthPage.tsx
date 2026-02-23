@@ -210,6 +210,23 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
         return sorted[0] || null;
     }, [activeMetric, rowsNormalized]);
 
+    const rowsSortedForActiveMetric = useMemo(() => {
+        const sorted = [...rowsNormalized].sort((a, b) => {
+            const ta = metricTotal(activeMetric, (a as any)[activeMetric]);
+            const tb = metricTotal(activeMetric, (b as any)[activeMetric]);
+            if (tb !== ta) return tb - ta;
+
+            const an = String((a as any)?.name || '').trim().toLowerCase();
+            const bn = String((b as any)?.name || '').trim().toLowerCase();
+            if (an && bn && an !== bn) return an.localeCompare(bn);
+
+            const ae = String((a as any)?.email || '').trim().toLowerCase();
+            const be = String((b as any)?.email || '').trim().toLowerCase();
+            return ae.localeCompare(be);
+        });
+        return sorted;
+    }, [activeMetric, rowsNormalized]);
+
     const topActiveTotalLabel = useMemo(() => {
         if (!topActiveRow) return formatMetricTotal(activeMetric, 0);
         const weeks = normalizeWeekArray((topActiveRow as any)?.[activeMetric]);
@@ -728,7 +745,7 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
                         {/* Team Grid */}
                         <div className="p-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {rowsNormalized.map((r, index) => {
+                                {rowsSortedForActiveMetric.map((r, index) => {
                                     const cardGradients = [
                                         'linear-gradient(135deg, #e0f4ff, #fce7f3)',
                                         'linear-gradient(135deg, #fef9c3, #f0fdf4)',
