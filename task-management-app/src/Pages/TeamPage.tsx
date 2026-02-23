@@ -700,7 +700,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
             if (r === 'manager') return true;
 
-            if (r !== 'assistant') return false;
+            if (r !== 'assistant' && r !== 'sub_assistance') return false;
 
             return true;
 
@@ -1197,7 +1197,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
         if (requester === 'admin') return target !== 'admin' && target !== 'super_admin';
 
-        if (requester === 'md_manager') return target === 'manager' || target === 'assistant';
+        if (requester === 'md_manager') return target === 'manager' || target === 'assistant' || target === 'sub_assistance';
 
         if (requester === 'ob_manager') return target === 'assistant';
 
@@ -1405,6 +1405,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
             return [
                 { key: 'md_manager', name: 'MD Manager' },
                 { key: 'ob_manager', name: 'OB Manager' },
+                { key: 'manager', name: 'Manager' },
                 { key: 'assistant', name: 'Assistant' },
                 { key: 'sub_assistance', name: 'Sub Assistance' },
             ];
