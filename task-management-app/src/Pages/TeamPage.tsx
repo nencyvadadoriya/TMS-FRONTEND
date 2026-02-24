@@ -682,6 +682,100 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+    const normalizeCompanyKey = useCallback((value: unknown): string => {
+
+        return String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '');
+
+    }, []);
+
+
+
+    const getCompanyNameFromUser = useCallback((user: any): string => {
+
+        if (!user) return '';
+
+        const resolveFromCompanies = (rawId: any): string => {
+
+            const id = String(rawId || '').trim();
+
+            if (!id) return '';
+
+            const list = Array.isArray(companies) ? companies : [];
+
+            const match = list.find((c: any) => {
+
+                const cid = String((c as any)?._id || (c as any)?.id || '').trim();
+
+                return cid && cid === id;
+
+            });
+
+            return String((match as any)?.name || '').trim();
+
+        };
+
+        const direct = user?.companyName || user?.company;
+
+        if (typeof direct === 'string') return direct;
+
+        if (direct && typeof direct === 'object') {
+
+            const candidate = (direct as any)?.name
+
+                || (direct as any)?.companyName
+
+                || (direct as any)?.title;
+
+            if (typeof candidate === 'string') return candidate;
+
+        }
+
+        const fallbackCandidate = user?.company?.name || user?.company?.companyName || user?.company?.title;
+
+        if (typeof fallbackCandidate === 'string') return fallbackCandidate;
+
+        const maybeId = user?.companyId || user?.company?._id || user?.company?.id || user?.company;
+
+        const resolvedFromId = resolveFromCompanies(maybeId);
+
+        if (resolvedFromId) return resolvedFromId;
+
+        return '';
+
+    }, [companies]);
+
+
+
+    const isSpeedEcomUser = useCallback((user: any): boolean => {
+
+        const companyName = getCompanyNameFromUser(user);
+
+        const key = normalizeCompanyKey(companyName);
+
+        return key === 'speedecom';
+
+    }, [getCompanyNameFromUser, normalizeCompanyKey]);
+
+
+
+    const isSpeedEcomContext = useMemo(() => {
+
+        const currentUserCompany = (currentUser as any)?.companyName || (currentUser as any)?.company || '';
+
+        const currentUserKey = normalizeCompanyKey(currentUserCompany);
+
+        if (currentUserKey === 'speedecom') return true;
+
+        const filterKey = normalizeCompanyKey(filterCompany === 'all' ? '' : filterCompany);
+
+        if (filterKey === 'speedecom') return true;
+
+        return false;
+
+    }, [currentUser, filterCompany, normalizeCompanyKey]);
+
+
+
     const canManageTargetUser = useCallback((target: UserType): boolean => {
 
         const targetId = (target?.id || (target as any)?._id || '').toString();
@@ -755,6 +849,14 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+        if (isCurrentUserAm) {
+
+            return isSpeedEcomUser(target);
+
+        }
+
+
+
         if (isCurrentUserRm) {
 
             const targetRole = normalizeRole(target?.role);
@@ -769,7 +871,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
         return false;
 
-    }, [currentUserIdValue, isCurrentUserAdmin, isCurrentUserMdManager, isCurrentUserObManager, isCurrentUserManager, isCurrentUserRm, isCurrentUserSbm, normalizeRole]);
+    }, [currentUserIdValue, isCurrentUserAdmin, isCurrentUserAm, isCurrentUserMdManager, isCurrentUserObManager, isCurrentUserManager, isCurrentUserRm, isCurrentUserSbm, isSpeedEcomUser, normalizeRole]);
 
 
 
@@ -785,7 +887,9 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
         const map = new Map<string, UserType>();
 
-        (users || []).forEach((u) => {
+        const list = ((users && users.length ? users : internalUsers) || []) as UserType[];
+
+        list.forEach((u) => {
 
             const id = (u?.id || (u as any)?._id || '').toString();
 
@@ -799,7 +903,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
         return map;
 
-    }, [users]);
+    }, [internalUsers, users]);
 
 
 
@@ -1523,6 +1627,72 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+    const canEditRoleForUser = useCallback((user: any): boolean => {
+
+        if (!user) return false;
+
+        const uid = (user?.id || user?._id || '').toString();
+
+        const fullUser = (uid && usersById.get(uid)) ? usersById.get(uid) : user;
+
+        if (isCurrentUserAdmin) return true;
+
+        if (isCurrentUserAm && (isSpeedEcomUser(fullUser) || isSpeedEcomContext)) return true;
+
+        if (isCurrentUserSbm && (isSpeedEcomUser(fullUser) || isSpeedEcomContext)) return true;
+
+        return false;
+
+    }, [isCurrentUserAdmin, isCurrentUserAm, isCurrentUserSbm, isSpeedEcomContext, isSpeedEcomUser, usersById]);
+
+
+
+    const roleOptionsForEditModal = useMemo(() => {
+
+        if (!editingUser) return [];
+
+        const uid = (editingUser as any)?.id || (editingUser as any)?._id || '';
+
+        const fullUser = (uid && usersById.get(uid.toString())) ? usersById.get(uid.toString()) : editingUser;
+
+        if (isCurrentUserAdmin) return effectiveRoleOptions;
+
+        if (isCurrentUserAm && (isSpeedEcomUser(fullUser) || isSpeedEcomContext)) {
+
+            return [
+
+                { key: 'sbm', name: 'SBM' },
+
+                { key: 'rm', name: 'RM' },
+
+                { key: 'am', name: 'AM' },
+
+            ];
+
+        }
+
+        if (isCurrentUserSbm && (isSpeedEcomUser(fullUser) || isSpeedEcomContext)) {
+
+            return [
+
+                { key: 'sbm', name: 'SBM' },
+
+                { key: 'rm', name: 'RM' },
+
+                { key: 'am', name: 'AM' },
+
+            ];
+
+        }
+
+        const currentRoleKey = normalizeRole((editingUser as any)?.role || '');
+
+        return currentRoleKey ? [{ key: currentRoleKey, name: currentRoleKey.toUpperCase() }] : [];
+
+    }, [editingUser, effectiveRoleOptions, isCurrentUserAdmin, isCurrentUserAm, isCurrentUserSbm, isSpeedEcomContext, isSpeedEcomUser, normalizeRole, usersById]);
+
+
+
     const handleAddClick = () => {
 
         if (!canManageUsers && !canManageUsersAsManager) {
@@ -1872,7 +2042,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
         } catch (error: any) {
 
-            console.error('Error adding user:', error);
+            console.error('Error adding user:');
 
             const apiMsg = error?.response?.data?.message || error?.response?.data?.msg;
 
@@ -1928,13 +2098,17 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
     const handleEditClick = (user: UserType) => {
 
-        if (!canManageUsers && !canManageUsersAsManager) {
+        const canEditAsAm = isCurrentUserAm && isSpeedEcomUser(user);
+
+        if (!canManageUsers && !canManageUsersAsManager && !canEditAsAm) {
 
             toast.error('You do not have permission to edit users');
 
             return;
 
         }
+
+
 
         if (!canManageTargetUser(user)) {
 
@@ -1968,7 +2142,9 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
         if (!editingUser) return;
 
-        if (!canManageUsers && !canManageUsersAsManager) {
+        const canEditAsAm = isCurrentUserAm && isSpeedEcomUser(editingUser);
+
+        if (!canManageUsers && !canManageUsersAsManager && !canEditAsAm) {
 
             toast.error('You do not have permission to edit users');
 
@@ -2035,6 +2211,14 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                 phone: (editingUser as any)?.phone,
 
             };
+
+            const roleChanged = normalizeRole((usersById.get(userId) as any)?.role) !== normalizeRole((editingUser as any)?.role);
+
+            if (roleChanged && canEditRoleForUser(editingUser)) {
+
+                payload.role = normalizeRole((editingUser as any)?.role) as any;
+
+            }
 
             if (isAmUser && nextManagerId && nextManagerId !== prevManagerId) {
 
@@ -2946,39 +3130,49 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
                                         </div>
 
-                                        {/* Edit/Delete Buttons */}
+                                        {(() => {
 
-                                        {(canManageUsers || canManageUsersAsManager) && !isSelf && canManageTargetUser(user) && (
+                                            const canEditAsAm = isCurrentUserAm && isSpeedEcomUser(user);
 
-                                            <div className="flex justify-end gap-3 mt-5 pt-5 border-t border-gray-100">
+                                            const canShowActions = canManageUsers || canManageUsersAsManager || canEditAsAm;
 
-                                                <button
+                                            if (!canShowActions || isSelf) return null;
 
-                                                    onClick={(e) => { e.stopPropagation(); handleEditClick(user); }}
+                                            if (!canManageTargetUser(user)) return null;
 
-                                                    className="px-4 py-2 text-sm font-medium bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                                            return (
 
-                                                >
+                                                <div className="flex justify-end gap-3 mt-5 pt-5 border-t border-gray-100">
 
-                                                    Edit
+                                                    <button
 
-                                                </button>
+                                                        onClick={(e) => { e.stopPropagation(); handleEditClick(user); }}
 
-                                                <button
+                                                        className="px-4 py-2 text-sm font-medium bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
 
-                                                    onClick={(e) => { e.stopPropagation(); handleDeleteClick(user.id); }}
+                                                    >
 
-                                                    className="px-4 py-2 text-sm font-medium bg-white border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                                                        Edit
 
-                                                >
+                                                    </button>
 
-                                                    Delete
+                                                    <button
 
-                                                </button>
+                                                        onClick={(e) => { e.stopPropagation(); handleDeleteClick(user.id); }}
 
-                                            </div>
+                                                        className="px-4 py-2 text-sm font-medium bg-white border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
 
-                                        )}
+                                                    >
+
+                                                        Delete
+
+                                                    </button>
+
+                                                </div>
+
+                                            );
+
+                                        })()}
 
                                     </div>
 
@@ -2993,6 +3187,8 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                 </div>
 
             </div>
+
+
 
 
 
@@ -3154,17 +3350,19 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 
-                                    disabled
+                                    disabled={!!savingUserId || !canEditRoleForUser(editingUser)}
 
                                 >
 
-                                    <option value="admin">Admin</option>
+                                    {(roleOptionsForEditModal || []).map((r) => (
 
-                                    <option value="md_manager">MD Manager</option>
+                                        <option key={r.key} value={r.key}>
 
-                                    <option value="manager">Manager</option>
+                                            {r.name || r.key}
 
-                                    <option value="assistant">Assistant</option>
+                                        </option>
+
+                                    ))}
 
                                 </select>
 

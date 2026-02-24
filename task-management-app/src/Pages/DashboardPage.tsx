@@ -2,113 +2,34 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { io, type Socket } from 'socket.io-client';
 import {
-
-
-
     LayoutDashboard,
-
-
-
     ListTodo,
-
-
-
     PlusCircle,
-
-
-
     AlertCircle,
-
-
-
     CheckCircle,
-
-
-
     Clock,
-
-
-
     Bell,
-
-
-
     Trash2,
-
-
-
     Grid,
-
-
-
     List,
-
-
-
     Filter,
-
-
-
     TrendingUp,
-
-
-
     TrendingDown,
-
-
-
     BarChart3,
-
-
-
     CalendarDays,
-
-
-
     UserCheck,
-
-
-
     Flag,
-
-
-
     Building,
-
-
-
     Tag,
-
-
-
     Edit,
-
-
-
     User,
-
-
-
     Star,
-
-
-
     Trophy,
-
     Crown,
-
-
-
     MessageSquare,
-
     X,
-
     Send,
-
     Loader2,
-
-
-
 } from 'lucide-react';
 
 
@@ -210,13 +131,7 @@ import EmployeeOfTheMonthCard from '../Components/EmployeeOfTheMonthCard';
 
 
 import TaskReminderCard from '../Components/TaskReminderCard';
-
-
-
-
-
-
-
+ 
 import AddTaskModal from './DashboardModals/AddTaskModal';
 
 
