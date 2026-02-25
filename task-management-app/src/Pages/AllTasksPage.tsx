@@ -2700,7 +2700,7 @@ const TaskHistoryModal = memo(({
   if (!showHistoryModal || !historyTask) return null;
 
   // Format creation date for display
-  const formattedCreatedAt = formatDate(historyTask.createdAt || historyTask.updatedAt || new Date().toISOString());
+  const formattedCreatedAt = formatDateTime(historyTask.createdAt || historyTask.updatedAt || new Date().toISOString());
 
   // Get creator and assignee emails
   const getCreatorEmail = () => {
