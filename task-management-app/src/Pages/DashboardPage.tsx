@@ -1532,49 +1532,7 @@ const DashboardPage = () => {
 
 
 
-        const completedTasksByEmail = (tasks || []).reduce((acc, t) => {
-
-            const completedAtRaw = (t as any)?.completedAt;
-
-            if (monthRange && completedAtRaw) {
-
-                const completedAt = new Date(completedAtRaw);
-
-                if (Number.isNaN(completedAt.getTime())) return acc;
-
-                if (completedAt < monthRange.start || completedAt >= monthRange.endExclusive) return acc;
-
-            }
-
-
-
-            const assignedToUser = (t as any)?.assignedToUser;
-
-            const email = String(
-
-                assignedToUser?.email
-
-                || (typeof (t as any).assignedTo === 'string' ? (t as any).assignedTo : (t as any).assignedTo?.email)
-
-                || ''
-
-            ).trim().toLowerCase();
-
-            if (!email) return acc;
-
-            if (email.includes('.deleted.')) return acc;
-
-
-
-            acc.set(email, (acc.get(email) || 0) + 1);
-
-            return acc;
-
-        }, new Map<string, number>());
-
-
-
-        const top = rows.find((r) => (completedTasksByEmail.get(r.email) || 0) >= 30) || null;
+        const top = rows.find((r) => (r.total || 0) >= 30) || rows[0] || null;
 
 
 
@@ -13841,7 +13799,7 @@ const DashboardPage = () => {
 
 
 
-            filtered = filtered.filter((task) => task.status !== 'completed');
+            filtered = filtered.filter((task) => task.status === 'pending' || task.status === 'in-progress' || task.status === 'reassigned');
 
 
 
@@ -13857,23 +13815,13 @@ const DashboardPage = () => {
 
 
 
-
-
-
-
         if (filters.status !== 'all') {
-
-
-
-            filtered = filtered.filter((task) => task.status === filters.status);
-
-
-
+            if (filters.status === 'pending') {
+                filtered = filtered.filter((task) => task.status === 'pending' || task.status === 'in-progress' || task.status === 'reassigned');
+            } else {
+                filtered = filtered.filter((task) => task.status === filters.status);
+            }
         }
-
-
-
-
 
 
 
@@ -14956,9 +14904,11 @@ const DashboardPage = () => {
         // Apply other filters for stats (except selectedStatFilter)
 
         if (filters.status !== 'all') {
-
-            filtered = filtered.filter((task) => task.status === filters.status);
-
+            if (filters.status === 'pending') {
+                filtered = filtered.filter((task) => task.status === 'pending' || task.status === 'in-progress' || task.status === 'reassigned');
+            } else {
+                filtered = filtered.filter((task) => task.status === filters.status);
+            }
         }
 
         if (filters.priority !== 'all') {

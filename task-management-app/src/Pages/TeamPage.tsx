@@ -1136,6 +1136,15 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
         const uid = (userId || '').toString();
 
         const mail = (userEmail || '').toString().trim().toLowerCase();
+        
+        // Normalize email for matching (strip .deleted. suffix)
+        const normalizeForMatch = (email: string): string => {
+            const e = email.toLowerCase();
+            const idx = e.indexOf('.deleted.');
+            return idx >= 0 ? e.slice(0, idx) : e;
+        };
+        
+        const targetEmail = normalizeForMatch(mail);
 
         const list = Array.isArray(tasks) ? tasks : [];
 
@@ -1158,6 +1167,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
             if (typeof assignedTo === 'string') {
 
                 assignedId = assignedTo;
+                assignedEmail = assignedTo.toLowerCase();
 
             } else if (assignedTo && typeof assignedTo === 'object') {
 
@@ -1180,12 +1190,13 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                 }
 
             }
+            
+            // Normalize assigned email for comparison
+            const assignedEmailBase = normalizeForMatch(assignedEmail);
 
             const matches = (uid && assignedId && assignedId.toString() === uid)
 
-                || (mail && assignedEmail && assignedEmail === mail)
-
-                || (mail && typeof assignedTo === 'string' && assignedTo.toString().trim().toLowerCase() === mail);
+                || (targetEmail && assignedEmailBase && assignedEmailBase === targetEmail);
 
             if (!matches) continue;
 
@@ -1195,7 +1206,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
             if (status === 'completed') completed += 1;
 
-            if (status === 'pending') pending += 1;
+            if (status === 'pending' || status === 'in-progress' || status === 'reassigned') pending += 1;
 
             if (isOverdue((t as any)?.dueDate, status)) overdue += 1;
 

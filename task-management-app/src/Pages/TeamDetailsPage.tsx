@@ -50,20 +50,36 @@ const TeamDetailsPage: React.FC<TeamDetailsPageProps> = ({
     const [, setEmailHistory] = useState<any[]>([]);
     const [, setLoadingEmailHistory] = useState(false);
     const [selectedTaskForHistory, setSelectedTaskForHistory] = useState<string | null>(null);
+
+    const normalizeEmailForMatch = useCallback((value: any): string => {
+        const raw = (value || '').toString().trim().toLowerCase();
+        const idx = raw.indexOf('.deleted.');
+        return (idx >= 0 ? raw.slice(0, idx) : raw).trim();
+    }, []);
+
+    const emailsMatch = useCallback((a: any, b: any): boolean => {
+        const aa = normalizeEmailForMatch(a);
+        const bb = normalizeEmailForMatch(b);
+        if (!aa || !bb) return false;
+        return aa === bb;
+    }, [normalizeEmailForMatch]);
+
     // Get tasks for this user
     const getTasksForUser = useMemo(() => {
         return (userId: string, userEmail: string) => {
+            const targetEmail = normalizeEmailForMatch(userEmail);
             return tasks.filter(task => {
                 const assignedTo = (task as any)?.assignedTo;
                 if (typeof assignedTo === 'string') {
-                    if (assignedTo === userId || assignedTo === userEmail) return true;
+                    if (assignedTo === userId) return true;
+                    if (emailsMatch(assignedTo, targetEmail)) return true;
                 }
 
                 if (assignedTo && typeof assignedTo === 'object') {
                     const assignedToId = (assignedTo.id || assignedTo._id || '').toString();
                     const assignedToEmail = (assignedTo.email || '').toString();
                     if (assignedToId && assignedToId === userId) return true;
-                    if (assignedToEmail && assignedToEmail === userEmail) return true;
+                    if (assignedToEmail && emailsMatch(assignedToEmail, targetEmail)) return true;
                 }
 
                 const assignedToUser = (task as any)?.assignedToUser;
@@ -71,28 +87,30 @@ const TeamDetailsPage: React.FC<TeamDetailsPageProps> = ({
                     const assignedToUserId = (assignedToUser.id || assignedToUser._id || '').toString();
                     const assignedToUserEmail = (assignedToUser.email || '').toString();
                     if (assignedToUserId && assignedToUserId === userId) return true;
-                    if (assignedToUserEmail && assignedToUserEmail === userEmail) return true;
+                    if (assignedToUserEmail && emailsMatch(assignedToUserEmail, targetEmail)) return true;
                 }
 
                 return false;
             });
         };
-    }, [tasks]);
+    }, [emailsMatch, normalizeEmailForMatch, tasks]);
 
     // Get tasks created by this user
     const getTasksCreatedByUser = useMemo(() => {
         return (userId: string, userEmail: string) => {
+            const targetEmail = normalizeEmailForMatch(userEmail);
             return tasks.filter(task => {
                 const assignedBy = (task as any)?.assignedBy;
                 if (typeof assignedBy === 'string') {
-                    if (assignedBy === userId || assignedBy === userEmail) return true;
+                    if (assignedBy === userId) return true;
+                    if (emailsMatch(assignedBy, targetEmail)) return true;
                 }
 
                 if (assignedBy && typeof assignedBy === 'object') {
                     const assignedById = (assignedBy.id || assignedBy._id || '').toString();
                     const assignedByEmail = (assignedBy.email || '').toString();
                     if (assignedById && assignedById === userId) return true;
-                    if (assignedByEmail && assignedByEmail === userEmail) return true;
+                    if (assignedByEmail && emailsMatch(assignedByEmail, targetEmail)) return true;
                 }
 
                 return false;
@@ -113,7 +131,7 @@ const TeamDetailsPage: React.FC<TeamDetailsPageProps> = ({
         const totalAssigned = assignedTasks.length;
         const completed = assignedTasks.filter(t => t.status === 'completed').length;
         const pending = assignedTasks.filter(t =>
-            t.status === 'pending' || t.status === 'in-progress'
+            t.status === 'pending' || t.status === 'in-progress' || t.status === 'reassigned'
         ).length;
         const overdue = assignedTasks.filter(t => isOverdue(t.dueDate, t.status)).length;
 
@@ -318,7 +336,7 @@ const TeamDetailsPage: React.FC<TeamDetailsPageProps> = ({
             if (detailsTab === 'all') return true;
             if (detailsTab === 'completed') return status === 'completed';
             if (detailsTab === 'overdue') return overdue;
-            return status === 'pending' || status === 'in-progress';
+            return status === 'pending' || status === 'in-progress' || status === 'reassigned';
         })
         .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 

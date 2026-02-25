@@ -5171,6 +5171,12 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         }
       }
 
+      // 🔥 CRITICAL FIX: sub_assistence/assistant should only see tasks assigned to them
+      if (roleKey === 'sub_assistance' || roleKey === 'sub_assistence' || roleKey === 'sub_assist' || roleKey === 'sub_assistant' || roleKey === 'assistant') {
+        const assignedToMe = normalizeText(getEmailByIdInternal(task.assignedTo)) === myEmail;
+        if (!assignedToMe) return false;
+      }
+
       // 🔥 CRITICAL FIX: Handle assigned filter correctly
       if (assignedFilter && assignedFilter !== 'all') {
         if (assignedFilter === 'assigned-to-me' && !isTaskAssignee(task)) {
@@ -5192,12 +5198,12 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       if (effectiveAdvancedFilters.status !== 'all') {
         const status = effectiveAdvancedFilters.status.toLowerCase();
         if (status === 'completed' && !isCompleted) statusPass = false;
-        else if (status === 'pending' && (isCompleted || String(task.status || '').toLowerCase() !== 'pending')) statusPass = false;
+        else if (status === 'pending' && (isCompleted || !['pending', 'in-progress', 'reassigned'].includes(String(task.status || '').toLowerCase()))) statusPass = false;
         else if (status === 'in-progress' && String(task.status || '').toLowerCase() !== 'in-progress') statusPass = false;
         else if (status === 'reassigned' && String(task.status || '').toLowerCase() !== 'reassigned') statusPass = false;
       } else if (filter !== 'all') {
         if (filter === 'completed' && !isCompleted) statusPass = false;
-        else if (filter === 'pending' && isCompleted) statusPass = false;
+        else if (filter === 'pending' && isCompleted && !['pending', 'in-progress', 'reassigned'].includes(String(task.status || '').toLowerCase())) statusPass = false;
       }
       if (!statusPass) return false;
 
