@@ -151,6 +151,15 @@ interface AdvancedFilters {
   rmTeam?: string;
 }
 
+function parseMultiValue(value: string): string[] {
+  const raw = (value || '').toString().trim();
+  if (!raw || raw === 'all') return [];
+  return raw
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean);
+}
+
 interface HistoryDisplayItem {
   id: string;
   type: 'history' | 'comment';
@@ -1607,6 +1616,22 @@ const DesktopTaskItem = memo(({
   const isInProgressTask = statusKey === 'in-progress';
 
   const taskTypeLabel = (task.taskType || (task as any).type || (task as any).task_type || '').toString();
+  const createdAtRaw = (task as any)?.createdAt || (task as any)?.created_at || (task as any)?.timestamp || (task as any)?.createdOn || '';
+  const createdAtText = (() => {
+    try {
+      if (!createdAtRaw) return '—';
+      // Prefer a date-time formatter if present in this module
+      const anyGlobal = globalThis as any;
+      if (typeof (anyGlobal as any).formatDateTime === 'function') {
+        return (anyGlobal as any).formatDateTime(createdAtRaw);
+      }
+      const asDate = new Date(createdAtRaw);
+      if (!Number.isFinite(asDate.getTime())) return '—';
+      return asDate.toLocaleString();
+    } catch {
+      return '—';
+    }
+  })();
   const brandLabelText = useMemo(() => {
     if (brandLabel) return String(brandLabel || '');
 
@@ -1672,7 +1697,7 @@ const DesktopTaskItem = memo(({
         </div>
 
         {/* Task Title Column - INCREASED WIDTH */}
-        <div className="col-span-3 min-w-0 pr-2">
+        <div className="col-span-2 min-w-0 pr-2">
           <div className="flex flex-col gap-1">
             <h3 className="font-semibold text-gray-900 text-sm whitespace-normal break-words leading-tight" title={task.title}>
               {task.title}
@@ -1706,8 +1731,15 @@ const DesktopTaskItem = memo(({
           </div>
         </div>
 
+        {/* Created At Column */}
+        <div className="col-span-1 min-w-0 flex items-center justify-center">
+          <span className="text-xs text-gray-700 truncate w-full text-center" title={createdAtText}>
+            {createdAtText}
+          </span>
+        </div>
+
         {/* Due Date Column - OPTIMIZED WIDTH */}
-        <div className="col-span-2 min-w-0 flex items-center"> {/* Changed: col-span-2 */}
+        <div className="col-span-1 min-w-0 flex items-center"> {/* Changed: col-span-1 */}
           <div className="flex flex-col w-full">
             <div className={`flex items-center gap-1 ${isOverdueTask && !isCompleted ? 'text-red-600' : 'text-gray-700'}`}>
               <span className="font-medium text-sm truncate w-full text-center">
@@ -3033,15 +3065,27 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   });
 
   const effectiveAdvancedFilters = advancedFilters || localAdvancedFilters;
+  
+  // Debug: Log when effective filters change
+  useEffect(() => {
+    console.log('Effective advanced filters changed:', effectiveAdvancedFilters);
+    console.log('From props (advancedFilters):', advancedFilters);
+    console.log('From local state (localAdvancedFilters):', localAdvancedFilters);
+  }, [effectiveAdvancedFilters, advancedFilters, localAdvancedFilters]);
   const handleAdvancedFilterChange = useCallback((filterType: string, value: string) => {
+    console.log('Filter change:', filterType, '=', value);
     if (onAdvancedFilterChange) {
       onAdvancedFilterChange(filterType, value);
       return;
     }
-    setLocalAdvancedFilters(prev => ({
-      ...prev,
-      [filterType]: value
-    }));
+    setLocalAdvancedFilters(prev => {
+      const newState = {
+        ...prev,
+        [filterType]: value
+      };
+      console.log('New local filters:', newState);
+      return newState;
+    });
   }, [onAdvancedFilterChange]);
 
   // Company-Brand mapping state
@@ -4305,26 +4349,28 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   }, [currentUser?.role, getBrandsByCompanyInternal, handleAdvancedFilterChange, refreshTaskTypeCompanyOverrides]);
 
   const applyAdvancedFilters = useCallback(() => {
-    if (effectiveAdvancedFilters.status !== 'all') {
-      setFilter(effectiveAdvancedFilters.status);
-    } else {
-      setFilter('all');
-    }
+    // Get the current filter values
+    const currentFilters = effectiveAdvancedFilters;
+    
+    // Keep legacy single-select UI state in sync.
+    // For multi-select values, we fall back to 'all' and rely on advanced filters logic below.
+    const statusSet = parseMultiValue(currentFilters.status);
+    setFilter(statusSet.length === 1 ? statusSet[0] : 'all');
 
-    if (effectiveAdvancedFilters.assigned !== 'all') {
-      setAssignedFilter?.(effectiveAdvancedFilters.assigned);
-    } else if (setAssignedFilter) {
-      setAssignedFilter('all');
-    }
+    const assignedSet = parseMultiValue(currentFilters.assigned);
+    if (setAssignedFilter) setAssignedFilter(assignedSet.length === 1 ? assignedSet[0] : 'all');
 
-    if (effectiveAdvancedFilters.date !== 'all') {
-      setDateFilter(effectiveAdvancedFilters.date);
-    } else {
-      setDateFilter('all');
-    }
+    const dateSet = parseMultiValue(currentFilters.date);
+    setDateFilter(dateSet.length === 1 ? dateSet[0] : 'all');
 
+    // Close the filters panel
     setShowAdvancedFilters(false);
+    
+    // Show success message
     toast.success('Filters applied successfully');
+    
+    // Log current filter state for debugging
+    console.log('Applied filters:', currentFilters);
   }, [effectiveAdvancedFilters, setFilter, setAssignedFilter, setDateFilter]);
 
   const resetFilters = useCallback(() => {
@@ -5188,30 +5234,49 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       }
 
       // Apply advanced filters for assigned if set
-      if (effectiveAdvancedFilters.assigned !== 'all') {
-        if (effectiveAdvancedFilters.assigned === 'assigned-to-me' && !isTaskAssignee(task)) return false;
-        if (effectiveAdvancedFilters.assigned === 'assigned-by-me' && !isTaskAssigner(task)) return false;
+      {
+        const assignedValues = parseMultiValue(effectiveAdvancedFilters.assigned);
+        if (assignedValues.length > 0) {
+          const ok = assignedValues.some((assignedValue) => {
+            if (assignedValue === 'assigned-to-me') return isTaskAssignee(task);
+            if (assignedValue === 'assigned-by-me') return isTaskAssigner(task);
+            return true;
+          });
+          if (!ok) return false;
+        }
       }
 
       // Status Filter
-      let statusPass = true;
-      if (effectiveAdvancedFilters.status !== 'all') {
-        const status = effectiveAdvancedFilters.status.toLowerCase();
-        if (status === 'completed' && !isCompleted) statusPass = false;
-        else if (status === 'pending' && (isCompleted || !['pending', 'in-progress', 'reassigned'].includes(String(task.status || '').toLowerCase()))) statusPass = false;
-        else if (status === 'in-progress' && String(task.status || '').toLowerCase() !== 'in-progress') statusPass = false;
-        else if (status === 'reassigned' && String(task.status || '').toLowerCase() !== 'reassigned') statusPass = false;
-      } else if (filter !== 'all') {
-        if (filter === 'completed' && !isCompleted) statusPass = false;
-        else if (filter === 'pending' && isCompleted && !['pending', 'in-progress', 'reassigned'].includes(String(task.status || '').toLowerCase())) statusPass = false;
+      {
+        const statusValues = parseMultiValue(effectiveAdvancedFilters.status).map((s) => s.toLowerCase());
+        if (statusValues.length > 0) {
+          const taskStatus = String(task.status || '').toLowerCase();
+          const ok = statusValues.some((status) => {
+            if (status === 'completed') return isCompleted;
+            if (status === 'pending') return !isCompleted && ['pending', 'in-progress', 'reassigned'].includes(taskStatus);
+            if (status === 'in-progress') return taskStatus === 'in-progress';
+            if (status === 'reassigned') return taskStatus === 'reassigned';
+            return true;
+          });
+          if (!ok) return false;
+        } else {
+          // legacy single status filter
+          let statusPass = true;
+          if (filter !== 'all') {
+            if (filter === 'completed' && !isCompleted) statusPass = false;
+            else if (filter === 'pending' && isCompleted && !['pending', 'in-progress', 'reassigned'].includes(String(task.status || '').toLowerCase())) statusPass = false;
+          }
+          if (!statusPass) return false;
+        }
       }
-      if (!statusPass) return false;
 
       // Priority Filter
-      if (effectiveAdvancedFilters.priority !== 'all') {
-        const filterPriority = effectiveAdvancedFilters.priority.toLowerCase();
-        const taskPriority = task.priority?.toLowerCase() || '';
-        if (taskPriority !== filterPriority) return false;
+      {
+        const priorityValues = parseMultiValue(effectiveAdvancedFilters.priority).map((p) => p.toLowerCase());
+        if (priorityValues.length > 0) {
+          const taskPriority = task.priority?.toLowerCase() || '';
+          if (!priorityValues.includes(taskPriority)) return false;
+        }
       }
 
       // Task Type Filter
@@ -5224,24 +5289,33 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
           return raw.toLowerCase();
         };
 
-        const filterTypeKey = canonicalizeTypeKey(effectiveAdvancedFilters.taskType);
-        const taskTypeKey = canonicalizeTypeKey((task as any).taskType || (task as any).type);
-        if (!filterTypeKey || !taskTypeKey) return false;
-        if (taskTypeKey !== filterTypeKey) return false;
+        const filterTypeKeys = parseMultiValue(effectiveAdvancedFilters.taskType)
+          .map((t) => canonicalizeTypeKey(t))
+          .filter(Boolean);
+        if (filterTypeKeys.length > 0) {
+          const taskTypeKey = canonicalizeTypeKey((task as any).taskType || (task as any).type);
+          if (!taskTypeKey) return false;
+          if (!filterTypeKeys.includes(taskTypeKey)) return false;
+        }
       }
 
       // Company Filter
-      if (effectiveAdvancedFilters.company !== 'all') {
-        const filterCompanyKey = normalizeCompanyKey(effectiveAdvancedFilters.company);
-        const taskCompanyKey = normalizeCompanyKey((task as any).companyName || (task as any).company || '');
-        if (taskCompanyKey !== filterCompanyKey) return false;
+      {
+        const companyValues = parseMultiValue(effectiveAdvancedFilters.company);
+        if (companyValues.length > 0) {
+          const filterCompanyKeys = companyValues.map((c) => normalizeCompanyKey(c)).filter(Boolean);
+          const taskCompanyKey = normalizeCompanyKey((task as any).companyName || (task as any).company || '');
+          if (!filterCompanyKeys.includes(taskCompanyKey)) return false;
+        }
       }
 
       // Brand Filter
-      if (effectiveAdvancedFilters.brand !== 'all') {
-        const filterBrand = effectiveAdvancedFilters.brand.toLowerCase();
-        const taskBrand = task.brand?.toLowerCase() || '';
-        if (taskBrand !== filterBrand) return false;
+      {
+        const brandValues = parseMultiValue(effectiveAdvancedFilters.brand).map((b) => b.toLowerCase());
+        if (brandValues.length > 0) {
+          const taskBrand = task.brand?.toLowerCase() || '';
+          if (!brandValues.includes(taskBrand)) return false;
+        }
       }
 
       // Date Filter
@@ -5252,15 +5326,21 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
 
       const dateFilterToUse = effectiveAdvancedFilters.date !== 'all' ? effectiveAdvancedFilters.date : dateFilter;
 
-      if (dateFilterToUse === 'today' && taskDate.getTime() !== today.getTime()) return false;
-      if (dateFilterToUse === 'week') {
-        const weekFromNow = new Date(today);
-        weekFromNow.setDate(weekFromNow.getDate() + 7);
-        if (taskDate > weekFromNow || taskDate < today) return false;
-      }
-      if (dateFilterToUse === 'overdue') {
-        const isTaskOverdue = isOverdue(task.dueDate, task.status);
-        if (!isTaskOverdue) return false;
+      {
+        const dateValues = parseMultiValue(dateFilterToUse);
+        if (dateValues.length > 0) {
+          const ok = dateValues.some((v) => {
+            if (v === 'today') return taskDate.getTime() === today.getTime();
+            if (v === 'week') {
+              const weekFromNow = new Date(today);
+              weekFromNow.setDate(weekFromNow.getDate() + 7);
+              return !(taskDate > weekFromNow || taskDate < today);
+            }
+            if (v === 'overdue') return isOverdue(task.dueDate, task.status);
+            return true;
+          });
+          if (!ok) return false;
+        }
       }
 
       // Speed E Com - Group Number Search (brand.groupNumber)
@@ -5545,8 +5625,9 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
               <div className="col-span-1 text-center">Status</div>
               <div className="col-span-1 text-center">Brand</div>
               <div className="col-span-2">Task Title</div>
-              <div className="col-span-2">Assign To</div>
-              <div className="col-span-2">Assign By</div>
+              <div className="col-span-1">Assign To</div>
+              <div className="col-span-1">Assign By</div>
+              <div className="col-span-1 text-center">Created At</div>
               <div className="col-span-1">Due Date</div>
               <div className="col-span-1 text-center">Type</div>
               <div className="col-span-1 text-right pr-4">Actions</div>

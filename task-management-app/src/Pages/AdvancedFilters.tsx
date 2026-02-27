@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { X, Filter, RefreshCcw } from 'lucide-react';
 
 interface AdvancedFiltersProps {
@@ -28,6 +28,104 @@ interface AdvancedFiltersProps {
     showFilters: boolean;
     onToggleFilters: () => void;
 }
+
+type MultiSelectOption = {
+    value: string;
+    label: string;
+};
+
+function parseMultiValue(value: string): string[] {
+    const raw = (value || '').toString().trim();
+    if (!raw || raw === 'all') return [];
+    return raw
+        .split(',')
+        .map(v => v.trim())
+        .filter(Boolean);
+}
+
+function serializeMultiValue(values: string[]): string {
+    const unique = Array.from(new Set((values || []).map(v => String(v || '').trim()).filter(Boolean)));
+    if (unique.length === 0) return 'all';
+    return unique.join(',');
+}
+
+const MultiSelectFilter: React.FC<{
+    label: string;
+    placeholder: string;
+    value: string;
+    options: MultiSelectOption[];
+    onChange: (nextValue: string) => void;
+}> = ({ label, placeholder, value, options, onChange }) => {
+    const [open, setOpen] = useState(false);
+    const selected = useMemo(() => new Set(parseMultiValue(value)), [value]);
+    const selectedCount = selected.size;
+
+    const displayText = selectedCount === 0
+        ? placeholder
+        : selectedCount === 1
+            ? (options.find(o => selected.has(o.value))?.label || placeholder)
+            : `${selectedCount} selected`;
+
+    return (
+        <div className="relative">
+            <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">
+                {label}
+            </label>
+            <button
+                type="button"
+                onClick={() => setOpen((p) => !p)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg text-left bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+                {displayText}
+            </button>
+
+            {open ? (
+                <div className="absolute z-50 mt-2 w-full max-h-60 overflow-auto bg-white border border-gray-200 rounded-lg shadow-lg p-2">
+                    <div className="space-y-2">
+                        {options.map((opt) => {
+                            const checked = selected.has(opt.value);
+                            return (
+                                <label key={opt.value} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                                    <input
+                                        type="checkbox"
+                                        checked={checked}
+                                        onChange={(e) => {
+                                            const next = new Set(selected);
+                                            if (e.target.checked) next.add(opt.value);
+                                            else next.delete(opt.value);
+                                            onChange(serializeMultiValue(Array.from(next)));
+                                        }}
+                                        className="h-4 w-4"
+                                    />
+                                    <span className="truncate">{opt.label}</span>
+                                </label>
+                            );
+                        })}
+                    </div>
+
+                    <div className="mt-3 flex justify-end gap-2">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                onChange('all');
+                            }}
+                            className="px-3 py-1 text-xs border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50"
+                        >
+                            Clear
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setOpen(false)}
+                            className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                        >
+                            Done
+                        </button>
+                    </div>
+                </div>
+            ) : null}
+        </div>
+    );
+};
 
 const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
     filters,
@@ -162,151 +260,105 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 {/* Status Filter */}
-                <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">
-                        Status
-                    </label>
-                    <select
-                        value={filters.status}
-                        onChange={(e) => onFilterChange('status', e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                        <option value="all">All Status</option>
-                        <option value="pending">Pending</option>
-                        <option value="in-progress">In Progress</option>
-                        <option value="reassigned">Reassigned</option>
-                        <option value="completed">Completed</option>
-                    </select>
-                </div>
+                <MultiSelectFilter
+                    label="Status"
+                    placeholder="All Status"
+                    value={filters.status}
+                    onChange={(v) => onFilterChange('status', v)}
+                    options={[
+                        { value: 'pending', label: 'Pending' },
+                        { value: 'in-progress', label: 'In Progress' },
+                        { value: 'reassigned', label: 'Reassigned' },
+                        { value: 'completed', label: 'Completed' },
+                    ]}
+                />
 
                 {canSeeCompanyFilter ? (
-                    <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">
-                            Company
-                        </label>
-                        <select
-                            value={filters.company}
-                            onChange={(e) => onFilterChange('company', e.target.value)}
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        >
-                            <option value="all">All Companies</option>
-                            {availableCompanies.map((companyName) => (
-                                <option key={companyName} value={companyName}>
-                                    {companyName}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+                    <MultiSelectFilter
+                        label="Company"
+                        placeholder="All Companies"
+                        value={filters.company}
+                        onChange={(v) => onFilterChange('company', v)}
+                        options={availableCompanies.map((companyName) => ({
+                            value: companyName,
+                            label: companyName,
+                        }))}
+                    />
                 ) : null}
 
                 {/* Priority Filter */}
-                <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">
-                        Priority
-                    </label>
-                    <select
-                        value={filters.priority}
-                        onChange={(e) => onFilterChange('priority', e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                        <option value="all">All Priority</option>
-                        <option value="high">High</option>
-                        <option value="medium">Medium</option>
-                        <option value="low">Low</option>
-                    </select>
-                </div>
+                <MultiSelectFilter
+                    label="Priority"
+                    placeholder="All Priority"
+                    value={filters.priority}
+                    onChange={(v) => onFilterChange('priority', v)}
+                    options={[
+                        { value: 'high', label: 'High' },
+                        { value: 'medium', label: 'Medium' },
+                        { value: 'low', label: 'Low' },
+                    ]}
+                />
 
                 {/* Assigned Filter */}
-                <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">
-                        Assigned
-                    </label>
-                    <select
-                        value={filters.assigned}
-                        onChange={(e) => onFilterChange('assigned', e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                        <option value="all">Everyone</option>
-                        <option value="assigned-to-me">Assigned To Me</option>
-                        <option value="assigned-by-me">Assigned By Me</option>
-                    </select>
-                </div>
+                <MultiSelectFilter
+                    label="Assigned"
+                    placeholder="Everyone"
+                    value={filters.assigned}
+                    onChange={(v) => onFilterChange('assigned', v)}
+                    options={[
+                        { value: 'assigned-to-me', label: 'Assigned To Me' },
+                        { value: 'assigned-by-me', label: 'Assigned By Me' },
+                    ]}
+                />
 
                 {/* Due Date Filter */}
-                <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">
-                        Due Date
-                    </label>
-                    <select
-                        value={filters.date}
-                        onChange={(e) => onFilterChange('date', e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                        <option value="all">All Dates</option>
-                        <option value="today">Today</option>
-                        <option value="week">This Week</option>
-                        <option value="overdue">Overdue</option>
-                    </select>
-                </div>
+                <MultiSelectFilter
+                    label="Due Date"
+                    placeholder="All Dates"
+                    value={filters.date}
+                    onChange={(v) => onFilterChange('date', v)}
+                    options={[
+                        { value: 'today', label: 'Today' },
+                        { value: 'week', label: 'This Week' },
+                        { value: 'overdue', label: 'Overdue' },
+                    ]}
+                />
 
                 {/* Task Type Filter */}
-                <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">
-                        Type
-                    </label>
-                    <select
-                        value={filters.taskType}
-                        onChange={(e) => onFilterChange('taskType', e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                        <option value="all">All Types</option>
-                        {availableTaskTypes.map((typeName) => (
-                            <option key={typeName} value={typeName}>
-                                {typeName}
-                            </option>
-                        ))}
-                    </select>
-                </div>
+                <MultiSelectFilter
+                    label="Type"
+                    placeholder="All Types"
+                    value={filters.taskType}
+                    onChange={(v) => onFilterChange('taskType', v)}
+                    options={availableTaskTypes.map((typeName) => ({
+                        value: typeName,
+                        label: typeName,
+                    }))}
+                />
 
                 {/* Brand Filter */}
-                <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">
-                        Brand
-                    </label>
-                    <select
-                        value={filters.brand}
-                        onChange={(e) => onFilterChange('brand', e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                        <option value="all">
-                            {filters.company === 'all' ? 'All Brands' : `All ${filters.company} Brands`}
-                        </option>
-                        {availableBrands.map((brand) => (
-                            <option key={brand} value={brand}>
-                                {formatBrandOptionLabel(brand)}
-                            </option>
-                        ))}
-                    </select>
-                </div>
+                <MultiSelectFilter
+                    label="Brand"
+                    placeholder={filters.company === 'all' ? 'All Brands' : `All ${filters.company} Brands`}
+                    value={filters.brand}
+                    onChange={(v) => onFilterChange('brand', v)}
+                    options={availableBrands.map((brand) => ({
+                        value: brand,
+                        label: formatBrandOptionLabel(brand),
+                    }))}
+                />
 
                 {roleKey === 'sbm' ? (
-                    <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">
-                            RM
-                        </label>
-                        <select
-                            value={normalizeText((filters as any).rm || '') || 'all'}
-                            onChange={(e) => handleRmChange(e.target.value)}
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        >
-                            <option value="all">All RM</option>
-                            {(availableRms || []).map((rm) => (
-                                <option key={rm.id || rm.email} value={normalizeText(rm.email)}>
-                                    {rm.name || rm.email}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+                    <MultiSelectFilter
+                        label="RM"
+                        placeholder="All RM"
+                        value={normalizeText((filters as any).rm || '') || 'all'}
+                        onChange={(v) => handleRmChange(v)}
+                        options={(availableRms || []).map((rm) => ({
+                            value: normalizeText(rm.email),
+                            label: rm.name || rm.email,
+                        }))}
+                    />
                 ) : null}
             </div>
 

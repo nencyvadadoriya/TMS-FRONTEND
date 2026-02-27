@@ -1638,6 +1638,20 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+    const sbmCandidatesForEditing = useMemo(() => {
+
+        const list = (users || internalUsers || []) as UserType[];
+
+        return list
+
+            .filter((u) => normalizeRole((u as any)?.role) === 'sbm')
+
+            .sort((a, b) => (a?.name || '').localeCompare(b?.name || ''));
+
+    }, [users, internalUsers, normalizeRole]);
+
+
+
     const canEditRoleForUser = useCallback((user: any): boolean => {
 
         if (!user) return false;
@@ -2203,7 +2217,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
         try {
 
-            const isAmUser = normalizeRole((editingUser as any)?.role) === 'am';
+            const nextRoleKey = normalizeRole((editingUser as any)?.role);
 
             const prevManagerId = ((usersById.get(userId) as any)?.managerId || (usersById.get(String(userId)) as any)?.managerId || '').toString();
 
@@ -2223,15 +2237,30 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
             };
 
-            const roleChanged = normalizeRole((usersById.get(userId) as any)?.role) !== normalizeRole((editingUser as any)?.role);
+            const prevRoleKey = normalizeRole((usersById.get(userId) as any)?.role);
+            const roleChanged = prevRoleKey !== nextRoleKey;
 
             if (roleChanged && canEditRoleForUser(editingUser)) {
 
-                payload.role = normalizeRole((editingUser as any)?.role) as any;
+                payload.role = nextRoleKey as any;
+
+                // When role changes, managerId must follow hierarchy:
+                // rm -> sbm, am -> rm, sbm -> admin
+                if (nextRoleKey === 'rm' || nextRoleKey === 'am' || nextRoleKey === 'sbm') {
+                    if (!nextManagerId) {
+                        toast.error('Please select manager');
+                        return;
+                    }
+                    (payload as any).managerId = nextManagerId;
+                } else {
+                    // non-hierarchy roles should not carry managerId
+                    (payload as any).managerId = undefined;
+                }
 
             }
 
-            if (isAmUser && nextManagerId && nextManagerId !== prevManagerId) {
+            // If the resulting role is AM and manager changed, update AM hierarchy mapping
+            if (nextRoleKey === 'am' && nextManagerId && nextManagerId !== prevManagerId) {
 
                 const hRes = await authService.updateAmHierarchy(userId, nextManagerId);
 
@@ -3357,7 +3386,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
                                     value={editingUser?.role || 'user'}
 
-                                    onChange={(e) => setEditingUser(editingUser ? { ...editingUser, role: e.target.value } : null)}
+                                    onChange={(e) => setEditingUser(editingUser ? { ...editingUser, role: e.target.value, managerId: '' } : null)}
 
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 
@@ -3427,9 +3456,93 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                            {editingUser?.role === 'assistant' && (
+                            {normalizeRole((editingUser as any)?.role) === 'rm' && (
 
-                                null
+                                <div>
+
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">SBM</label>
+
+                                    <select
+
+                                        value={((editingUser as any)?.managerId || '').toString()}
+
+                                        onChange={(e) => setEditingUser(editingUser ? { ...editingUser, managerId: e.target.value } as any : null)}
+
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+
+                                        disabled={!!savingUserId}
+
+                                    >
+
+                                        <option value="">Select SBM</option>
+
+                                        {(sbmCandidatesForEditing || []).map((sbm) => {
+
+                                            const id = (sbm?.id || (sbm as any)?._id || '').toString();
+
+                                            if (!id) return null;
+
+                                            return (
+
+                                                <option key={id} value={id}>
+
+                                                    {(sbm?.name || sbm?.email || 'SBM').toString()}
+
+                                                </option>
+
+                                            );
+
+                                        })}
+
+                                    </select>
+
+                                </div>
+
+                            )}
+
+
+
+                            {normalizeRole((editingUser as any)?.role) === 'sbm' && (
+
+                                <div>
+
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Admin</label>
+
+                                    <select
+
+                                        value={((editingUser as any)?.managerId || '').toString()}
+
+                                        onChange={(e) => setEditingUser(editingUser ? { ...editingUser, managerId: e.target.value } as any : null)}
+
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+
+                                        disabled={!!savingUserId}
+
+                                    >
+
+                                        <option value="">Select Admin</option>
+
+                                        {(adminCandidates || []).map((a) => {
+
+                                            const id = (a?.id || (a as any)?._id || '').toString();
+
+                                            if (!id) return null;
+
+                                            return (
+
+                                                <option key={id} value={id}>
+
+                                                    {(a?.name || a?.email || 'Admin').toString()}
+
+                                                </option>
+
+                                            );
+
+                                        })}
+
+                                    </select>
+
+                                </div>
 
                             )}
 
