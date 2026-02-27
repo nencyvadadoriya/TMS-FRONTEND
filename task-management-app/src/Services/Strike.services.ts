@@ -22,9 +22,10 @@ const describeAxiosError = (err: any) => {
 class StrikeService {
     baseUrl = "/strike/";
 
-    async getMdImpexStrike() {
+    async getMdImpexStrike(month?: string) {
         try {
-            const res = await apiClient.get(`${this.baseUrl}md-impex`);
+            const params = month ? { month } : {};
+            const res = await apiClient.get(`${this.baseUrl}md-impex`, { params });
             return {
                 success: Boolean(res.data.success),
                 data: res.data.data || [],

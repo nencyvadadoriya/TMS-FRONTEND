@@ -33,7 +33,8 @@ export const routepath = {
     reviews: '/reviews',
     managerMonthlyRankings: '/manager-monthly-rankings',
     otherWork: '/other-work',
-    mdImpexStrike: '/md-impex-strike'
+    mdImpexStrike: '/md-impex-strike',
+    personalTasks: '/personal-tasks'
 };
 
 export const route = createHashRouter([
@@ -131,6 +132,11 @@ export const route = createHashRouter([
             },
             {
                 path: routepath.mdImpexStrike,
+                lazy: lazyComponent(() => import("../Pages/DashboardPage"))
+            }
+            ,
+            {
+                path: routepath.personalTasks,
                 lazy: lazyComponent(() => import("../Pages/DashboardPage"))
             }
         ]

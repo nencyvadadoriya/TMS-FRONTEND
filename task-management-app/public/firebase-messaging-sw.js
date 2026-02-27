@@ -10,6 +10,17 @@ firebase.initializeApp({
   appId: '1:43652241815:web:06e8b6f15b2782db824cd2'
 });
 
+
+
+
+
+
+
+
+
+
+
+
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {

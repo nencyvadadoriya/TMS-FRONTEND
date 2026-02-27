@@ -11,6 +11,7 @@ export type RoleDto = {
 export type AccessModuleDto = {
     _id?: string;
     moduleId: string;
+    
     name: string;
     defaults: {
         admin: PermissionValue;

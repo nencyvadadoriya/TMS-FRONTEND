@@ -2,98 +2,259 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { io, type Socket } from "socket.io-client";
 import {
-  LayoutDashboard,
-  ListTodo,
-  PlusCircle,
-  AlertCircle,
-  CheckCircle,
-  Clock,
-  Bell,
-  Trash2,
-  Grid,
-  List,
-  Filter,
-  TrendingUp,
-  TrendingDown,
-  BarChart3,
-  CalendarDays,
-  UserCheck,
-  Flag,
-  Building,
-  Tag,
-  Edit,
-  User,
-  Star,
-  Trophy,
-  Crown,
-  MessageSquare,
-  X,
-  Send,
-  Loader2,
-} from "lucide-react";
-import toast from "react-hot-toast";
-import Sidebar from "./Sidebar";
-import Navbar from "./Navbar";
-import AllTasksPage from "./AllTasksPage";
-import CalendarView from "./CalendarView";
-import TeamPage from "./TeamPage";
-import UserProfilePage from "./UserProfilePage";
-import BrandsListPage from "./BrandsListPage";
-import BrandDetailPage from "./BrandDetailPage";
-import AccessPage from "./AccessPage";
-import CompanyBrandTaskTypePage from "./CompanyBrandTaskTypePage";
-import AssignPage from "./AssignPage";
-import ReviewsPage from "./ReviewsPage";
-import OtherWorkPage from "./OtherWorkPage";
-import MdImpexStrikePage from "./MdImpexStrikePage";
-import ManagerMonthlyRankingPage from "./ManagerMonthlyRankingPage";
-import PowerStarOfTheMonthPage from "./PowerStarOfTheMonthPage";
-import SpeedEcomReassignPage from "./SpeedEcomReassignPage";
-import AdvancedFilters from "./AdvancedFilters";
-import AnalyzePage from "./AnalyzePage";
-import { DashboardPageSkeleton } from "../Components/LoadingSkeletons";
-import EmployeeOfTheMonthCard from "../Components/EmployeeOfTheMonthCard";
-import TaskReminderCard from "../Components/TaskReminderCard";
-import AddTaskModal from "./DashboardModals/AddTaskModal";
-import EditTaskModal from "./DashboardModals/EditTaskModal";
-import MdImpexEditTaskModal from "./DashboardModals/MdImpexEditTaskModal";
-import SendReminderModal from "./DashboardModals/SendReminderModal";
-import BulkAddBrandsModal from "./DashboardModals/BulkAddBrandsModal";
-import BulkAddCompaniesModal from "./DashboardModals/BulkAddCompaniesModal";
-import BulkAddTaskTypesModal from "./DashboardModals/BulkAddTaskTypesModal";
-import ManagerAddBrandModal from "./DashboardModals/ManagerAddBrandModal";
+    LayoutDashboard,
+    ListTodo,
+    PlusCircle,
+    AlertCircle,
+    CheckCircle,
+    Clock,
+    Bell,
+    Trash2,
+    Grid,
+    List,
+    Filter,
+    TrendingUp,
+    TrendingDown,
+    BarChart3,
+    CalendarDays,
+    UserCheck,
+    Flag,
+    Building,
+    Tag,
+    Edit,
+    User,
+    Star,
+    Trophy,
+    Crown,
+    MessageSquare,
+    X,
+    Send,
+    Loader2,
+} from 'lucide-react';
+
+
+
+import toast from 'react-hot-toast';
+
+
+
+
+
+
+
+import Sidebar from './Sidebar';
+
+
+
+import Navbar from './Navbar';
+
+
+
+import AllTasksPage from './AllTasksPage';
+
+
+
+import CalendarView from './CalendarView';
+
+
+
+import TeamPage from './TeamPage';
+
+
+
+import UserProfilePage from './UserProfilePage';
+
+
+
+import BrandsListPage from './BrandsListPage';
+
+
+
+import BrandDetailPage from './BrandDetailPage';
+
+
+
+import AccessPage from './AccessPage';
+
+
+
+import CompanyBrandTaskTypePage from './CompanyBrandTaskTypePage';
+
+
+
+import AssignPage from './AssignPage';
+
+
+
+import ReviewsPage from './ReviewsPage';
+
+
+
+import OtherWorkPage from './OtherWorkPage';
+
+
+
+import MdImpexStrikePage from './MdImpexStrikePage';
+
+
+
+import ManagerMonthlyRankingPage from './ManagerMonthlyRankingPage';
+
+
+
+import PowerStarOfTheMonthPage from './PowerStarOfTheMonthPage';
+
+
+
+import SpeedEcomReassignPage from './SpeedEcomReassignPage';
+
+
+
+import AdvancedFilters from './AdvancedFilters';
+
+
+
+import AnalyzePage from './AnalyzePage';
+
+
+
+import { DashboardPageSkeleton } from '../Components/LoadingSkeletons';
+
+
+
+
+
+
+
+import EmployeeOfTheMonthCard from '../Components/EmployeeOfTheMonthCard';
+
+
+
+import TaskReminderCard from '../Components/TaskReminderCard';
+ 
+import AddTaskModal from './DashboardModals/AddTaskModal';
+
+
+
+import EditTaskModal from './DashboardModals/EditTaskModal';
+
+import MdImpexEditTaskModal from './DashboardModals/MdImpexEditTaskModal';
+
+import SendReminderModal from './DashboardModals/SendReminderModal';
+
+
+
+import BulkAddBrandsModal from './DashboardModals/BulkAddBrandsModal';
+
+
+
+import BulkAddCompaniesModal from './DashboardModals/BulkAddCompaniesModal';
+
+
+
+import BulkAddTaskTypesModal from './DashboardModals/BulkAddTaskTypesModal';
+
+
+
+import ManagerAddBrandModal from './DashboardModals/ManagerAddBrandModal';
+
+
 
 import type {
-  Brand,
-  CommentType,
-  Company,
-  Task,
-  TaskHistory,
-  TaskPriority,
-  TaskStatus,
-  TaskTypeItem,
-  UserType,
-} from "../Types/Types";
-import { taskService } from "../Services/Task.services";
-import apiClient from "../Services/apiClient";
-import { authService } from "../Services/User.Services";
-import { brandService } from "../Services/Brand.service";
-import { companyService } from "../Services/Company.service";
-import { taskTypeService } from "../Services/TaskType.service";
-import { companyTaskTypeService } from "../Services/CompanyTaskType.service";
-import { companyBrandTaskTypeService } from "../Services/CompanyBrandTaskType.service";
-import { assignService } from "../Services/Assign.service";
-import { routepath } from "../Routes/route";
-import { useAppDispatch, useAppSelector } from "../Store/hooks";
-import {
-  fetchTasks as fetchTasksThunk,
-  selectAllTasks,
-  taskAdded,
-  taskRemoved,
-  taskUpserted,
-  tasksAddedMany,
-  tasksReset,
-} from "../Store/tasksSlice";
+
+
+
+    Brand,
+
+
+
+    CommentType,
+
+
+
+    Company,
+
+
+
+    Task,
+
+
+
+    TaskHistory,
+
+
+
+    TaskPriority,
+
+
+
+    TaskStatus,
+
+
+
+    TaskTypeItem,
+
+
+
+    UserType,
+
+
+
+} from '../Types/Types';
+
+
+
+import { taskService } from '../Services/Task.services';
+
+
+
+import apiClient from '../Services/apiClient';
+
+
+
+import { authService } from '../Services/User.Services';
+
+
+
+import { brandService } from '../Services/Brand.service';
+
+
+
+import { companyService } from '../Services/Company.service';
+
+
+
+import { taskTypeService } from '../Services/TaskType.service';
+
+
+
+import { companyTaskTypeService } from '../Services/CompanyTaskType.service';
+
+
+
+import { companyBrandTaskTypeService } from '../Services/CompanyBrandTaskType.service';
+
+
+
+import { assignService } from '../Services/Assign.service';
+
+
+
+import { routepath } from '../Routes/route';
+
+
+
+import { useAppDispatch, useAppSelector } from '../Store/hooks';
+
+
+
+import { fetchTasks as fetchTasksThunk, selectAllTasks, taskAdded, taskRemoved, taskUpserted, tasksAddedMany, tasksReset } from '../Store/tasksSlice';
+
+
+
+
+
+
 
 type TaskReminderClientItem = {
   id: string;
@@ -380,24 +541,9 @@ const DashboardPage = () => {
 
   const [isUpdatingTask, setIsUpdatingTask] = useState(false);
 
-  const [currentView, setCurrentView] = useState<
-    | "dashboard"
-    | "all-tasks"
-    | "calendar"
-    | "analyze"
-    | "team"
-    | "profile"
-    | "brands"
-    | "brand-detail"
-    | "access"
-    | "company-brand-task-types"
-    | "assign"
-    | "reviews"
-    | "other-work"
-    | "speed-ecom-reassign"
-    | "manager-monthly-rankings"
-    | "md-impex-strike"
-  >("dashboard");
+
+
+    const [currentView, setCurrentView] = useState<'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'access' | 'company-brand-task-types' | 'assign' | 'reviews' | 'other-work' | 'speed-ecom-reassign' | 'manager-monthly-rankings' | 'md-impex-strike'>('dashboard');
 
   const [dashboardSpotlight, setDashboardSpotlight] = useState<
     "employee-of-month" | "manager-monthly-ranking" | "power-star-of-month"
@@ -478,93 +624,232 @@ const DashboardPage = () => {
       setActiveReminderId((prev) => {
         if (prev && normalized.some((x) => x.id === prev)) return prev;
 
-        return normalized[0]?.id || "";
-      });
-    } catch {
-      // ignore
-    }
-  }, []);
 
-  const acknowledgeReminder = useCallback(
-    async (reminderId: string) => {
-      const id = String(reminderId || "").trim();
 
-      if (!id) return;
+                return normalized[0]?.id || '';
 
-      try {
-        await apiClient.patch(`/reminders/${id}/seen`);
-      } catch {
-        // ignore
-      }
 
-      setUnreadReminders((prev) => prev.filter((r) => r.id !== id));
 
-      setActiveReminderId((prev) => {
-        if (prev !== id) return prev;
+            });
 
-        const remaining = unreadReminders.filter((r) => r.id !== id);
 
-        return remaining[0]?.id || "";
-      });
-    },
-    [unreadReminders],
-  );
+
+        } catch {
+
+
+
+            // ignore
+
+
+
+        }
+
+
+
+    }, []);
+
+
+
+
+
+
+
+    const acknowledgeReminder = useCallback(async (reminderId: string) => {
+
+
+
+        const id = String(reminderId || '').trim();
+
+
+
+        if (!id) return;
+
+
+
+        try {
+
+
+
+            await apiClient.patch(`/reminders/${id}/seen`);
+
+
+
+        } catch {
+
+
+
+            // ignore
+
+
+
+        }
+
+
+
+        setUnreadReminders((prev) => prev.filter((r) => r.id !== id));
+
+
+
+        setActiveReminderId((prev) => {
+
+
+
+            if (prev !== id) return prev;
+
+
+
+            const remaining = unreadReminders.filter((r) => r.id !== id);
+
+
+
+            return remaining[0]?.id || '';
+
+
+
+        });
+
+
+
+    }, [unreadReminders]);
+
+
+
+
+
+
 
   const activeReminder = useMemo(() => {
     const id = String(activeReminderId || "").trim();
 
     if (!id) return null;
 
-    return (unreadReminders || []).find((r) => r.id === id) || null;
-  }, [activeReminderId, unreadReminders]);
+        return (unreadReminders || []).find((r) => r.id === id) || null;
 
-  useEffect(() => {
-    let mounted = true;
 
-    const fetchReviewedForSummary = async () => {
-      try {
-        const res = await taskService.getTaskReviews({ reviewed: true });
 
-        if (!mounted) return;
+    }, [activeReminderId, unreadReminders]);
 
-        if (res && (res as any).success) {
-          setReviewedTasksForSummary((res as any).data || []);
-        }
-      } catch {
-        return;
-      }
-    };
 
-    void fetchReviewedForSummary();
 
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
-  const employeeOfTheMonth = useMemo(() => {
-    const parseMonth = (value: string) => {
-      const [y, m] = String(value || "")
-        .split("-")
-        .map((x) => Number(x));
 
-      if (
-        !Number.isFinite(y) ||
-        !Number.isFinite(m) ||
-        y < 1970 ||
-        m < 1 ||
-        m > 12
-      )
-        return null;
 
-      const start = new Date(y, m - 1, 1, 0, 0, 0, 0);
 
-      const endExclusive = new Date(y, m, 1, 0, 0, 0, 0);
+    useEffect(() => {
 
-      return { start, endExclusive };
-    };
 
-    const monthRange = parseMonth(reviewsMonth);
+
+        let mounted = true;
+
+
+
+        const fetchReviewedForSummary = async () => {
+
+
+
+            try {
+
+
+
+                const res = await taskService.getTaskReviews({ reviewed: true });
+
+
+
+                if (!mounted) return;
+
+
+
+                if (res && (res as any).success) {
+
+
+
+                    setReviewedTasksForSummary((res as any).data || []);
+
+
+
+                }
+
+
+
+            } catch {
+
+
+
+                return;
+
+
+
+            }
+
+
+
+        };
+
+
+
+        void fetchReviewedForSummary();
+
+
+
+        return () => {
+
+
+
+            mounted = false;
+
+
+
+        };
+
+
+
+    }, []);
+
+
+
+
+
+
+
+    const employeeOfTheMonth = useMemo(() => {
+
+
+
+        const parseMonth = (value: string) => {
+
+
+
+            const [y, m] = String(value || '').split('-').map((x) => Number(x));
+
+
+
+            if (!Number.isFinite(y) || !Number.isFinite(m) || y < 1970 || m < 1 || m > 12) return null;
+
+
+
+            const start = new Date(y, m - 1, 1, 0, 0, 0, 0);
+
+
+
+            const endExclusive = new Date(y, m, 1, 0, 0, 0, 0);
+
+
+
+            return { start, endExclusive };
+
+
+
+        };
+
+
+
+
+
+
+
+        const monthRange = parseMonth(reviewsMonth);
+
+
 
     // For all MDIMPEX users, show comprehensive data regardless of role restrictions
 
@@ -574,12 +859,13 @@ const DashboardPage = () => {
       .trim()
       .toLowerCase();
 
-    const isMdImpexUser =
-      currentUserCompany.includes("mdimpex") ||
-      currentUserCompany.includes("md_impex");
+        const isMdImpexUser = currentUserCompany.includes('mdimpex') || currentUserCompany.includes('md_impex');
 
-    console.log("EmployeeOfTheMonth Debug:", {
-      currentUserCompany,
+
+
+        console.log('EmployeeOfTheMonth Debug:', {
+
+            currentUserCompany,
 
       isMdImpexUser,
 
@@ -587,25 +873,27 @@ const DashboardPage = () => {
 
       totalMdImpexUsersAvailable: allMdImpexUsers?.length,
 
-      usersList: users?.map((u) => ({
-        email: u.email,
-        name: u.name,
-        hasAvatar: !!u.avatar,
-        avatar: u.avatar,
-      })),
-    });
+            usersList: users?.map(u => ({ email: u.email, name: u.name, hasAvatar: !!u.avatar, avatar: u.avatar }))
 
-    let reviewedData = reviewedTasksForSummary || [];
+        });
 
-    // If user is from MDIMPEX, use all tasks data to show comprehensive view
 
-    if (isMdImpexUser) {
-      reviewedData = (tasks || []).filter((t) => {
-        const stars = (t as any).reviewStars;
 
-        const reviewedAtRaw = (t as any).reviewedAt;
+        let reviewedData = reviewedTasksForSummary || [];
 
-        if (stars == null) return false;
+
+
+        // If user is from MDIMPEX, use all tasks data to show comprehensive view
+
+        if (isMdImpexUser) {
+
+            reviewedData = (tasks || []).filter((t) => {
+
+                const stars = (t as any).reviewStars;
+
+                const reviewedAtRaw = (t as any).reviewedAt;
+
+                if (stars == null) return false;
 
         if (!reviewedAtRaw) return false;
 
@@ -675,46 +963,83 @@ const DashboardPage = () => {
 
       const starsValue = Number((t as any).reviewStars);
 
-      if (!Number.isFinite(starsValue) || starsValue < 1 || starsValue > 5)
-        return;
 
-      const existing = byAssignee.get(email) || {
-        email,
-        name,
-        total: 0,
-        starSum: 0,
-      };
 
-      existing.total += 1;
+            if (!Number.isFinite(starsValue) || starsValue < 1 || starsValue > 5) return;
 
-      existing.starSum += starsValue;
 
-      byAssignee.set(email, existing);
-    });
 
-    const rows = Array.from(byAssignee.values()).map((r) => {
-      const avgStars = r.total > 0 ? r.starSum / r.total : 0;
 
-      const ratingPct = r.total > 0 ? (r.starSum / (r.total * 5)) * 100 : 0;
 
-      return {
-        ...r,
 
-        avgStars,
 
-        ratingPct,
+            const existing = byAssignee.get(email) || { email, name, total: 0, starSum: 0 };
 
-        ratingPctLabel: `${ratingPct.toFixed(1)}%`,
 
-        avgStarsLabel: `${avgStars.toFixed(1)}`,
 
-        performance: performanceLevelForAvg(avgStars),
-      };
-    });
+            existing.total += 1;
 
-    rows.sort((a, b) => b.avgStars - a.avgStars);
 
-    // Debug: log reviewed tasks and rows to check data
+
+            existing.starSum += starsValue;
+
+
+
+            byAssignee.set(email, existing);
+
+
+
+        });
+
+
+
+
+
+
+
+        const rows = Array.from(byAssignee.values()).map((r) => {
+
+
+
+            const avgStars = r.total > 0 ? (r.starSum / r.total) : 0;
+
+
+
+            const ratingPct = r.total > 0 ? (r.starSum / (r.total * 5)) * 100 : 0;
+
+
+
+            return {
+
+
+
+                ...r,
+
+
+
+                avgStars,
+
+
+
+                ratingPct,
+
+                ratingPctLabel: `${ratingPct.toFixed(1)}%`,
+
+                avgStarsLabel: `${avgStars.toFixed(1)}`,
+
+                performance: performanceLevelForAvg(avgStars),
+
+            };
+
+        });
+
+
+
+        rows.sort((a, b) => b.avgStars - a.avgStars);
+
+
+
+        // Debug: log reviewed tasks and rows to check data
 
     console.log("reviewed tasks count:", reviewed.length);
 
@@ -1000,17 +1325,25 @@ const DashboardPage = () => {
       )
         return prev;
 
-      return String((next[0] as any)?.id || (next[0] as any)?._id || "");
-    });
-  }, [pendingManagerReviewTasks]);
+            return String((next[0] as any)?.id || (next[0] as any)?._id || '');
 
-  useEffect(() => {
-    if (!reviewModalTaskId) return;
+        });
+
+    }, [pendingManagerReviewTasks]);
+
+
+
+    useEffect(() => {
+
+        if (!reviewModalTaskId) return;
 
     setReviewModalStars(5);
 
-    setReviewModalComment("");
-  }, [reviewModalTaskId]);
+        setReviewModalComment('');
+
+    }, [reviewModalTaskId]);
+
+
 
   useEffect(() => {
     const next = pendingManagerReviewTasks || [];
@@ -4513,27 +4846,17 @@ const DashboardPage = () => {
     return /^[a-f\d]{24}$/i.test(value);
   }, []);
 
-  const navigateTo = (page: string) => {
-    const viewMap: Record<
-      string,
-      | "dashboard"
-      | "all-tasks"
-      | "calendar"
-      | "analyze"
-      | "team"
-      | "profile"
-      | "brands"
-      | "brand-detail"
-      | "access"
-      | "company-brand-task-types"
-      | "assign"
-      | "speed-ecom-reassign"
-      | "reviews"
-      | "other-work"
-      | "manager-monthly-rankings"
-      | "md-impex-strike"
-    > = {
-      dashboard: "dashboard",
+    const navigateTo = (page: string) => {
+
+
+
+        const viewMap: Record<string, 'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'access' | 'company-brand-task-types' | 'assign' | 'speed-ecom-reassign' | 'reviews' | 'other-work' | 'manager-monthly-rankings' | 'md-impex-strike'> = {
+
+
+
+            'dashboard': 'dashboard',
+
+
 
       tasks: "all-tasks",
 
@@ -4561,12 +4884,25 @@ const DashboardPage = () => {
 
       reviews: "reviews",
 
-      "manager-monthly-rankings": "manager-monthly-rankings",
+            'manager-monthly-rankings': 'manager-monthly-rankings',
 
-      "other-work": "other-work",
 
-      "md-impex-strike": "md-impex-strike",
-    };
+
+            'other-work': 'other-work',
+
+
+
+            'md-impex-strike': 'md-impex-strike'
+
+
+
+        };
+
+
+
+
+
+
 
     const targetView = viewMap[page];
 
@@ -4599,12 +4935,25 @@ const DashboardPage = () => {
 
       reviews: "reviews_page",
 
-      "manager-monthly-rankings": "tasks_page",
+            'manager-monthly-rankings': 'tasks_page',
 
-      "other-work": "other_work_page",
 
-      "md-impex-strike": "",
-    };
+
+            'other-work': 'other_work_page',
+
+
+
+            'md-impex-strike': '',
+
+
+
+        };
+
+
+
+
+
+
 
     const moduleId = viewToModule[targetView];
 
@@ -4647,8 +4996,17 @@ const DashboardPage = () => {
 
       "other-work": routepath.otherWork,
 
-      "md-impex-strike": routepath.mdImpexStrike,
-    };
+            'md-impex-strike': routepath.mdImpexStrike,
+
+
+
+        };
+
+
+
+
+
+
 
     const targetPath = routeMap[page];
 
@@ -4701,8 +5059,15 @@ const DashboardPage = () => {
 
       setCurrentView("md-impex-strike");
 
-      return;
-    }
+            return;
+
+        }
+
+
+
+
+
+
 
     if (path === routepath.tasks) {
       if (!hasAccess("tasks_page")) {
@@ -6881,15 +7246,35 @@ const DashboardPage = () => {
       );
     }
 
-    if (filters.assigned === "assigned-to-me") {
-      filtered = filtered.filter(
-        (task) => task.assignedTo === currentUser.email,
-      );
-    } else if (filters.assigned === "assigned-by-me") {
-      filtered = filtered.filter(
-        (task) => task.assignedBy === currentUser.email,
-      );
-    }
+
+
+
+
+
+
+        if (filters.assigned === 'assigned-to-me') {
+
+
+
+            filtered = filtered.filter((task) => task.assignedTo === currentUser.email);
+
+
+
+        } else if (filters.assigned === 'assigned-by-me') {
+
+
+
+            filtered = filtered.filter((task) => task.assignedBy === currentUser.email);
+
+
+
+        }
+
+
+
+
+
+
 
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
@@ -6905,20 +7290,47 @@ const DashboardPage = () => {
 
         const brand = (task.brand || "").toLowerCase();
 
-        const typeVal = (
-          task.taskType ||
-          (task as any).type ||
-          ""
-        ).toLowerCase();
 
-        return (
-          title.includes(term) ||
-          company.includes(term) ||
-          brand.includes(term) ||
-          typeVal.includes(term)
-        );
-      });
-    }
+
+                const typeVal = (task.taskType || (task as any).type || '').toLowerCase();
+
+
+
+                return (
+
+
+
+                    title.includes(term) ||
+
+
+
+                    company.includes(term) ||
+
+
+
+                    brand.includes(term) ||
+
+
+
+                    typeVal.includes(term)
+
+
+
+                );
+
+
+
+            });
+
+
+
+        }
+
+
+
+
+
+
 
     return filtered;
   }, [
@@ -7608,14 +8020,11 @@ const DashboardPage = () => {
           ""
         ).toLowerCase();
 
-        return (
-          title.includes(term) ||
-          company.includes(term) ||
-          brand.includes(term) ||
-          typeVal.includes(term)
-        );
-      });
-    }
+                return title.includes(term) || company.includes(term) || brand.includes(term) || typeVal.includes(term);
+
+            });
+
+        }
 
     const completedTasks = filtered.filter((t) => t.status === "completed");
 
@@ -10674,11 +11083,7 @@ const DashboardPage = () => {
                             .trim()
                             .toLowerCase();
 
-                          const canSee =
-                            roleKey === "manager" ||
-                            roleKey === "md_manager" ||
-                            roleKey === "ob_manager" ||
-                            roleKey === "all_manager";
+                                                    const canSee = roleKey === 'manager' || roleKey === 'md_manager' || roleKey === 'ob_manager' || roleKey === 'all_manager';
 
                           if (!canSee) return null;
 
@@ -11466,31 +11871,103 @@ const DashboardPage = () => {
 
                     openAddTaskModal();
 
-                    return undefined;
-                  }}
-                  onSaveComment={handleSaveComment}
-                  onDeleteComment={handleDeleteComment}
-                  onFetchTaskComments={handleFetchTaskComments}
-                  onReassignTask={handleReassignTask}
-                  onMdImpexReassignTask={handleMdImpexReassignTask}
-                  onAddTaskHistory={handleAddTaskHistory}
-                  onApproveTask={handleApproveTask}
-                  onUpdateTaskApproval={handleUpdateTaskApproval}
-                  onFetchTaskHistory={handleFetchTaskHistory}
-                  onBulkCreateTasks={handleBulkCreateTasks}
-                  isSidebarCollapsed={isSidebarCollapsed}
-                  brands={brands}
-                  showEditModal={showEditTaskModal}
-                  editingTask={editingTask}
-                  onOpenEditModal={handleOpenEditModal}
-                  onCloseEditModal={() => setShowEditTaskModal(false)}
-                  onSaveEditedTask={handleSaveEditedTask}
-                />
-              ) : currentView === "calendar" ? (
-                <CalendarView
-                  tasks={tasks}
-                  currentUser={{
-                    id: currentUser.id || "",
+                                        return undefined;
+
+
+
+                                    }}
+
+
+
+                                    onSaveComment={handleSaveComment}
+
+
+
+                                    onDeleteComment={handleDeleteComment}
+
+
+
+                                    onFetchTaskComments={handleFetchTaskComments}
+
+
+
+                                    onReassignTask={handleReassignTask}
+
+
+
+                                    onMdImpexReassignTask={handleMdImpexReassignTask}
+
+
+
+                                    onAddTaskHistory={handleAddTaskHistory}
+
+
+
+                                    onApproveTask={handleApproveTask}
+
+
+
+                                    onUpdateTaskApproval={handleUpdateTaskApproval}
+
+
+
+                                    onFetchTaskHistory={handleFetchTaskHistory}
+
+
+
+                                    onBulkCreateTasks={handleBulkCreateTasks}
+
+
+
+                                    isSidebarCollapsed={isSidebarCollapsed}
+
+
+
+                                    brands={brands}
+
+
+
+                                    showEditModal={showEditTaskModal}
+
+
+
+                                    editingTask={editingTask}
+
+
+
+                                    onOpenEditModal={handleOpenEditModal}
+
+
+
+                                    onCloseEditModal={() => setShowEditTaskModal(false)}
+
+
+
+                                    onSaveEditedTask={handleSaveEditedTask}
+
+
+
+                                />
+
+
+
+                            ) : currentView === 'calendar' ? (
+
+
+
+                                <CalendarView
+
+
+
+                                    tasks={tasks}
+
+
+
+                                    currentUser={{
+
+
+
+                                        id: currentUser.id || '',
 
                     name: currentUser.name || "User",
 
@@ -11604,116 +12081,421 @@ const DashboardPage = () => {
 
                           if (!matchById && !matchByEmail) return u;
 
-                          return {
-                            ...u,
-                            ...next,
-                            id:
-                              (next as any)?.id ||
-                              (next as any)?._id ||
-                              u?.id ||
-                              uid,
-                          };
-                        });
-                      });
-                    } catch {
-                      // ignore
-                    }
+                                                    return { ...u, ...next, id: (next as any)?.id || (next as any)?._id || u?.id || uid };
 
-                    try {
-                      localStorage.setItem("currentUser", JSON.stringify(next));
-                    } catch {
-                      // ignore
-                    }
-                  }}
-                />
-              ) : currentView === "access" ? (
-                <AccessPage
-                  currentUser={currentUser}
-                  users={users}
-                  onAddUser={handleCreateUser}
-                  onRefreshCurrentUser={fetchCurrentUser}
-                />
-              ) : currentView === "company-brand-task-types" ? (
-                <CompanyBrandTaskTypePage currentUser={currentUser} />
-              ) : currentView === "assign" ? (
-                <AssignPage currentUser={currentUser} />
-              ) : currentView === "speed-ecom-reassign" ? (
-                <SpeedEcomReassignPage
-                  task={speedEcomReassignTask}
-                  currentUser={currentUser}
-                  users={users}
-                  onSubmit={handleSpeedEcomReassignSubmit}
-                  isSubmitting={isSpeedEcomReassignSubmitting}
-                />
-              ) : currentView === "reviews" ? (
-                <ReviewsPage currentUser={currentUser} users={users} />
-              ) : currentView === "other-work" ? (
-                <OtherWorkPage
-                  currentUser={currentUser}
-                  tasks={tasks}
-                  onRefreshTasks={fetchTasks}
-                />
-              ) : currentView === "manager-monthly-rankings" ? (
-                <ManagerMonthlyRankingPage currentUser={currentUser} />
-              ) : currentView === "md-impex-strike" ? (
-                <MdImpexStrikePage
-                  currentUser={currentUser}
-                  users={users}
-                  tasks={tasks}
-                  isOverdue={isOverdue}
-                />
-              ) : currentView === "brands" ? (
-                <BrandsListPage
-                  isSidebarCollapsed={isSidebarCollapsed}
-                  currentUser={currentUser}
-                  tasks={tasks}
-                  onSelectBrand={(brandId) => {
-                    setSelectedBrandId(brandId);
+                                                });
 
-                    setCurrentView("brand-detail");
-                  }}
-                />
-              ) : currentView === "brand-detail" ? (
-                <BrandDetailPage
-                  brandId={selectedBrandId || ""}
-                  brands={apiBrands}
-                  currentUser={currentUser}
-                  isSidebarCollapsed={isSidebarCollapsed}
-                  onBack={() => setCurrentView("brands")}
-                  tasks={tasks}
-                />
-              ) : null}
+                                            });
+
+                                        } catch {
+
+                                            // ignore
+
+                                        }
+
+
+
+                                        try {
+
+
+
+                                            localStorage.setItem('currentUser', JSON.stringify(next));
+
+
+
+                                        } catch {
+
+
+
+                                            // ignore
+
+
+
+                                        }
+
+
+
+                                    }}
+
+
+
+                                />
+
+
+
+                            ) : currentView === 'access' ? (
+
+
+
+                                <AccessPage
+
+
+
+                                    currentUser={currentUser}
+
+
+
+                                    users={users}
+
+
+
+                                    onAddUser={handleCreateUser}
+
+
+
+                                    onRefreshCurrentUser={fetchCurrentUser}
+
+
+
+                                />
+
+
+
+                            ) : currentView === 'company-brand-task-types' ? (
+
+
+
+                                <CompanyBrandTaskTypePage
+
+
+
+                                    currentUser={currentUser}
+
+
+
+                                />
+
+
+
+                            ) : currentView === 'assign' ? (
+
+
+
+                                <AssignPage
+
+
+
+                                    currentUser={currentUser}
+
+
+
+                                />
+
+
+
+                            ) : currentView === 'speed-ecom-reassign' ? (
+
+
+
+                                <SpeedEcomReassignPage
+
+
+
+                                    task={speedEcomReassignTask}
+
+
+
+                                    currentUser={currentUser}
+
+
+
+                                    users={users}
+
+
+
+                                    onSubmit={handleSpeedEcomReassignSubmit}
+
+
+
+                                    isSubmitting={isSpeedEcomReassignSubmitting}
+
+
+
+                                />
+
+
+
+                            ) : currentView === 'reviews' ? (
+
+
+
+                                <ReviewsPage
+
+
+
+                                    currentUser={currentUser}
+
+
+
+                                    users={users}
+
+
+
+                                />
+
+
+
+                            ) : currentView === 'other-work' ? (
+
+
+
+                                <OtherWorkPage
+
+
+
+                                    currentUser={currentUser}
+
+
+
+                                    tasks={tasks}
+
+
+
+                                    onRefreshTasks={fetchTasks}
+
+
+
+                                />
+
+
+
+                            ) : currentView === 'manager-monthly-rankings' ? (
+
+
+
+                                <ManagerMonthlyRankingPage currentUser={currentUser} />
+
+
+
+                            ) : currentView === 'md-impex-strike' ? (
+
+
+
+                                <MdImpexStrikePage
+
+
+
+                                    currentUser={currentUser}
+
+
+
+                                    users={users}
+
+
+
+                                    tasks={tasks}
+
+
+
+                                    isOverdue={isOverdue}
+
+
+
+                                />
+
+
+
+                            ) : currentView === 'brands' ? (
+
+
+
+                                <BrandsListPage
+
+
+
+                                    isSidebarCollapsed={isSidebarCollapsed}
+
+
+
+                                    currentUser={currentUser}
+
+
+
+                                    tasks={tasks}
+
+
+
+                                    onSelectBrand={(brandId) => {
+
+
+
+                                        setSelectedBrandId(brandId);
+
+
+
+                                        setCurrentView('brand-detail');
+
+
+
+                                    }}
+
+
+
+                                />
+
+
+
+                            ) : currentView === 'brand-detail' ? (
+
+
+
+                                <BrandDetailPage
+
+
+
+                                    brandId={selectedBrandId || ''}
+
+
+
+                                    brands={apiBrands}
+
+
+
+                                    currentUser={currentUser}
+
+
+
+                                    isSidebarCollapsed={isSidebarCollapsed}
+
+
+
+                                    onBack={() => setCurrentView('brands')}
+
+
+
+                                    tasks={tasks}
+
+
+
+                                />
+
+
+
+                            ) : null}
+
+
+
+                        </div>
+
+
+
+                    </div>
+
+
+
+                </main>
+
+
+
             </div>
-          </div>
-        </main>
-      </div>
-      <AddTaskModal
-        open={showAddTaskModal}
-        onClose={() => setShowAddTaskModal(false)}
-        newTask={newTask}
-        formErrors={formErrors}
-        onChange={handleInputChange}
-        users={usersForAddTaskModal}
-        availableCompanies={availableCompaniesForSbm}
-        canBulkAddCompanies={canBulkAddCompanies}
-        onBulkAddCompanies={handleAddCompanyClick}
-        canCreateBrand={canCreateBrand}
-        canBulkAddBrands={canBulkAddBrands}
-        onAddBrand={handleAddBrandClick}
-        getAvailableBrandOptions={getAvailableBrandOptions}
-        canBulkAddTaskTypes={canBulkAddTaskTypes}
-        onBulkAddTaskTypes={handleAddTaskTypeClick}
-        availableTaskTypesForNewTask={availableTaskTypesForNewTask}
-        onSubmit={handleSaveTaskFromModal}
-        isSubmitting={isCreatingTask}
-        isSbmUser={isSbmRole}
-        showCompanyDropdownIcon={(() => {
-          const r = String((currentUser as any)?.role || "")
-            .trim()
-            .toLowerCase();
-          return r === "admin" || r === "super_admin";
-        })()}
-      />
+
+
+
+
+
+
+
+            <AddTaskModal
+
+
+
+                open={showAddTaskModal}
+
+
+
+                onClose={() => setShowAddTaskModal(false)}
+
+
+
+                newTask={newTask}
+
+
+
+                formErrors={formErrors}
+
+
+
+                onChange={handleInputChange}
+
+
+
+                users={usersForAddTaskModal}
+
+
+
+                availableCompanies={availableCompaniesForSbm}
+
+
+
+                canBulkAddCompanies={canBulkAddCompanies}
+
+
+
+                onBulkAddCompanies={handleAddCompanyClick}
+
+
+
+                canCreateBrand={canCreateBrand}
+
+
+
+                canBulkAddBrands={canBulkAddBrands}
+
+
+
+                onAddBrand={handleAddBrandClick}
+
+
+
+                getAvailableBrandOptions={getAvailableBrandOptions}
+
+
+
+                canBulkAddTaskTypes={canBulkAddTaskTypes}
+
+
+
+                onBulkAddTaskTypes={handleAddTaskTypeClick}
+
+
+
+                availableTaskTypesForNewTask={availableTaskTypesForNewTask}
+
+
+
+                onSubmit={handleSaveTaskFromModal}
+
+
+
+                isSubmitting={isCreatingTask}
+
+
+
+                isSbmUser={isSbmRole}
+
+                showCompanyDropdownIcon={(() => {
+
+
+
+                    const r = String((currentUser as any)?.role || '').trim().toLowerCase();
+
+
+
+                    return r === 'admin' || r === 'super_admin';
+
+
+
+                })()}
+
+
+
+            />
+
+
+
+
+
+
 
       <EditTaskModal
         open={showEditTaskModal}

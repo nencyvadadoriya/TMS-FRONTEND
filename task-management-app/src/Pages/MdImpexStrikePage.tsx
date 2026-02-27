@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { Task, UserType } from '../Types/Types';
-import { ChevronDown, ChevronUp, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, AlertCircle, CheckCircle2, Trash2, Calendar } from 'lucide-react';
 import { strikeService } from '../Services/Strike.services';
+import { taskService } from '../Services/Task.services';
 
 const normalizeText = (v: unknown) => String(v || '').trim().toLowerCase();
 const normalizeCompanyKey = (v: unknown) => normalizeText(v).replace(/\s+/g, '');
@@ -78,7 +79,7 @@ const MdImpexStrikePage = ({
       if (status !== 'completed') return false;
       const due = new Date((task as any)?.dueDate);
       if (Number.isNaN(due.getTime())) return false;
-      
+
       const completedAt = getTaskCompletionAt(task);
       if (!completedAt) return false;
 
@@ -106,8 +107,19 @@ const MdImpexStrikePage = ({
   const [removingStrikeId, setRemovingStrikeId] = useState<string | null>(null);
   const [removeRemark, setRemoveRemark] = useState('');
 
+  // Month filter state
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+
+  // Delete task state
+  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+
   const roleKey = useMemo(() => normalizeRoleKey((currentUser as any)?.role), [currentUser]);
   const canRemoveStrike = roleKey === 'md_manager';
+  const canDeleteTask = roleKey === 'md_manager' || roleKey === 'admin';
 
   useEffect(() => {
     let isMounted = true;
@@ -116,7 +128,7 @@ const MdImpexStrikePage = ({
       try {
         setIsLoading(true);
         setLoadError('');
-        const res = await strikeService.getMdImpexStrike();
+        const res = await strikeService.getMdImpexStrike(selectedMonth);
         if (!isMounted) return;
         if (!res.success) {
           setLoadError(res.message || 'Failed to load strike data');
@@ -137,7 +149,7 @@ const MdImpexStrikePage = ({
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [selectedMonth]);
 
   const managerUsers = useMemo(() => {
     const list = Array.isArray(users) ? users : [];
@@ -221,6 +233,34 @@ const MdImpexStrikePage = ({
     out.sort((a, b) => (b.strike - a.strike) || (b.removedStrike - a.removedStrike) || a.managerName.localeCompare(b.managerName));
     return out;
   }, [managerUsers, strikeRecords, currentUser, roleKey]);
+
+  // Filter rows by selected month - show ALL managers even with 0 strikes
+  const filteredRows = useMemo(() => {
+    if (!selectedMonth) return rows;
+
+    const [year, month] = selectedMonth.split('-').map(Number);
+
+    return rows.map(r => ({
+      ...r,
+      strike: r.strikeTasks.filter((task: any) => {
+        const taskDate = new Date(task.dueDate || task.createdAt);
+        return taskDate.getFullYear() === year && taskDate.getMonth() + 1 === month;
+      }).length,
+      removedStrike: r.removedStrikeTasks.filter((task: any) => {
+        const taskDate = new Date(task.dueDate || task.createdAt);
+        return taskDate.getFullYear() === year && taskDate.getMonth() + 1 === month;
+      }).length,
+      strikeTasks: r.strikeTasks.filter((task: any) => {
+        const taskDate = new Date(task.dueDate || task.createdAt);
+        return taskDate.getFullYear() === year && taskDate.getMonth() + 1 === month;
+      }),
+      removedStrikeTasks: r.removedStrikeTasks.filter((task: any) => {
+        const taskDate = new Date(task.dueDate || task.createdAt);
+        return taskDate.getFullYear() === year && taskDate.getMonth() + 1 === month;
+      }),
+    }));
+    // Removed filter - show all managers even with 0 strikes
+  }, [rows, selectedMonth]);
 
   const removalHistory = useMemo(() => {
     const out: Array<{
@@ -318,7 +358,7 @@ const MdImpexStrikePage = ({
   const refreshStrike = async () => {
     setIsLoading(true);
     setLoadError('');
-    const res = await strikeService.getMdImpexStrike();
+    const res = await strikeService.getMdImpexStrike(selectedMonth);
     setIsLoading(false);
     if (!res.success) {
       setLoadError(res.message || 'Failed to load strike data');
@@ -336,6 +376,34 @@ const MdImpexStrikePage = ({
   const closeRemoveModal = () => {
     setRemovingStrikeId(null);
     setRemoveRemark('');
+  };
+
+  const openDeleteModal = (taskId: string) => {
+    setLoadError('');
+    setDeletingTaskId(taskId);
+    setDeleteConfirmText('');
+  };
+
+  const closeDeleteModal = () => {
+    setDeletingTaskId(null);
+    setDeleteConfirmText('');
+  };
+
+  const submitDeleteTask = async () => {
+    if (!deletingTaskId) return;
+    const confirmText = String(deleteConfirmText || '').trim().toLowerCase();
+    if (confirmText !== 'delete') {
+      setLoadError('Please type "delete" to confirm');
+      return;
+    }
+    setLoadError('');
+    const res = await taskService.deleteTask(deletingTaskId);
+    if (!res.success) {
+      setLoadError(res.message || 'Failed to delete task');
+      return;
+    }
+    closeDeleteModal();
+    await refreshStrike();
   };
 
   const submitRemoveStrike = async () => {
@@ -374,7 +442,19 @@ const MdImpexStrikePage = ({
               Persisted strike list (Once overdue, stays in strike until removed by MD Manager).
             </p>
           </div>
-          
+
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
+              <Calendar className="w-4 h-4 text-gray-500" />
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="bg-transparent text-sm font-medium text-gray-700 outline-none"
+              />
+            </div>
+            
+          </div>
         </div>
         {isLoading && (
           <p className="text-sm text-gray-500 mt-4">Loading...</p>
@@ -383,6 +463,66 @@ const MdImpexStrikePage = ({
           <p className="text-sm text-red-600 mt-4">{loadError}</p>
         )}
       </div>
+
+      {deletingTaskId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div
+            className="absolute inset-0"
+            onClick={closeDeleteModal}
+          />
+          <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-lg border border-gray-200">
+            <div className="p-6 border-b border-red-100 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                  <Trash2 className="w-5 h-5 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Delete Task</h3>
+                  <p className="text-xs text-gray-500">This action cannot be undone</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={closeDeleteModal}
+                className="px-3 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+            </div>
+            <div className="p-6 space-y-3">
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-semibold text-gray-700">
+                  Type <span className="text-red-600">"delete"</span> to confirm
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 p-3 text-sm"
+                  placeholder='Type "delete" to confirm...'
+                />
+                <p className="text-xs text-gray-500">This will permanently delete the task from the system.</p>
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={closeDeleteModal}
+                  className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={submitDeleteTask}
+                  className="px-4 py-2 rounded-lg border border-red-200 bg-red-600 text-sm font-semibold text-white hover:bg-red-700"
+                >
+                  Delete Task
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {removingStrikeId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -446,7 +586,7 @@ const MdImpexStrikePage = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 bg-white">
-              {rows.map((r) => (
+              {filteredRows.map((r) => (
                 <React.Fragment key={r.managerEmail}>
                   <tr
                     className={`hover:bg-gray-50 transition-colors cursor-pointer ${expandedManager === r.managerEmail ? 'bg-blue-50/30' : ''}`}
@@ -495,12 +635,29 @@ const MdImpexStrikePage = ({
                                   {r.strikeTasks.map((task: any) => (
                                     <div key={task._id || task.id} className="bg-white p-4 rounded-xl border border-red-100 shadow-sm hover:shadow-md transition-shadow">
                                       <div className="flex justify-between items-start mb-2">
-                                        {isLateCompletedTask(task) ? (
-                                          <span className="text-xs font-bold text-orange-700 bg-orange-50 px-2 py-0.5 rounded uppercase tracking-wider">Late Completed</span>
-                                        ) : (
-                                          <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded uppercase tracking-wider">Overdue</span>
-                                        )}
-                                        <span className="text-[10px] text-gray-400 font-mono">#{String(task._id || task.id).slice(-6)}</span>
+                                        <div className="flex gap-2">
+                                          {isLateCompletedTask(task) ? (
+                                            <span className="text-xs font-bold text-orange-700 bg-orange-50 px-2 py-0.5 rounded uppercase tracking-wider">Late Completed</span>
+                                          ) : (
+                                            <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded uppercase tracking-wider">Overdue</span>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          {canDeleteTask && (
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                openDeleteModal(String(task._id || task.id));
+                                              }}
+                                              className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                              title="Delete Task"
+                                            >
+                                              <Trash2 className="w-4 h-4" />
+                                            </button>
+                                          )}
+                                          <span className="text-[10px] text-gray-400 font-mono">#{String(task._id || task.id).slice(-6)}</span>
+                                        </div>
                                       </div>
                                       <h5 className="text-sm font-bold text-gray-900 mb-1 line-clamp-1">{task.title}</h5>
                                       <p className="text-xs text-gray-500 line-clamp-2 mb-3 h-8">{task.description || 'No description'}</p>
@@ -623,7 +780,7 @@ const MdImpexStrikePage = ({
                 </React.Fragment>
               ))}
 
-              {rows.length === 0 && (
+              {filteredRows.length === 0 && (
                 <tr>
                   <td className="px-6 py-12 text-center" colSpan={5}>
                     <div className="flex flex-col items-center">
