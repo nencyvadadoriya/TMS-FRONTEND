@@ -13,7 +13,6 @@ interface AdvancedFiltersProps {
         rm?: string;
         rmTeam?: string;
     };
-
     availableCompanies: string[];
     availableTaskTypes: string[];
     availableBrands: string[];
@@ -23,7 +22,6 @@ interface AdvancedFiltersProps {
     currentUser?: { email: string; role: string };
     onFilterChange: (filterType: string, value: string) => void;
     onResetFilters: () => void;
-
     onApplyFilters?: () => void;
     showFilters: boolean;
     onToggleFilters: () => void;
@@ -113,7 +111,6 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
         const list: any[] = Array.isArray(users) ? users : [];
         const selectedRmDoc: any = list.find((u: any) => normalizeText(u?.email) === email);
         const selectedRmId = String(selectedRmDoc?.id || selectedRmDoc?._id || '').trim();
-
         const teamEmails = selectedRmId
             ? list
                 .filter((u: any) => String(u?.managerId || '').trim() === selectedRmId)
@@ -130,7 +127,6 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
         onFilterChange('rm', email);
         onFilterChange('rmTeam', allowedAssignees.join(','));
     };
-
     return (
         <div className="mt-4 mb-8 bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
@@ -330,5 +326,4 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
         </div>
     );
 };
-
 export default AdvancedFilters;

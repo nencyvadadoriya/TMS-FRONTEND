@@ -131,7 +131,7 @@ import EmployeeOfTheMonthCard from '../Components/EmployeeOfTheMonthCard';
 
 
 import TaskReminderCard from '../Components/TaskReminderCard';
- 
+
 import AddTaskModal from './DashboardModals/AddTaskModal';
 
 
@@ -241,6 +241,10 @@ import { assignService } from '../Services/Assign.service';
 
 
 import { routepath } from '../Routes/route';
+
+
+
+import PersonalTasksPage from './PersonalTasksPage';
 
 
 
@@ -868,7 +872,7 @@ const DashboardPage = () => {
 
 
 
-    const [currentView, setCurrentView] = useState<'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'access' | 'company-brand-task-types' | 'assign' | 'reviews' | 'other-work' | 'speed-ecom-reassign' | 'manager-monthly-rankings' | 'md-impex-strike'>('dashboard');
+    const [currentView, setCurrentView] = useState<'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'access' | 'company-brand-task-types' | 'assign' | 'reviews' | 'other-work' | 'speed-ecom-reassign' | 'manager-monthly-rankings' | 'md-impex-strike' | 'personal-tasks'>('dashboard');
 
 
 
@@ -1065,61 +1069,18 @@ const DashboardPage = () => {
 
 
     }, []);
-
-
-
-
-
-
-
     const acknowledgeReminder = useCallback(async (reminderId: string) => {
-
-
-
         const id = String(reminderId || '').trim();
-
-
-
         if (!id) return;
-
-
-
         try {
-
-
-
             await apiClient.patch(`/reminders/${id}/seen`);
-
-
-
         } catch {
-
-
-
             // ignore
-
-
-
         }
-
-
-
         setUnreadReminders((prev) => prev.filter((r) => r.id !== id));
-
-
-
         setActiveReminderId((prev) => {
-
-
-
             if (prev !== id) return prev;
-
-
-
             const remaining = unreadReminders.filter((r) => r.id !== id);
-
-
-
             return remaining[0]?.id || '';
 
 
@@ -1153,93 +1114,28 @@ const DashboardPage = () => {
 
 
     }, [activeReminderId, unreadReminders]);
-
-
-
-
-
-
-
     useEffect(() => {
-
-
-
         let mounted = true;
-
-
-
         const fetchReviewedForSummary = async () => {
-
-
-
             try {
-
-
-
                 const res = await taskService.getTaskReviews({ reviewed: true });
-
-
-
                 if (!mounted) return;
-
-
-
                 if (res && (res as any).success) {
-
-
-
                     setReviewedTasksForSummary((res as any).data || []);
-
-
-
                 }
-
-
-
             } catch {
-
-
-
                 return;
-
-
-
             }
-
-
-
         };
-
-
 
         void fetchReviewedForSummary();
 
-
-
         return () => {
-
-
-
             mounted = false;
-
-
-
         };
-
-
-
     }, []);
 
-
-
-
-
-
-
     const employeeOfTheMonth = useMemo(() => {
-
-
-
         const parseMonth = (value: string) => {
 
 
@@ -1249,29 +1145,10 @@ const DashboardPage = () => {
 
 
             if (!Number.isFinite(y) || !Number.isFinite(m) || y < 1970 || m < 1 || m > 12) return null;
-
-
-
             const start = new Date(y, m - 1, 1, 0, 0, 0, 0);
-
-
-
             const endExclusive = new Date(y, m, 1, 0, 0, 0, 0);
-
-
-
             return { start, endExclusive };
-
-
-
         };
-
-
-
-
-
-
-
         const monthRange = parseMonth(reviewsMonth);
 
 
@@ -1281,9 +1158,6 @@ const DashboardPage = () => {
         const currentUserCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase();
 
         const isMdImpexUser = currentUserCompany.includes('mdimpex') || currentUserCompany.includes('md_impex');
-
-
-
         console.log('EmployeeOfTheMonth Debug:', {
 
             currentUserCompany,
@@ -1295,25 +1169,15 @@ const DashboardPage = () => {
             totalMdImpexUsersAvailable: allMdImpexUsers?.length,
 
             usersList: users?.map(u => ({ email: u.email, name: u.name, hasAvatar: !!u.avatar, avatar: u.avatar }))
-
         });
-
-
-
         let reviewedData = reviewedTasksForSummary || [];
-
-
-
         // If user is from MDIMPEX, use all tasks data to show comprehensive view
 
         if (isMdImpexUser) {
 
             reviewedData = (tasks || []).filter((t) => {
-
                 const stars = (t as any).reviewStars;
-
                 const reviewedAtRaw = (t as any).reviewedAt;
-
                 if (stars == null) return false;
 
                 if (!reviewedAtRaw) return false;
@@ -1449,79 +1313,25 @@ const DashboardPage = () => {
 
 
             if (!Number.isFinite(starsValue) || starsValue < 1 || starsValue > 5) return;
-
-
-
-
-
-
-
             const existing = byAssignee.get(email) || { email, name, total: 0, starSum: 0 };
-
-
-
             existing.total += 1;
-
-
-
-            existing.starSum += starsValue;
-
-
-
+           existing.starSum += starsValue;
             byAssignee.set(email, existing);
-
-
-
         });
-
-
-
-
-
-
-
         const rows = Array.from(byAssignee.values()).map((r) => {
-
-
-
             const avgStars = r.total > 0 ? (r.starSum / r.total) : 0;
-
-
-
             const ratingPct = r.total > 0 ? (r.starSum / (r.total * 5)) * 100 : 0;
-
-
-
             return {
-
-
-
                 ...r,
-
-
-
                 avgStars,
-
-
-
-                ratingPct,
-
+              ratingPct,
                 ratingPctLabel: `${ratingPct.toFixed(1)}%`,
-
                 avgStarsLabel: `${avgStars.toFixed(1)}`,
-
                 performance: performanceLevelForAvg(avgStars),
-
             };
-
         });
-
-
 
         rows.sort((a, b) => b.avgStars - a.avgStars);
-
-
-
         // Debug: log reviewed tasks and rows to check data
 
         console.log('reviewed tasks count:', reviewed.length);
@@ -1879,9 +1689,6 @@ const DashboardPage = () => {
         });
 
     }, [pendingManagerReviewTasks]);
-
-
-
     useEffect(() => {
 
         if (!reviewModalTaskId) return;
@@ -1891,8 +1698,6 @@ const DashboardPage = () => {
         setReviewModalComment('');
 
     }, [reviewModalTaskId]);
-
-
 
     useEffect(() => {
 
@@ -9079,7 +8884,7 @@ const DashboardPage = () => {
 
 
 
-        const viewMap: Record<string, 'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'access' | 'company-brand-task-types' | 'assign' | 'speed-ecom-reassign' | 'reviews' | 'other-work' | 'manager-monthly-rankings' | 'md-impex-strike'> = {
+        const viewMap: Record<string, 'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'access' | 'company-brand-task-types' | 'assign' | 'speed-ecom-reassign' | 'reviews' | 'other-work' | 'manager-monthly-rankings' | 'md-impex-strike' | 'personal-tasks'> = {
 
 
 
@@ -9147,7 +8952,11 @@ const DashboardPage = () => {
 
 
 
-            'md-impex-strike': 'md-impex-strike'
+            'md-impex-strike': 'md-impex-strike',
+
+
+
+            'personal-tasks': 'personal-tasks'
 
 
 
@@ -9236,6 +9045,10 @@ const DashboardPage = () => {
 
 
             'md-impex-strike': '',
+
+
+
+            'personal-tasks': '',
 
 
 
@@ -9343,6 +9156,10 @@ const DashboardPage = () => {
 
 
 
+            'personal-tasks': routepath.personalTasks,
+
+
+
         };
 
 
@@ -9442,6 +9259,22 @@ const DashboardPage = () => {
             setCurrentView('md-impex-strike');
 
             return;
+
+        }
+
+
+
+        if (path === routepath.personalTasks) {
+
+
+
+            setCurrentView('personal-tasks');
+
+
+
+            return;
+
+
 
         }
 
@@ -13972,20 +13805,25 @@ const DashboardPage = () => {
 
 
 
-        if (filters.assigned === 'assigned-to-me') {
+        if (filters.assigned) {
 
+            const assignedFilterValue = filters.assigned;
 
+            if (assignedFilterValue === 'assigned-to-me') {
 
-            filtered = filtered.filter((task) => task.assignedTo === currentUser.email);
+                filtered = filtered.filter((task) => task.assignedTo === currentUser.email);
 
+            } else if (assignedFilterValue === 'assigned-by-me') {
 
+                filtered = filtered.filter((task) => task.assignedBy === currentUser.email);
 
-        } else if (filters.assigned === 'assigned-by-me') {
+            } else if (assignedFilterValue.startsWith('assigned-to:')) {
 
+                const assignedToEmail = assignedFilterValue.split(':')[1];
 
+                filtered = filtered.filter((task) => task.assignedTo === assignedToEmail);
 
-            filtered = filtered.filter((task) => task.assignedBy === currentUser.email);
-
+            }
 
 
         }
@@ -14022,6 +13860,31 @@ const DashboardPage = () => {
 
                 const typeVal = (task.taskType || (task as any).type || '').toLowerCase();
 
+                const assignedToUser = (task as any).assignedToUser;
+                const assignedByUser = (task as any).assignedByUser;
+
+                const assignedToEmail = String(
+                    assignedToUser?.email ||
+                    (typeof (task as any).assignedTo === 'string' ? (task as any).assignedTo : (task as any).assignedTo?.email) ||
+                    ''
+                ).toLowerCase();
+
+                const assignedToName = String(
+                    assignedToUser?.name ||
+                    ''
+                ).toLowerCase();
+
+                const assignedByEmail = String(
+                    assignedByUser?.email ||
+                    (typeof (task as any).assignedBy === 'string' ? (task as any).assignedBy : (task as any).assignedBy?.email) ||
+                    ''
+                ).toLowerCase();
+
+                const assignedByName = String(
+                    assignedByUser?.name ||
+                    ''
+                ).toLowerCase();
+
 
 
                 return (
@@ -14040,7 +13903,11 @@ const DashboardPage = () => {
 
 
 
-                    typeVal.includes(term)
+                    typeVal.includes(term) ||
+                    assignedToEmail.includes(term) ||
+                    assignedToName.includes(term) ||
+                    assignedByEmail.includes(term) ||
+                    assignedByName.includes(term)
 
 
 
@@ -14994,7 +14861,41 @@ const DashboardPage = () => {
 
                 const typeVal = (task.taskType || (task as any).type || '').toLowerCase();
 
-                return title.includes(term) || company.includes(term) || brand.includes(term) || typeVal.includes(term);
+                const assignedToUser = (task as any).assignedToUser;
+                const assignedByUser = (task as any).assignedByUser;
+
+                const assignedToEmail = String(
+                    assignedToUser?.email ||
+                    (typeof (task as any).assignedTo === 'string' ? (task as any).assignedTo : (task as any).assignedTo?.email) ||
+                    ''
+                ).toLowerCase();
+
+                const assignedToName = String(
+                    assignedToUser?.name ||
+                    ''
+                ).toLowerCase();
+
+                const assignedByEmail = String(
+                    assignedByUser?.email ||
+                    (typeof (task as any).assignedBy === 'string' ? (task as any).assignedBy : (task as any).assignedBy?.email) ||
+                    ''
+                ).toLowerCase();
+
+                const assignedByName = String(
+                    assignedByUser?.name ||
+                    ''
+                ).toLowerCase();
+
+                return (
+                    title.includes(term) ||
+                    company.includes(term) ||
+                    brand.includes(term) ||
+                    typeVal.includes(term) ||
+                    assignedToEmail.includes(term) ||
+                    assignedToName.includes(term) ||
+                    assignedByEmail.includes(term) ||
+                    assignedByName.includes(term)
+                );
 
             });
 
@@ -22478,7 +22379,13 @@ const DashboardPage = () => {
 
                                                     const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
 
-                                                    const canSee = roleKey === 'manager' || roleKey === 'md_manager' || roleKey === 'ob_manager' || roleKey === 'all_manager';
+                                                    const canSee =
+                                                        roleKey === 'manager' ||
+                                                        roleKey === 'md_manager' ||
+                                                        roleKey === 'ob_manager' ||
+                                                        roleKey === 'all_manager' ||
+                                                        roleKey === 'admin' ||
+                                                        roleKey === 'super_admin';
 
                                                     if (!canSee) return null;
 
@@ -24544,6 +24451,14 @@ const DashboardPage = () => {
 
 
 
+                            ) : currentView === 'personal-tasks' ? (
+
+
+
+                                <PersonalTasksPage currentUser={currentUser} />
+
+
+
                             ) : currentView === 'calendar' ? (
 
 
@@ -24889,8 +24804,6 @@ const DashboardPage = () => {
 
 
                                 />
-
-
 
                             ) : currentView === 'access' ? (
 
@@ -25259,11 +25172,6 @@ const DashboardPage = () => {
 
 
             />
-
-
-
-
-
 
 
             <EditTaskModal

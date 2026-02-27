@@ -3,9 +3,11 @@ import {
   X, LogOut, ListTodo, ChevronLeft, ChevronRight, Menu, Sun, Moon,
   Users, Home, Calendar, CheckSquare, User, Building, BarChart3, Shield, Star, Briefcase, AlertTriangle
 } from 'lucide-react';
+
 import type { UserType } from '../Types/Types';
 
 interface SidebarProps {
+
   sidebarOpen: boolean;
 
   setSidebarOpen: (open: boolean) => void;
@@ -14,7 +16,7 @@ interface SidebarProps {
   isCollapsed: boolean;
   setIsCollapsed: (collapsed: boolean) => void;
   navigateTo: (page: string) => void;
-  currentView?: 'dashboard' | 'all-tasks' | 'calendar' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'analyze' | 'access' | 'assign' | 'speed-ecom-reassign' | 'company-brand-task-types' | 'reviews' | 'manager-monthly-rankings' | 'other-work' | 'md-impex-strike';
+  currentView?: 'dashboard' | 'all-tasks' | 'calendar' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'analyze' | 'access' | 'assign' | 'speed-ecom-reassign' | 'company-brand-task-types' | 'reviews' | 'manager-monthly-rankings' | 'other-work' | 'md-impex-strike' | 'personal-tasks';
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -91,6 +93,13 @@ const Sidebar: React.FC<SidebarProps> = ({
           }
         ]
         : []),
+      {
+        name: 'Personal Tasks',
+        icon: ListTodo,
+        current: currentView === 'personal-tasks',
+        onClick: () => navigateTo('personal-tasks'),
+        badge: 0
+      },
       ...(canSeeCalendar
         ? [
           {

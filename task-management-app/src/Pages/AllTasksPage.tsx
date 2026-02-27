@@ -1548,7 +1548,6 @@ const MobileTaskItem = memo(({
 });
 
 MobileTaskItem.displayName = 'MobileTaskItem';
-// ==================== DESKTOP TASK ITEM ====================
 const DesktopTaskItem = memo(({
   index,
   task,
@@ -1574,8 +1573,7 @@ const DesktopTaskItem = memo(({
   canEditTask,
   onPermanentApproval,
   isUpdatingApproval,
-  disableStatusToggle
-  ,
+  disableStatusToggle,
   hasUnreadComments
 }: DesktopTaskItemProps) => {
 
@@ -1601,6 +1599,21 @@ const DesktopTaskItem = memo(({
   const taskCompanyKey = String((task as any)?.companyName || (task as any)?.company || '').trim().toLowerCase().replace(/\s+/g, '');
   taskCompanyKey === 'speedecom';
   const canDeleteThisTask = (role === 'admin' || role === 'super_admin' || role === 'manager' || role === 'md_manager') && userIsAssigner;
+
+  const canAccessCreateTask = (() => {
+    const perms = (currentUser as any)?.permissions;
+    if (!perms || typeof perms !== 'object') return true;
+    if (Object.keys(perms).length === 0) return true;
+    if (typeof (perms as any).create_task === 'undefined') return true;
+
+    const perm = String((perms as any).create_task || '').trim().toLowerCase();
+    if (['deny', 'no', 'false', '0', 'disabled'].includes(perm)) return false;
+    if (['allow', 'allowed', 'yes', 'true', '1'].includes(perm)) return true;
+    return perm !== 'deny';
+  })();
+
+  const canShowEditIcon = canAccessCreateTask && canEditThisTask;
+  const canShowDeleteIcon = canAccessCreateTask && canDeleteThisTask;
   const isOverdueTask = isOverdue(task.dueDate, task.status);
   const statusKey = String(task.status || '').trim().toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-');
   const isReassignedTask = statusKey === 'reassigned';
@@ -1779,7 +1792,7 @@ const DesktopTaskItem = memo(({
               </button>
 
               {/* Edit Task */}
-              {canEditThisTask && (
+              {canShowEditIcon && (
                 <button
                   onClick={() => onEditTaskClick(task)}
                   disabled={isPermanentlyApproved}
@@ -1790,7 +1803,7 @@ const DesktopTaskItem = memo(({
                 </button>
               )}
 
-              {canDeleteThisTask && typeof onDeleteTask === 'function' && (
+              {canShowDeleteIcon && typeof onDeleteTask === 'function' && (
                 <button
                   onClick={() => onDeleteTask(task.id)}
                   className="p-1 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -3012,7 +3025,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   const [togglingStatusTasks, setTogglingStatusTasks] = useState<string[]>([]);
   const [approvingTasks, setApprovingTasks] = useState<string[]>([]);
   const [updatingApproval, setUpdatingApproval] = useState<string[]>([]);
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(true);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [isLoading,] = useState(false);
   const [groupNumberSearch, setGroupNumberSearch] = useState('');
@@ -5128,36 +5141,46 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
           ''
         ) === myEmail;
 
-        if (assignedByMe) return true;
-        if (assignedToMe) return true;
+        let obManagerVisible = false;
+        if (assignedByMe) obManagerVisible = true;
+        if (assignedToMe) obManagerVisible = true;
 
         const assignerRole = resolveAssignerRole(task);
-        if (assignerRole === 'ob_manager' || assignerRole === 'md_manager') return true;
+        if (assignerRole === 'ob_manager' || assignerRole === 'md_manager') obManagerVisible = true;
 
-        // fallback: allow assistant-assigned tasks
-        const direct = normalizeRoleKey((task as any)?.assignedToUser?.role);
-        let assigneeRoleKey = direct;
-        if (!assigneeRoleKey) {
-          const candidate = (task as any)?.assignedToUser || (task as any)?.assignedTo;
-          const idOrEmail = typeof candidate === 'string'
-            ? candidate
-            : (candidate?.id || candidate?._id || candidate?.email || '');
-          const key = String(idOrEmail || '').trim().toLowerCase();
-          const found = (users || []).find((u: any) => {
-            const id = String(u?.id || u?._id || '').trim().toLowerCase();
-            const email = String(u?.email || '').trim().toLowerCase();
-            return (id && id === key) || (email && email === key);
-          });
-          assigneeRoleKey = normalizeRoleKey((found as any)?.role);
+        if (!obManagerVisible) {
+          // fallback: allow assistant-assigned tasks
+          const direct = normalizeRoleKey((task as any)?.assignedToUser?.role);
+          let assigneeRoleKey = direct;
+          if (!assigneeRoleKey) {
+            const candidate = (task as any)?.assignedToUser || (task as any)?.assignedTo;
+            const idOrEmail = typeof candidate === 'string'
+              ? candidate
+              : (candidate?.id || candidate?._id || candidate?.email || '');
+            const key = String(idOrEmail || '').trim().toLowerCase();
+            const found = (users || []).find((u: any) => {
+              const id = String(u?.id || u?._id || '').trim().toLowerCase();
+              const email = String(u?.email || '').trim().toLowerCase();
+              return (id && id === key) || (email && email === key);
+            });
+            assigneeRoleKey = normalizeRoleKey((found as any)?.role);
+          }
+
+          const isAssistantAssignee = assigneeRoleKey === 'assistant'
+            || assigneeRoleKey === 'assistance'
+            || assigneeRoleKey === 'assistence'
+            || assigneeRoleKey === 'sub_assistance'
+            || assigneeRoleKey === 'sub_assistence'
+            || assigneeRoleKey === 'sub_assist'
+            || assigneeRoleKey === 'sub_assistant'
+            || assigneeRoleKey.includes('assistant')
+            || assigneeRoleKey.includes('assistance')
+            || assigneeRoleKey.includes('sub_assist');
+
+          obManagerVisible = isAssistantAssignee;
         }
 
-        const isAssistantAssignee = assigneeRoleKey === 'assistant'
-          || assigneeRoleKey === 'assistance'
-          || assigneeRoleKey === 'sub_assistance'
-          || assigneeRoleKey.includes('assistant');
-
-        if (isAssistantAssignee) return true;
-        return false;
+        if (!obManagerVisible) return false;
       }
 
       if (roleKey === 'manager') {
@@ -5191,6 +5214,20 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       if (effectiveAdvancedFilters.assigned !== 'all') {
         if (effectiveAdvancedFilters.assigned === 'assigned-to-me' && !isTaskAssignee(task)) return false;
         if (effectiveAdvancedFilters.assigned === 'assigned-by-me' && !isTaskAssigner(task)) return false;
+        
+        // Handle specific team member filter: assigned-to:${email}
+        if (effectiveAdvancedFilters.assigned.startsWith('assigned-to:')) {
+          const targetEmail = effectiveAdvancedFilters.assigned.replace('assigned-to:', '').trim().toLowerCase();
+          if (targetEmail) {
+            const taskAssigneeEmail = normalizeText(
+              (task as any)?.assignedToUser?.email ||
+              (typeof (task as any)?.assignedTo === 'string' ? (task as any)?.assignedTo : (task as any)?.assignedTo?.email) ||
+              getEmailByIdInternal((task as any)?.assignedTo) ||
+              ''
+            );
+            if (taskAssigneeEmail !== targetEmail) return false;
+          }
+        }
       }
 
       // Status Filter
@@ -5203,7 +5240,10 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         else if (status === 'reassigned' && String(task.status || '').toLowerCase() !== 'reassigned') statusPass = false;
       } else if (filter !== 'all') {
         if (filter === 'completed' && !isCompleted) statusPass = false;
-        else if (filter === 'pending' && isCompleted && !['pending', 'in-progress', 'reassigned'].includes(String(task.status || '').toLowerCase())) statusPass = false;
+        else if (filter === 'pending') {
+          const st = String(task.status || '').toLowerCase();
+          if (isCompleted || !['pending', 'in-progress', 'reassigned'].includes(st)) statusPass = false;
+        }
       }
       if (!statusPass) return false;
 
@@ -5293,15 +5333,36 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
 
       // Search Filter
       if (searchTerm) {
-        const searchLower = searchTerm.toLowerCase();
-        const matchesTitle = task.title?.toLowerCase().includes(searchLower);
-        const matchesAssignee = getEmailByIdInternal(task.assignedTo)?.toLowerCase().includes(searchLower);
-        const matchesAssigner = getAssignerEmail(task)?.toLowerCase().includes(searchLower);
-        const matchesType = task.type?.toLowerCase().includes(searchLower) || false;
-        const matchesCompany = task.company?.toLowerCase().includes(searchLower) || false;
-        const matchesBrand = task.brand?.toLowerCase().includes(searchLower) || false;
+        const q = searchTerm.toLowerCase();
 
-        if (!matchesTitle && !matchesAssignee && !matchesAssigner &&
+        const titleText = String(task.title || '').toLowerCase();
+
+        const assignedToEmail = String(
+          (task as any)?.assignedToUser?.email ||
+          (typeof (task as any)?.assignedTo === 'string' ? (task as any)?.assignedTo : (task as any)?.assignedTo?.email) ||
+          getEmailByIdInternal((task as any)?.assignedTo) ||
+          ''
+        ).toLowerCase();
+        const assignedByEmail = String(getAssignerEmail(task) || '').toLowerCase();
+
+        const assignedToName = String((task as any)?.assignedToUser?.name || '').toLowerCase();
+        const assignedByName = String((task as any)?.assignedByUser?.name || '').toLowerCase();
+
+        const typeText = String((task as any)?.taskType || (task as any)?.type || '').toLowerCase();
+        const companyText = String((task as any)?.companyName || (task as any)?.company || '').toLowerCase();
+        const brandText = String((task as any)?.brand || '').toLowerCase();
+
+        const matchesTitle = Boolean(titleText && titleText.includes(q));
+        const matchesAssigneeEmail = Boolean(assignedToEmail && assignedToEmail.includes(q));
+        const matchesAssignerEmail = Boolean(assignedByEmail && assignedByEmail.includes(q));
+        const matchesAssigneeName = Boolean(assignedToName && assignedToName.includes(q));
+        const matchesAssignerName = Boolean(assignedByName && assignedByName.includes(q));
+        const matchesType = Boolean(typeText && typeText.includes(q));
+        const matchesCompany = Boolean(companyText && companyText.includes(q));
+        const matchesBrand = Boolean(brandText && brandText.includes(q));
+
+        if (!matchesTitle && !matchesAssigneeEmail && !matchesAssignerEmail &&
+          !matchesAssigneeName && !matchesAssignerName &&
           !matchesType && !matchesCompany && !matchesBrand) {
           return false;
         }
@@ -5384,7 +5445,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   // ==================== RENDER ====================
   const roleKey = normalizeRoleKey(currentUser?.role);
   const isObManagerRole = roleKey === 'ob_manager';
-  const isAssistantViewOnly = roleKey === 'assistant';
+  const isAssistantViewOnly = false;
   const isSubAssistanceRole = roleKey === 'sub_assistance'
     || roleKey === 'sub_assistence'
     || roleKey === 'sub_assist'
@@ -5396,6 +5457,20 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     || roleKey === 'sub_assistant';
   const isBulkImportDisabled = isAssistantLikeRole;
   const isCreateTaskDisabled = isSubAssistanceRole;
+
+  const canAccessCreateTask = (() => {
+    const perms = (currentUser as any)?.permissions;
+    if (!perms || typeof perms !== 'object') return true;
+    if (Object.keys(perms).length === 0) return true;
+    if (typeof (perms as any).create_task === 'undefined') return true;
+
+    const perm = String((perms as any).create_task || '').trim().toLowerCase();
+    if (['deny', 'no', 'false', '0', 'disabled'].includes(perm)) return false;
+    if (['allow', 'allowed', 'yes', 'true', '1'].includes(perm)) return true;
+    return perm !== 'deny';
+  })();
+
+  const canShowCreateTaskButton = canAccessCreateTask && !isCreateTaskDisabled;
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
       {/* Header Section */}
@@ -5450,7 +5525,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                   </button>
                 )}
 
-                {!isCreateTaskDisabled && (
+                {canShowCreateTaskButton && (
                   <button
                     onClick={handleCreateTaskWithHistory}
                     className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
@@ -5525,7 +5600,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                     Bulk Import Tasks
                   </button>
                 )}
-                {!isCreateTaskDisabled && (
+                {canShowCreateTaskButton && (
                   <button
                     onClick={handleCreateTaskWithHistory}
                     className="inline-flex items-center px-5 py-3 border border-transparent rounded-xl shadow-sm text-base font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transition-all"
