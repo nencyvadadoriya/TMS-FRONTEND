@@ -3078,7 +3078,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   });
 
   const effectiveAdvancedFilters = advancedFilters || localAdvancedFilters;
-  
+
   // Debug: Log when effective filters change
   useEffect(() => {
     console.log('Effective advanced filters changed:', effectiveAdvancedFilters);
@@ -4364,7 +4364,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   const applyAdvancedFilters = useCallback(() => {
     // Get the current filter values
     const currentFilters = effectiveAdvancedFilters;
-    
+
     // Keep legacy single-select UI state in sync.
     // For multi-select values, we fall back to 'all' and rely on advanced filters logic below.
     const statusSet = parseMultiValue(currentFilters.status);
@@ -4378,10 +4378,10 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
 
     // Close the filters panel
     setShowAdvancedFilters(false);
-    
+
     // Show success message
     toast.success('Filters applied successfully');
-    
+
     // Log current filter state for debugging
     console.log('Applied filters:', currentFilters);
   }, [effectiveAdvancedFilters, setFilter, setAssignedFilter, setDateFilter]);
@@ -5267,7 +5267,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
           });
           if (!ok) return false;
         }
-        
+
         // Handle specific team member filter: assigned-to:${email}
         if (effectiveAdvancedFilters.assigned.startsWith('assigned-to:')) {
           const targetEmail = effectiveAdvancedFilters.assigned.replace('assigned-to:', '').trim().toLowerCase();
@@ -5285,15 +5285,24 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
 
       // Status Filter
       let statusPass = true;
-      if (effectiveAdvancedFilters.status !== 'all') {
-        const status = effectiveAdvancedFilters.status.toLowerCase();
-        if (status === 'completed' && !isCompleted) statusPass = false;
-        else if (status === 'pending' && (isCompleted || !['pending', 'in-progress', 'reassigned'].includes(String(task.status || '').toLowerCase()))) statusPass = false;
-        else if (status === 'in-progress' && String(task.status || '').toLowerCase() !== 'in-progress') statusPass = false;
-        else if (status === 'reassigned' && String(task.status || '').toLowerCase() !== 'reassigned') statusPass = false;
+      const selectedStatuses = parseMultiValue(effectiveAdvancedFilters.status).map(s => s.toLowerCase());
+
+      if (selectedStatuses.length > 0 && effectiveAdvancedFilters.status !== 'all') {
+        const taskStatus = String(task.status || '').toLowerCase();
+
+        const matches = selectedStatuses.some(s => {
+          if (s === 'completed') return isCompleted;
+          if (s === 'pending') return !isCompleted && ['pending', 'in-progress', 'reassigned'].includes(taskStatus);
+          if (s === 'in-progress') return taskStatus === 'in-progress';
+          if (s === 'reassigned') return taskStatus === 'reassigned';
+          return taskStatus === s;
+        });
+
+        if (!matches) statusPass = false;
       } else if (filter !== 'all') {
-        if (filter === 'completed' && !isCompleted) statusPass = false;
-        else if (filter === 'pending' && isCompleted && !['pending', 'in-progress', 'reassigned'].includes(String(task.status || '').toLowerCase())) statusPass = false;
+        const f = filter.toLowerCase();
+        if (f === 'completed' && !isCompleted) statusPass = false;
+        else if (f === 'pending' && (isCompleted || !['pending', 'in-progress', 'reassigned'].includes(String(task.status || '').toLowerCase()))) statusPass = false;
       }
       if (!statusPass) return false;
 
@@ -5844,7 +5853,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                       hasUnreadComments={(taskId: string) => Boolean(unreadCommentsMap && (unreadCommentsMap as any)[taskId])}
                     />
                   </div>
-                  
+
 
                   {/* Desktop View */}
                   <div className="hidden md:block">

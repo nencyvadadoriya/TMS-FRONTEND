@@ -82,17 +82,15 @@ const PermissionChoice: React.FC<{
             disabled={disabled}
             className={getButtonStyles()}
         >
-            <span className={`mr-2 inline-flex items-center justify-center h-4 w-4 rounded border transition-colors ${
-                isSelected
-                    ? value === 'allow' ? 'border-emerald-400 bg-emerald-200' :
-                        'border-rose-400 bg-rose-200'
-                    : 'border-gray-300 bg-white'
+            <span className={`mr-2 inline-flex items-center justify-center h-4 w-4 rounded border transition-colors ${isSelected
+                ? value === 'allow' ? 'border-emerald-400 bg-emerald-200' :
+                    'border-rose-400 bg-rose-200'
+                : 'border-gray-300 bg-white'
                 }`}
             >
                 {isSelected ? (
-                    <Check className={`h-3 w-3 ${
-                        value === 'allow' ? 'text-emerald-600' :
-                            'text-rose-600'
+                    <Check className={`h-3 w-3 ${value === 'allow' ? 'text-emerald-600' :
+                        'text-rose-600'
                         }`}
                     />
                 ) : null}
@@ -512,6 +510,19 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
         }
     };
 
+    const openAddModule = () => {
+        if (!canManageAccess) {
+            toast.error('Access denied');
+            return;
+        }
+        setEditingId(null);
+        setFormModule('');
+        setFormAdmin('allow');
+        setFormManager('deny');
+        setFormAssistant('deny');
+        setShowModuleForm(true);
+    };
+
     const openAddRole = () => {
         if (!canManageAccess) {
             toast.error('Access denied');
@@ -814,13 +825,22 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
                             </div>
 
                             {canManageAccess && (
-                                <button
-                                    onClick={openAddUser}
-                                    className="inline-flex items-center px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-semibold rounded-xl"
-                                >
-                                    <UserPlus className="h-4 w-4 mr-2" />
-                                    Add User
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={openAddModule}
+                                        className="inline-flex items-center px-4 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white text-sm font-semibold rounded-xl shadow-sm hover:shadow-md transition-all active:scale-95"
+                                    >
+                                        <Plus className="h-4 w-4 mr-2" />
+                                        Add Access Module
+                                    </button>
+                                    <button
+                                        onClick={openAddUser}
+                                        className="inline-flex items-center px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-semibold rounded-xl shadow-sm hover:shadow-md transition-all active:scale-95"
+                                    >
+                                        <UserPlus className="h-4 w-4 mr-2" />
+                                        Add User
+                                    </button>
+                                </div>
                             )}
                         </div>
                     </div>
@@ -869,38 +889,38 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
                                                     >
                                                         <span className="capitalize  ">{(r.name || r.key)}</span>
 
-                                                    {canManageAccess && !isCore && (
-                                                        <span className="absolute top-1 right-1 flex items-center gap-1">
-                                                            <button
-                                                                type="button"
-                                                                onClick={(e) => {
-                                                                    e.preventDefault();
-                                                                    e.stopPropagation();
-                                                                    openEditRole(r);
-                                                                }}
-                                                                className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-white/80 hover:bg-white border border-gray-200 text-indigo-600"
-                                                                title="Edit role"
-                                                            >
-                                                                <Pencil className="h-3.5 w-3.5" />
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={(e) => {
-                                                                    e.preventDefault();
-                                                                    e.stopPropagation();
-                                                                    void deleteRole(r.key);
-                                                                }}
-                                                                className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-white/80 hover:bg-white border border-gray-200 text-rose-600"
-                                                                title="Delete role"
-                                                            >
-                                                                <Trash2 className="h-3.5 w-3.5" />
-                                                            </button>
-                                                        </span>
-                                                    )}
-                                                </button>
-                                            </div>
-                                        );
-                                    })}
+                                                        {canManageAccess && !isCore && (
+                                                            <span className="absolute top-1 right-1 flex items-center gap-1">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        e.stopPropagation();
+                                                                        openEditRole(r);
+                                                                    }}
+                                                                    className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-white/80 hover:bg-white border border-gray-200 text-indigo-600"
+                                                                    title="Edit role"
+                                                                >
+                                                                    <Pencil className="h-3.5 w-3.5" />
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        e.stopPropagation();
+                                                                        void deleteRole(r.key);
+                                                                    }}
+                                                                    className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-white/80 hover:bg-white border border-gray-200 text-rose-600"
+                                                                    title="Delete role"
+                                                                >
+                                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                                </button>
+                                                            </span>
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             </div>

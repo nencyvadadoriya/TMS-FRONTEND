@@ -489,10 +489,6 @@ export default function App() {
 
   const isPublicAuthPath = publicAuthPaths.has(pathname);
 
-  if (!token && !isPublicAuthPath) {
-    return <Navigate to={routepath.login} replace />;
-  }
-
   const authOnlyPaths = useMemo(() => {
     return new Set<string>([
       routepath.login,
@@ -504,9 +500,19 @@ export default function App() {
 
   const isAuthOnlyPath = authOnlyPaths.has(pathname);
 
-  if (token && isAuthOnlyPath) {
-    return <Navigate to={routepath.dashboard} replace />;
-  }
+  const redirectElement = useMemo(() => {
+    if (!token && !isPublicAuthPath) {
+      return <Navigate to={routepath.login} replace />;
+    }
+
+    if (token && isAuthOnlyPath) {
+      return <Navigate to={routepath.dashboard} replace />;
+    }
+
+    return null;
+  }, [isAuthOnlyPath, isPublicAuthPath, token]);
+
+  if (redirectElement) return redirectElement;
 
   return (
     <>
