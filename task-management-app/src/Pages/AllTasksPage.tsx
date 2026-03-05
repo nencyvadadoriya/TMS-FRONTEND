@@ -4337,7 +4337,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         dueDate: draft.dueDate,
         priority: (draft.priority || bulkImportDefaults.priority) as BulkPriority,
         taskType: (draft.taskType || bulkImportDefaults.taskType) || undefined,
-        companyName: draft.companyName || effectiveCompanyName || bulkImportDefaults.companyName,
+        companyName: draft.companyName || bulkImportDefaults.companyName,
         brand: draft.brand || bulkImportDefaults.brand,
         rowNumber: draft.rowNumber
       }));
