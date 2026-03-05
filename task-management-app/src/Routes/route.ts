@@ -34,6 +34,7 @@ export const routepath = {
     managerMonthlyRankings: '/manager-monthly-rankings',
     otherWork: '/other-work',
     mdImpexStrike: '/md-impex-strike',
+    mdImpexAccess: '/md-impex-access',
     personalTasks: '/personal-tasks'
 };
 
@@ -132,6 +133,10 @@ export const route = createHashRouter([
             },
             {
                 path: routepath.mdImpexStrike,
+                lazy: lazyComponent(() => import("../Pages/DashboardPage"))
+            },
+            {
+                path: routepath.mdImpexAccess,
                 lazy: lazyComponent(() => import("../Pages/DashboardPage"))
             }
             ,

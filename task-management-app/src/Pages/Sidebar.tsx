@@ -16,7 +16,7 @@ interface SidebarProps {
   isCollapsed: boolean;
   setIsCollapsed: (collapsed: boolean) => void;
   navigateTo: (page: string) => void;
-  currentView?: 'dashboard' | 'all-tasks' | 'calendar' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'analyze' | 'access' | 'assign' | 'speed-ecom-reassign' | 'company-brand-task-types' | 'reviews' | 'manager-monthly-rankings' | 'other-work' | 'md-impex-strike' | 'personal-tasks';
+  currentView?: 'dashboard' | 'all-tasks' | 'calendar' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'analyze' | 'access' | 'assign' | 'speed-ecom-reassign' | 'company-brand-task-types' | 'reviews' | 'manager-monthly-rankings' | 'other-work' | 'md-impex-strike' | 'md-impex-access' | 'personal-tasks';
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -54,9 +54,11 @@ const Sidebar: React.FC<SidebarProps> = ({
   const canSeeAssignPage = hasAccess('assign_page');
   const canSeeReviews = hasAccess('reviews_page');
   const canSeeOtherWork = hasAccess('other_work_page');
+  const canSeeStrike = hasAccess('strike_page');
+  const canSeePersonalTasks = hasAccess('personal_tasks_page');
 
   const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
-  const canSeeMdImpexStrike = roleKey === 'manager' || roleKey === 'md_manager';
+  const canSeeMdImpexAccess = roleKey === 'md_manager';
 
   const getDisplayInitial = () => {
     if (!currentUser) return 'U';
@@ -93,13 +95,17 @@ const Sidebar: React.FC<SidebarProps> = ({
           }
         ]
         : []),
-      {
-        name: 'Personal Tasks',
-        icon: ListTodo,
-        current: currentView === 'personal-tasks',
-        onClick: () => navigateTo('personal-tasks'),
-        badge: 0
-      },
+      ...(canSeePersonalTasks
+        ? [
+          {
+            name: 'Personal Tasks',
+            icon: ListTodo,
+            current: currentView === 'personal-tasks',
+            onClick: () => navigateTo('personal-tasks'),
+            badge: 0
+          }
+        ]
+        : []),
       ...(canSeeCalendar
         ? [
           {
@@ -141,13 +147,24 @@ const Sidebar: React.FC<SidebarProps> = ({
 
     return [
       ...itemsWithRoleGated,
-      ...(canSeeMdImpexStrike
+      ...(canSeeStrike
         ? [
           {
             name: 'Strike',
             icon: AlertTriangle,
             current: currentView === 'md-impex-strike',
             onClick: () => navigateTo('md-impex-strike'),
+            badge: 0
+          }
+        ]
+        : []),
+      ...(canSeeMdImpexAccess
+        ? [
+          {
+            name: 'MD Access',
+            icon: Shield,
+            current: currentView === 'md-impex-access',
+            onClick: () => navigateTo('md-impex-access'),
             badge: 0
           }
         ]
