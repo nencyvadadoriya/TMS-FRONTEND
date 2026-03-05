@@ -85,8 +85,10 @@ const FloatingChat: React.FC<FloatingChatProps> = ({
 
       const currentUserData = currentUserResponse.data;
       const userCompany = currentUserData.companyName || currentUserData.company;
+      const currentRole = String(currentUserData.role || '').trim().toLowerCase();
+      const isAdminLike = currentRole === 'admin' || currentRole === 'super_admin';
 
-      if (!userCompany) {
+      if (!isAdminLike && !userCompany) {
         console.warn('Current user has no company specified');
         setUsers([]);
         return;
@@ -97,10 +99,15 @@ const FloatingChat: React.FC<FloatingChatProps> = ({
       if (response?.success && response?.data) {
         const userList = response.data
           .filter((user: any) => {
-            // Filter users by company (case-insensitive comparison)
+            const role = String(user?.role || '').trim().toLowerCase();
+            const targetIsAdminLike = role === 'admin' || role === 'super_admin';
+
+            if (isAdminLike) return true;
+            if (targetIsAdminLike) return true;
+
+            // For non-admin users: show only same-company users + admin/super_admin
             const userCompanyToCheck = user.companyName || user.company;
-            return userCompanyToCheck && 
-                   userCompanyToCheck.toLowerCase() === userCompany.toLowerCase();
+            return userCompanyToCheck && userCompanyToCheck.toLowerCase() === String(userCompany).toLowerCase();
           })
           .map((user: any) => ({
             id: user._id || user.id,

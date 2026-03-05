@@ -6010,18 +6010,6 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
     const canEditRoleForUser = useCallback((user: any): boolean => {
 
 
@@ -8284,12 +8272,6 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
             const isAmUser = normalizeRole((editingUser as any)?.role) === 'am';
 
-
-
-
-
-
-
             const prevManagerId = ((usersById.get(userId) as any)?.managerId || (usersById.get(String(userId)) as any)?.managerId || '').toString();
 
 
@@ -8364,12 +8346,6 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
             const roleChanged = normalizeRole((usersById.get(userId) as any)?.role) !== normalizeRole((editingUser as any)?.role);
 
-
-
-
-
-
-
             if (roleChanged && canEditRoleForUser(editingUser)) {
 
 
@@ -8380,27 +8356,9 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
                 payload.role = normalizeRole((editingUser as any)?.role) as any;
 
-
-
-
-
-
-
             }
 
-
-
-
-
-
-
             if (isAmUser && nextManagerId && nextManagerId !== prevManagerId) {
-
-
-
-
-
-
 
                 const hRes = await authService.updateAmHierarchy(userId, nextManagerId);
 
@@ -12835,12 +12793,6 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
                                     onChange={(e) => setEditingUser(editingUser ? { ...editingUser, role: e.target.value } : null)}
 
-
-
-
-
-
-
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 
 
@@ -13115,33 +13067,9 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
                             {editingUser?.role === 'assistant' && (
 
-
-
-
-
-
-
                                 null
 
-
-
-
-
-
-
                             )}
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
