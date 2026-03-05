@@ -40,6 +40,7 @@ import AdvancedFiltersPanel from './AdvancedFilters';
 
 const SPEED_E_COM_COMPANY_KEY = 'speed e com';
 const SPEED_E_COM_FIXED_TASK_TYPES = ['Meeting Pending', 'CP Pending', 'Recharge Negative'];
+const MD_IMPEX_COMPANY_NAME = 'MD Impex';
 
 const DEFAULT_TASKS_PER_PAGE = 20;
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 75, 100, 125, 150, 175, 200];
@@ -635,6 +636,35 @@ const BulkImporter = memo(({
     const role = normalizeRole((currentUser as any)?.role);
     const baseUsers = Array.isArray(users) ? users : [];
 
+    if (role === 'troubleshoot_manager') {
+      const allowedEmails = [
+        'drashtismartbiz@gmail.com',
+        'harshsmartbiz@gmail.com',
+        'krunalsmartbiz@gmail.com',
+        'nitishnilaya@gmail.com'
+      ].map((e) => String(e).trim().toLowerCase());
+
+      const allowedSet = new Set(allowedEmails);
+      const allowedUsers = allowedEmails.map((email) => {
+        const found = baseUsers.find((u: any) => normalizeEmail(u?.email) === email);
+        if (found) return found;
+        return {
+          id: email,
+          name: email.split('@')[0] || 'User',
+          email,
+          role: 'user'
+        } as any;
+      });
+
+      return Array.from(
+        new Map(
+          allowedUsers
+            .filter((u: any) => allowedSet.has(normalizeEmail(u?.email)))
+            .map((u: any) => [normalizeEmail(u?.email) || toId(u), u])
+        ).values()
+      );
+    }
+
     const modalCompanyKey = normalizeCompany(defaults.companyName);
     const userCompanyKey = normalizeCompany((currentUser as any)?.companyName || (currentUser as any)?.company);
     const targetCompanyKey = (() => {
@@ -707,6 +737,10 @@ const BulkImporter = memo(({
   const availableCompanyOptions = useMemo(() => {
     const role = String((currentUser as any)?.role || '').trim().toLowerCase();
     const keys = Object.keys(companyBrandMap || {});
+    if (role === 'troubleshoot_manager') {
+      const match = keys.find((k) => String(k).trim().toLowerCase() === 'md impex');
+      return [match || MD_IMPEX_COMPANY_NAME];
+    }
     if (role === 'sbm' || role === 'rm' || role === 'am') {
       const preferred = String(defaults.companyName || '').trim();
       if (preferred) return keys.filter((k) => String(k).trim() === preferred);
@@ -718,6 +752,25 @@ const BulkImporter = memo(({
     return keys;
   }, [companyBrandMap, currentUser, defaults.companyName]);
 
+  const effectiveCompanyName = useMemo(() => {
+    const raw = String(defaults.companyName || '').trim();
+    if (!raw) return '';
+    const keys = Object.keys(companyBrandMap || {});
+    const match = keys.find((k) => String(k).trim().toLowerCase() === raw.toLowerCase());
+    if (match) return match;
+    const optMatch = (availableCompanyOptions || []).find((opt) => String(opt || '').trim().toLowerCase() === raw.toLowerCase());
+    return String(optMatch || raw).trim();
+  }, [availableCompanyOptions, companyBrandMap, defaults.companyName]);
+
+  const companySelectValue = useMemo(() => {
+    const raw = String(defaults.companyName || '').trim();
+    if (!raw) return '';
+    const match = (availableCompanyOptions || []).find((opt) => String(opt || '').trim().toLowerCase() === raw.toLowerCase());
+    if (match) return match;
+    const match2 = (availableCompanyOptions || []).find((opt) => String(opt || '').trim().toLowerCase() === effectiveCompanyName.toLowerCase());
+    return String(match2 || effectiveCompanyName || raw).trim();
+  }, [availableCompanyOptions, defaults.companyName, effectiveCompanyName]);
+
   // Get today's date in YYYY-MM-DD format
   const today = useMemo(() => {
     const date = new Date();
@@ -726,7 +779,7 @@ const BulkImporter = memo(({
 
   // Filter brands based on selected company
   const filteredBrands = useMemo(() => {
-    if (!defaults.companyName || defaults.companyName === 'all') {
+    if (!effectiveCompanyName || effectiveCompanyName === 'all') {
       // Return all unique brands when no company or "all" selected
       if (getBrandsByCompany) {
         return getBrandsByCompany('all');
@@ -734,8 +787,8 @@ const BulkImporter = memo(({
       const allBrands = Object.values(companyBrandMap).flat();
       return [...new Set(allBrands)];
     }
-    return companyBrandMap[defaults.companyName] || [];
-  }, [defaults.companyName, companyBrandMap, getBrandsByCompany]);
+    return companyBrandMap[effectiveCompanyName] || [];
+  }, [companyBrandMap, effectiveCompanyName, getBrandsByCompany]);
 
   const handleFieldChange = useCallback((id: string, field: keyof BulkTaskDraft, value: string) => {
     onDraftsChange(draftTasks.map(task =>
@@ -789,7 +842,7 @@ const BulkImporter = memo(({
         dueDate: defaults.dueDate,
         priority: defaults.priority,
         taskType: defaults.taskType,
-        companyName: defaults.companyName,
+        companyName: effectiveCompanyName || defaults.companyName,
         brand: defaults.brand,
         errors
       };
@@ -799,15 +852,17 @@ const BulkImporter = memo(({
     onDraftsChange([...newDrafts, ...draftTasks]);
     setBulkTaskInput('');
     toast.success(` ${taskTitles.length} tasks added successfully`);
-  }, [bulkTaskInput, defaults, draftTasks, onDraftsChange, today]);
+  }, [bulkTaskInput, defaults, draftTasks, effectiveCompanyName, onDraftsChange, today]);
 
   // Handle company change - reset brand when company changes
   const handleCompanyChange = useCallback((companyName: string) => {
+    const role = String((currentUser as any)?.role || '').trim().toLowerCase();
+    if (role === 'troubleshoot_manager') return;
     onDefaultsChange({
       companyName: companyName,
       brand: '' // Reset brand when company changes
     });
-  }, [onDefaultsChange]);
+  }, [currentUser, onDefaultsChange]);
 
   // Apply default assigner to all tasks
   const handleApplyAssignerToAll = useCallback(() => {
@@ -985,10 +1040,10 @@ const BulkImporter = memo(({
                 </button>
               </div>
               <select
-                value={defaults.companyName}
+                value={companySelectValue}
                 onChange={(e) => handleCompanyChange(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                disabled={availableCompanyOptions.length === 1}
+                disabled={availableCompanyOptions.length === 1 || String((currentUser as any)?.role || '').trim().toLowerCase() === 'troubleshoot_manager'}
               >
                 <option value="">Select company</option>
                 {availableCompanyOptions.map(company => (
@@ -3802,10 +3857,11 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
 
   useEffect(() => {
     const role = (currentUser?.role || '').toString().trim().toLowerCase();
-    if (role !== 'sbm' && role !== 'rm' && role !== 'am') return;
+    if (role !== 'sbm' && role !== 'rm' && role !== 'am' && role !== 'troubleshoot_manager') return;
     setBulkImportDefaults((prev) => {
       const current = (prev?.companyName || '').toString().trim();
       if (current) return prev;
+      if (role === 'troubleshoot_manager') return { ...prev, companyName: MD_IMPEX_COMPANY_NAME };
       const raw = ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
       const normalized = raw ? raw.toLowerCase() : '';
       return { ...prev, companyName: normalized || SPEED_E_COM_COMPANY_KEY };
@@ -4233,6 +4289,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         if (prevCompany) return prevCompany;
 
         const roleKey = (currentUser?.role || '').toString().trim().toLowerCase();
+        if (roleKey === 'troubleshoot_manager') return MD_IMPEX_COMPANY_NAME;
         if (roleKey === 'sbm' || roleKey === 'rm' || roleKey === 'am') return SPEED_E_COM_COMPANY_KEY;
 
         if (companyKeys.length === 1) return companyKeys[0];
@@ -4280,7 +4337,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         dueDate: draft.dueDate,
         priority: (draft.priority || bulkImportDefaults.priority) as BulkPriority,
         taskType: (draft.taskType || bulkImportDefaults.taskType) || undefined,
-        companyName: draft.companyName || bulkImportDefaults.companyName,
+        companyName: draft.companyName || effectiveCompanyName || bulkImportDefaults.companyName,
         brand: draft.brand || bulkImportDefaults.brand,
         rowNumber: draft.rowNumber
       }));

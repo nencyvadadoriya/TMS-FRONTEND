@@ -6478,7 +6478,8 @@ const DashboardPage = () => {
             const allowedEmails = [
                 'drashtismartbiz@gmail.com',
                 'harshsmartbiz@gmail.com',
-                'krunalsmartbiz@gmail.com'
+                'krunalsmartbiz@gmail.com',
+                'nitishnilaya@gmail.com',
             ].map((e) => String(e).trim().toLowerCase());
 
             const allowedSet = new Set(allowedEmails);
