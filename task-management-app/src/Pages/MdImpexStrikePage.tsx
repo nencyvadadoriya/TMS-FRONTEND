@@ -118,8 +118,8 @@ const MdImpexStrikePage = ({
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   const roleKey = useMemo(() => normalizeRoleKey((currentUser as any)?.role), [currentUser]);
-  const canRemoveStrike = roleKey === 'md_manager';
-  const canDeleteTask = roleKey === 'md_manager' || roleKey === 'admin';
+  const canRemoveStrike = roleKey === 'md_manager' || roleKey === 'troubleshoot_manager';
+  const canDeleteTask = roleKey === 'md_manager' || roleKey === 'troubleshoot_manager' || roleKey === 'admin';
 
   useEffect(() => {
     let isMounted = true;
@@ -423,7 +423,7 @@ const MdImpexStrikePage = ({
     await refreshStrike();
   };
 
-  if (roleKey !== 'manager' && roleKey !== 'md_manager' && roleKey !== 'admin') {
+  if (roleKey !== 'manager' && roleKey !== 'md_manager' && roleKey !== 'troubleshoot_manager' && roleKey !== 'admin') {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
         <h2 className="text-xl font-semibold text-gray-900">Strike</h2>

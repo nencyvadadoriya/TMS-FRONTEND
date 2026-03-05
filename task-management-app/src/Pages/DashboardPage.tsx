@@ -6480,6 +6480,7 @@ const DashboardPage = () => {
                 'harshsmartbiz@gmail.com',
                 'krunalsmartbiz@gmail.com',
                 'nitishnilaya@gmail.com',
+                'meetsmartbiz@gmail.com'
             ].map((e) => String(e).trim().toLowerCase());
 
             const allowedSet = new Set(allowedEmails);
@@ -18207,7 +18208,7 @@ const DashboardPage = () => {
 
 
 
-            if (roleKey !== 'manager' && roleKey !== 'md_manager') {
+            if (roleKey !== 'manager' && roleKey !== 'md_manager' && roleKey !== 'troubleshoot_manager') {
 
 
 
@@ -42776,45 +42777,10 @@ const DashboardPage = () => {
 
 
                                                     <div className="p-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl">
-
-
-
-
-
-
-
                                                         <LayoutDashboard className="h-6 w-6 text-white" />
-
-
-
-
-
-
-
                                                     </div>
-
-
-
-
-
-
-
                                                     <h1 className="text-3xl font-bold text-gray-900">
-
-
-
-
-
-
-
                                                         Dashboard
-
-
-
-
-
-
-
                                                     </h1>
 
 
@@ -47596,29 +47562,7 @@ const DashboardPage = () => {
 
 
                                                                                 className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-gray-500 hover:text-rose-700 hover:bg-rose-50"
-
-
-
-
-
-
-
-                                                                                title="Delete"
-
-
-
-
-
-
-
-                                                                            >
-
-
-
-
-
-
-
+                                                                                title="Delete" >
                                                                                 <Trash2 className="h-4 w-4" />
 
 

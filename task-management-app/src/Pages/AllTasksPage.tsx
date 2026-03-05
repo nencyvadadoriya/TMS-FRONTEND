@@ -641,7 +641,8 @@ const BulkImporter = memo(({
         'drashtismartbiz@gmail.com',
         'harshsmartbiz@gmail.com',
         'krunalsmartbiz@gmail.com',
-        'nitishnilaya@gmail.com'
+        'nitishnilaya@gmail.com',
+        'meetsmartbiz@gmail.com'
       ].map((e) => String(e).trim().toLowerCase());
 
       const allowedSet = new Set(allowedEmails);
