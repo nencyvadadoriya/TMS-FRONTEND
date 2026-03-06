@@ -245,8 +245,12 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
                 { key: 'admin', name: 'Administrator' },
                 { key: 'manager', name: 'Manager' },
                 { key: 'assistant', name: 'Assistant' },
+                { key: 'sbm', name: 'SBM' },
+                { key: 'rm', name: 'RM' },
+                { key: 'am', name: 'AM' },
+                { key: 'sales_manager', name: 'Sales Manager' },
+                { key: 'sales_man', name: 'Sales Man' },
             ];
-
             const merged = [...fallback, ...mapped];
             const uniq = new Map<string, RoleItem>();
             merged.forEach(r => {
@@ -839,6 +843,13 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
                                     >
                                         <UserPlus className="h-4 w-4 mr-2" />
                                         Add User
+                                    </button>
+                                    <button
+                                        onClick={openAddRole}
+                                        className="inline-flex items-center px-4 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-sm font-semibold rounded-xl shadow-sm hover:shadow-md transition-all active:scale-95"
+                                    >
+                                        <Plus className="h-4 w-4 mr-2" />
+                                        Add Role
                                     </button>
                                 </div>
                             )}

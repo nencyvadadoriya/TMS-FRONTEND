@@ -1001,6 +1001,12 @@ const DashboardPage = () => {
         const baseUsers = users || [];
         const taskTypeKey = (newTask.taskType || '').toString().trim().toLowerCase();
         const isOtherWork = taskTypeKey === 'other work';
+
+        if (showAddTaskModal && (role === 'sales_manager' || role === 'sales_man')) {
+            const dbgCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim();
+            const dbgManagerId = String((currentUser as any)?.managerId || '').trim();
+            console.log('[AddTask][SalesDebug] role=', role, 'company=', dbgCompany, 'managerId=', dbgManagerId, 'totalUsers=', baseUsers.length);
+        }
         // MD Manager: show Managers of same company
         if (role === 'md_manager') {
             const requesterId = toId(currentUser);
@@ -1050,14 +1056,15 @@ const DashboardPage = () => {
             });
             return filterByCompany(byRole);
         }
-        // Speed E Com specific: SBM / RM / AM can assign to each other within same company
-        if (role === 'sbm' || role === 'rm' || role === 'am' || role === 'ar') {
+        // Speed E Com specific: SBM / RM / AM / Sales Manager / Sales Man can assign to each other/managers
+        if (role === 'sbm' || role === 'rm' || role === 'am' || role === 'ar' || role === 'sales_manager' || role === 'sales_man') {
             const requesterId = toId(currentUser);
             const requesterManagerId = String((currentUser as any)?.managerId || '').trim();
             const adminUsers = baseUsers.filter((u: any) => {
                 const r = normalizeRole(u?.role);
                 return r === 'admin' || r === 'super_admin';
             });
+
             if (role === 'rm') {
                 const selfUser = (baseUsers || []).find((u: any) => {
                     const id = toId(u);
@@ -1082,6 +1089,7 @@ const DashboardPage = () => {
                 });
                 return Array.from(new Map(visible.map((u: any) => [toId(u) || String(u?.email || ''), u])).values());
             }
+
             if (role === 'am') {
                 const selfUser = (baseUsers || []).find((u: any) => {
                     const id = toId(u);
@@ -1107,12 +1115,68 @@ const DashboardPage = () => {
                 });
                 return Array.from(new Map(visible.map((u: any) => [toId(u) || String(u?.email || ''), u])).values());
             }
-            // SBM: keep existing behavior (SBM/RM/AM within same company)
+
+            if (role === 'sales_manager') {
+                const selfUser = (baseUsers || []).find((u: any) => {
+                    const id = toId(u);
+                    const email = String((u as any)?.email || '').trim().toLowerCase();
+                    const myEmail = String((currentUser as any)?.email || '').trim().toLowerCase();
+                    return (requesterId && id === requesterId) || (myEmail && email === myEmail);
+                }) || (currentUser as any);
+                // Can assign to: all sales men in same company, their SBM manager, admin, super admin
+                const salesMen = filterByCompany(baseUsers.filter((u: any) => normalizeRole(u?.role) === 'sales_man'));
+                const allSbms = baseUsers.filter((u: any) => normalizeRole(u?.role) === 'sbm');
+                const mySbm = allSbms.find((u: any) => requesterManagerId && toId(u) === requesterManagerId);
+                const sbmManager = mySbm ? [mySbm] : allSbms.filter((u: any) => filterByCompany([u]).length > 0);
+                const candidates = [...adminUsers, selfUser, ...salesMen, ...sbmManager];
+                const visible = candidates.filter((u: any) => {
+                    const r = normalizeRole(u?.role);
+                    if (r === 'admin' || r === 'super_admin' || r === 'sbm') return true;
+                    return filterByCompany([u]).length > 0;
+                });
+                if (showAddTaskModal) {
+                    console.log('[AddTask][SalesDebug][sales_manager] salesMen=', salesMen.length, 'sbm=', sbmManager.length, 'admins=', adminUsers.length, 'visible=', visible.length);
+                    console.log('[AddTask][SalesDebug][sales_manager] visibleEmails=', visible.map((x: any) => String(x?.email || '').trim()).filter(Boolean));
+                }
+                return Array.from(new Map(visible.map((u: any) => [toId(u) || String(u?.email || ''), u])).values());
+            }
+
+            if (role === 'sales_man') {
+                const selfUser = (baseUsers || []).find((u: any) => {
+                    const id = toId(u);
+                    const email = String((u as any)?.email || '').trim().toLowerCase();
+                    const myEmail = String((currentUser as any)?.email || '').trim().toLowerCase();
+                    return (requesterId && id === requesterId) || (myEmail && email === myEmail);
+                }) || (currentUser as any);
+                // Can assign to: their Sales Manager manager, admin, super admin
+                const allSm = baseUsers.filter((u: any) => normalizeRole(u?.role) === 'sales_manager');
+                const mySm = allSm.find((u: any) => requesterManagerId && toId(u) === requesterManagerId);
+                const salesManager = mySm ? [mySm] : allSm.filter((u: any) => filterByCompany([u]).length > 0);
+                const candidates = [...adminUsers, selfUser, ...salesManager];
+                const visible = candidates.filter((u: any) => {
+                    const r = normalizeRole(u?.role);
+                    if (r === 'admin' || r === 'super_admin' || r === 'sales_manager') return true;
+                    return filterByCompany([u]).length > 0;
+                });
+                if (showAddTaskModal) {
+                    console.log('[AddTask][SalesDebug][sales_man] salesManager=', salesManager.length, 'admins=', adminUsers.length, 'visible=', visible.length);
+                    console.log('[AddTask][SalesDebug][sales_man] visibleEmails=', visible.map((x: any) => String(x?.email || '').trim()).filter(Boolean));
+                }
+                return Array.from(new Map(visible.map((u: any) => [toId(u) || String(u?.email || ''), u])).values());
+            }
+
+            // SBM: RM/AM/Sales Manager within same company
             const byRole = baseUsers.filter((u: any) => {
                 const r = normalizeRole(u?.role);
-                return r === 'sbm' || r === 'rm' || r === 'am';
+                return r === 'sbm' || r === 'rm' || r === 'am' || r === 'sales_manager';
             });
-            return filterByCompany(byRole);
+            const sbmCandidates = [...adminUsers, ...byRole];
+            const visible = sbmCandidates.filter((u: any) => {
+                const r = normalizeRole(u?.role);
+                if (r === 'admin' || r === 'super_admin') return true;
+                return filterByCompany([u]).length > 0;
+            });
+            return Array.from(new Map(visible.map((u: any) => [toId(u) || String(u?.email || ''), u])).values());
         }
         // Admin / Super Admin: all users filtered by selected company when set
         if (role === 'admin' || role === 'super_admin') {
@@ -1365,13 +1429,13 @@ transition-all duration-300 ease-in-out
             if (only) return [only];
             return [SPEED_E_COM_COMPANY_NAME];
         }
-        if (role === 'rm' || role === 'am' || role === 'ar') {
+        if (role === 'rm' || role === 'am' || role === 'ar' || role === 'sales_manager' || role === 'sales_man') {
             const onlyRaw = ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
             const name = resolveFromCompanyList(onlyRaw);
             if (name) return [name];
             return [SPEED_E_COM_COMPANY_NAME];
         }
-        const needsCompanyList = role === 'admin' || role === 'super_admin' || role === 'sbm' || role === 'rm' || role === 'am' || role === 'ar';
+        const needsCompanyList = role === 'admin' || role === 'super_admin' || role === 'sbm' || role === 'rm' || role === 'am' || role === 'ar' || role === 'sales_manager' || role === 'sales_man';
         const fromCompanies = (companies || []).map(c => (c?.name || '').toString().trim()).filter(Boolean);
         if (needsCompanyList && fromCompanies.length > 0) {
             return [...new Set(fromCompanies)].sort();
@@ -1450,7 +1514,7 @@ transition-all duration-300 ease-in-out
     }, [MD_IMPEX_COMPANY_NAME, availableCompanies, (currentUser as any)?.company, (currentUser as any)?.companyName, currentUser?.role]);
     useEffect(() => {
         const role = (currentUser?.role || '').toString().toLowerCase();
-        if (role !== 'rm' && role !== 'am' && role !== 'ar') return;
+        if (role !== 'rm' && role !== 'am' && role !== 'ar' && role !== 'sales_manager' && role !== 'sales_man') return;
         const rawCompany = ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
         const rawKey = rawCompany.replace(/\s+/g, '').toLowerCase();
         const match = (companies || []).find((c: any) => {
@@ -2660,7 +2724,7 @@ transition-all duration-300 ease-in-out
             } else if (requesterRoleKey === 'manager') {
                 if (!isAssistantLike(targetRoleKey)) throw new Error('Only administrators can edit users');
             } else if (requesterRoleKey === 'sbm') {
-                if (targetRoleKey !== 'rm' && targetRoleKey !== 'am') throw new Error('Only administrators can edit users');
+                if (targetRoleKey !== 'rm' && targetRoleKey !== 'am' && targetRoleKey !== 'sales_manager' && targetRoleKey !== 'sales_man') throw new Error('Only administrators can edit users');
             } else if (requesterRoleKey === 'rm') {
                 if (targetRoleKey !== 'am') throw new Error('Only administrators can edit users');
             } else {
@@ -2699,7 +2763,7 @@ transition-all duration-300 ease-in-out
             } else if (requesterRole === 'manager') {
                 if (targetRole !== 'assistant') throw new Error('You do not have permission to create users');
             } else if (requesterRole === 'sbm') {
-                if (targetRole !== 'rm' && targetRole !== 'am') throw new Error('You do not have permission to create users');
+                if (targetRole !== 'rm' && targetRole !== 'am' && targetRole !== 'sales_manager' && targetRole !== 'sales_man') throw new Error('You do not have permission to create users');
             } else if (requesterRole === 'rm') {
                 if (targetRole !== 'am') throw new Error('You do not have permission to create users');
             } else if (requesterRole === 'admin' || requesterRole === 'super_admin') {
@@ -2746,7 +2810,7 @@ transition-all duration-300 ease-in-out
             } else if (requesterRole === 'manager') {
                 if (targetRole !== 'assistant' && targetRole !== 'sub_assistance') throw new Error('Only administrators can delete users');
             } else if (requesterRole === 'sbm') {
-                if (targetRole !== 'rm' && targetRole !== 'am') throw new Error('Only administrators can delete users');
+                if (targetRole !== 'rm' && targetRole !== 'am' && targetRole !== 'sales_manager' && targetRole !== 'sales_man') throw new Error('Only administrators can delete users');
             } else if (requesterRole === 'rm') {
                 if (targetRole !== 'am') throw new Error('Only administrators can delete users');
             } else {

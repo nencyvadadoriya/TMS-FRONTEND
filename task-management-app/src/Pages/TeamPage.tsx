@@ -608,6 +608,22 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+    const isCurrentUserSalesManager = useMemo(() => {
+
+        return currentUserRole === 'sales_manager';
+
+    }, [currentUserRole]);
+
+
+
+    const isCurrentUserSalesMan = useMemo(() => {
+
+        return currentUserRole === 'sales_man';
+
+    }, [currentUserRole]);
+
+
+
     const currentUserIdValue = useMemo(() => {
 
         return (currentUser?.id || (currentUser as any)?._id || '').toString();
@@ -630,9 +646,13 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
             || isCurrentUserRm
 
-            || isCurrentUserAm;
+            || isCurrentUserAm
 
-    }, [isCurrentUserAdmin, isCurrentUserAm, isCurrentUserMdManager, isCurrentUserObManager, isCurrentUserManager, isCurrentUserRm, isCurrentUserSbm]);
+            || isCurrentUserSalesManager
+
+            || isCurrentUserSalesMan;
+
+    }, [isCurrentUserAdmin, isCurrentUserAm, isCurrentUserMdManager, isCurrentUserObManager, isCurrentUserManager, isCurrentUserRm, isCurrentUserSbm, isCurrentUserSalesManager, isCurrentUserSalesMan]);
 
 
 
@@ -838,13 +858,9 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
         if (isCurrentUserSbm) {
-
             const targetRole = normalizeRole(target?.role);
-
-            if (targetRole !== 'rm' && targetRole !== 'am') return false;
-
+            if (targetRole !== 'rm' && targetRole !== 'am' && targetRole !== 'sales_manager' && targetRole !== 'sales_man') return false;
             return true;
-
         }
 
 
@@ -930,9 +946,9 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
         if (r === 'am') return 'AM';
 
         if (r === 'assistant') return 'Assistant';
-
         if (r === 'sub_assistance') return 'Sub Assistance';
-
+        if (r === 'sales_manager') return 'Sales Manager';
+        if (r === 'sales_man') return 'Sales Man';
         return (role || '').toString();
 
     }, [normalizeRole]);
@@ -982,9 +998,11 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                 return 'bg-green-100 text-green-800 border border-green-200';
 
             case 'sub_assistance':
-
                 return 'bg-green-100 text-green-800 border border-green-200';
-
+            case 'sales_manager':
+                return 'bg-indigo-100 text-indigo-800 border border-indigo-200';
+            case 'sales_man':
+                return 'bg-indigo-100 text-indigo-800 border border-indigo-200';
             default:
 
                 return 'bg-gray-100 text-gray-800 border border-gray-200';
@@ -1006,7 +1024,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
         if (r === 'sbm' || r === 'rm' || r === 'am') return <Briefcase className="h-3.5 w-3.5" />;
 
         if (r === 'assistant' || r === 'sub_assistance') return <User className="h-3.5 w-3.5" />;
-
+        if (r === 'sales_manager' || r === 'sales_man') return <Briefcase className="h-3.5 w-3.5" />;
         return <User className="h-3.5 w-3.5" />;
 
     }, [normalizeRole]);
@@ -1136,14 +1154,14 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
         const uid = (userId || '').toString();
 
         const mail = (userEmail || '').toString().trim().toLowerCase();
-        
+
         // Normalize email for matching (strip .deleted. suffix)
         const normalizeForMatch = (email: string): string => {
             const e = email.toLowerCase();
             const idx = e.indexOf('.deleted.');
             return idx >= 0 ? e.slice(0, idx) : e;
         };
-        
+
         const targetEmail = normalizeForMatch(mail);
 
         const list = Array.isArray(tasks) ? tasks : [];
@@ -1190,7 +1208,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                 }
 
             }
-            
+
             // Normalize assigned email for comparison
             const assignedEmailBase = normalizeForMatch(assignedEmail);
 
@@ -1318,10 +1336,9 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
         if (requester === 'manager') return target === 'assistant';
 
-        if (requester === 'sbm') return target === 'rm';
-
+        if (requester === 'sbm') return target === 'rm' || target === 'sales_manager' || target === 'sales_man';
         if (requester === 'rm') return target === 'am';
-
+        if (requester === 'sales_manager') return target === 'sales_man';
         return false;
 
     }, [currentUserRole, normalizeRole]);
@@ -1373,7 +1390,8 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                 { key: 'assistant', name: 'Assistant' },
 
                 { key: 'sub_assistance', name: 'Sub Assistance' },
-
+                { key: 'sales_manager', name: 'Sales Manager' },
+                { key: 'sales_man', name: 'Sales Man' },
             ];
 
 
@@ -1413,11 +1431,10 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                 { key: 'rm', name: 'RM' },
 
                 { key: 'am', name: 'AM' },
-
                 { key: 'assistant', name: 'Assistant' },
-
                 { key: 'sub_assistance', name: 'Sub Assistance' },
-
+                { key: 'sales_manager', name: 'Sales Manager' },
+                { key: 'sales_man', name: 'Sales Man' },
             ]);
 
         } finally {
@@ -1537,11 +1554,11 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
         }
 
         if (role === 'sbm') {
-
-            return [{ key: 'rm', name: 'RM' }, { key: 'am', name: 'AM' }];
-
+            return [{ key: 'rm', name: 'RM' }, { key: 'am', name: 'AM' }, { key: 'sales_manager', name: 'Sales Manager' }, { key: 'sales_man', name: 'Sales Man' }];
         }
-
+        if (role === 'sales_manager') {
+            return [{ key: 'sales_man', name: 'Sales Man' }];
+        }
         if (role === 'rm') {
 
             return [{ key: 'am', name: 'AM' }];
@@ -1602,6 +1619,17 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
     }, [addAdminId, addModalUserPool, normalizeRole]);
 
+
+
+    const salesManagerCandidates = useMemo(() => {
+        return (addModalUserPool || [])
+            .filter((u) => normalizeRole(u?.role) === 'sales_manager')
+            .filter((u) => {
+                if (!addSbmId) return true;
+                return (u as any)?.managerId?.toString() === addSbmId;
+            })
+            .sort((a, b) => (a?.name || '').localeCompare(b?.name || ''));
+    }, [addModalUserPool, addSbmId, normalizeRole]);
 
 
     const rmCandidates = useMemo(() => {
@@ -1986,11 +2014,37 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                     toast.error('Please select RM');
 
                     return;
-
                 }
-
                 resolvedManagerId = addRmId;
+            }
 
+            if (selectedAddRoleKey === 'sales_manager') {
+                if (!addAdminId) {
+                    toast.error('Please select admin');
+                    return;
+                }
+                if (!addSbmId) {
+                    toast.error('Please select SBM');
+                    return;
+                }
+                resolvedManagerId = addSbmId;
+            }
+
+            if (selectedAddRoleKey === 'sales_man') {
+                if (!addAdminId) {
+                    toast.error('Please select admin');
+                    return;
+                }
+                if (!addSbmId) {
+                    toast.error('Please select SBM');
+                    return;
+                }
+                const addSalesManagerId = (newUser as any).salesManagerId;
+                if (!addSalesManagerId) {
+                    toast.error('Please select Sales Manager');
+                    return;
+                }
+                resolvedManagerId = addSalesManagerId;
             }
 
 
@@ -2801,14 +2855,14 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
                 const countByRole = (roleKey: string) => uniqueUsers.filter((u) => normalizeRole((u as any)?.role) === roleKey).length;
 
-                const speedHierarchyRoles = new Set(['sbm', 'rm', 'am']);
+                const speedHierarchyRoles = new Set(['sbm', 'rm', 'am', 'sales_manager', 'sales_man']);
                 const speedHierarchyUsers = uniqueUsers.filter((u) => speedHierarchyRoles.has(normalizeRole((u as any)?.role)));
                 const speedHierarchyUserIds = new Set(speedHierarchyUsers.map((u) => uniqueKeyForUser(u)).filter(Boolean));
                 const speedHierarchyCount = Array.from(speedHierarchyUserIds).length;
 
                 const totalCount = isSpeedEcomSelected ? speedHierarchyCount : uniqueUsers.length;
 
-                const roleOrder = ['md_manager', 'ob_manager', 'manager', 'sbm', 'rm', 'am', 'assistant', 'sub_assistance'];
+                const roleOrder = ['md_manager', 'ob_manager', 'manager', 'sbm', 'rm', 'am', 'sales_manager', 'sales_man', 'assistant', 'sub_assistance'];
 
                 const roleLabels: Record<string, string> = {
                     md_manager: 'MD Manager',
@@ -2817,6 +2871,8 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                     sbm: 'SBM',
                     rm: 'RM',
                     am: 'AM',
+                    sales_manager: 'Sales Manager',
+                    sales_man: 'Sales Man',
                     assistant: 'Assistants',
                     sub_assistance: 'Sub Assistance'
                 };
@@ -2828,6 +2884,8 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                     sbm: 'bg-amber-50 border-amber-200',
                     rm: 'bg-cyan-50 border-cyan-200',
                     am: 'bg-emerald-50 border-emerald-200',
+                    sales_manager: 'bg-blue-50 border-blue-200',
+                    sales_man: 'bg-sky-50 border-sky-200',
                     assistant: 'bg-green-50 border-green-200',
                     sub_assistance: 'bg-green-50 border-green-200'
                 };
@@ -2839,6 +2897,8 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                     sbm: 'text-amber-700',
                     rm: 'text-cyan-700',
                     am: 'text-emerald-700',
+                    sales_manager: 'text-blue-700',
+                    sales_man: 'text-sky-700',
                     assistant: 'text-green-700',
                     sub_assistance: 'text-green-700'
                 };
@@ -2854,6 +2914,8 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                     if (roleKey === 'manager') return isCurrentUserMdManager || isCurrentUserObManager || isCurrentUserManager;
 
                     if (roleKey === 'sbm' || roleKey === 'rm' || roleKey === 'am') return isCurrentUserSbm || isCurrentUserRm || isCurrentUserAm;
+
+                    if (roleKey === 'sales_manager' || roleKey === 'sales_man') return isSpeedEcomContext || isCurrentUserSbm || isCurrentUserSalesManager || isCurrentUserSalesMan;
 
                     if (roleKey === 'assistant' || roleKey === 'sub_assistance') return true;
 
@@ -3963,6 +4025,115 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                                     )}
 
 
+
+                                    {selectedAddRoleKey === 'sales_manager' && (
+                                        <>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Admin</label>
+                                                <select
+                                                    value={addAdminId}
+                                                    onChange={(e) => {
+                                                        const next = e.target.value;
+                                                        setAddAdminId(next);
+                                                        setAddSbmId('');
+                                                        setNewUser({ ...newUser, managerId: undefined });
+                                                    }}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                >
+                                                    <option value="">Select admin</option>
+                                                    {adminCandidates.map((u) => (
+                                                        <option key={getUserIdValue(u)} value={getUserIdValue(u)}>
+                                                            {u.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">SBM</label>
+                                                <select
+                                                    value={addSbmId}
+                                                    onChange={(e) => {
+                                                        const next = e.target.value;
+                                                        setAddSbmId(next);
+                                                        setNewUser({ ...newUser, managerId: next || undefined });
+                                                    }}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                >
+                                                    <option value="">Select SBM</option>
+                                                    {sbmCandidates.map((u) => (
+                                                        <option key={getUserIdValue(u)} value={getUserIdValue(u)}>
+                                                            {u.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {selectedAddRoleKey === 'sales_man' && (
+                                        <>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Admin</label>
+                                                <select
+                                                    value={addAdminId}
+                                                    onChange={(e) => {
+                                                        const next = e.target.value;
+                                                        setAddAdminId(next);
+                                                        setAddSbmId('');
+                                                        setNewUser({ ...newUser, managerId: undefined });
+                                                    }}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                >
+                                                    <option value="">Select admin</option>
+                                                    {adminCandidates.map((u) => (
+                                                        <option key={getUserIdValue(u)} value={getUserIdValue(u)}>
+                                                            {u.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">SBM</label>
+                                                <select
+                                                    value={addSbmId}
+                                                    onChange={(e) => {
+                                                        const next = e.target.value;
+                                                        setAddSbmId(next);
+                                                        setNewUser({ ...newUser, managerId: undefined });
+                                                    }}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                >
+                                                    <option value="">Select SBM</option>
+                                                    {sbmCandidates.map((u) => (
+                                                        <option key={getUserIdValue(u)} value={getUserIdValue(u)}>
+                                                            {u.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Sales Manager</label>
+                                                <select
+                                                    value={(newUser as any).salesManagerId || ''}
+                                                    onChange={(e) => {
+                                                        const next = e.target.value;
+                                                        setNewUser({ ...newUser, managerId: next || undefined, salesManagerId: next } as any);
+                                                    }}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                >
+                                                    <option value="">Select Sales Manager</option>
+                                                    {salesManagerCandidates.map((u) => (
+                                                        <option key={getUserIdValue(u)} value={getUserIdValue(u)}>
+                                                            {u.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </>
+                                    )}
 
                                     {selectedAddRoleKey === 'am' && (
 
