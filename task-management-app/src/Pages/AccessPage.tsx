@@ -221,6 +221,28 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
                 });
             }
 
+            const hasStrikePage = mapped.some((r) => String(r?.id || '').trim().toLowerCase() === 'strike_page');
+            if (!hasStrikePage) {
+                mapped.push({
+                    id: 'strike_page',
+                    module: 'Strike Page',
+                    admin: 'allow',
+                    manager: 'allow',
+                    assistant: 'deny',
+                });
+            }
+
+            const hasPersonalTasksPage = mapped.some((r) => String(r?.id || '').trim().toLowerCase() === 'personal_tasks_page');
+            if (!hasPersonalTasksPage) {
+                mapped.push({
+                    id: 'personal_tasks_page',
+                    module: 'Personal Tasks Page',
+                    admin: 'allow',
+                    manager: 'allow',
+                    assistant: 'allow',
+                });
+            }
+
             setRows(mapped);
         } catch (e: any) {
             const status = e?.response?.status;
