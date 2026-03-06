@@ -6473,6 +6473,13 @@ const DashboardPage = () => {
 
         const baseUsers = users || [];
 
+        // Always allow super admins/admins to be assignable across companies
+        // (sales roles also need to assign to / receive from super_admin)
+        const adminUsersAnyCompany = baseUsers.filter((u: any) => {
+            const r = normalizeRole((u as any)?.role);
+            return r === 'admin' || r === 'super_admin';
+        });
+
         const myEmailForAddTaskModal = String((currentUser as any)?.email || '').trim().toLowerCase();
         if (myEmailForAddTaskModal === 'nitishnilaya@gmail.com') {
             const allowedEmails = [
@@ -6528,21 +6535,6 @@ const DashboardPage = () => {
 
 
         const isOtherWork = taskTypeKey === 'other work';
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         // MD Manager: show Managers of same company
 
 
@@ -6958,41 +6950,9 @@ const DashboardPage = () => {
 
 
             return filterByCompany(byRole);
-
-
-
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         // Speed E Com specific: SBM / RM / AM can assign to each other within same company
-
-
-
-
-
-
-
         if (role === 'sbm' || role === 'rm' || role === 'am' || role === 'ar') {
-
-
-
-
-
-
-
             const requesterId = toId(currentUser);
 
 
@@ -7034,29 +6994,7 @@ const DashboardPage = () => {
 
 
                 return r === 'admin' || r === 'super_admin';
-
-
-
-
-
-
-
             });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             if (role === 'rm') {
 
 
@@ -7258,29 +7196,7 @@ const DashboardPage = () => {
 
 
                 return Array.from(new Map(visible.map((u: any) => [toId(u) || String(u?.email || ''), u])).values());
-
-
-
-
-
-
-
             }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             if (role === 'am') {
 
 
@@ -7490,93 +7406,31 @@ const DashboardPage = () => {
 
 
                 return Array.from(new Map(visible.map((u: any) => [toId(u) || String(u?.email || ''), u])).values());
+            }
+            // SBM: keep existing behavior (SBM/RM/AM within same company)
+            if (role === 'sbm') {
+                const adminUsers = baseUsers.filter((u: any) => {
+                    const r = normalizeRole(u?.role);
+                    return r === 'admin' || r === 'super_admin';
+                });
 
+                const byRole = baseUsers.filter((u: any) => {
+                    const r = normalizeRole(u?.role);
+                    return r === 'sbm' || r === 'rm' || r === 'am' || r === 'sales_manager';
+                });
 
-
-
-
-
-
+                const scoped = filterByCompany(byRole);
+                const merged = [...adminUsers, ...scoped];
+                return Array.from(new Map(merged.map((u: any) => [toId(u) || String((u as any)?.email || ''), u])).values());
             }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            // SBM: keep existing behavior (SBM/RM/AM within same company)
-
-
-
-
-
-
-
             const byRole = baseUsers.filter((u: any) => {
-
-
-
-
-
-
-
                 const r = normalizeRole(u?.role);
-
-
-
-
-
-
-
                 return r === 'sbm' || r === 'rm' || r === 'am';
-
-
-
-
-
-
-
             });
 
-
-
-
-
-
-
             return filterByCompany(byRole);
-
-
-
-
-
-
-
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         // Admin / Super Admin: all users filtered by selected company when set
 
 
@@ -7618,14 +7472,10 @@ const DashboardPage = () => {
 
 
         // Default: all users within the same company (or selected company if any)
-
-
-
-
-
-
-
-        return filterByCompany(baseUsers);
+        // plus admins/super_admins (any company)
+        const scoped = filterByCompany(baseUsers);
+        const merged = [...adminUsersAnyCompany, ...scoped];
+        return Array.from(new Map(merged.map((u: any) => [toId(u) || String((u as any)?.email || ''), u])).values());
 
 
 
@@ -9788,29 +9638,8 @@ const DashboardPage = () => {
 
 
             return [SPEED_E_COM_COMPANY_NAME];
-
-
-
-
-
-
-
         }
-
-
-
-
-
-
-
         if (role === 'rm' || role === 'am' || role === 'ar') {
-
-
-
-
-
-
-
             const onlyRaw = ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
 
 
@@ -9836,37 +9665,8 @@ const DashboardPage = () => {
 
 
             return [SPEED_E_COM_COMPANY_NAME];
-
-
-
-
-
-
-
         }
-
-
-
-
-
-
-
         const needsCompanyList = role === 'admin' || role === 'super_admin' || role === 'sbm' || role === 'rm' || role === 'am' || role === 'ar';
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         const fromCompanies = (companies || []).map(c => (c?.name || '').toString().trim()).filter(Boolean);
 
 
@@ -10547,29 +10347,7 @@ const DashboardPage = () => {
 
 
         const role = (currentUser?.role || '').toString().toLowerCase();
-
-
-
-
-
-
-
         if (role !== 'rm' && role !== 'am' && role !== 'ar') return;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         const rawCompany = ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
 
 
@@ -20877,21 +20655,7 @@ const DashboardPage = () => {
 
 
             } else if (requesterRoleKey === 'sbm') {
-
-
-
-
-
-
-
                 if (targetRoleKey !== 'rm' && targetRoleKey !== 'am') throw new Error('Only administrators can edit users');
-
-
-
-
-
-
-
             } else if (requesterRoleKey === 'rm') {
 
 
@@ -21191,21 +20955,7 @@ const DashboardPage = () => {
 
 
             } else if (requesterRole === 'sbm') {
-
-
-
-
-
-
-
                 if (targetRole !== 'rm' && targetRole !== 'am') throw new Error('You do not have permission to create users');
-
-
-
-
-
-
-
             } else if (requesterRole === 'rm') {
 
 
@@ -21607,21 +21357,7 @@ const DashboardPage = () => {
 
 
             } else if (requesterRole === 'sbm') {
-
-
-
-
-
-
-
                 if (targetRole !== 'rm' && targetRole !== 'am') throw new Error('Only administrators can delete users');
-
-
-
-
-
-
-
             } else if (requesterRole === 'rm') {
 
 

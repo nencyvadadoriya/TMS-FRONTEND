@@ -2059,9 +2059,9 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-    const currentUserIdValue = useMemo(() => {
-        return (currentUser?.id || (currentUser as any)?._id || '').toString();
-    }, [currentUser]);
+    // const currentUserIdValue = useMemo(() => {
+    //     return (currentUser?.id || (currentUser as any)?._id || '').toString();
+    // }, [currentUser]);
 
 
 
@@ -2382,6 +2382,31 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
         return currentUserRole === 'am';
     }, [currentUserRole]);
 
+
+
+    const isCurrentUserSalesManager = useMemo(() => {
+
+        return currentUserRole === 'sales_manager';
+
+    }, [currentUserRole]);
+
+
+
+    const isCurrentUserSalesMan = useMemo(() => {
+
+        return currentUserRole === 'sales_man';
+
+    }, [currentUserRole]);
+
+
+
+    const currentUserIdValue = useMemo(() => {
+
+        return (currentUser?.id || (currentUser as any)?._id || '').toString();
+
+    }, [currentUser]);
+
+
     const isCurrentUserTroubleshootManager = useMemo(() => {
         return currentUserRole === 'troubleshoot_manager';
     }, [currentUserRole]);
@@ -2394,8 +2419,10 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
             || isCurrentUserSbm
             || isCurrentUserRm
             || isCurrentUserAm
-            || isCurrentUserTroubleshootManager;
-    }, [isCurrentUserAdmin, isCurrentUserAm, isCurrentUserMdManager, isCurrentUserObManager, isCurrentUserManager, isCurrentUserRm, isCurrentUserSbm, isCurrentUserTroubleshootManager]);
+            || isCurrentUserTroubleshootManager
+            || isCurrentUserSalesManager
+            || isCurrentUserSalesMan;
+    }, [isCurrentUserAdmin, isCurrentUserAm, isCurrentUserMdManager, isCurrentUserObManager, isCurrentUserManager, isCurrentUserRm, isCurrentUserSbm, isCurrentUserTroubleshootManager, isCurrentUserSalesManager, isCurrentUserSalesMan]);
 
 
 
@@ -2409,25 +2436,25 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+useEffect(() => {
 
 
-    useEffect(() => {
 
 
 
 
 
+    if (!canViewTeamPage) return;
 
 
-        if (!canViewTeamPage) return;
 
 
 
 
 
+    if (isCurrentUserAdmin) return;
 
 
-        if (isCurrentUserAdmin) return;
 
 
 
@@ -2441,17 +2468,17 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+    const userCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim();
 
 
-        const userCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim();
 
 
 
 
 
+    if (!userCompany) return;
 
 
-        if (!userCompany) return;
 
 
 
@@ -2465,33 +2492,33 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+    const currentKey = normalizeText(filterCompany === 'all' ? '' : filterCompany);
 
 
-        const currentKey = normalizeText(filterCompany === 'all' ? '' : filterCompany);
 
 
 
 
 
+    const desiredKey = normalizeText(userCompany);
 
 
-        const desiredKey = normalizeText(userCompany);
 
 
 
 
 
+    if (!desiredKey) return;
 
 
-        if (!desiredKey) return;
 
 
 
 
 
+    if (currentKey === desiredKey) return;
 
 
-        if (currentKey === desiredKey) return;
 
 
 
@@ -2505,17 +2532,17 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+    setFilterCompany(userCompany);
 
 
-        setFilterCompany(userCompany);
 
 
 
 
 
+}, [canViewTeamPage, currentUser, filterCompany, isCurrentUserAdmin, normalizeText]);
 
 
-    }, [canViewTeamPage, currentUser, filterCompany, isCurrentUserAdmin, normalizeText]);
 
 
 
@@ -2529,25 +2556,25 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+const canManageUsers = useMemo(() => {
 
 
-    const canManageUsers = useMemo(() => {
 
 
 
 
 
+    return isCurrentUserAdmin || isCurrentUserMdManager || isCurrentUserObManager;
 
 
-        return isCurrentUserAdmin || isCurrentUserMdManager || isCurrentUserObManager;
 
 
 
 
 
+}, [isCurrentUserAdmin, isCurrentUserMdManager, isCurrentUserObManager]);
 
 
-    }, [isCurrentUserAdmin, isCurrentUserMdManager, isCurrentUserObManager]);
 
 
 
@@ -2561,25 +2588,25 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+const canManageUsersAsManager = useMemo(() => {
 
 
-    const canManageUsersAsManager = useMemo(() => {
 
 
 
 
 
+    return isCurrentUserManager || isCurrentUserSbm || isCurrentUserRm;
 
 
-        return isCurrentUserManager || isCurrentUserSbm || isCurrentUserRm;
 
 
 
 
 
+}, [isCurrentUserManager, isCurrentUserSbm, isCurrentUserRm]);
 
 
-    }, [isCurrentUserManager, isCurrentUserSbm, isCurrentUserRm]);
 
 
 
@@ -2593,25 +2620,25 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+const normalizeCompanyKey = useCallback((value: unknown): string => {
 
 
-    const normalizeCompanyKey = useCallback((value: unknown): string => {
 
 
 
 
 
+    return String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '');
 
 
-        return String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '');
 
 
 
 
 
+}, []);
 
 
-    }, []);
 
 
 
@@ -2625,153 +2652,1789 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+const getCompanyNameFromUser = useCallback((user: any): string => {
 
 
-    const getCompanyNameFromUser = useCallback((user: any): string => {
 
 
 
 
 
+    if (!user) return '';
 
 
-        if (!user) return '';
 
 
 
 
 
+    const resolveFromCompanies = (rawId: any): string => {
 
 
-        const resolveFromCompanies = (rawId: any): string => {
 
 
 
 
 
+        const id = String(rawId || '').trim();
 
 
-            const id = String(rawId || '').trim();
 
 
 
 
 
+        if (!id) return '';
 
 
-            if (!id) return '';
 
 
 
 
 
+        const list = Array.isArray(companies) ? companies : [];
 
 
-            const list = Array.isArray(companies) ? companies : [];
 
 
 
 
 
+        const match = list.find((c: any) => {
 
 
-            const match = list.find((c: any) => {
 
 
 
 
 
+            const cid = String((c as any)?._id || (c as any)?.id || '').trim();
 
 
-                const cid = String((c as any)?._id || (c as any)?.id || '').trim();
 
 
 
 
 
+            return cid && cid === id;
 
 
-                return cid && cid === id;
 
 
 
 
 
+        });
 
 
-            });
 
 
 
 
 
+        return String((match as any)?.name || '').trim();
 
 
-            return String((match as any)?.name || '').trim();
 
 
 
 
 
+    };
 
 
-        };
 
 
 
 
 
+    const direct = user?.companyName || user?.company;
 
 
-        const direct = user?.companyName || user?.company;
 
 
 
 
 
+    if (typeof direct === 'string') return direct;
 
 
-        if (typeof direct === 'string') return direct;
 
 
 
 
 
+    if (direct && typeof direct === 'object') {
 
 
-        if (direct && typeof direct === 'object') {
 
 
 
 
 
+        const candidate = (direct as any)?.name
 
 
-            const candidate = (direct as any)?.name
 
 
 
 
 
+            || (direct as any)?.companyName
 
 
-                || (direct as any)?.companyName
 
 
 
 
 
+            || (direct as any)?.title;
 
 
-                || (direct as any)?.title;
 
 
 
 
 
+        if (typeof candidate === 'string') return candidate;
 
 
-            if (typeof candidate === 'string') return candidate;
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+    const fallbackCandidate = user?.company?.name || user?.company?.companyName || user?.company?.title;
+
+
+
+
+
+
+
+    if (typeof fallbackCandidate === 'string') return fallbackCandidate;
+
+
+
+
+
+
+
+    const maybeId = user?.companyId || user?.company?._id || user?.company?.id || user?.company;
+
+
+
+
+
+
+
+    const resolvedFromId = resolveFromCompanies(maybeId);
+
+
+
+
+
+
+
+    if (resolvedFromId) return resolvedFromId;
+
+
+
+
+
+
+
+    return '';
+
+
+
+
+
+
+
+}, [companies]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const isSpeedEcomUser = useCallback((user: any): boolean => {
+
+
+
+
+
+
+
+    const companyName = getCompanyNameFromUser(user);
+
+
+
+
+
+
+
+    const key = normalizeCompanyKey(companyName);
+
+
+
+
+
+
+
+    return key === 'speedecom';
+
+
+
+
+
+
+
+}, [getCompanyNameFromUser, normalizeCompanyKey]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const isSpeedEcomContext = useMemo(() => {
+
+
+
+
+
+
+
+    const currentUserCompany = (currentUser as any)?.companyName || (currentUser as any)?.company || '';
+
+
+
+
+
+
+
+    const currentUserKey = normalizeCompanyKey(currentUserCompany);
+
+
+
+
+
+
+
+    if (currentUserKey === 'speedecom') return true;
+
+
+
+
+
+
+
+    const filterKey = normalizeCompanyKey(filterCompany === 'all' ? '' : filterCompany);
+
+
+
+
+
+
+
+    if (filterKey === 'speedecom') return true;
+
+
+
+
+
+
+
+    return false;
+
+
+
+
+
+
+
+}, [currentUser, filterCompany, normalizeCompanyKey]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const canManageTargetUser = useCallback((target: UserType): boolean => {
+
+
+
+
+
+
+
+    const targetId = (target?.id || (target as any)?._id || '').toString();
+
+
+
+
+
+
+
+    if (!targetId) return false;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    if (isCurrentUserAdmin) return true;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    if (isCurrentUserMdManager) {
+
+
+
+
+
+
+
+        const r = normalizeRole(target?.role);
+
+
+
+
+
+
+
+        if (r === 'manager') return true;
+
+
+
+
+
+
+
+        if (r === 'troubleshoot_manager') return true;
+
+
+
+
+
+
+
+        if (r !== 'assistant' && r !== 'sub_assistance') return false;
+
+
+
+
+
+
+
+        return true;
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    if (isCurrentUserObManager) {
+
+
+
+
+
+
+
+        const targetRole = normalizeRole(target?.role);
+
+
+
+
+
+
+
+        const isAssistantLike = targetRole === 'assistant'
+
+
+
+            || targetRole === 'assistance'
+
+
+
+            || targetRole === 'assistence'
+
+
+
+            || targetRole === 'assistece'
+
+
+
+            || targetRole === 'sub_assistance'
+
+
+
+            || targetRole === 'sub_assistence'
+
+
+
+            || targetRole === 'sub_assistece'
+
+
+
+            || targetRole === 'sub_assist'
+
+
+
+            || targetRole === 'sub_assistant'
+
+
+
+            || targetRole.includes('assistant');
+
+
+
+
+
+
+
+        if (!isAssistantLike) return false;
+
+
+
+
+
+
+
+        return true;
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    if (isCurrentUserManager) {
+
+
+
+
+
+
+
+        const targetRole = normalizeRole(target?.role);
+
+
+
+
+
+
+
+        if (targetRole !== 'assistant') return false;
+
+
+
+
+
+
+
+        return true;
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    if (isCurrentUserSbm) {
+        const targetRole = normalizeRole(target?.role);
+        if (targetRole !== 'rm' && targetRole !== 'am' && targetRole !== 'sales_manager' && targetRole !== 'sales_man') return false;
+        return true;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    if (isCurrentUserAm) {
+
+
+
+
+
+
+
+        return isSpeedEcomUser(target);
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    if (isCurrentUserRm) {
+
+
+
+
+
+
+
+        const targetRole = normalizeRole(target?.role);
+
+
+
+
+
+
+
+        if (targetRole !== 'am') return false;
+
+
+
+
+
+
+
+        return true;
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    return false;
+
+
+
+
+
+
+
+}, [currentUserIdValue, isCurrentUserAdmin, isCurrentUserAm, isCurrentUserMdManager, isCurrentUserObManager, isCurrentUserManager, isCurrentUserRm, isCurrentUserSbm, isSpeedEcomUser, normalizeRole]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const getUserIdValue = useCallback((value: any): string => {
+
+
+
+
+
+
+
+    return (value?.id || value?._id || value || '').toString();
+
+
+
+
+
+
+
+}, []);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const usersById = useMemo(() => {
+
+
+
+
+
+
+
+    const map = new Map<string, UserType>();
+
+
+
+
+
+
+
+    const list = ((users && users.length ? users : internalUsers) || []) as UserType[];
+
+
+
+
+
+
+
+    list.forEach((u) => {
+
+
+
+
+
+
+
+        const id = (u?.id || (u as any)?._id || '').toString();
+
+
+
+
+
+
+
+        const oid = ((u as any)?._id || '').toString();
+
+
+
+
+
+
+
+        if (id) map.set(id, u);
+
+
+
+
+
+
+
+        if (oid) map.set(oid, u);
+
+
+
+
+
+
+
+    });
+
+
+
+
+
+
+
+    return map;
+
+
+
+
+
+
+
+}, [internalUsers, users]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const getRoleLabel = useCallback((role: unknown) => {
+
+
+
+
+
+
+
+    const r = normalizeRole(role);
+
+
+
+
+
+
+
+    if (!r) return '';
+
+
+
+
+
+
+
+    if (r === 'super_admin') return 'Super Admin';
+
+
+
+
+
+
+
+    if (r === 'admin') return 'Admin';
+
+
+
+
+
+
+
+    if (r === 'md_manager') return 'MD Manager';
+
+
+
+
+
+
+
+    if (r === 'ob_manager') return 'OB Manager';
+
+
+
+
+
+
+
+    if (r === 'manager') return 'Manager';
+
+
+
+
+
+
+
+    if (r === 'sbm') return 'SBM';
+
+
+
+
+
+
+
+    if (r === 'rm') return 'RM';
+
+
+
+
+
+
+
+    if (r === 'am') return 'AM';
+
+
+
+
+
+
+
+    if (r === 'assistant') return 'Assistant';
+    if (r === 'sub_assistance') return 'Sub Assistance';
+    if (r === 'sales_manager') return 'Sales Manager';
+    if (r === 'sales_man') return 'Sales Man';
+    return (role || '').toString();
+
+
+
+
+
+
+
+}, [normalizeRole]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const getRoleBadgeColor = useCallback((role: unknown) => {
+
+
+
+
+
+
+
+    const r = normalizeRole(role);
+
+
+
+
+
+
+
+    switch (r) {
+
+
+
+
+
+
+
+        case 'super_admin':
+
+
+
+
+
+
+
+            return 'bg-purple-100 text-purple-800 border border-purple-200';
+
+
+
+
+
+
+
+        case 'admin':
+
+
+
+
+
+
+
+            return 'bg-purple-100 text-purple-800 border border-purple-200';
+
+
+
+
+
+
+
+        case 'md_manager':
+
+
+
+
+
+
+
+            return 'bg-blue-100 text-blue-800 border border-blue-200';
+
+
+
+
+
+
+
+        case 'ob_manager':
+
+
+
+
+
+
+
+            return 'bg-blue-100 text-blue-800 border border-blue-200';
+
+
+
+
+
+
+
+        case 'manager':
+
+
+
+
+
+
+
+            return 'bg-blue-100 text-blue-800 border border-blue-200';
+
+
+
+
+
+
+
+        case 'sbm':
+
+
+
+
+
+
+
+            return 'bg-amber-100 text-amber-800 border border-amber-200';
+
+
+
+
+
+
+
+        case 'rm':
+
+
+
+
+
+
+
+            return 'bg-amber-100 text-amber-800 border border-amber-200';
+
+
+
+
+
+
+
+        case 'am':
+
+
+
+
+
+
+
+            return 'bg-amber-100 text-amber-800 border border-amber-200';
+
+
+
+
+
+
+
+        case 'assistant':
+
+
+
+
+
+
+
+            return 'bg-green-100 text-green-800 border border-green-200';
+
+
+
+
+
+
+
+        case 'sub_assistance':
+            return 'bg-green-100 text-green-800 border border-green-200';
+        case 'sales_manager':
+            return 'bg-indigo-100 text-indigo-800 border border-indigo-200';
+        case 'sales_man':
+            return 'bg-indigo-100 text-indigo-800 border border-indigo-200';
+        default:
+
+
+
+
+
+
+
+            return 'bg-gray-100 text-gray-800 border border-gray-200';
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+}, [normalizeRole]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const getRoleIcon = useCallback((role: unknown) => {
+
+
+
+
+
+
+
+    const r = normalizeRole(role);
+
+
+
+
+
+
+
+    if (r === 'super_admin' || r === 'admin') return <Shield className="h-3.5 w-3.5" />;
+
+
+
+
+
+
+
+    if (r === 'md_manager' || r === 'ob_manager' || r === 'manager') return <UserCog className="h-3.5 w-3.5" />;
+
+
+
+
+
+
+
+    if (r === 'sbm' || r === 'rm' || r === 'am') return <Briefcase className="h-3.5 w-3.5" />;
+
+
+
+
+
+
+
+    if (r === 'assistant' || r === 'sub_assistance') return <User className="h-3.5 w-3.5" />;
+    if (r === 'sales_manager' || r === 'sales_man') return <Briefcase className="h-3.5 w-3.5" />;
+    return <User className="h-3.5 w-3.5" />;
+
+
+
+
+
+
+
+}, [normalizeRole]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const getReportingChain = useCallback((user: UserType) => {
+
+
+
+
+
+
+
+    const chain: UserType[] = [];
+
+
+
+
+
+
+
+    const visited = new Set<string>();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    let currentManagerId = (user?.managerId || '').toString();
+
+
+
+
+
+
+
+    let depth = 0;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    while (currentManagerId && depth < 20) {
+
+
+
+
+
+
+
+        if (visited.has(currentManagerId)) break;
+
+
+
+
+
+
+
+        visited.add(currentManagerId);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        const manager = usersById.get(currentManagerId);
+
+
+
+
+
+
+
+        if (!manager) break;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        chain.push(manager);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        const nextId = (manager?.managerId || '').toString();
+
+
+
+
+
+
+
+        currentManagerId = nextId;
+
+
+
+
+
+
+
+        depth += 1;
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    return chain;
+
+
+
+
+
+
+
+}, [usersById]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const companyOptions = useMemo(() => {
+
+
+
+
+
+
+
+    const fromCompanies = (companies || [])
+
+
+
+
+
+
+
+        .map((c) => (c?.name || '').toString().trim())
+
+
+
+
+
+
+
+        .filter(Boolean);
+
+
+
+
+
+
+
+    const fromUsers = (users || [])
+
+
+
+
+
+
+
+        .map((u) => ((u as any)?.companyName || (u as any)?.company || '').toString().trim())
+
+
+
+
+
+
+
+        .filter(Boolean);
+
+
+
+
+
+
+
+    const merged = [...fromCompanies, ...fromUsers];
+
+
+
+
+
+
+
+    const uniq = new Map<string, string>();
+
+
+
+
+
+
+
+    merged.forEach((name) => {
+
+
+
+
+
+
+
+        const key = normalizeText(name);
+
+
+
+
+
+
+
+        if (!key) return;
+
+
+
+
+
+
+
+        if (!uniq.has(key)) uniq.set(key, name);
+
+
+
+
+
+
+
+    });
+
+
+
+
+
+
+
+    return Array.from(uniq.values()).sort((a, b) => a.localeCompare(b));
+
+
+
+
+
+
+
+}, [companies, normalizeText, users]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const isTeamCompanyForced = useMemo(() => {
+
+
+
+
+
+
+
+    if (isCurrentUserAdmin) return false;
+
+
+
+
+
+
+
+    const companyName = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim();
+
+
+
+
+
+
+
+    return Boolean(companyName);
+
+
+
+
+
+
+
+}, [currentUser, isCurrentUserAdmin]);
+
+const companyScopedUsers = useMemo(() => {
+
+    const companyKey = normalizeText(filterCompany === 'all' ? '' : filterCompany);
+
+    if (!companyKey) return (users || []);
+
+    return (users || []).filter((u: UserType) => normalizeText((u as any)?.companyName || (u as any)?.company || '') === companyKey);
+
+}, [filterCompany, normalizeText, users]);
+
+const visibleUsers = useMemo(() => {
+
+    const roleKey = normalizeRole(filterRole);
+
+    if (!roleKey || roleKey === 'all') return companyScopedUsers;
+
+    return companyScopedUsers.filter((u: UserType) => normalizeRole(u?.role) === roleKey);
+
+}, [companyScopedUsers, filterRole, normalizeRole]);
+
+const getUserStats = useCallback((userId: string, userEmail: string) => {
+
+
+
+
+
+
+
+    const uid = (userId || '').toString();
+
+
+
+
+
+
+
+    const mail = (userEmail || '').toString().trim().toLowerCase();
+
+    // Normalize email for matching (strip .deleted. suffix)
+
+
+
+    const normalizeForMatch = (email: string): string => {
+
+
+
+        const e = email.toLowerCase();
+
+
+
+        const idx = e.indexOf('.deleted.');
+
+
+
+        return idx >= 0 ? e.slice(0, idx) : e;
+
+
+
+    };
+
+    const targetEmail = normalizeForMatch(mail);
+
+
+
+
+
+
+
+    const list = Array.isArray(tasks) ? tasks : [];
+
+
+
+
+
+
+
+    let totalAssigned = 0;
+
+
+
+
+
+
+
+    let completed = 0;
+
+
+
+
+
+
+
+    let pending = 0;
+
+
+
+
+
+
+
+    let overdue = 0;
+
+
+
+
+
+
+
+    for (const t of list) {
+
+
+
+
+
+
+
+        const assignedTo: any = (t as any)?.assignedTo;
+
+
+
+
+
+
+
+        let assignedId = '';
+
+
+
+
+
+
+
+        let assignedEmail = '';
+
+
+
+
+
+
+
+        if (typeof assignedTo === 'string') {
+
+
+
+
+
+
+
+            assignedId = assignedTo;
+
+
+
+            assignedEmail = assignedTo.toLowerCase();
+
+
+
+
+
+
+
+        } else if (assignedTo && typeof assignedTo === 'object') {
+
+
+
+
+
+
+
+            assignedId = (assignedTo?.id || assignedTo?._id || '').toString();
+
+
+
+
+
+
+
+            assignedEmail = (assignedTo?.email || '').toString().trim().toLowerCase();
 
 
 
@@ -2787,7 +4450,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        const fallbackCandidate = user?.company?.name || user?.company?.companyName || user?.company?.title;
+        if (!assignedEmail) {
 
 
 
@@ -2795,7 +4458,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        if (typeof fallbackCandidate === 'string') return fallbackCandidate;
+            const assignedToUser: any = (t as any)?.assignedToUser;
 
 
 
@@ -2803,7 +4466,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        const maybeId = user?.companyId || user?.company?._id || user?.company?.id || user?.company;
+            if (assignedToUser && typeof assignedToUser === 'object') {
 
 
 
@@ -2811,7 +4474,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        const resolvedFromId = resolveFromCompanies(maybeId);
+                assignedEmail = (assignedToUser?.email || '').toString().trim().toLowerCase();
 
 
 
@@ -2819,7 +4482,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        if (resolvedFromId) return resolvedFromId;
+                if (!assignedId) assignedId = (assignedToUser?.id || assignedToUser?._id || '').toString();
 
 
 
@@ -2827,7 +4490,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        return '';
+            }
 
 
 
@@ -2835,11 +4498,13 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-    }, [companies]);
+        }
 
+        // Normalize assigned email for comparison
 
 
 
+        const assignedEmailBase = normalizeForMatch(assignedEmail);
 
 
 
@@ -2847,46 +4512,47 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+        const matches = (uid && assignedId && assignedId.toString() === uid)
 
 
 
 
-    const isSpeedEcomUser = useCallback((user: any): boolean => {
 
 
 
+            || (targetEmail && assignedEmailBase && assignedEmailBase === targetEmail);
 
 
 
 
-        const companyName = getCompanyNameFromUser(user);
 
 
 
+        if (!matches) continue;
 
 
 
 
-        const key = normalizeCompanyKey(companyName);
 
 
 
+        totalAssigned += 1;
 
 
 
 
-        return key === 'speedecom';
 
 
 
+        const status = ((t as any)?.status || '').toString();
 
 
 
 
-    }, [getCompanyNameFromUser, normalizeCompanyKey]);
 
 
 
+        if (status === 'completed') completed += 1;
 
 
 
@@ -2894,52 +4560,52 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+        if (status === 'pending' || status === 'in-progress' || status === 'reassigned') pending += 1;
 
 
 
 
 
-    const isSpeedEcomContext = useMemo(() => {
 
 
+        if (isOverdue((t as any)?.dueDate, status)) overdue += 1;
 
 
 
 
 
-        const currentUserCompany = (currentUser as any)?.companyName || (currentUser as any)?.company || '';
 
 
+    }
 
 
 
 
 
-        const currentUserKey = normalizeCompanyKey(currentUserCompany);
 
 
+    const completion = totalAssigned > 0 ? Math.round((completed / totalAssigned) * 100) : 0;
 
 
 
 
 
-        if (currentUserKey === 'speedecom') return true;
 
 
+    return { totalAssigned, completed, pending, overdue, completion };
 
 
 
 
 
-        const filterKey = normalizeCompanyKey(filterCompany === 'all' ? '' : filterCompany);
 
 
+}, [isOverdue, tasks]);
 
 
 
 
 
-        if (filterKey === 'speedecom') return true;
 
 
 
@@ -2947,18 +4613,18 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        return false;
 
 
 
+const filteredAndSortedUsers = useMemo(() => {
 
 
 
 
-    }, [currentUser, filterCompany, normalizeCompanyKey]);
 
 
 
+    const term = (searchTerm || '').toString().trim().toLowerCase();
 
 
 
@@ -2966,30 +4632,31 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+    const base = Array.isArray(visibleUsers) ? visibleUsers : [];
 
 
 
 
 
-    const canManageTargetUser = useCallback((target: UserType): boolean => {
 
 
+    const filtered = !term
 
 
 
 
 
-        const targetId = (target?.id || (target as any)?._id || '').toString();
 
 
+        ? base
 
 
 
 
 
-        if (!targetId) return false;
 
 
+        : base.filter((u) => {
 
 
 
@@ -2997,14 +4664,15 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+            const name = (u?.name || '').toString().toLowerCase();
 
 
 
 
 
 
-        if (isCurrentUserAdmin) return true;
 
+            const email = (u?.email || '').toString().toLowerCase();
 
 
 
@@ -3012,6 +4680,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+            const role = (u?.role || '').toString().toLowerCase();
 
 
 
@@ -3019,467 +4688,443 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+            return name.includes(term) || email.includes(term) || role.includes(term);
+
+
+
+
+
+
+
+        });
+
+
+
+
+
+
+
+    const direction = sortOrder === 'asc' ? 1 : -1;
+
+
+
+
+
+
+
+    const sorted = filtered.slice().sort((a, b) => {
+
+
+
+
+
+
+
+        if (sortBy === 'name') {
+
+
+
+
+
+
+
+            return direction * (a.name || '').localeCompare(b.name || '');
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+        if (sortBy === 'role') {
+
+
+
+
+
+
+
+            return direction * normalizeRole(a.role).localeCompare(normalizeRole(b.role));
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+        if (sortBy === 'tasks') {
+
+
+
+
+
+
+
+            const sa = getUserStats(a.id, a.email).totalAssigned;
+
+
+
+
+
+
+
+            const sb = getUserStats(b.id, b.email).totalAssigned;
+
+
+
+
+
+
+
+            return direction * (sa - sb);
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+        if (sortBy === 'completion') {
+
+
+
+
+
+
+
+            const sa = getUserStats(a.id, a.email).completion;
+
+
+
+
+
+
+
+            const sb = getUserStats(b.id, b.email).completion;
+
+
+
+
+
+
+
+            return direction * (sa - sb);
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+        return 0;
+
+
+
+
+
+
+
+    });
+
+
+
+
+
+
+
+    return sorted;
+
+
+
+
+
+
+
+}, [getUserStats, normalizeRole, searchTerm, sortBy, sortOrder, visibleUsers]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const selectedAddRoleKey = useMemo(() => {
+
+
+
+
+
+
+
+    return normalizeRole(newUser.role);
+
+
+
+
+
+
+
+}, [newUser.role, normalizeRole]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const canAssignRole = useCallback((roleKey: string) => {
+
+
+
+
+
+
+
+    const requester = normalizeRole(currentUserRole);
+
+
+
+
+
+
+
+    const target = normalizeRole(roleKey);
+
+
+
+
+
+
+
+    if (!target) return false;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    if (target === 'super_admin') return false;
+
+
+
+
+
+
+
+    if (requester === 'super_admin') return true;
+
+
+
+
+
+
+
+    if (requester === 'admin') return target !== 'admin' && target !== 'super_admin';
+
+
+
+
+
+
+
+    if (requester === 'md_manager') {
+
+        const baseRoles = ['manager', 'assistant', 'sub_assistance'];
+
+        const customRoles = (availableRoles || []).map((r) => normalizeRole(r.key));
+
+        const allowedRoles = [...baseRoles, ...customRoles];
+
+        return allowedRoles.includes(target);
+
+    }
+
+
+
+
+
+
+
+    if (requester === 'ob_manager') return target === 'assistant';
+
+
+
+
+
+
+
+    if (requester === 'manager') return target === 'assistant';
+
+    if (requester === 'sbm') return target === 'rm' || target === 'sales_manager' || target === 'sales_man';
+    if (requester === 'rm') return target === 'am';
+    if (requester === 'sales_manager') return target === 'sales_man';
+    return false;
+
+
+
+
+
+
+
+}, [currentUserRole, normalizeRole, availableRoles]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const loadRoles = useCallback(async () => {
+    setRolesLoading(true);
+    try {
+        // For MD Manager, use mdImpexAccessService to get roles created via MdImpexAccess
+        // For Admin, use accessService to get all roles from Role model
+        const res = isCurrentUserMdManager
+            ? await mdImpexAccessService.getAllRoles()
+            : await accessService.getRoles();
+
+        let list: any[] = [];
         if (isCurrentUserMdManager) {
-
-
-
-
-
-
-
-            const r = normalizeRole(target?.role);
-
-
-
-
-
-
-
-            if (r === 'manager') return true;
-
-
-
-
-
-
-
-            if (r === 'troubleshoot_manager') return true;
-
-
-
-
-
-
-
-            if (r !== 'assistant' && r !== 'sub_assistance') return false;
-
-
-
-
-
-
-
-            return true;
-
-
-
-
-
-
-
+            // MdImpexAccess returns data in .data property with role field
+            list = Array.isArray((res as any)?.data) ? (res as any).data : [];
+            // Map MdImpexAccess roles to RoleItem format and filter out Speed E Com roles
+            const speedEComKeywords = ['speed', 'ecom', 'speed_ecom', 'speedecom', 'speed-ecom'];
+            list = list
+                .filter((r: any) => {
+                    const roleName = (r.role || '').toLowerCase();
+                    const roleKey = (r.roleKey || '').toLowerCase();
+                    return !speedEComKeywords.some(keyword => roleName.includes(keyword) || roleKey.includes(keyword));
+                })
+                .map((r: any) => ({
+                    key: normalizeRole(r.role),
+                    name: r.role
+                }))
+                .filter((r: RoleItem) => Boolean(r.key));
+        } else {
+            // Admin: accessService returns roles with key and name
+            list = Array.isArray((res as any)?.data) ? (res as any).data : Array.isArray(res) ? (res as any) : [];
+            list = (list || [])
+                .map((r: any) => ({
+                    key: String(r?.key || '').trim().toLowerCase(),
+                    name: String(r?.name || r?.key || '').trim() || String(r?.key || '').trim(),
+                }))
+                .filter((r: RoleItem) => Boolean(r.key));
         }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        if (isCurrentUserObManager) {
-
-
-
-
-
-
-
-            const targetRole = normalizeRole(target?.role);
-
-
-
-
-
-
-
-            const isAssistantLike = targetRole === 'assistant'
-
-
-
-                || targetRole === 'assistance'
-
-
-
-                || targetRole === 'assistence'
-
-
-
-                || targetRole === 'assistece'
-
-
-
-                || targetRole === 'sub_assistance'
-
-
-
-                || targetRole === 'sub_assistence'
-
-
-
-                || targetRole === 'sub_assistece'
-
-
-
-                || targetRole === 'sub_assist'
-
-
-
-                || targetRole === 'sub_assistant'
-
-
-
-                || targetRole.includes('assistant');
-
-
-
-
-
-
-
-            if (!isAssistantLike) return false;
-
-
-
-
-
-
-
-            return true;
-
-
-
-
-
-
-
-        }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        if (isCurrentUserManager) {
-
-
-
-
-
-
-
-            const targetRole = normalizeRole(target?.role);
-
-
-
-
-
-
-
-            if (targetRole !== 'assistant') return false;
-
-
-
-
-
-
-
-            return true;
-
-
-
-
-
-
-
-        }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        if (isCurrentUserSbm) {
-
-
-
-
-
-
-
-            const targetRole = normalizeRole(target?.role);
-
-
-
-
-
-
-
-            if (targetRole !== 'rm' && targetRole !== 'am') return false;
-
-
-
-
-
-
-
-            return true;
-
-
-
-
-
-
-
-        }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        if (isCurrentUserAm) {
-
-
-
-
-
-
-
-            return isSpeedEcomUser(target);
-
-
-
-
-
-
-
-        }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        if (isCurrentUserRm) {
-
-
-
-
-
-
-
-            const targetRole = normalizeRole(target?.role);
-
-
-
-
-
-
-
-            if (targetRole !== 'am') return false;
-
-
-
-
-
-
-
-            return true;
-
-
-
-
-
-
-
-        }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        return false;
-
-
-
-
-
-
-
-    }, [currentUserIdValue, isCurrentUserAdmin, isCurrentUserAm, isCurrentUserMdManager, isCurrentUserObManager, isCurrentUserManager, isCurrentUserRm, isCurrentUserSbm, isSpeedEcomUser, normalizeRole]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    const getUserIdValue = useCallback((value: any): string => {
-
-
-
-
-
-
-
-        return (value?.id || value?._id || value || '').toString();
-
-
-
-
-
-
-
-    }, []);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    const usersById = useMemo(() => {
-
-
-
-
-
-
-
-        const map = new Map<string, UserType>();
-
-
-
-
-
-
-
-        const list = ((users && users.length ? users : internalUsers) || []) as UserType[];
-
-
-
-
-
-
-
-        list.forEach((u) => {
-
-
-
-
-
-
-
-            const id = (u?.id || (u as any)?._id || '').toString();
-
-
-
-
-
-
-
-            const oid = ((u as any)?._id || '').toString();
-
-
-
-
-
-
-
-            if (id) map.set(id, u);
-
-
-
-
-
-
-
-            if (oid) map.set(oid, u);
-
-
-
-
-
-
-
+        const fallback: RoleItem[] = [
+            { key: 'admin', name: 'Admin' },
+            { key: 'md_manager', name: 'MD Manager' },
+            { key: 'ob_manager', name: 'OB Manager' },
+            { key: 'manager', name: 'Manager' },
+            { key: 'sbm', name: 'SBM' },
+            { key: 'rm', name: 'RM' },
+            { key: 'am', name: 'AM' },
+            { key: 'assistant', name: 'Assistant' },
+            { key: 'sub_assistance', name: 'Sub Assistance' },
+            { key: 'sales_manager', name: 'Sales Manager' },
+            { key: 'sales_man', name: 'Sales Man' },
+        ];
+
+        const merged = [...fallback, ...list];
+
+        const uniq = new Map<string, RoleItem>();
+
+        merged.forEach((r) => {
+            const k = normalizeRole(r.key);
+            if (!k) return;
+            if (!uniq.has(k)) uniq.set(k, { key: k, name: r.name || r.key });
         });
 
+        setAvailableRoles(Array.from(uniq.values()));
+    } catch {
+        setAvailableRoles([
+            { key: 'admin', name: 'Admin' },
+            { key: 'md_manager', name: 'MD Manager' },
+            { key: 'ob_manager', name: 'OB Manager' },
+            { key: 'manager', name: 'Manager' },
+            { key: 'sbm', name: 'SBM' },
+            { key: 'rm', name: 'RM' },
+            { key: 'am', name: 'AM' },
+            { key: 'assistant', name: 'Assistant' },
+            { key: 'sub_assistance', name: 'Sub Assistance' },
+            { key: 'sales_manager', name: 'Sales Manager' },
+            { key: 'sales_man', name: 'Sales Man' },
+        ]);
+    } finally {
+        setRolesLoading(false);
+    }
+}, [normalizeRole, isCurrentUserMdManager]);
 
 
 
 
 
 
-        return map;
 
 
 
@@ -3487,9 +5132,9 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-    }, [internalUsers, users]);
 
 
+const loadCompanies = useCallback(async () => {
 
 
 
@@ -3497,1994 +5142,15 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+    setCompaniesLoading(true);
 
 
 
 
 
 
-    const getRoleLabel = useCallback((role: unknown) => {
 
-
-
-
-
-
-
-        const r = normalizeRole(role);
-
-
-
-
-
-
-
-        if (!r) return '';
-
-
-
-
-
-
-
-        if (r === 'super_admin') return 'Super Admin';
-
-
-
-
-
-
-
-        if (r === 'admin') return 'Admin';
-
-
-
-
-
-
-
-        if (r === 'md_manager') return 'MD Manager';
-
-
-
-
-
-
-
-        if (r === 'ob_manager') return 'OB Manager';
-
-
-
-
-
-
-
-        if (r === 'manager') return 'Manager';
-
-
-
-
-
-
-
-        if (r === 'sbm') return 'SBM';
-
-
-
-
-
-
-
-        if (r === 'rm') return 'RM';
-
-
-
-
-
-
-
-        if (r === 'am') return 'AM';
-
-
-
-
-
-
-
-        if (r === 'assistant') return 'Assistant';
-
-
-
-
-
-
-
-        if (r === 'sub_assistance') return 'Sub Assistance';
-
-
-
-
-
-
-
-        return (role || '').toString();
-
-
-
-
-
-
-
-    }, [normalizeRole]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    const getRoleBadgeColor = useCallback((role: unknown) => {
-
-
-
-
-
-
-
-        const r = normalizeRole(role);
-
-
-
-
-
-
-
-        switch (r) {
-
-
-
-
-
-
-
-            case 'super_admin':
-
-
-
-
-
-
-
-                return 'bg-purple-100 text-purple-800 border border-purple-200';
-
-
-
-
-
-
-
-            case 'admin':
-
-
-
-
-
-
-
-                return 'bg-purple-100 text-purple-800 border border-purple-200';
-
-
-
-
-
-
-
-            case 'md_manager':
-
-
-
-
-
-
-
-                return 'bg-blue-100 text-blue-800 border border-blue-200';
-
-
-
-
-
-
-
-            case 'ob_manager':
-
-
-
-
-
-
-
-                return 'bg-blue-100 text-blue-800 border border-blue-200';
-
-
-
-
-
-
-
-            case 'manager':
-
-
-
-
-
-
-
-                return 'bg-blue-100 text-blue-800 border border-blue-200';
-
-
-
-
-
-
-
-            case 'sbm':
-
-
-
-
-
-
-
-                return 'bg-amber-100 text-amber-800 border border-amber-200';
-
-
-
-
-
-
-
-            case 'rm':
-
-
-
-
-
-
-
-                return 'bg-amber-100 text-amber-800 border border-amber-200';
-
-
-
-
-
-
-
-            case 'am':
-
-
-
-
-
-
-
-                return 'bg-amber-100 text-amber-800 border border-amber-200';
-
-
-
-
-
-
-
-            case 'assistant':
-
-
-
-
-
-
-
-                return 'bg-green-100 text-green-800 border border-green-200';
-
-
-
-
-
-
-
-            case 'sub_assistance':
-
-
-
-
-
-
-
-                return 'bg-green-100 text-green-800 border border-green-200';
-
-
-
-
-
-
-
-            default:
-
-
-
-
-
-
-
-                return 'bg-gray-100 text-gray-800 border border-gray-200';
-
-
-
-
-
-
-
-        }
-
-
-
-
-
-
-
-    }, [normalizeRole]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    const getRoleIcon = useCallback((role: unknown) => {
-
-
-
-
-
-
-
-        const r = normalizeRole(role);
-
-
-
-
-
-
-
-        if (r === 'super_admin' || r === 'admin') return <Shield className="h-3.5 w-3.5" />;
-
-
-
-
-
-
-
-        if (r === 'md_manager' || r === 'ob_manager' || r === 'manager') return <UserCog className="h-3.5 w-3.5" />;
-
-
-
-
-
-
-
-        if (r === 'sbm' || r === 'rm' || r === 'am') return <Briefcase className="h-3.5 w-3.5" />;
-
-
-
-
-
-
-
-        if (r === 'assistant' || r === 'sub_assistance') return <User className="h-3.5 w-3.5" />;
-
-
-
-
-
-
-
-        return <User className="h-3.5 w-3.5" />;
-
-
-
-
-
-
-
-    }, [normalizeRole]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    const getReportingChain = useCallback((user: UserType) => {
-
-
-
-
-
-
-
-        const chain: UserType[] = [];
-
-
-
-
-
-
-
-        const visited = new Set<string>();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        let currentManagerId = (user?.managerId || '').toString();
-
-
-
-
-
-
-
-        let depth = 0;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        while (currentManagerId && depth < 20) {
-
-
-
-
-
-
-
-            if (visited.has(currentManagerId)) break;
-
-
-
-
-
-
-
-            visited.add(currentManagerId);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            const manager = usersById.get(currentManagerId);
-
-
-
-
-
-
-
-            if (!manager) break;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            chain.push(manager);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            const nextId = (manager?.managerId || '').toString();
-
-
-
-
-
-
-
-            currentManagerId = nextId;
-
-
-
-
-
-
-
-            depth += 1;
-
-
-
-
-
-
-
-        }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        return chain;
-
-
-
-
-
-
-
-    }, [usersById]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    const companyOptions = useMemo(() => {
-
-
-
-
-
-
-
-        const fromCompanies = (companies || [])
-
-
-
-
-
-
-
-            .map((c) => (c?.name || '').toString().trim())
-
-
-
-
-
-
-
-            .filter(Boolean);
-
-
-
-
-
-
-
-        const fromUsers = (users || [])
-
-
-
-
-
-
-
-            .map((u) => ((u as any)?.companyName || (u as any)?.company || '').toString().trim())
-
-
-
-
-
-
-
-            .filter(Boolean);
-
-
-
-
-
-
-
-        const merged = [...fromCompanies, ...fromUsers];
-
-
-
-
-
-
-
-        const uniq = new Map<string, string>();
-
-
-
-
-
-
-
-        merged.forEach((name) => {
-
-
-
-
-
-
-
-            const key = normalizeText(name);
-
-
-
-
-
-
-
-            if (!key) return;
-
-
-
-
-
-
-
-            if (!uniq.has(key)) uniq.set(key, name);
-
-
-
-
-
-
-
-        });
-
-
-
-
-
-
-
-        return Array.from(uniq.values()).sort((a, b) => a.localeCompare(b));
-
-
-
-
-
-
-
-    }, [companies, normalizeText, users]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    const isTeamCompanyForced = useMemo(() => {
-
-
-
-
-
-
-
-        if (isCurrentUserAdmin) return false;
-
-
-
-
-
-
-
-        const companyName = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim();
-
-
-
-
-
-
-
-        return Boolean(companyName);
-
-
-
-
-
-
-
-    }, [currentUser, isCurrentUserAdmin]);
-
-    const companyScopedUsers = useMemo(() => {
-
-        const companyKey = normalizeText(filterCompany === 'all' ? '' : filterCompany);
-
-        if (!companyKey) return (users || []);
-
-        return (users || []).filter((u: UserType) => normalizeText((u as any)?.companyName || (u as any)?.company || '') === companyKey);
-
-    }, [filterCompany, normalizeText, users]);
-
-    const visibleUsers = useMemo(() => {
-
-        const roleKey = normalizeRole(filterRole);
-
-        if (!roleKey || roleKey === 'all') return companyScopedUsers;
-
-        return companyScopedUsers.filter((u: UserType) => normalizeRole(u?.role) === roleKey);
-
-    }, [companyScopedUsers, filterRole, normalizeRole]);
-
-    const getUserStats = useCallback((userId: string, userEmail: string) => {
-
-
-
-
-
-
-
-        const uid = (userId || '').toString();
-
-
-
-
-
-
-
-        const mail = (userEmail || '').toString().trim().toLowerCase();
-
-
-
-
-
-
-
-        // Normalize email for matching (strip .deleted. suffix)
-
-
-
-        const normalizeForMatch = (email: string): string => {
-
-
-
-            const e = email.toLowerCase();
-
-
-
-            const idx = e.indexOf('.deleted.');
-
-
-
-            return idx >= 0 ? e.slice(0, idx) : e;
-
-
-
-        };
-
-
-
-
-
-
-
-        const targetEmail = normalizeForMatch(mail);
-
-
-
-
-
-
-
-        const list = Array.isArray(tasks) ? tasks : [];
-
-
-
-
-
-
-
-        let totalAssigned = 0;
-
-
-
-
-
-
-
-        let completed = 0;
-
-
-
-
-
-
-
-        let pending = 0;
-
-
-
-
-
-
-
-        let overdue = 0;
-
-
-
-
-
-
-
-        for (const t of list) {
-
-
-
-
-
-
-
-            const assignedTo: any = (t as any)?.assignedTo;
-
-
-
-
-
-
-
-            let assignedId = '';
-
-
-
-
-
-
-
-            let assignedEmail = '';
-
-
-
-
-
-
-
-            if (typeof assignedTo === 'string') {
-
-
-
-
-
-
-
-                assignedId = assignedTo;
-
-
-
-                assignedEmail = assignedTo.toLowerCase();
-
-
-
-
-
-
-
-            } else if (assignedTo && typeof assignedTo === 'object') {
-
-
-
-
-
-
-
-                assignedId = (assignedTo?.id || assignedTo?._id || '').toString();
-
-
-
-
-
-
-
-                assignedEmail = (assignedTo?.email || '').toString().trim().toLowerCase();
-
-
-
-
-
-
-
-            }
-
-
-
-
-
-
-
-            if (!assignedEmail) {
-
-
-
-
-
-
-
-                const assignedToUser: any = (t as any)?.assignedToUser;
-
-
-
-
-
-
-
-                if (assignedToUser && typeof assignedToUser === 'object') {
-
-
-
-
-
-
-
-                    assignedEmail = (assignedToUser?.email || '').toString().trim().toLowerCase();
-
-
-
-
-
-
-
-                    if (!assignedId) assignedId = (assignedToUser?.id || assignedToUser?._id || '').toString();
-
-
-
-
-
-
-
-                }
-
-
-
-
-
-
-
-            }
-
-
-
-
-
-
-
-            // Normalize assigned email for comparison
-
-
-
-            const assignedEmailBase = normalizeForMatch(assignedEmail);
-
-
-
-
-
-
-
-            const matches = (uid && assignedId && assignedId.toString() === uid)
-
-
-
-
-
-
-
-                || (targetEmail && assignedEmailBase && assignedEmailBase === targetEmail);
-
-
-
-
-
-
-
-            if (!matches) continue;
-
-
-
-
-
-
-
-            totalAssigned += 1;
-
-
-
-
-
-
-
-            const status = ((t as any)?.status || '').toString();
-
-
-
-
-
-
-
-            if (status === 'completed') completed += 1;
-
-
-
-
-
-
-
-            if (status === 'pending' || status === 'in-progress' || status === 'reassigned') pending += 1;
-
-
-
-
-
-
-
-            if (isOverdue((t as any)?.dueDate, status)) overdue += 1;
-
-
-
-
-
-
-
-        }
-
-
-
-
-
-
-
-        const completion = totalAssigned > 0 ? Math.round((completed / totalAssigned) * 100) : 0;
-
-
-
-
-
-
-
-        return { totalAssigned, completed, pending, overdue, completion };
-
-
-
-
-
-
-
-    }, [isOverdue, tasks]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    const filteredAndSortedUsers = useMemo(() => {
-
-
-
-
-
-
-
-        const term = (searchTerm || '').toString().trim().toLowerCase();
-
-
-
-
-
-
-
-        const base = Array.isArray(visibleUsers) ? visibleUsers : [];
-
-
-
-
-
-
-
-        const filtered = !term
-
-
-
-
-
-
-
-            ? base
-
-
-
-
-
-
-
-            : base.filter((u) => {
-
-
-
-
-
-
-
-                const name = (u?.name || '').toString().toLowerCase();
-
-
-
-
-
-
-
-                const email = (u?.email || '').toString().toLowerCase();
-
-
-
-
-
-
-
-                const role = (u?.role || '').toString().toLowerCase();
-
-
-
-
-
-
-
-                return name.includes(term) || email.includes(term) || role.includes(term);
-
-
-
-
-
-
-
-            });
-
-
-
-
-
-
-
-        const direction = sortOrder === 'asc' ? 1 : -1;
-
-
-
-
-
-
-
-        const sorted = filtered.slice().sort((a, b) => {
-
-
-
-
-
-
-
-            if (sortBy === 'name') {
-
-
-
-
-
-
-
-                return direction * (a.name || '').localeCompare(b.name || '');
-
-
-
-
-
-
-
-            }
-
-
-
-
-
-
-
-            if (sortBy === 'role') {
-
-
-
-
-
-
-
-                return direction * normalizeRole(a.role).localeCompare(normalizeRole(b.role));
-
-
-
-
-
-
-
-            }
-
-
-
-
-
-
-
-            if (sortBy === 'tasks') {
-
-
-
-
-
-
-
-                const sa = getUserStats(a.id, a.email).totalAssigned;
-
-
-
-
-
-
-
-                const sb = getUserStats(b.id, b.email).totalAssigned;
-
-
-
-
-
-
-
-                return direction * (sa - sb);
-
-
-
-
-
-
-
-            }
-
-
-
-
-
-
-
-            if (sortBy === 'completion') {
-
-
-
-
-
-
-
-                const sa = getUserStats(a.id, a.email).completion;
-
-
-
-
-
-
-
-                const sb = getUserStats(b.id, b.email).completion;
-
-
-
-
-
-
-
-                return direction * (sa - sb);
-
-
-
-
-
-
-
-            }
-
-
-
-
-
-
-
-            return 0;
-
-
-
-
-
-
-
-        });
-
-
-
-
-
-
-
-        return sorted;
-
-
-
-
-
-
-
-    }, [getUserStats, normalizeRole, searchTerm, sortBy, sortOrder, visibleUsers]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    const selectedAddRoleKey = useMemo(() => {
-
-
-
-
-
-
-
-        return normalizeRole(newUser.role);
-
-
-
-
-
-
-
-    }, [newUser.role, normalizeRole]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    const canAssignRole = useCallback((roleKey: string) => {
-
-
-
-
-
-
-
-        const requester = normalizeRole(currentUserRole);
-
-
-
-
-
-
-
-        const target = normalizeRole(roleKey);
-
-
-
-
-
-
-
-        if (!target) return false;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        if (target === 'super_admin') return false;
-
-
-
-
-
-
-
-        if (requester === 'super_admin') return true;
-
-
-
-
-
-
-
-        if (requester === 'admin') return target !== 'admin' && target !== 'super_admin';
-
-
-
-
-
-
-
-        if (requester === 'md_manager') {
-
-            const baseRoles = ['manager', 'assistant', 'sub_assistance'];
-
-            const customRoles = (availableRoles || []).map((r) => normalizeRole(r.key));
-
-            const allowedRoles = [...baseRoles, ...customRoles];
-
-            return allowedRoles.includes(target);
-
-        }
-
-
-
-
-
-
-
-        if (requester === 'ob_manager') return target === 'assistant';
-
-
-
-
-
-
-
-        if (requester === 'manager') return target === 'assistant';
-
-
-
-
-
-
-
-        if (requester === 'sbm') return target === 'rm';
-
-
-
-
-
-
-
-        if (requester === 'rm') return target === 'am';
-
-
-
-
-
-
-
-        return false;
-
-
-
-
-
-
-
-    }, [currentUserRole, normalizeRole, availableRoles]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    const loadRoles = useCallback(async () => {
-        setRolesLoading(true);
-        try {
-            // For MD Manager, use mdImpexAccessService to get roles created via MdImpexAccess
-            // For Admin, use accessService to get all roles from Role model
-            const res = isCurrentUserMdManager
-                ? await mdImpexAccessService.getAllRoles()
-                : await accessService.getRoles();
-
-            let list: any[] = [];
-            if (isCurrentUserMdManager) {
-                // MdImpexAccess returns data in .data property with role field
-                list = Array.isArray((res as any)?.data) ? (res as any).data : [];
-                // Map MdImpexAccess roles to RoleItem format and filter out Speed E Com roles
-                const speedEComKeywords = ['speed', 'ecom', 'speed_ecom', 'speedecom', 'speed-ecom'];
-                list = list
-                    .filter((r: any) => {
-                        const roleName = (r.role || '').toLowerCase();
-                        const roleKey = (r.roleKey || '').toLowerCase();
-                        return !speedEComKeywords.some(keyword => roleName.includes(keyword) || roleKey.includes(keyword));
-                    })
-                    .map((r: any) => ({
-                        key: normalizeRole(r.role),
-                        name: r.role
-                    }))
-                    .filter((r: RoleItem) => Boolean(r.key));
-            } else {
-                // Admin: accessService returns roles with key and name
-                list = Array.isArray((res as any)?.data) ? (res as any).data : Array.isArray(res) ? (res as any) : [];
-                list = (list || [])
-                    .map((r: any) => ({
-                        key: String(r?.key || '').trim().toLowerCase(),
-                        name: String(r?.name || r?.key || '').trim() || String(r?.key || '').trim(),
-                    }))
-                    .filter((r: RoleItem) => Boolean(r.key));
-            }
-
-            const fallback: RoleItem[] = [
-                { key: 'admin', name: 'Admin' },
-                { key: 'md_manager', name: 'MD Manager' },
-                { key: 'ob_manager', name: 'OB Manager' },
-                { key: 'manager', name: 'Manager' },
-                { key: 'sbm', name: 'SBM' },
-                { key: 'rm', name: 'RM' },
-                { key: 'am', name: 'AM' },
-                { key: 'assistant', name: 'Assistant' },
-                { key: 'sub_assistance', name: 'Sub Assistance' },
-            ];
-
-            const merged = [...fallback, ...list];
-
-            const uniq = new Map<string, RoleItem>();
-
-            merged.forEach((r) => {
-                const k = normalizeRole(r.key);
-                if (!k) return;
-                if (!uniq.has(k)) uniq.set(k, { key: k, name: r.name || r.key });
-            });
-
-            setAvailableRoles(Array.from(uniq.values()));
-        } catch {
-            setAvailableRoles([
-                { key: 'admin', name: 'Admin' },
-                { key: 'md_manager', name: 'MD Manager' },
-                { key: 'ob_manager', name: 'OB Manager' },
-                { key: 'manager', name: 'Manager' },
-                { key: 'sbm', name: 'SBM' },
-                { key: 'rm', name: 'RM' },
-                { key: 'am', name: 'AM' },
-                { key: 'assistant', name: 'Assistant' },
-                { key: 'sub_assistance', name: 'Sub Assistance' },
-            ]);
-        } finally {
-            setRolesLoading(false);
-        }
-    }, [normalizeRole, isCurrentUserMdManager]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    const loadCompanies = useCallback(async () => {
-
-
-
-
-
-
-
-        setCompaniesLoading(true);
-
-
-
-
-
-
-
-        try {
-
-
-
-
-
-
-
-            const role = normalizeRole(currentUserRole);
-
-
-
-
-
-
-
-            const needsAllowedCompanies = role === 'md_manager' || role === 'ob_manager' || role === 'manager' || role === 'assistant' || role === 'sbm' || role === 'rm' || role === 'am';
-
-
-
-
-
-
-
-            const res = needsAllowedCompanies
-
-
-
-
-
-
-
-                ? await companyService.getAllowedCompanies()
-
-
-
-
-
-
-
-                : await companyService.getCompanies();
-
-
-
-
-
-
-
-            if (res?.success && Array.isArray(res.data)) {
-
-
-
-
-
-
-
-                setCompanies(res.data as Company[]);
-
-
-
-
-
-
-
-            } else {
-
-
-
-
-
-
-
-                setCompanies([]);
-
-
-
-
-
-
-
-            }
-
-
-
-
-
-
-
-        } catch {
-
-
-
-
-
-
-
-            setCompanies([]);
-
-
-
-
-
-
-
-        } finally {
-
-
-
-
-
-
-
-            setCompaniesLoading(false);
-
-
-
-
-
-
-
-        }
-
-
-
-
-
-
-
-    }, [currentUserRole, normalizeRole]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    useEffect(() => {
-        if (!canViewTeamPage) return;
-        loadCompanies();
-        // Load roles for admin and md_manager so they can see custom roles in dropdowns
-        if (!isCurrentUserAdmin && !isCurrentUserMdManager) return;
-        loadRoles();
-    }, [canViewTeamPage, isCurrentUserAdmin, isCurrentUserMdManager, loadCompanies, loadRoles]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    const effectiveRoleOptions = useMemo(() => {
-
-
-
-
-
-
-
-        if (!isCurrentUserAdmin) return [];
-
-
-
-
-
-
-
-        const filtered = (availableRoles || []).filter((r) => canAssignRole(r.key));
-
-
-
-
-
-
-
-        const order = ['admin', 'md_manager', 'ob_manager', 'manager', 'sbm', 'rm', 'am', 'assistant'];
-
-
-
-
-
-
-
-        const sorted = filtered.sort((a, b) => {
-
-
-
-
-
-
-
-            const ia = order.indexOf(normalizeRole(a.key));
-
-
-
-
-
-
-
-            const ib = order.indexOf(normalizeRole(b.key));
-
-
-
-
-
-
-
-            if (ia !== -1 || ib !== -1) return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-
-
-
-
-
-
-
-            return (a.name || a.key).localeCompare(b.name || b.key);
-
-
-
-
-
-
-
-        });
-
-
-
-
-
-
-
-        return sorted;
-
-
-
-
-
-
-
-    }, [currentUserRole, isCurrentUserAdmin, normalizeRole, availableRoles, canAssignRole]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    const roleOptionsForAddModal = useMemo(() => {
+    try {
 
 
 
@@ -5500,7 +5166,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        if (isCurrentUserAdmin) return effectiveRoleOptions;
+        const needsAllowedCompanies = role === 'md_manager' || role === 'ob_manager' || role === 'manager' || role === 'assistant' || role === 'sbm' || role === 'rm' || role === 'am';
 
 
 
@@ -5508,7 +5174,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        if (role === 'md_manager') {
+        const res = needsAllowedCompanies
 
 
 
@@ -5516,31 +5182,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            const baseOptions = [
-
-
-
-                { key: 'md_manager', name: 'MD Manager' },
-
-
-
-                { key: 'ob_manager', name: 'OB Manager' },
-
-
-
-                { key: 'manager', name: 'Manager' },
-
-
-
-                { key: 'assistant', name: 'Assistant' },
-
-
-
-                { key: 'sub_assistance', name: 'Sub Assistance' },
-
-
-
-            ];
+            ? await companyService.getAllowedCompanies()
 
 
 
@@ -5548,13 +5190,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            // Include custom roles from accessService (admin roles like Troubleshoot_Manager)
-            // Filter out Speed E Com related roles
-            const speedEComKeywords = ['speed', 'ecom', 'speed_ecom', 'speedecom', 'speed-ecom'];
-            const customRoles = (availableRoles || [])
-                .filter((r: RoleItem) => !baseOptions.some((b) => b.key === r.key))
-                .filter((r: RoleItem) => !speedEComKeywords.some(keyword => r.key.toLowerCase().includes(keyword) || r.name.toLowerCase().includes(keyword)))
-                .map((r: RoleItem) => ({ key: r.key, name: r.name }));
+            : await companyService.getCompanies();
 
 
 
@@ -5562,7 +5198,31 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            return [...baseOptions, ...customRoles];
+        if (res?.success && Array.isArray(res.data)) {
+
+
+
+
+
+
+
+            setCompanies(res.data as Company[]);
+
+
+
+
+
+
+
+        } else {
+
+
+
+
+
+
+
+            setCompanies([]);
 
 
 
@@ -5578,7 +5238,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        if (role === 'ob_manager') {
+    } catch {
 
 
 
@@ -5586,23 +5246,1436 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            return [
-
-
-
-                { key: 'assistant', name: 'Assistant' },
-
-
-
-                { key: 'sub_assistance', name: 'Sub Assistance' },
-
-
-
-            ];
+        setCompanies([]);
 
 
 
 
+
+
+
+    } finally {
+
+
+
+
+
+
+
+        setCompaniesLoading(false);
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+}, [currentUserRole, normalizeRole]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+useEffect(() => {
+    if (!canViewTeamPage) return;
+    loadCompanies();
+    // Load roles for admin and md_manager so they can see custom roles in dropdowns
+    if (!isCurrentUserAdmin && !isCurrentUserMdManager) return;
+    loadRoles();
+}, [canViewTeamPage, isCurrentUserAdmin, isCurrentUserMdManager, loadCompanies, loadRoles]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const effectiveRoleOptions = useMemo(() => {
+
+
+
+
+
+
+
+    if (!isCurrentUserAdmin) return [];
+
+
+
+
+
+
+
+    const filtered = (availableRoles || []).filter((r) => canAssignRole(r.key));
+
+
+
+
+
+
+
+    const order = ['admin', 'md_manager', 'ob_manager', 'manager', 'sbm', 'rm', 'am', 'assistant'];
+
+
+
+
+
+
+
+    const sorted = filtered.sort((a, b) => {
+
+
+
+
+
+
+
+        const ia = order.indexOf(normalizeRole(a.key));
+
+
+
+
+
+
+
+        const ib = order.indexOf(normalizeRole(b.key));
+
+
+
+
+
+
+
+        if (ia !== -1 || ib !== -1) return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+
+
+
+
+
+
+
+        return (a.name || a.key).localeCompare(b.name || b.key);
+
+
+
+
+
+
+
+    });
+
+
+
+
+
+
+
+    return sorted;
+
+
+
+
+
+
+
+}, [currentUserRole, isCurrentUserAdmin, normalizeRole, availableRoles, canAssignRole]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const roleOptionsForAddModal = useMemo(() => {
+
+
+
+
+
+
+
+    const role = normalizeRole(currentUserRole);
+
+
+
+
+
+
+
+    if (isCurrentUserAdmin) return effectiveRoleOptions;
+
+
+
+
+
+
+
+    if (role === 'md_manager') {
+
+
+
+
+
+
+
+        const baseOptions = [
+
+
+
+            { key: 'md_manager', name: 'MD Manager' },
+
+
+
+            { key: 'ob_manager', name: 'OB Manager' },
+
+
+
+            { key: 'manager', name: 'Manager' },
+
+
+
+            { key: 'assistant', name: 'Assistant' },
+
+
+
+            { key: 'sub_assistance', name: 'Sub Assistance' },
+
+
+
+        ];
+
+
+
+
+
+
+
+        // Include custom roles from accessService (admin roles like Troubleshoot_Manager)
+        // Filter out Speed E Com related roles
+        const speedEComKeywords = ['speed', 'ecom', 'speed_ecom', 'speedecom', 'speed-ecom'];
+        const customRoles = (availableRoles || [])
+            .filter((r: RoleItem) => !baseOptions.some((b) => b.key === r.key))
+            .filter((r: RoleItem) => !speedEComKeywords.some(keyword => r.key.toLowerCase().includes(keyword) || r.name.toLowerCase().includes(keyword)))
+            .map((r: RoleItem) => ({ key: r.key, name: r.name }));
+
+
+
+
+
+
+
+        return [...baseOptions, ...customRoles];
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+    if (role === 'ob_manager') {
+
+
+
+
+
+
+
+        return [
+
+
+
+            { key: 'assistant', name: 'Assistant' },
+
+
+
+            { key: 'sub_assistance', name: 'Sub Assistance' },
+
+
+
+        ];
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+    if (role === 'sbm') {
+        return [{ key: 'rm', name: 'RM' }, { key: 'am', name: 'AM' }, { key: 'sales_manager', name: 'Sales Manager' }, { key: 'sales_man', name: 'Sales Man' }];
+    }
+    if (role === 'sales_manager') {
+        return [{ key: 'sales_man', name: 'Sales Man' }];
+    }
+    if (role === 'rm') {
+
+
+
+
+
+
+
+        return [{ key: 'am', name: 'AM' }];
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+    return [{ key: 'assistant', name: 'Assistant' }];
+
+
+
+
+
+
+
+}, [currentUserRole, effectiveRoleOptions, isCurrentUserAdmin, availableRoles, normalizeRole]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const addModalUserPool = useMemo(() => {
+
+
+
+
+
+
+
+    const companyKey = normalizeText((newUser.companyName || '').toString());
+
+
+
+
+
+
+
+    if (!companyKey) return (users || []);
+
+
+
+
+
+
+
+    return (users || []).filter((u) => normalizeText((u as any)?.companyName || (u as any)?.company || '') === companyKey);
+
+
+
+
+
+
+
+}, [newUser.companyName, normalizeText, users]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const adminCandidates = useMemo(() => {
+
+
+
+
+
+
+
+    const admins = (addModalUserPool || []).filter((u) => normalizeRole(u?.role) === 'admin');
+
+
+
+
+
+
+
+    if (!isCurrentUserSuperAdmin && normalizeRole(currentUserRole) === 'admin') {
+
+
+
+
+
+
+
+        const myId = getUserIdValue(currentUser);
+
+
+
+
+
+
+
+        return admins.filter((u) => getUserIdValue(u) === myId);
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+    return admins;
+
+
+
+
+
+
+
+}, [addModalUserPool, currentUser, currentUserRole, getUserIdValue, isCurrentUserSuperAdmin, normalizeRole]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const sbmCandidates = useMemo(() => {
+
+
+
+
+
+
+
+    return (addModalUserPool || [])
+
+
+
+
+
+
+
+        .filter((u) => normalizeRole(u?.role) === 'sbm')
+
+
+
+
+
+
+
+        .filter((u) => {
+
+
+
+
+
+
+
+            if (!addAdminId) return true;
+
+
+
+
+
+
+
+            return (u as any)?.managerId?.toString() === addAdminId;
+
+
+
+
+
+
+
+        })
+
+
+
+
+
+
+
+        .sort((a, b) => (a?.name || '').localeCompare(b?.name || ''));
+
+
+
+
+
+
+
+}, [addAdminId, addModalUserPool, normalizeRole]);
+
+
+
+const salesManagerCandidates = useMemo(() => {
+    return (addModalUserPool || [])
+        .filter((u) => normalizeRole(u?.role) === 'sales_manager')
+        .filter((u) => {
+            if (!addSbmId) return true;
+            return (u as any)?.managerId?.toString() === addSbmId;
+        })
+        .sort((a, b) => (a?.name || '').localeCompare(b?.name || ''));
+}, [addModalUserPool, addSbmId, normalizeRole]);
+
+
+const rmCandidates = useMemo(() => {
+
+
+
+
+
+
+
+    return (addModalUserPool || [])
+
+
+
+
+
+
+
+        .filter((u) => normalizeRole(u?.role) === 'rm')
+
+
+
+
+
+
+
+        .filter((u) => {
+
+
+
+
+
+
+
+            if (!addSbmId) return true;
+
+
+
+
+
+
+
+            return (u as any)?.managerId?.toString() === addSbmId;
+
+
+
+
+
+
+
+        })
+
+
+
+
+
+
+
+        .sort((a, b) => (a?.name || '').localeCompare(b?.name || ''));
+
+
+
+
+
+
+
+}, [addModalUserPool, addSbmId, normalizeRole]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const rmCandidatesForEditing = useMemo(() => {
+
+
+
+
+
+
+
+    const list = (users || internalUsers || []) as UserType[];
+
+
+
+
+
+
+
+    return list
+
+
+
+
+
+
+
+        .filter((u) => normalizeRole((u as any)?.role) === 'rm')
+
+
+
+
+
+
+
+        .sort((a, b) => (a?.name || '').localeCompare(b?.name || ''));
+
+
+
+
+
+
+
+}, [users, internalUsers, normalizeRole]);
+
+
+
+const canEditRoleForUser = useCallback((user: any): boolean => {
+
+
+
+
+
+
+
+    if (!user) return false;
+
+
+
+
+
+
+
+    const uid = (user?.id || user?._id || '').toString();
+
+
+
+
+
+
+
+    const fullUser = (uid && usersById.get(uid)) ? usersById.get(uid) : user;
+
+
+
+
+
+
+
+    if (isCurrentUserAdmin) return true;
+
+
+
+
+
+
+
+    if (isCurrentUserAm && (isSpeedEcomUser(fullUser) || isSpeedEcomContext)) return true;
+
+
+
+
+
+
+
+    if (isCurrentUserSbm && (isSpeedEcomUser(fullUser) || isSpeedEcomContext)) return true;
+
+
+
+
+
+
+
+    return false;
+
+
+
+
+
+
+
+}, [isCurrentUserAdmin, isCurrentUserAm, isCurrentUserSbm, isSpeedEcomContext, isSpeedEcomUser, usersById]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const roleOptionsForEditModal = useMemo(() => {
+
+
+
+
+
+
+
+    if (!editingUser) return [];
+
+
+
+
+
+
+
+    const uid = (editingUser as any)?.id || (editingUser as any)?._id || '';
+
+
+
+
+
+
+
+    const fullUser = (uid && usersById.get(uid.toString())) ? usersById.get(uid.toString()) : editingUser;
+
+
+
+
+
+
+
+    if (isCurrentUserAdmin) return effectiveRoleOptions;
+
+
+
+
+
+
+
+    if (isCurrentUserAm && (isSpeedEcomUser(fullUser) || isSpeedEcomContext)) {
+
+
+
+
+
+
+
+        return [
+
+
+
+
+
+
+
+            { key: 'sbm', name: 'SBM' },
+
+
+
+
+
+
+
+            { key: 'rm', name: 'RM' },
+
+
+
+
+
+
+
+            { key: 'am', name: 'AM' },
+
+
+
+
+
+
+
+        ];
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+    if (isCurrentUserSbm && (isSpeedEcomUser(fullUser) || isSpeedEcomContext)) {
+
+
+
+
+
+
+
+        return [
+
+
+
+
+
+
+
+            { key: 'sbm', name: 'SBM' },
+
+
+
+
+
+
+
+            { key: 'rm', name: 'RM' },
+
+
+
+
+
+
+
+            { key: 'am', name: 'AM' },
+
+
+
+
+
+
+
+        ];
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+    const currentRoleKey = normalizeRole((editingUser as any)?.role || '');
+
+
+
+
+
+
+
+    return currentRoleKey ? [{ key: currentRoleKey, name: currentRoleKey.toUpperCase() }] : [];
+
+
+
+
+
+
+
+}, [editingUser, effectiveRoleOptions, isCurrentUserAdmin, isCurrentUserAm, isCurrentUserSbm, isSpeedEcomContext, isSpeedEcomUser, normalizeRole, usersById]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const handleAddClick = () => {
+
+
+
+
+
+
+
+    if (!canManageUsers && !canManageUsersAsManager) {
+
+
+
+
+
+
+
+        toast.error('You do not have permission to add users');
+
+
+
+
+
+
+
+        return;
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    const defaultRole = (() => {
+
+
+
+
+
+
+
+        if (currentUserRole === 'super_admin') return 'admin';
+
+
+
+
+
+
+
+        if (currentUserRole === 'admin') return 'md_manager';
+
+
+
+
+
+
+
+        if (currentUserRole === 'md_manager') return 'ob_manager';
+
+
+
+
+
+
+
+        return 'assistant';
+
+
+
+
+
+
+
+    })();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    const allowedRoleKeys = (roleOptionsForAddModal || []).map((r) => normalizeRole(r.key)).filter(Boolean);
+
+
+
+
+
+
+
+    const defaultNormalized = normalizeRole(defaultRole);
+
+
+
+
+
+
+
+    const initialRole = isCurrentUserManager
+
+
+
+
+
+
+
+        ? 'assistant'
+
+
+
+
+
+
+
+        : (allowedRoleKeys.includes(defaultNormalized)
+
+
+
+
+
+
+
+            ? defaultRole
+
+
+
+
+
+
+
+            : ((roleOptionsForAddModal?.[0]?.key as any) || defaultRole));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    const resolvedDefaultCompany = (() => {
+
+
+
+
+
+
+
+        const fromUser = ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
+
+
+
+
+
+
+
+        if (fromUser) return fromUser;
+
+
+
+
+
+
+
+        if (filterCompany && filterCompany !== 'all') return String(filterCompany).toString().trim();
+
+
+
+
+
+
+
+        return '';
+
+
+
+
+
+
+
+    })();
+
+
+
+
+
+
+
+    const resolvedDefaultCompanyFromOptions = (() => {
+
+
+
+
+
+
+
+        const raw = (resolvedDefaultCompany || '').toString().trim();
+
+
+
+        if (!raw) return '';
+
+
+
+
+
+
+
+        const key = normalizeText(raw);
+
+
+
+        if (!key) return raw;
+
+
+
+
+
+
+
+        const match = (companyOptions || []).find((name) => normalizeText(name) === key);
+
+
+
+        return match || raw;
+
+
+
+
+
+
+
+    })();
+
+
+
+
+
+
+
+    setNewUser({
+
+
+
+
+
+
+
+        name: '',
+
+
+
+
+
+
+
+        email: '',
+
+
+
+
+
+
+
+        role: initialRole,
+
+
+
+
+
+
+
+        password: '',
+
+
+
+
+
+
+
+        department: '',
+
+
+
+
+
+
+
+        position: '',
+
+
+
+
+
+
+
+        phone: '',
+
+
+
+
+
+
+
+        managerId: undefined,
+
+
+
+
+
+
+
+        companyName: (resolvedDefaultCompanyFromOptions as any)
+
+
+
+
+
+
+
+    });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    setAddAdminId(!isCurrentUserSuperAdmin && currentUserRole === 'admin' ? getUserIdValue(currentUser) : '');
+
+
+
+
+
+
+
+    setAddSbmId('');
+
+
+
+
+
+
+
+    setAddRmId('');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    setShowPassword(false);
+
+
+
+
+
+
+
+    setShowAddModal(true);
+
+
+
+
+
+
+
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+useEffect(() => {
+
+
+
+
+
+
+
+    if (!showAddModal) return;
+
+
+
+
+
+
+
+    setNewUser((prev) => {
+
+
+
+
+
+
+
+        const existingRaw = ((prev as any)?.companyName || '').toString().trim();
+
+
+
+
+
+
+
+        const options = Array.isArray(companyOptions) ? companyOptions : [];
+
+
+
+
+
+
+
+        // If user is company-forced and only one option exists, always force it.
+
+
+
+        if (isTeamCompanyForced && options.length === 1) {
+
+
+
+            const only = (options[0] || '').toString();
+
+
+
+            if (only && only !== existingRaw) return { ...prev, companyName: only as any };
+
+
+
+            if (only) return prev;
 
 
 
@@ -5614,1215 +6687,19 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        if (role === 'sbm') {
+        // If there is already a value, try to reconcile it to an exact option string.
 
 
 
+        if (existingRaw) {
 
 
 
+            if (options.includes(existingRaw)) return prev;
 
-            return [{ key: 'rm', name: 'RM' }, { key: 'am', name: 'AM' }];
 
 
-
-
-
-
-
-        }
-
-
-
-
-
-
-
-        if (role === 'rm') {
-
-
-
-
-
-
-
-            return [{ key: 'am', name: 'AM' }];
-
-
-
-
-
-
-
-        }
-
-
-
-
-
-
-
-        return [{ key: 'assistant', name: 'Assistant' }];
-
-
-
-
-
-
-
-    }, [currentUserRole, effectiveRoleOptions, isCurrentUserAdmin, availableRoles, normalizeRole]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    const addModalUserPool = useMemo(() => {
-
-
-
-
-
-
-
-        const companyKey = normalizeText((newUser.companyName || '').toString());
-
-
-
-
-
-
-
-        if (!companyKey) return (users || []);
-
-
-
-
-
-
-
-        return (users || []).filter((u) => normalizeText((u as any)?.companyName || (u as any)?.company || '') === companyKey);
-
-
-
-
-
-
-
-    }, [newUser.companyName, normalizeText, users]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    const adminCandidates = useMemo(() => {
-
-
-
-
-
-
-
-        const admins = (addModalUserPool || []).filter((u) => normalizeRole(u?.role) === 'admin');
-
-
-
-
-
-
-
-        if (!isCurrentUserSuperAdmin && normalizeRole(currentUserRole) === 'admin') {
-
-
-
-
-
-
-
-            const myId = getUserIdValue(currentUser);
-
-
-
-
-
-
-
-            return admins.filter((u) => getUserIdValue(u) === myId);
-
-
-
-
-
-
-
-        }
-
-
-
-
-
-
-
-        return admins;
-
-
-
-
-
-
-
-    }, [addModalUserPool, currentUser, currentUserRole, getUserIdValue, isCurrentUserSuperAdmin, normalizeRole]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    const sbmCandidates = useMemo(() => {
-
-
-
-
-
-
-
-        return (addModalUserPool || [])
-
-
-
-
-
-
-
-            .filter((u) => normalizeRole(u?.role) === 'sbm')
-
-
-
-
-
-
-
-            .filter((u) => {
-
-
-
-
-
-
-
-                if (!addAdminId) return true;
-
-
-
-
-
-
-
-                return (u as any)?.managerId?.toString() === addAdminId;
-
-
-
-
-
-
-
-            })
-
-
-
-
-
-
-
-            .sort((a, b) => (a?.name || '').localeCompare(b?.name || ''));
-
-
-
-
-
-
-
-    }, [addAdminId, addModalUserPool, normalizeRole]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    const rmCandidates = useMemo(() => {
-
-
-
-
-
-
-
-        return (addModalUserPool || [])
-
-
-
-
-
-
-
-            .filter((u) => normalizeRole(u?.role) === 'rm')
-
-
-
-
-
-
-
-            .filter((u) => {
-
-
-
-
-
-
-
-                if (!addSbmId) return true;
-
-
-
-
-
-
-
-                return (u as any)?.managerId?.toString() === addSbmId;
-
-
-
-
-
-
-
-            })
-
-
-
-
-
-
-
-            .sort((a, b) => (a?.name || '').localeCompare(b?.name || ''));
-
-
-
-
-
-
-
-    }, [addModalUserPool, addSbmId, normalizeRole]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    const rmCandidatesForEditing = useMemo(() => {
-
-
-
-
-
-
-
-        const list = (users || internalUsers || []) as UserType[];
-
-
-
-
-
-
-
-        return list
-
-
-
-
-
-
-
-            .filter((u) => normalizeRole((u as any)?.role) === 'rm')
-
-
-
-
-
-
-
-            .sort((a, b) => (a?.name || '').localeCompare(b?.name || ''));
-
-
-
-
-
-
-
-    }, [users, internalUsers, normalizeRole]);
-
-
-
-    const canEditRoleForUser = useCallback((user: any): boolean => {
-
-
-
-
-
-
-
-        if (!user) return false;
-
-
-
-
-
-
-
-        const uid = (user?.id || user?._id || '').toString();
-
-
-
-
-
-
-
-        const fullUser = (uid && usersById.get(uid)) ? usersById.get(uid) : user;
-
-
-
-
-
-
-
-        if (isCurrentUserAdmin) return true;
-
-
-
-
-
-
-
-        if (isCurrentUserAm && (isSpeedEcomUser(fullUser) || isSpeedEcomContext)) return true;
-
-
-
-
-
-
-
-        if (isCurrentUserSbm && (isSpeedEcomUser(fullUser) || isSpeedEcomContext)) return true;
-
-
-
-
-
-
-
-        return false;
-
-
-
-
-
-
-
-    }, [isCurrentUserAdmin, isCurrentUserAm, isCurrentUserSbm, isSpeedEcomContext, isSpeedEcomUser, usersById]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    const roleOptionsForEditModal = useMemo(() => {
-
-
-
-
-
-
-
-        if (!editingUser) return [];
-
-
-
-
-
-
-
-        const uid = (editingUser as any)?.id || (editingUser as any)?._id || '';
-
-
-
-
-
-
-
-        const fullUser = (uid && usersById.get(uid.toString())) ? usersById.get(uid.toString()) : editingUser;
-
-
-
-
-
-
-
-        if (isCurrentUserAdmin) return effectiveRoleOptions;
-
-
-
-
-
-
-
-        if (isCurrentUserAm && (isSpeedEcomUser(fullUser) || isSpeedEcomContext)) {
-
-
-
-
-
-
-
-            return [
-
-
-
-
-
-
-
-                { key: 'sbm', name: 'SBM' },
-
-
-
-
-
-
-
-                { key: 'rm', name: 'RM' },
-
-
-
-
-
-
-
-                { key: 'am', name: 'AM' },
-
-
-
-
-
-
-
-            ];
-
-
-
-
-
-
-
-        }
-
-
-
-
-
-
-
-        if (isCurrentUserSbm && (isSpeedEcomUser(fullUser) || isSpeedEcomContext)) {
-
-
-
-
-
-
-
-            return [
-
-
-
-
-
-
-
-                { key: 'sbm', name: 'SBM' },
-
-
-
-
-
-
-
-                { key: 'rm', name: 'RM' },
-
-
-
-
-
-
-
-                { key: 'am', name: 'AM' },
-
-
-
-
-
-
-
-            ];
-
-
-
-
-
-
-
-        }
-
-
-
-
-
-
-
-        const currentRoleKey = normalizeRole((editingUser as any)?.role || '');
-
-
-
-
-
-
-
-        return currentRoleKey ? [{ key: currentRoleKey, name: currentRoleKey.toUpperCase() }] : [];
-
-
-
-
-
-
-
-    }, [editingUser, effectiveRoleOptions, isCurrentUserAdmin, isCurrentUserAm, isCurrentUserSbm, isSpeedEcomContext, isSpeedEcomUser, normalizeRole, usersById]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    const handleAddClick = () => {
-
-
-
-
-
-
-
-        if (!canManageUsers && !canManageUsersAsManager) {
-
-
-
-
-
-
-
-            toast.error('You do not have permission to add users');
-
-
-
-
-
-
-
-            return;
-
-
-
-
-
-
-
-        }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        const defaultRole = (() => {
-
-
-
-
-
-
-
-            if (currentUserRole === 'super_admin') return 'admin';
-
-
-
-
-
-
-
-            if (currentUserRole === 'admin') return 'md_manager';
-
-
-
-
-
-
-
-            if (currentUserRole === 'md_manager') return 'ob_manager';
-
-
-
-
-
-
-
-            return 'assistant';
-
-
-
-
-
-
-
-        })();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        const allowedRoleKeys = (roleOptionsForAddModal || []).map((r) => normalizeRole(r.key)).filter(Boolean);
-
-
-
-
-
-
-
-        const defaultNormalized = normalizeRole(defaultRole);
-
-
-
-
-
-
-
-        const initialRole = isCurrentUserManager
-
-
-
-
-
-
-
-            ? 'assistant'
-
-
-
-
-
-
-
-            : (allowedRoleKeys.includes(defaultNormalized)
-
-
-
-
-
-
-
-                ? defaultRole
-
-
-
-
-
-
-
-                : ((roleOptionsForAddModal?.[0]?.key as any) || defaultRole));
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        const resolvedDefaultCompany = (() => {
-
-
-
-
-
-
-
-            const fromUser = ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
-
-
-
-
-
-
-
-            if (fromUser) return fromUser;
-
-
-
-
-
-
-
-            if (filterCompany && filterCompany !== 'all') return String(filterCompany).toString().trim();
-
-
-
-
-
-
-
-            return '';
-
-
-
-
-
-
-
-        })();
-
-
-
-
-
-
-
-        const resolvedDefaultCompanyFromOptions = (() => {
-
-
-
-
-
-
-
-            const raw = (resolvedDefaultCompany || '').toString().trim();
-
-
-
-            if (!raw) return '';
-
-
-
-
-
-
-
-            const key = normalizeText(raw);
-
-
-
-            if (!key) return raw;
-
-
-
-
-
-
-
-            const match = (companyOptions || []).find((name) => normalizeText(name) === key);
-
-
-
-            return match || raw;
-
-
-
-
-
-
-
-        })();
-
-
-
-
-
-
-
-        setNewUser({
-
-
-
-
-
-
-
-            name: '',
-
-
-
-
-
-
-
-            email: '',
-
-
-
-
-
-
-
-            role: initialRole,
-
-
-
-
-
-
-
-            password: '',
-
-
-
-
-
-
-
-            department: '',
-
-
-
-
-
-
-
-            position: '',
-
-
-
-
-
-
-
-            phone: '',
-
-
-
-
-
-
-
-            managerId: undefined,
-
-
-
-
-
-
-
-            companyName: (resolvedDefaultCompanyFromOptions as any)
-
-
-
-
-
-
-
-        });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        setAddAdminId(!isCurrentUserSuperAdmin && currentUserRole === 'admin' ? getUserIdValue(currentUser) : '');
-
-
-
-
-
-
-
-        setAddSbmId('');
-
-
-
-
-
-
-
-        setAddRmId('');
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        setShowPassword(false);
-
-
-
-
-
-
-
-        setShowAddModal(true);
-
-
-
-
-
-
-
-    };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    useEffect(() => {
-
-
-
-
-
-
-
-        if (!showAddModal) return;
-
-
-
-
-
-
-
-        setNewUser((prev) => {
-
-
-
-
-
-
-
-            const existingRaw = ((prev as any)?.companyName || '').toString().trim();
-
-
-
-
-
-
-
-            const options = Array.isArray(companyOptions) ? companyOptions : [];
-
-
-
-
-
-
-
-            // If user is company-forced and only one option exists, always force it.
-
-
-
-            if (isTeamCompanyForced && options.length === 1) {
-
-
-
-                const only = (options[0] || '').toString();
-
-
-
-                if (only && only !== existingRaw) return { ...prev, companyName: only as any };
-
-
-
-                if (only) return prev;
-
-
-
-            }
-
-
-
-
-
-
-
-            // If there is already a value, try to reconcile it to an exact option string.
-
-
-
-            if (existingRaw) {
-
-
-
-                if (options.includes(existingRaw)) return prev;
-
-
-
-                const key = normalizeText(existingRaw);
-
-
-
-                const match = key ? options.find((name) => normalizeText(name) === key) : '';
-
-
-
-                if (match && match !== existingRaw) return { ...prev, companyName: match as any };
-
-
-
-                return prev;
-
-
-
-            }
-
-
-
-
-
-
-
-            const fromUser = ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
-
-
-
-            const raw = fromUser || (filterCompany && filterCompany !== 'all' ? String(filterCompany).toString().trim() : '');
-
-
-
-            if (!raw) return prev;
-
-
-
-
-
-
-
-            const key = normalizeText(raw);
+            const key = normalizeText(existingRaw);
 
 
 
@@ -6830,43 +6707,47 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            const next = match || raw;
+            if (match && match !== existingRaw) return { ...prev, companyName: match as any };
 
 
 
+            return prev;
 
 
 
+        }
 
-            if (!next) return prev;
 
 
 
 
 
 
+        const fromUser = ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
 
-            return { ...prev, companyName: next as any };
 
 
+        const raw = fromUser || (filterCompany && filterCompany !== 'all' ? String(filterCompany).toString().trim() : '');
 
 
 
+        if (!raw) return prev;
 
 
-        });
 
 
 
 
 
+        const key = normalizeText(raw);
 
 
-    }, [companyOptions, currentUser, filterCompany, isTeamCompanyForced, normalizeText, showAddModal]);
 
+        const match = key ? options.find((name) => normalizeText(name) === key) : '';
 
 
 
+        const next = match || raw;
 
 
 
@@ -6874,35 +6755,303 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+        if (!next) return prev;
 
 
 
 
-    const handleSaveNewUser = async () => {
 
 
 
+        return { ...prev, companyName: next as any };
 
 
 
 
-        if (!canManageUsers && !canManageUsersAsManager) {
 
 
 
+    });
 
 
 
 
-            toast.error('You do not have permission to add users');
 
 
 
+}, [companyOptions, currentUser, filterCompany, isTeamCompanyForced, normalizeText, showAddModal]);
 
 
 
 
-            return;
+
+
+
+
+
+
+
+
+
+
+
+const handleSaveNewUser = async () => {
+
+
+
+
+
+
+
+    if (!canManageUsers && !canManageUsersAsManager) {
+
+
+
+
+
+
+
+        toast.error('You do not have permission to add users');
+
+
+
+
+
+
+
+        return;
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // Validation
+
+
+
+
+
+
+
+    if (!newUser.name?.trim() || !newUser.email?.trim() || !newUser.password) {
+
+
+
+
+
+
+
+        toast.error('Please fill in all required fields');
+
+
+
+
+
+
+
+        return;
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+
+
+
+
+
+
+    if (!emailRegex.test(newUser.email)) {
+
+
+
+
+
+
+
+        toast.error('Please enter a valid email address');
+
+
+
+
+
+
+
+        return;
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    if (newUser.password.length < 6) {
+
+
+
+
+
+
+
+        toast.error('Password must be at least 6 characters long');
+
+
+
+
+
+
+
+        return;
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    setAddingUser(true);
+
+
+
+
+
+
+
+    try {
+
+
+
+
+
+
+
+        let resolvedManagerId = newUser.managerId;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        if (selectedAddRoleKey === 'sbm') {
+
+
+
+
+
+
+
+            if (!addAdminId) {
+
+
+
+
+
+
+
+                toast.error('Please select admin');
+
+
+
+
+
+
+
+                return;
+
+
+
+
+
+
+
+            }
+
+
+
+
+
+
+
+            resolvedManagerId = addAdminId;
 
 
 
@@ -6926,7 +7075,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        // Validation
+        if (selectedAddRoleKey === 'rm') {
 
 
 
@@ -6934,7 +7083,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        if (!newUser.name?.trim() || !newUser.email?.trim() || !newUser.password) {
+            if (!addAdminId) {
 
 
 
@@ -6942,7 +7091,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            toast.error('Please fill in all required fields');
+                toast.error('Please select admin');
 
 
 
@@ -6950,7 +7099,55 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            return;
+                return;
+
+
+
+
+
+
+
+            }
+
+
+
+
+
+
+
+            if (!addSbmId) {
+
+
+
+
+
+
+
+                toast.error('Please select SBM');
+
+
+
+
+
+
+
+                return;
+
+
+
+
+
+
+
+            }
+
+
+
+
+
+
+
+            resolvedManagerId = addSbmId;
 
 
 
@@ -6974,7 +7171,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (selectedAddRoleKey === 'am') {
 
 
 
@@ -6982,7 +7179,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        if (!emailRegex.test(newUser.email)) {
+            if (!addAdminId) {
 
 
 
@@ -6990,7 +7187,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            toast.error('Please enter a valid email address');
+                toast.error('Please select admin');
 
 
 
@@ -6998,7 +7195,127 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            return;
+                return;
+
+
+
+
+
+
+
+            }
+
+
+
+
+
+
+
+            if (!addSbmId) {
+
+
+
+
+
+
+
+                toast.error('Please select SBM');
+
+
+
+
+
+
+
+                return;
+
+
+
+
+
+
+
+            }
+
+
+
+
+
+
+
+            if (!addRmId) {
+
+
+
+
+
+
+
+                toast.error('Please select RM');
+
+
+
+
+
+
+
+                return;
+            }
+            resolvedManagerId = addRmId;
+        }
+
+        if (selectedAddRoleKey === 'sales_manager') {
+            if (!addAdminId) {
+                toast.error('Please select admin');
+                return;
+            }
+            if (!addSbmId) {
+                toast.error('Please select SBM');
+                return;
+            }
+            resolvedManagerId = addSbmId;
+        }
+
+        if (selectedAddRoleKey === 'sales_man') {
+            if (!addAdminId) {
+                toast.error('Please select admin');
+                return;
+            }
+            if (!addSbmId) {
+                toast.error('Please select SBM');
+                return;
+            }
+            const addSalesManagerId = (newUser as any).salesManagerId;
+            if (!addSalesManagerId) {
+                toast.error('Please select Sales Manager');
+                return;
+            }
+            resolvedManagerId = addSalesManagerId;
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        if (selectedAddRoleKey === 'assistant') {
+
+
+
+
+
+
+
+            resolvedManagerId = undefined;
 
 
 
@@ -7022,7 +7339,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        if (newUser.password.length < 6) {
+        const userData = {
 
 
 
@@ -7030,7 +7347,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            toast.error('Password must be at least 6 characters long');
+            name: newUser.name.trim(),
 
 
 
@@ -7038,7 +7355,87 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            return;
+            email: newUser.email.trim().toLowerCase(),
+
+
+
+
+
+
+
+            password: newUser.password,
+
+
+
+
+
+
+
+            role: isCurrentUserManager ? 'assistant' : newUser.role,
+
+
+
+
+
+
+
+            department: newUser.department || '',
+
+
+
+
+
+
+
+            position: newUser.position || '',
+
+
+
+
+
+
+
+            phone: newUser.phone || '',
+
+
+
+
+
+
+
+            managerId: resolvedManagerId,
+
+
+
+
+
+
+
+            companyName: (newUser.companyName || '').toString(),
+
+
+
+
+
+
+
+        };
+
+
+
+
+
+
+
+        if (onAddUser) {
+
+
+
+
+
+
+
+            await onAddUser(userData);
 
 
 
@@ -7054,691 +7451,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-
-
-
-
-
-
-
-
-        setAddingUser(true);
-
-
-
-
-
-
-
-        try {
-
-
-
-
-
-
-
-            let resolvedManagerId = newUser.managerId;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            if (selectedAddRoleKey === 'sbm') {
-
-
-
-
-
-
-
-                if (!addAdminId) {
-
-
-
-
-
-
-
-                    toast.error('Please select admin');
-
-
-
-
-
-
-
-                    return;
-
-
-
-
-
-
-
-                }
-
-
-
-
-
-
-
-                resolvedManagerId = addAdminId;
-
-
-
-
-
-
-
-            }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            if (selectedAddRoleKey === 'rm') {
-
-
-
-
-
-
-
-                if (!addAdminId) {
-
-
-
-
-
-
-
-                    toast.error('Please select admin');
-
-
-
-
-
-
-
-                    return;
-
-
-
-
-
-
-
-                }
-
-
-
-
-
-
-
-                if (!addSbmId) {
-
-
-
-
-
-
-
-                    toast.error('Please select SBM');
-
-
-
-
-
-
-
-                    return;
-
-
-
-
-
-
-
-                }
-
-
-
-
-
-
-
-                resolvedManagerId = addSbmId;
-
-
-
-
-
-
-
-            }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            if (selectedAddRoleKey === 'am') {
-
-
-
-
-
-
-
-                if (!addAdminId) {
-
-
-
-
-
-
-
-                    toast.error('Please select admin');
-
-
-
-
-
-
-
-                    return;
-
-
-
-
-
-
-
-                }
-
-
-
-
-
-
-
-                if (!addSbmId) {
-
-
-
-
-
-
-
-                    toast.error('Please select SBM');
-
-
-
-
-
-
-
-                    return;
-
-
-
-
-
-
-
-                }
-
-
-
-
-
-
-
-                if (!addRmId) {
-
-
-
-
-
-
-
-                    toast.error('Please select RM');
-
-
-
-
-
-
-
-                    return;
-
-
-
-
-
-
-
-                }
-
-
-
-
-
-
-
-                resolvedManagerId = addRmId;
-
-
-
-
-
-
-
-            }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            if (selectedAddRoleKey === 'assistant') {
-
-
-
-
-
-
-
-                resolvedManagerId = undefined;
-
-
-
-
-
-
-
-            }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            const userData = {
-
-
-
-
-
-
-
-                name: newUser.name.trim(),
-
-
-
-
-
-
-
-                email: newUser.email.trim().toLowerCase(),
-
-
-
-
-
-
-
-                password: newUser.password,
-
-
-
-
-
-
-
-                role: isCurrentUserManager ? 'assistant' : newUser.role,
-
-
-
-
-
-
-
-                department: newUser.department || '',
-
-
-
-
-
-
-
-                position: newUser.position || '',
-
-
-
-
-
-
-
-                phone: newUser.phone || '',
-
-
-
-
-
-
-
-                managerId: resolvedManagerId,
-
-
-
-
-
-
-
-                companyName: (newUser.companyName || '').toString(),
-
-
-
-
-
-
-
-            };
-
-
-
-
-
-
-
-            if (onAddUser) {
-
-
-
-
-
-
-
-                await onAddUser(userData);
-
-
-
-
-
-
-
-            }
-
-
-
-
-
-
-
-            toast.success('User added successfully');
-
-
-
-
-
-
-
-            setShowAddModal(false);
-
-
-
-
-
-
-
-            setAddAdminId('');
-
-
-
-
-
-
-
-            setAddSbmId('');
-
-
-
-
-
-
-
-            setAddRmId('');
-
-
-
-
-
-
-
-            setNewUser({
-
-
-
-
-
-
-
-                name: '',
-
-
-
-
-
-
-
-                email: '',
-
-
-
-
-
-
-
-                role: isCurrentUserManager ? 'assistant' : 'user',
-
-
-
-
-
-
-
-                password: '',
-
-
-
-
-
-
-
-                department: '',
-
-
-
-
-
-
-
-                position: '',
-
-
-
-
-
-
-
-                phone: '',
-
-
-
-
-
-
-
-                managerId: undefined,
-
-
-
-
-
-
-
-                companyName: ''
-
-
-
-
-
-
-
-            });
-
-
-
-
-
-
-
-            setShowPassword(false);
-
-
-
-
-
-
-
-        } catch (error: any) {
-
-
-
-
-
-
-
-            console.error('Error adding user:');
-
-
-
-
-
-
-
-            const apiMsg = error?.response?.data?.message || error?.response?.data?.msg;
-
-
-
-
-
-
-
-            const msg = (apiMsg || error?.message || 'Failed to add user').toString();
-
-
-
-
-
-
-
-            toast.error(msg);
-
-
-
-
-
-
-
-        } finally {
-
-
-
-
-
-
-
-            setAddingUser(false);
-
-
-
-
-
-
-
-        }
-
-
-
-    };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    const handleCancelAdd = () => {
+        toast.success('User added successfully');
 
 
 
@@ -7763,6 +7476,10 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
         setAddSbmId('');
+
+
+
+
 
 
 
@@ -7870,7 +7587,67 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-    };
+    } catch (error: any) {
+
+
+
+
+
+
+
+        console.error('Error adding user:');
+
+
+
+
+
+
+
+        const apiMsg = error?.response?.data?.message || error?.response?.data?.msg;
+
+
+
+
+
+
+
+        const msg = (apiMsg || error?.message || 'Failed to add user').toString();
+
+
+
+
+
+
+
+        toast.error(msg);
+
+
+
+
+
+
+
+    } finally {
+
+
+
+
+
+
+
+        setAddingUser(false);
+
+
+
+
+
+
+
+    }
+
+
+
+};
 
 
 
@@ -7886,7 +7663,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-    const handleEditClick = (user: UserType) => {
+const handleCancelAdd = () => {
 
 
 
@@ -7894,7 +7671,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        const canEditAsAm = isCurrentUserAm && isSpeedEcomUser(user);
+    setShowAddModal(false);
 
 
 
@@ -7902,7 +7679,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        if (!canManageUsers && !canManageUsersAsManager && !canEditAsAm) {
+    setAddAdminId('');
 
 
 
@@ -7910,7 +7687,11 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            toast.error('You do not have permission to edit users');
+    setAddSbmId('');
+
+
+
+    setAddRmId('');
 
 
 
@@ -7918,17 +7699,593 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            return;
+    setNewUser({
 
 
 
 
 
 
+
+        name: '',
+
+
+
+
+
+
+
+        email: '',
+
+
+
+
+
+
+
+        role: isCurrentUserManager ? 'assistant' : 'user',
+
+
+
+
+
+
+
+        password: '',
+
+
+
+
+
+
+
+        department: '',
+
+
+
+
+
+
+
+        position: '',
+
+
+
+
+
+
+
+        phone: '',
+
+
+
+
+
+
+
+        managerId: undefined,
+
+
+
+
+
+
+
+        companyName: ''
+
+
+
+
+
+
+
+    });
+
+
+
+
+
+
+
+    setShowPassword(false);
+
+
+
+
+
+
+
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const handleEditClick = (user: UserType) => {
+
+
+
+
+
+
+
+    const canEditAsAm = isCurrentUserAm && isSpeedEcomUser(user);
+
+
+
+
+
+
+
+    if (!canManageUsers && !canManageUsersAsManager && !canEditAsAm) {
+
+
+
+
+
+
+
+        toast.error('You do not have permission to edit users');
+
+
+
+
+
+
+
+        return;
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    if (!canManageTargetUser(user)) {
+
+
+
+
+
+
+
+        toast.error('You do not have permission to edit this user');
+
+
+
+
+
+
+
+        return;
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+    setEditingUser({ ...user });
+
+
+
+
+
+
+
+    setShowEditModal(true);
+
+
+
+
+
+
+
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const handleCancelEdit = () => {
+
+
+
+
+
+
+
+    if (savingUserId) return;
+
+
+
+
+
+
+
+    setShowEditModal(false);
+
+
+
+
+
+
+
+    setEditingUser(null);
+
+
+
+
+
+
+
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const handleSaveEdit = async () => {
+
+
+
+
+
+
+
+    if (!editingUser) return;
+
+
+
+
+
+
+
+    const canEditAsAm = isCurrentUserAm && isSpeedEcomUser(editingUser);
+
+
+
+
+
+
+
+    if (!canManageUsers && !canManageUsersAsManager && !canEditAsAm) {
+
+
+
+
+
+
+
+        toast.error('You do not have permission to edit users');
+
+
+
+
+
+
+
+        return;
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+    if (!canManageTargetUser(editingUser)) {
+
+
+
+
+
+
+
+        toast.error('You do not have permission to edit this user');
+
+
+
+
+
+
+
+        return;
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+    const userId = getUserIdValue(editingUser);
+
+
+
+
+
+
+
+    if (!userId) {
+
+
+
+
+
+
+
+        toast.error('Invalid user');
+
+
+
+
+
+
+
+        return;
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+    if (!editingUser.name?.trim() || !editingUser.email?.trim()) {
+
+
+
+
+
+
+
+        toast.error('Please fill in all required fields');
+
+
+
+
+
+
+
+        return;
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+
+
+
+
+
+
+    if (!emailRegex.test(editingUser.email)) {
+
+
+
+
+
+
+
+        toast.error('Please enter a valid email address');
+
+
+
+
+
+
+
+        return;
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+    setSavingUserId(userId);
+
+
+
+
+
+
+
+    try {
+
+
+
+
+
+
+
+        const isAmUser = normalizeRole((editingUser as any)?.role) === 'am';
+
+        const prevManagerId = ((usersById.get(userId) as any)?.managerId || (usersById.get(String(userId)) as any)?.managerId || '').toString();
+
+
+
+
+
+
+
+        const nextManagerId = ((editingUser as any)?.managerId || '').toString();
+
+
+
+
+
+
+
+        const payload: Partial<UserType> = {
+
+
+
+
+
+
+
+            name: editingUser.name,
+
+
+
+
+
+
+
+            email: editingUser.email,
+
+
+
+
+
+
+
+            department: editingUser.department,
+
+
+
+
+
+
+
+            position: editingUser.position,
+
+
+
+
+
+
+
+            phone: (editingUser as any)?.phone,
+
+
+
+
+
+
+
+        };
+
+
+
+
+
+
+
+        const roleChanged = normalizeRole((usersById.get(userId) as any)?.role) !== normalizeRole((editingUser as any)?.role);
+
+        if (roleChanged && canEditRoleForUser(editingUser)) {
+
+
+
+
+
+
+
+            payload.role = normalizeRole((editingUser as any)?.role) as any;
 
         }
 
+        if (isAmUser && nextManagerId && nextManagerId !== prevManagerId) {
 
+            const hRes = await authService.updateAmHierarchy(userId, nextManagerId);
 
 
 
@@ -7936,623 +8293,55 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+            if (!(hRes as any)?.success) {
 
 
 
 
 
 
-        if (!canManageTargetUser(user)) {
 
+                const msg = ((hRes as any)?.message || (hRes as any)?.msg || 'Failed to update hierarchy').toString();
 
 
 
 
 
 
-            toast.error('You do not have permission to edit this user');
 
+                toast.error(msg);
 
 
 
 
 
 
-            return;
 
+                return;
 
 
 
 
 
 
-        }
-
-
-
-
-
-
-
-        setEditingUser({ ...user });
-
-
-
-
-
-
-
-        setShowEditModal(true);
-
-
-
-
-
-
-
-    };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    const handleCancelEdit = () => {
-
-
-
-
-
-
-
-        if (savingUserId) return;
-
-
-
-
-
-
-
-        setShowEditModal(false);
-
-
-
-
-
-
-
-        setEditingUser(null);
-
-
-
-
-
-
-
-    };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    const handleSaveEdit = async () => {
-
-
-
-
-
-
-
-        if (!editingUser) return;
-
-
-
-
-
-
-
-        const canEditAsAm = isCurrentUserAm && isSpeedEcomUser(editingUser);
-
-
-
-
-
-
-
-        if (!canManageUsers && !canManageUsersAsManager && !canEditAsAm) {
-
-
-
-
-
-
-
-            toast.error('You do not have permission to edit users');
-
-
-
-
-
-
-
-            return;
-
-
-
-
-
-
-
-        }
-
-
-
-
-
-
-
-        if (!canManageTargetUser(editingUser)) {
-
-
-
-
-
-
-
-            toast.error('You do not have permission to edit this user');
-
-
-
-
-
-
-
-            return;
-
-
-
-
-
-
-
-        }
-
-
-
-
-
-
-
-        const userId = getUserIdValue(editingUser);
-
-
-
-
-
-
-
-        if (!userId) {
-
-
-
-
-
-
-
-            toast.error('Invalid user');
-
-
-
-
-
-
-
-            return;
-
-
-
-
-
-
-
-        }
-
-
-
-
-
-
-
-        if (!editingUser.name?.trim() || !editingUser.email?.trim()) {
-
-
-
-
-
-
-
-            toast.error('Please fill in all required fields');
-
-
-
-
-
-
-
-            return;
-
-
-
-
-
-
-
-        }
-
-
-
-
-
-
-
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-
-
-
-
-
-
-        if (!emailRegex.test(editingUser.email)) {
-
-
-
-
-
-
-
-            toast.error('Please enter a valid email address');
-
-
-
-
-
-
-
-            return;
-
-
-
-
-
-
-
-        }
-
-
-
-
-
-
-
-        setSavingUserId(userId);
-
-
-
-
-
-
-
-        try {
-
-
-
-
-
-
-
-            const isAmUser = normalizeRole((editingUser as any)?.role) === 'am';
-
-            const prevManagerId = ((usersById.get(userId) as any)?.managerId || (usersById.get(String(userId)) as any)?.managerId || '').toString();
-
-
-
-
-
-
-
-            const nextManagerId = ((editingUser as any)?.managerId || '').toString();
-
-
-
-
-
-
-
-            const payload: Partial<UserType> = {
-
-
-
-
-
-
-
-                name: editingUser.name,
-
-
-
-
-
-
-
-                email: editingUser.email,
-
-
-
-
-
-
-
-                department: editingUser.department,
-
-
-
-
-
-
-
-                position: editingUser.position,
-
-
-
-
-
-
-
-                phone: (editingUser as any)?.phone,
-
-
-
-
-
-
-
-            };
-
-
-
-
-
-
-
-            const roleChanged = normalizeRole((usersById.get(userId) as any)?.role) !== normalizeRole((editingUser as any)?.role);
-
-            if (roleChanged && canEditRoleForUser(editingUser)) {
-
-
-
-
-
-
-
-                payload.role = normalizeRole((editingUser as any)?.role) as any;
 
             }
 
-            if (isAmUser && nextManagerId && nextManagerId !== prevManagerId) {
 
-                const hRes = await authService.updateAmHierarchy(userId, nextManagerId);
 
 
 
 
 
+            const updated = (hRes as any)?.data || (hRes as any)?.user;
 
 
-                if (!(hRes as any)?.success) {
 
 
 
 
 
-
-
-                    const msg = ((hRes as any)?.message || (hRes as any)?.msg || 'Failed to update hierarchy').toString();
-
-
-
-
-
-
-
-                    toast.error(msg);
-
-
-
-
-
-
-
-                    return;
-
-
-
-
-
-
-
-                }
-
-
-
-
-
-
-
-                const updated = (hRes as any)?.data || (hRes as any)?.user;
-
-
-
-
-
-
-
-                if (!hasExternalUsers && updated) {
-
-
-
-
-
-
-
-                    setInternalUsers((prev) => prev.map((u) => {
-
-
-
-
-
-
-
-                        if (getUserIdValue(u) !== userId) return u;
-
-
-
-
-
-
-
-                        return { ...(u as any), ...(updated as any) } as UserType;
-
-
-
-
-
-
-
-                    }));
-
-
-
-
-
-
-
-                }
-
-
-
-
-
-
-
-            }
-
-
-
-
-
-
-
-            if (onUpdateUser) {
-
-
-
-
-
-
-
-                await onUpdateUser(userId, payload);
-
-
-
-
-
-
-
-            } else {
-
-
-
-
-
-
-
-                const res = await authService.updateUser(userId, payload);
-
-
-
-
-
-
-
-                if (!(res as any)?.success) {
-
-
-
-
-
-
-
-                    const msg = ((res as any)?.message || (res as any)?.msg || 'Failed to update user').toString();
-
-
-
-
-
-
-
-                    toast.error(msg);
-
-
-
-
-
-
-
-                    return;
-
-
-
-
-
-
-
-                }
-
-
-
-
-
-
-
-            }
-
-
-
-
-
-
-
-            if (!hasExternalUsers) {
+            if (!hasExternalUsers && updated) {
 
 
 
@@ -8576,7 +8365,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                    return { ...u, ...payload } as UserType;
+                    return { ...(u as any), ...(updated as any) } as UserType;
 
 
 
@@ -8600,7 +8389,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            toast.success('User updated successfully');
+        }
 
 
 
@@ -8608,7 +8397,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            setShowEditModal(false);
+        if (onUpdateUser) {
 
 
 
@@ -8616,7 +8405,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            setEditingUser(null);
+            await onUpdateUser(userId, payload);
 
 
 
@@ -8624,7 +8413,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        } catch (error: any) {
+        } else {
 
 
 
@@ -8632,7 +8421,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            const apiMsg = error?.response?.data?.message || error?.response?.data?.msg;
+            const res = await authService.updateUser(userId, payload);
 
 
 
@@ -8640,7 +8429,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            const msg = (apiMsg || error?.message || 'Failed to update user').toString();
+            if (!(res as any)?.success) {
 
 
 
@@ -8648,7 +8437,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            toast.error(msg);
+                const msg = ((res as any)?.message || (res as any)?.msg || 'Failed to update user').toString();
 
 
 
@@ -8656,7 +8445,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        } finally {
+                toast.error(msg);
 
 
 
@@ -8664,7 +8453,15 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            setSavingUserId(null);
+                return;
+
+
+
+
+
+
+
+            }
 
 
 
@@ -8680,7 +8477,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-    };
+        if (!hasExternalUsers) {
 
 
 
@@ -8688,6 +8485,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+            setInternalUsers((prev) => prev.map((u) => {
 
 
 
@@ -8695,16 +8493,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-
-    const handleDeleteClick = (userId: string) => {
-
-
-
-
-
-
-
-        if (!canManageUsers && !canManageUsersAsManager) {
+                if (getUserIdValue(u) !== userId) return u;
 
 
 
@@ -8712,7 +8501,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            toast.error('You do not have permission to delete users');
+                return { ...u, ...payload } as UserType;
 
 
 
@@ -8720,7 +8509,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            return;
+            }));
 
 
 
@@ -8736,7 +8525,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        const target = usersById.get(userId) || usersById.get(String(userId));
+        toast.success('User updated successfully');
 
 
 
@@ -8744,7 +8533,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        if (target && !canManageTargetUser(target)) {
+        setShowEditModal(false);
 
 
 
@@ -8752,7 +8541,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            toast.error('You do not have permission to delete this user');
+        setEditingUser(null);
 
 
 
@@ -8760,7 +8549,407 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            return;
+    } catch (error: any) {
+
+
+
+
+
+
+
+        const apiMsg = error?.response?.data?.message || error?.response?.data?.msg;
+
+
+
+
+
+
+
+        const msg = (apiMsg || error?.message || 'Failed to update user').toString();
+
+
+
+
+
+
+
+        toast.error(msg);
+
+
+
+
+
+
+
+    } finally {
+
+
+
+
+
+
+
+        setSavingUserId(null);
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const handleDeleteClick = (userId: string) => {
+
+
+
+
+
+
+
+    if (!canManageUsers && !canManageUsersAsManager) {
+
+
+
+
+
+
+
+        toast.error('You do not have permission to delete users');
+
+
+
+
+
+
+
+        return;
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+    const target = usersById.get(userId) || usersById.get(String(userId));
+
+
+
+
+
+
+
+    if (target && !canManageTargetUser(target)) {
+
+
+
+
+
+
+
+        toast.error('You do not have permission to delete this user');
+
+
+
+
+
+
+
+        return;
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+    setUserToDelete(userId);
+
+
+
+
+
+
+
+    setShowDeleteModal(true);
+
+
+
+
+
+
+
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const handleCancelDelete = () => {
+
+
+
+
+
+
+
+    if (deletingUserId) return;
+
+
+
+
+
+
+
+    setShowDeleteModal(false);
+
+
+
+
+
+
+
+    setUserToDelete(null);
+
+
+
+
+
+
+
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const handleConfirmDelete = async () => {
+
+
+
+
+
+
+
+    if (!userToDelete) return;
+
+
+
+
+
+
+
+    if (!canManageUsers && !canManageUsersAsManager) {
+
+
+
+
+
+
+
+        toast.error('You do not have permission to delete users');
+
+
+
+
+
+
+
+        return;
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+    const target = usersById.get(userToDelete) || usersById.get(String(userToDelete));
+
+
+
+
+
+
+
+    if (target && !canManageTargetUser(target)) {
+
+
+
+
+
+
+
+        toast.error('You do not have permission to delete this user');
+
+
+
+
+
+
+
+        return;
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+    setDeletingUserId(userToDelete);
+
+
+
+
+
+
+
+    try {
+
+
+
+
+
+
+
+        if (onDeleteUser) {
+
+
+
+
+
+
+
+            await onDeleteUser(userToDelete);
+
+
+
+
+
+
+
+        } else {
+
+
+
+
+
+
+
+            const res = await authService.deleteUser(userToDelete);
+
+
+
+
+
+
+
+            if (!(res as any)?.success) {
+
+
+
+
+
+
+
+                const msg = ((res as any)?.message || (res as any)?.msg || 'Failed to delete user').toString();
+
+
+
+
+
+
+
+                toast.error(msg);
+
+
+
+
+
+
+
+                return;
+
+
+
+
+
+
+
+            }
 
 
 
@@ -8776,7 +8965,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        setUserToDelete(userId);
+        if (!hasExternalUsers) {
 
 
 
@@ -8784,7 +8973,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        setShowDeleteModal(true);
+            setInternalUsers((prev) => prev.filter((u) => getUserIdValue(u) !== userToDelete));
 
 
 
@@ -8792,7 +8981,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-    };
+        }
 
 
 
@@ -8800,6 +8989,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+        if (selectedUserId === userToDelete) {
 
 
 
@@ -8807,16 +8997,23 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-
-    const handleCancelDelete = () => {
-
+            setSelectedUserId(null);
 
 
 
 
 
 
-        if (deletingUserId) return;
+
+        }
+
+
+
+
+
+
+
+        toast.success('User deleted successfully');
 
 
 
@@ -8840,7 +9037,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-    };
+    } catch (error: any) {
 
 
 
@@ -8848,6 +9045,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+        const apiMsg = error?.response?.data?.message || error?.response?.data?.msg;
 
 
 
@@ -8855,48 +9053,48 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+        const msg = (apiMsg || error?.message || 'Failed to delete user').toString();
 
-    const handleConfirmDelete = async () => {
 
 
 
 
 
 
+        toast.error(msg);
 
-        if (!userToDelete) return;
 
 
 
 
 
 
+    } finally {
 
-        if (!canManageUsers && !canManageUsersAsManager) {
 
 
 
 
 
 
+        setDeletingUserId(null);
 
-            toast.error('You do not have permission to delete users');
 
 
 
 
 
 
+    }
 
-            return;
 
 
 
 
 
 
+};
 
-        }
 
 
 
@@ -8904,7 +9102,6 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        const target = usersById.get(userToDelete) || usersById.get(String(userToDelete));
 
 
 
@@ -8912,7 +9109,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        if (target && !canManageTargetUser(target)) {
+const getUserInitials = (name: string | undefined): string => {
 
 
 
@@ -8920,7 +9117,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            toast.error('You do not have permission to delete this user');
+    if (!name) return 'U';
 
 
 
@@ -8928,7 +9125,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            return;
+    const parts = name.trim().split(' ');
 
 
 
@@ -8936,7 +9133,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        }
+    if (parts.length >= 2) {
 
 
 
@@ -8944,7 +9141,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        setDeletingUserId(userToDelete);
+        return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
 
 
 
@@ -8952,7 +9149,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        try {
+    }
 
 
 
@@ -8960,7 +9157,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            if (onDeleteUser) {
+    return name.charAt(0).toUpperCase();
 
 
 
@@ -8968,7 +9165,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                await onDeleteUser(userToDelete);
+};
 
 
 
@@ -8976,7 +9173,6 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            } else {
 
 
 
@@ -8984,192 +9180,192 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                const res = await authService.deleteUser(userToDelete);
 
+const getUserAvatar = (user: UserType, size: 'sm' | 'md' | 'lg' = 'md'): React.ReactElement => {
 
 
 
 
 
 
-                if (!(res as any)?.success) {
 
+    const initials = getUserInitials(user.name);
 
 
 
 
 
 
-                    const msg = ((res as any)?.message || (res as any)?.msg || 'Failed to delete user').toString();
 
+    const avatarUrl = userAvatarUrl(user);
 
 
 
 
 
 
-                    toast.error(msg);
 
+    const role = normalizeRole(user.role);
 
 
 
 
 
 
-                    return;
 
+    let gradient = 'from-gray-600 to-gray-800';
 
 
 
 
 
 
-                }
 
+    switch (role) {
 
 
 
 
 
 
-            }
 
+        case 'admin':
 
 
 
 
 
 
-            if (!hasExternalUsers) {
 
+            gradient = 'from-purple-500 to-purple-700';
 
 
 
 
 
 
-                setInternalUsers((prev) => prev.filter((u) => getUserIdValue(u) !== userToDelete));
 
+            break;
 
 
 
 
 
 
-            }
 
+        case 'manager':
 
 
 
 
 
 
-            if (selectedUserId === userToDelete) {
 
+            gradient = 'from-blue-500 to-blue-700';
 
 
 
 
 
 
-                setSelectedUserId(null);
 
+            break;
 
 
 
 
 
 
-            }
 
+        case 'assistant':
 
 
 
 
 
 
-            toast.success('User deleted successfully');
 
+            gradient = 'from-green-500 to-green-700';
 
 
 
 
 
 
-            setShowDeleteModal(false);
 
+            break;
 
 
 
 
 
 
-            setUserToDelete(null);
 
+        case 'developer':
 
 
 
 
 
 
-        } catch (error: any) {
 
+            gradient = 'from-green-500 to-green-700';
 
 
 
 
 
 
-            const apiMsg = error?.response?.data?.message || error?.response?.data?.msg;
 
+            break;
 
 
 
 
 
 
-            const msg = (apiMsg || error?.message || 'Failed to delete user').toString();
 
+        case 'designer':
 
 
 
 
 
 
-            toast.error(msg);
 
+            gradient = 'from-pink-500 to-pink-700';
 
 
 
 
 
 
-        } finally {
 
+            break;
 
 
 
 
 
 
-            setDeletingUserId(null);
 
+    }
 
 
 
 
 
 
-        }
 
+    const sizeClasses = {
 
 
 
 
 
 
-    };
 
+        sm: 'h-10 w-10 text-sm',
 
 
 
@@ -9177,6 +9373,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+        md: 'h-12 w-12 text-base',
 
 
 
@@ -9184,55 +9381,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-    const getUserInitials = (name: string | undefined): string => {
-
-
-
-
-
-
-
-        if (!name) return 'U';
-
-
-
-
-
-
-
-        const parts = name.trim().split(' ');
-
-
-
-
-
-
-
-        if (parts.length >= 2) {
-
-
-
-
-
-
-
-            return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
-
-
-
-
-
-
-
-        }
-
-
-
-
-
-
-
-        return name.charAt(0).toUpperCase();
+        lg: 'h-14 w-14 text-lg'
 
 
 
@@ -9248,299 +9397,27 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+    if (avatarUrl) {
 
 
 
+        const imgSizeClasses = {
 
 
 
+            sm: 'h-10 w-10',
 
 
-    const getUserAvatar = (user: UserType, size: 'sm' | 'md' | 'lg' = 'md'): React.ReactElement => {
 
+            md: 'h-12 w-12',
 
 
 
-
-
-
-        const initials = getUserInitials(user.name);
-
-
-
-
-
-
-
-        const avatarUrl = userAvatarUrl(user);
-
-
-
-
-
-
-
-        const role = normalizeRole(user.role);
-
-
-
-
-
-
-
-        let gradient = 'from-gray-600 to-gray-800';
-
-
-
-
-
-
-
-        switch (role) {
-
-
-
-
-
-
-
-            case 'admin':
-
-
-
-
-
-
-
-                gradient = 'from-purple-500 to-purple-700';
-
-
-
-
-
-
-
-                break;
-
-
-
-
-
-
-
-            case 'manager':
-
-
-
-
-
-
-
-                gradient = 'from-blue-500 to-blue-700';
-
-
-
-
-
-
-
-                break;
-
-
-
-
-
-
-
-            case 'assistant':
-
-
-
-
-
-
-
-                gradient = 'from-green-500 to-green-700';
-
-
-
-
-
-
-
-                break;
-
-
-
-
-
-
-
-            case 'developer':
-
-
-
-
-
-
-
-                gradient = 'from-green-500 to-green-700';
-
-
-
-
-
-
-
-                break;
-
-
-
-
-
-
-
-            case 'designer':
-
-
-
-
-
-
-
-                gradient = 'from-pink-500 to-pink-700';
-
-
-
-
-
-
-
-                break;
-
-
-
-
-
-
-
-        }
-
-
-
-
-
-
-
-        const sizeClasses = {
-
-
-
-
-
-
-
-            sm: 'h-10 w-10 text-sm',
-
-
-
-
-
-
-
-            md: 'h-12 w-12 text-base',
-
-
-
-
-
-
-
-            lg: 'h-14 w-14 text-lg'
-
-
-
-
+            lg: 'h-14 w-14'
 
 
 
         };
-
-
-
-
-
-
-
-        if (avatarUrl) {
-
-
-
-            const imgSizeClasses = {
-
-
-
-                sm: 'h-10 w-10',
-
-
-
-                md: 'h-12 w-12',
-
-
-
-                lg: 'h-14 w-14'
-
-
-
-            };
-
-
-
-
-
-
-
-            return (
-
-
-
-                <div className="flex-shrink-0">
-
-
-
-                    <img
-
-
-
-                        src={avatarUrl}
-
-
-
-                        alt={user?.name || 'User'}
-
-
-
-                        className={`rounded-full object-cover border border-gray-200 ${imgSizeClasses[size]}`}
-
-
-
-                        loading="lazy"
-
-
-
-                    />
-
-
-
-                </div>
-
-
-
-            );
-
-
-
-        }
 
 
 
@@ -9556,15 +9433,27 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                <div className={`rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white font-semibold ${sizeClasses[size]}`}>
+                <img
 
 
 
-                    {initials}
+                    src={avatarUrl}
 
 
 
-                </div>
+                    alt={user?.name || 'User'}
+
+
+
+                    className={`rounded-full object-cover border border-gray-200 ${imgSizeClasses[size]}`}
+
+
+
+                    loading="lazy"
+
+
+
+                />
 
 
 
@@ -9576,90 +9465,6 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-
-
-
-
-    };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    const selectedUser = useMemo(() => {
-
-
-
-
-
-
-
-        if (!selectedUserId) return null;
-
-
-
-
-
-
-
-        return visibleUsers.find(u => u.id === selectedUserId) || null;
-
-
-
-
-
-
-
-    }, [selectedUserId, visibleUsers]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    const isInitialLoading = internalUsersLoading || internalTasksLoading || internalCurrentUserLoading;
-
-
-
-
-
-
-
-    if (isInitialLoading) {
-
-
-
-
-
-
-
-        return <TeamPageSkeleton />;
-
-
-
-
-
-
-
     }
 
 
@@ -9668,219 +9473,19 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-    if (!canViewTeamPage) {
+    return (
 
 
 
+        <div className="flex-shrink-0">
 
 
 
+            <div className={`rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white font-semibold ${sizeClasses[size]}`}>
 
-        return (
 
 
-
-
-
-
-
-            <div className="space-y-8">
-
-
-
-
-
-
-
-                <div className="md:flex md:items-center md:justify-between">
-
-
-
-
-
-
-
-                    <div className="flex-1 min-w-0">
-
-
-
-
-
-
-
-                        <div className="flex items-center space-x-3">
-
-
-
-
-
-
-
-                            <div className="p-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl">
-
-
-
-
-
-
-
-                                <Shield className="h-8 w-8 text-white" />
-
-
-
-
-
-
-
-                            </div>
-
-
-
-
-
-
-
-                            <div>
-
-
-
-
-
-
-
-                                <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Team Management</h1>
-
-
-
-
-
-
-
-                                <p className="mt-1 text-sm text-gray-500">This page is available to administrators and managers only</p>
-
-
-
-
-
-
-
-                            </div>
-
-
-
-
-
-
-
-                        </div>
-
-
-
-
-
-
-
-                    </div>
-
-
-
-
-
-
-
-                </div>
-
-
-
-
-
-
-
-                <div className="bg-white rounded-xl border border-gray-200 p-8">
-
-
-
-
-
-
-
-                    <div className="max-w-xl">
-
-
-
-
-
-
-
-                        <div className="text-lg font-semibold text-gray-900">Access denied</div>
-
-
-
-
-
-
-
-                        <div className="mt-2 text-sm text-gray-600">
-
-
-
-
-
-
-
-                            Your account does not have permission to view team members.
-
-
-
-
-
-
-
-                        </div>
-
-
-
-
-
-
-
-                        <div className="mt-4 text-sm text-gray-600">
-
-
-
-
-
-
-
-                            If you believe this is a mistake, contact an administrator.
-
-
-
-
-
-
-
-                        </div>
-
-
-
-
-
-
-
-                    </div>
-
-
-
-
-
-
-
-                </div>
-
-
-
-
+                {initials}
 
 
 
@@ -9888,19 +9493,20 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+        </div>
 
 
 
+    );
 
-        );
 
 
 
 
 
 
+};
 
-    }
 
 
 
@@ -9915,32 +9521,32 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+const selectedUser = useMemo(() => {
 
-    if (selectedUser) {
 
 
 
 
 
 
+    if (!selectedUserId) return null;
 
-        return (
 
 
 
 
 
 
+    return visibleUsers.find(u => u.id === selectedUserId) || null;
 
-            <TeamDetailsPage
 
 
 
 
 
 
+}, [selectedUserId, visibleUsers]);
 
-                user={selectedUser}
 
 
 
@@ -9948,7 +9554,6 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                tasks={tasks}
 
 
 
@@ -9956,7 +9561,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                users={users}
+const isInitialLoading = internalUsersLoading || internalTasksLoading || internalCurrentUserLoading;
 
 
 
@@ -9964,7 +9569,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                onBack={() => setSelectedUserId(null)}
+if (isInitialLoading) {
 
 
 
@@ -9972,7 +9577,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                onEditUser={handleEditClick}
+    return <TeamPageSkeleton />;
 
 
 
@@ -9980,7 +9585,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                onDeleteUser={handleDeleteClick}
+}
 
 
 
@@ -9988,55 +9593,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                onFetchTaskHistory={onFetchTaskHistory}
-
-
-
-
-
-
-
-                isOverdue={isOverdue}
-
-
-
-
-
-
-
-                currentUser={currentUser}
-
-
-
-
-
-
-
-            />
-
-
-
-
-
-
-
-        );
-
-
-
-
-
-
-
-    }
-
-
-
-
-
-
-
-
+if (!canViewTeamPage) {
 
 
 
@@ -10052,15 +9609,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-        <div className="space-y-6">
-
-
-
-
-
-
-
-            {/* Header */}
+        <div className="space-y-8">
 
 
 
@@ -10132,7 +9681,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                            <p className="mt-1 text-sm text-gray-500">Manage your team members and their tasks</p>
+                            <p className="mt-1 text-sm text-gray-500">This page is available to administrators and managers only</p>
 
 
 
@@ -10141,222 +9690,6 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
                         </div>
-
-
-
-
-
-
-
-                    </div>
-
-
-
-
-
-
-
-                </div>
-
-
-
-
-
-
-
-                <div className="mt-4 md:mt-0">
-
-
-
-
-
-
-
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-
-
-
-
-
-
-
-                        {isCurrentUserAdmin && (
-
-
-
-
-
-
-
-                            <select
-
-
-
-
-
-
-
-                                value={filterCompany}
-
-
-
-
-
-
-
-                                onChange={(e) => setFilterCompany(e.target.value)}
-
-
-
-
-
-
-
-                                className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-
-
-
-
-
-
-
-                            >
-
-
-
-
-
-
-
-                                <option value="all">All Companies</option>
-
-
-
-
-
-
-
-                                {companyOptions.map((c) => (
-
-
-
-
-
-
-
-                                    <option key={c} value={c}>
-
-
-
-
-
-
-
-                                        {c}
-
-
-
-
-
-
-
-                                    </option>
-
-
-
-
-
-
-
-                                ))}
-
-
-
-
-
-
-
-                            </select>
-
-
-
-
-
-
-
-                        )}
-
-
-
-
-
-
-
-                        {(canManageUsers || canManageUsersAsManager) && (
-
-
-
-
-
-
-
-                            <button
-
-
-
-
-
-
-
-                                onClick={handleAddClick}
-
-
-
-
-
-
-
-                                className="inline-flex items-center px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
-
-
-
-
-
-
-
-                            >
-
-
-
-
-
-
-
-                                <UserPlus className="h-4 w-4 mr-2" />
-
-
-
-
-
-
-
-                                Add User
-
-
-
-
-
-
-
-                            </button>
-
-
-
-
-
-
-
-                        )}
 
 
 
@@ -10388,6 +9721,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+            <div className="bg-white rounded-xl border border-gray-200 p-8">
 
 
 
@@ -10395,565 +9729,31 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+                <div className="max-w-xl">
 
-            {/* Stats Cards - Small and Light with Colors */}
 
 
 
 
 
 
+                    <div className="text-lg font-semibold text-gray-900">Access denied</div>
 
-            {(() => {
 
 
 
 
 
 
+                    <div className="mt-2 text-sm text-gray-600">
 
-                const baseUsers = companyScopedUsers;
 
 
 
 
 
 
-
-                const selectedCompanyKey = normalizeText(filterCompany === 'all' ? '' : filterCompany);
-
-
-
-                const speedCompanyKey = normalizeText('Speed Ecom');
-
-
-
-                const isSpeedEcomSelected = Boolean(selectedCompanyKey)
-
-
-
-                    && (selectedCompanyKey === speedCompanyKey
-
-
-
-                        || (selectedCompanyKey.includes('speed') && selectedCompanyKey.includes('ecom')));
-
-
-
-
-
-
-
-                const uniqueKeyForUser = (u: any) => String(u?.id || u?._id || u?.email || '').trim();
-
-
-
-
-
-
-
-                const uniqueUsersMap = new Map<string, UserType>();
-
-
-
-
-
-
-
-                for (const u of baseUsers || []) {
-
-
-
-
-
-
-
-                    const key = uniqueKeyForUser(u);
-
-
-
-
-
-
-
-                    if (!key) continue;
-
-
-
-
-
-
-
-                    if (!uniqueUsersMap.has(key)) uniqueUsersMap.set(key, u);
-
-
-
-
-
-
-
-                }
-
-
-
-
-
-
-
-                const uniqueUsers = Array.from(uniqueUsersMap.values());
-
-
-
-
-
-
-
-                const countByRole = (roleKey: string) => uniqueUsers.filter((u) => normalizeRole((u as any)?.role) === roleKey).length;
-
-
-
-
-
-
-
-                const speedHierarchyRoles = new Set(['sbm', 'rm', 'am']);
-
-
-
-                const speedHierarchyUsers = uniqueUsers.filter((u) => speedHierarchyRoles.has(normalizeRole((u as any)?.role)));
-
-
-
-                const speedHierarchyUserIds = new Set(speedHierarchyUsers.map((u) => uniqueKeyForUser(u)).filter(Boolean));
-
-
-
-                const speedHierarchyCount = Array.from(speedHierarchyUserIds).length;
-
-
-
-
-
-
-
-                const totalCount = isSpeedEcomSelected ? speedHierarchyCount : uniqueUsers.length;
-
-
-
-
-
-
-
-                const roleOrder = ['md_manager', 'ob_manager', 'manager', 'troubleshoot_manager', 'sbm', 'rm', 'am', 'assistant', 'sub_assistance'];
-
-
-
-
-
-
-
-                const roleLabels: Record<string, string> = {
-
-
-
-                    md_manager: 'MD Manager',
-
-
-
-                    ob_manager: 'OB Manager',
-
-
-
-                    manager: 'Managers',
-
-
-
-                    troubleshoot_manager: 'Troubleshoot Manager',
-
-
-
-                    sbm: 'SBM',
-
-
-
-                    rm: 'RM',
-
-
-
-                    am: 'AM',
-
-
-
-                    assistant: 'Assistants',
-
-
-
-                    sub_assistance: 'Sub Assistance'
-
-
-
-                };
-
-
-
-
-
-
-
-                const roleCardClass: Record<string, string> = {
-
-
-
-                    md_manager: 'bg-indigo-50 border-indigo-200',
-
-
-
-                    ob_manager: 'bg-violet-50 border-violet-200',
-
-
-
-                    manager: 'bg-purple-50 border-purple-200',
-
-
-
-                    troubleshoot_manager: 'bg-orange-50 border-orange-200',
-
-
-
-                    sbm: 'bg-amber-50 border-amber-200',
-
-
-
-                    rm: 'bg-cyan-50 border-cyan-200',
-
-
-
-                    am: 'bg-emerald-50 border-emerald-200',
-
-
-
-                    assistant: 'bg-green-50 border-green-200',
-
-
-
-                    sub_assistance: 'bg-green-50 border-green-200'
-
-
-
-                };
-
-
-
-
-
-
-
-                const roleTextClass: Record<string, string> = {
-
-
-
-                    md_manager: 'text-indigo-700',
-
-
-
-                    ob_manager: 'text-violet-700',
-
-
-
-                    manager: 'text-purple-700',
-
-
-
-                    troubleshoot_manager: 'text-orange-700',
-
-
-
-                    sbm: 'text-amber-700',
-
-
-
-                    rm: 'text-cyan-700',
-
-
-
-                    am: 'text-emerald-700',
-
-
-
-                    assistant: 'text-green-700',
-
-
-
-                    sub_assistance: 'text-green-700'
-
-
-
-                };
-
-
-
-
-
-
-
-                const isRoleVisible = (roleKey: string) => {
-
-
-
-
-
-
-
-                    if (isCurrentUserAdmin) return true;
-
-
-
-
-
-
-
-                    if (roleKey === 'md_manager') return isCurrentUserMdManager;
-
-
-
-
-
-
-
-                    if (roleKey === 'ob_manager') return isCurrentUserMdManager || isCurrentUserObManager || isCurrentUserManager;
-
-
-
-
-
-
-
-                    if (roleKey === 'manager') return isCurrentUserMdManager || isCurrentUserObManager || isCurrentUserManager;
-
-
-
-
-
-
-
-                    if (roleKey === 'troubleshoot_manager') return isCurrentUserMdManager || isCurrentUserAdmin;
-
-
-
-
-
-
-
-                    if (roleKey === 'sbm' || roleKey === 'rm' || roleKey === 'am') return isCurrentUserSbm || isCurrentUserRm || isCurrentUserAm;
-
-
-
-
-
-
-
-                    if (roleKey === 'assistant' || roleKey === 'sub_assistance') return true;
-
-
-
-
-
-
-
-                    return false;
-
-
-
-
-
-
-
-                };
-
-
-
-
-
-
-
-                const rolesToRender = roleOrder
-
-
-
-                    .filter((r) => isRoleVisible(r))
-
-
-
-                    .filter((r) => countByRole(r) > 0);
-
-
-
-
-
-
-
-                const gridCols = rolesToRender.length + 1;
-
-
-
-
-
-
-
-                const gridClass = gridCols <= 4
-
-
-
-                    ? 'grid grid-cols-2 md:grid-cols-4 gap-4'
-
-
-
-                    : 'grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4';
-
-
-
-
-
-
-
-                return (
-
-
-
-
-
-
-
-                    <div className={gridClass}>
-
-
-
-
-
-
-
-                        <button
-
-
-
-
-
-
-
-                            onClick={() => setFilterRole('all')}
-
-
-
-
-
-
-
-                            className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'all' ? 'bg-blue-50 border-blue-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-blue-50 hover:border-blue-100'}`}
-
-
-
-
-
-
-
-                        >
-
-
-
-
-
-
-
-                            <div className="text-3xl font-bold text-gray-900">{totalCount}</div>
-
-
-
-
-
-
-
-                            <div className="text-sm text-gray-600 mt-1">Total Members</div>
-
-
-
-
-
-
-
-                        </button>
-
-
-
-
-
-
-
-                        {rolesToRender.map((roleKey) => (
-                            <button
-
-
-
-
-
-
-
-                                key={roleKey}
-
-
-
-
-
-
-
-                                onClick={() => setFilterRole(roleKey)}
-
-
-
-
-
-
-
-                                className={`p-5 rounded-xl border text-left transition-all ${filterRole === roleKey ? `${roleCardClass[roleKey]} shadow-sm` : `bg-white border-gray-200 hover:${roleCardClass[roleKey]}`}`}
-
-
-
-
-
-
-
-                            >
-
-
-
-
-
-
-
-                                <div className={`text-3xl font-bold ${roleTextClass[roleKey]}`}>{countByRole(roleKey)}</div>
-
-
-
-
-
-
-
-                                <div className="text-sm text-gray-600 mt-1">{roleLabels[roleKey] || roleKey}</div>
-
-
-
-
-
-
-
-                            </button>
-
-
-
-
-
-
-
-                        ))}
+                        Your account does not have permission to view team members.
 
 
 
@@ -10969,7 +9769,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                );
+                    <div className="mt-4 text-sm text-gray-600">
 
 
 
@@ -10977,49 +9777,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            })()}
-            {/* Search and Filters */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
-                    <div className="flex-1 max-w-lg">
-                        <div className="relative">
-                            <Search className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                            <input
-                                type="search"
-                                className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                placeholder="Search users by name, email, or role..."
-
-
-
-
-
-
-
-                                value={searchTerm}
-
-
-
-
-
-
-
-                                onChange={(e) => setSearchTerm(e.target.value)}
-
-
-
-
-
-
-
-                            />
-
-
-
-
-
-
-
-                        </div>
+                        If you believe this is a mistake, contact an administrator.
 
 
 
@@ -11028,22 +9786,6 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
                     </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -11059,6 +9801,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+            </div>
 
 
 
@@ -11066,28 +9809,27 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+        </div>
 
-                {/* Users List */}
 
 
 
 
 
 
+    );
 
-                <div>
 
 
 
-                    {filteredAndSortedUsers.length === 0 ? (
 
 
 
+}
 
 
 
 
-                        <div className="text-center py-8">
 
 
 
@@ -11095,99 +9837,99 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                            <Users className="h-12 w-12 text-gray-300 mx-auto mb-3" />
 
 
 
 
+if (selectedUser) {
 
 
 
-                            <div className="text-lg font-semibold text-gray-900">No users found</div>
 
 
 
 
+    return (
 
 
 
-                            <div className="mt-1 text-sm text-gray-600">Try changing the filters or search term</div>
 
 
 
 
+        <TeamDetailsPage
 
 
 
-                        </div>
 
 
 
 
+            user={selectedUser}
 
 
 
-                    ) : (
 
 
 
 
+            tasks={tasks}
 
 
 
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
 
 
 
+            users={users}
 
 
 
-                            {filteredAndSortedUsers.map((user) => {
 
 
 
 
+            onBack={() => setSelectedUserId(null)}
 
 
 
-                                const stats = getUserStats(user.id, user.email);
 
 
 
 
+            onEditUser={handleEditClick}
 
 
 
-                                const targetId = (user?.id || (user as any)?._id || '').toString();
 
 
 
 
+            onDeleteUser={handleDeleteClick}
 
 
 
-                                const isSelf = Boolean(currentUserIdValue && targetId && targetId === currentUserIdValue);
 
 
 
 
+            onFetchTaskHistory={onFetchTaskHistory}
 
 
 
-                                const chain = getReportingChain(user);
 
 
 
 
+            isOverdue={isOverdue}
 
 
 
-                                const topDownChain = chain.slice().reverse();
 
 
 
 
+            currentUser={currentUser}
 
 
 
@@ -11195,14 +9937,15 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+        />
 
 
 
 
-                                const shouldShowHierarchy = normalizeRole(user?.role) !== 'assistant';
 
 
 
+    );
 
 
 
@@ -11210,12 +9953,12 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+}
 
 
 
 
 
-                                return (
 
 
 
@@ -11223,274 +9966,274 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                    <div
 
 
 
+return (
 
 
 
 
-                                        key={user.id}
 
 
 
+    <div className="space-y-6">
 
 
 
 
-                                        onClick={() => openUserDetails(user.id)}
 
 
 
+        {/* Header */}
 
 
 
 
-                                        className="bg-white rounded-xl border border-gray-200 p-5 cursor-pointer hover:border-blue-300 hover:shadow-md transition-all"
 
 
 
+        <div className="md:flex md:items-center md:justify-between">
 
 
 
 
-                                    >
 
 
 
+            <div className="flex-1 min-w-0">
 
 
 
 
-                                        <div className="flex items-start justify-between gap-4">
 
 
 
+                <div className="flex items-center space-x-3">
 
 
 
 
-                                            <div className="flex items-start gap-4">
 
 
 
+                    <div className="p-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl">
 
 
 
 
-                                                {getUserAvatar(user, 'lg')}
 
 
 
+                        <Shield className="h-8 w-8 text-white" />
 
 
 
 
-                                                <div className="min-w-0">
 
 
 
+                    </div>
 
 
 
 
-                                                    <div className="flex items-center gap-2 flex-wrap">
 
 
 
+                    <div>
 
 
 
 
-                                                        <h3 className="font-bold text-gray-900 truncate text-lg">{user.name}</h3>
 
 
 
+                        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Team Management</h1>
 
 
 
 
-                                                        <span className={`px-3 py-1.5 text-xs font-semibold rounded-lg flex items-center gap-1.5 ${getRoleBadgeColor(user.role)}`}>
 
 
 
+                        <p className="mt-1 text-sm text-gray-500">Manage your team members and their tasks</p>
 
 
 
 
-                                                            {getRoleIcon(user.role)}
 
 
 
+                    </div>
 
 
 
 
-                                                            {user.role || 'User'}
 
 
 
+                </div>
 
 
 
 
-                                                        </span>
 
 
 
+            </div>
 
 
 
 
-                                                    </div>
 
 
 
+            <div className="mt-4 md:mt-0">
 
 
 
 
-                                                    <div className="mt-2 text-sm text-gray-600 flex items-center gap-2 min-w-0">
 
 
 
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
 
 
 
 
-                                                        <Mail className="h-4 w-4 text-gray-400" />
 
 
 
+                    {isCurrentUserAdmin && (
 
 
 
 
-                                                        <span className="truncate">{user.email}</span>
 
 
 
+                        <select
 
 
 
 
-                                                    </div>
 
 
 
+                            value={filterCompany}
 
 
 
 
-                                                    {(user.department || user.position) && (
 
 
 
+                            onChange={(e) => setFilterCompany(e.target.value)}
 
 
 
 
-                                                        <div className="mt-2 flex items-center gap-2">
 
 
 
+                            className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 
 
 
 
-                                                            {user.department && (
 
 
 
+                        >
 
 
 
 
-                                                                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-md">
 
 
 
+                            <option value="all">All Companies</option>
 
 
 
 
-                                                                    {user.department}
 
 
 
+                            {companyOptions.map((c) => (
 
 
 
 
-                                                                </span>
 
 
 
+                                <option key={c} value={c}>
 
 
 
 
-                                                            )}
 
 
 
+                                    {c}
 
 
 
 
-                                                            {user.position && (
 
 
 
+                                </option>
 
 
 
 
-                                                                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-md">
 
 
 
+                            ))}
 
 
 
 
-                                                                    {user.position}
 
 
 
+                        </select>
 
 
 
 
-                                                                </span>
 
 
 
+                    )}
 
 
 
 
-                                                            )}
 
 
 
+                    {(canManageUsers || canManageUsersAsManager) && (
 
 
 
 
-                                                        </div>
 
 
 
+                        <button
 
 
 
 
-                                                    )}
 
 
 
+                            onClick={handleAddClick}
 
 
 
@@ -11498,636 +10241,39 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+                            className="inline-flex items-center px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
 
 
 
 
 
-                                                    {shouldShowHierarchy && (
 
 
+                        >
 
 
 
 
 
-                                                        <div className="mt-3">
 
 
+                            <UserPlus className="h-4 w-4 mr-2" />
 
 
 
 
 
-                                                            <div className="text-xs font-semibold text-gray-700">Hierarchy</div>
 
 
+                            Add User
 
 
 
 
 
-                                                            {topDownChain.length > 0 ? (
 
 
-
-
-
-
-
-                                                                <div className="mt-1 flex flex-wrap items-center gap-2">
-
-
-
-
-
-
-
-                                                                    {topDownChain.map((u, idx) => (
-
-
-
-
-
-
-
-                                                                        <React.Fragment key={(u?.id || u?.email || idx) as any}>
-
-
-
-
-
-
-
-                                                                            {idx > 0 && <ChevronRight className="h-4 w-4 text-gray-300" />}
-
-
-
-
-
-
-
-                                                                            <span className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold ${getRoleBadgeColor(u?.role || '')}`}>
-
-
-
-
-
-
-
-                                                                                {getRoleIcon(u?.role || '')}
-
-
-
-
-
-
-
-                                                                                <span className="whitespace-nowrap">
-
-
-
-
-
-
-
-                                                                                    {getRoleLabel(u?.role)}
-
-
-
-
-
-
-
-                                                                                </span>
-
-
-
-
-
-
-
-                                                                                <span className="text-gray-700 font-medium">:</span>
-
-
-
-
-
-
-
-                                                                                <span className="whitespace-nowrap font-bold text-gray-900">
-
-
-
-
-
-
-
-                                                                                    {u?.name || ''}
-
-
-
-
-
-
-
-                                                                                </span>
-
-
-
-
-
-
-
-                                                                            </span>
-
-
-
-
-
-
-
-                                                                        </React.Fragment>
-
-
-
-
-
-
-
-                                                                    ))}
-
-
-
-
-
-
-
-                                                                </div>
-
-
-
-
-
-
-
-                                                            ) : (
-
-
-
-
-
-
-
-                                                                <div className="mt-1 text-xs text-gray-500">Unassigned</div>
-
-
-
-
-
-
-
-                                                            )}
-
-
-
-
-
-
-
-                                                        </div>
-
-
-
-
-
-
-
-                                                    )}
-
-
-
-
-
-
-
-                                                </div>
-
-
-
-
-
-
-
-                                            </div>
-
-
-
-
-
-
-
-                                            <div className="text-right">
-
-
-
-
-
-
-
-                                                <div className="text-sm font-medium text-gray-600">Total Tasks</div>
-
-
-
-
-
-
-
-                                                <div className="text-xl font-bold text-gray-900">{stats.totalAssigned}</div>
-
-
-
-
-
-
-
-                                            </div>
-
-
-
-
-
-
-
-                                        </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                                        {/* Task Stats Grid */}
-
-
-
-
-
-
-
-                                        <div className="grid grid-cols-4 gap-3 mt-5">
-
-
-
-
-
-
-
-                                            <div className="text-center p-3 bg-blue-50 rounded-lg">
-
-
-
-
-
-
-
-                                                <div className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Total</div>
-
-
-
-
-
-
-
-                                                <div className="text-lg font-bold text-gray-900 mt-1">{stats.totalAssigned}</div>
-
-
-
-
-
-
-
-                                            </div>
-
-
-
-
-
-
-
-                                            <div className="text-center p-3 bg-green-50 rounded-lg">
-
-
-
-
-
-
-
-                                                <div className="text-xs font-semibold text-green-700 uppercase tracking-wide">Completed</div>
-
-
-
-
-
-
-
-                                                <div className="text-lg font-bold text-gray-900 mt-1">{stats.completed}</div>
-
-
-
-
-
-
-
-                                            </div>
-
-
-
-
-
-
-
-                                            <div className="text-center p-3 bg-amber-50 rounded-lg">
-
-
-
-
-
-
-
-                                                <div className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Pending</div>
-
-
-
-
-
-
-
-                                                <div className="text-lg font-bold text-gray-900 mt-1">{stats.pending}</div>
-
-
-
-
-
-
-
-                                            </div>
-
-
-
-
-
-
-
-                                            <div className="text-center p-3 bg-red-50 rounded-lg">
-
-
-
-
-
-
-
-                                                <div className="text-xs font-semibold text-red-700 uppercase tracking-wide">Overdue</div>
-
-
-
-
-
-
-
-                                                <div className="text-lg font-bold text-gray-900 mt-1">{stats.overdue}</div>
-
-
-
-
-
-
-
-                                            </div>
-
-
-
-
-
-
-
-                                        </div>
-
-
-
-
-
-
-
-                                        {(() => {
-
-
-
-
-
-
-
-                                            const canEditAsAm = isCurrentUserAm && isSpeedEcomUser(user);
-
-
-
-
-
-
-
-                                            const canShowActions = canManageUsers || canManageUsersAsManager || canEditAsAm;
-
-
-
-
-
-
-
-                                            if (!canShowActions || isSelf) return null;
-
-
-
-
-
-
-
-                                            if (!canManageTargetUser(user)) return null;
-
-
-
-
-
-
-
-                                            return (
-
-
-
-
-
-
-
-                                                <div className="flex justify-end gap-3 mt-5 pt-5 border-t border-gray-100">
-
-
-
-
-
-
-
-                                                    <button
-
-
-
-
-
-
-
-                                                        onClick={(e) => { e.stopPropagation(); handleEditClick(user); }}
-
-
-
-
-
-
-
-                                                        className="px-4 py-2 text-sm font-medium bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-
-
-
-
-
-
-
-                                                    >
-
-
-
-
-
-
-
-                                                        Edit
-
-
-
-
-
-
-
-                                                    </button>
-
-
-
-
-
-
-
-                                                    <button
-
-
-
-
-
-
-
-                                                        onClick={(e) => { e.stopPropagation(); handleDeleteClick(user.id); }}
-
-
-
-
-
-
-
-                                                        className="px-4 py-2 text-sm font-medium bg-white border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-
-
-
-
-
-
-
-                                                    >
-
-
-
-
-
-
-
-                                                        Delete
-
-
-
-
-
-
-
-                                                    </button>
-
-
-
-
-
-
-
-                                                </div>
-
-
-
-
-
-
-
-                                            );
-
-
-
-
-
-
-
-                                        })()}
-
-
-
-
-
-
-
-                                    </div>
-
-
-
-
-
-
-
-                                );
-
-
-
-
-
-
-
-                            })}
-
-
-
-
-
-
-
-                        </div>
+                        </button>
 
 
 
@@ -12159,6 +10305,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+        </div>
 
 
 
@@ -12174,92 +10321,95 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+        {/* Stats Cards - Small and Light with Colors */}
 
-            {/* Delete Modal */}
 
 
 
 
 
 
+        {(() => {
 
-            {showDeleteModal && (
 
 
 
 
 
 
+            const baseUsers = companyScopedUsers;
 
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
 
 
 
 
 
 
+            const selectedCompanyKey = normalizeText(filterCompany === 'all' ? '' : filterCompany);
 
-                    <div className="absolute inset-0 bg-black/50" onClick={handleCancelDelete} />
 
 
+            const speedCompanyKey = normalizeText('Speed Ecom');
 
 
 
+            const isSpeedEcomSelected = Boolean(selectedCompanyKey)
 
 
-                    <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full border border-gray-200 p-6">
 
+                && (selectedCompanyKey === speedCompanyKey
 
 
 
+                    || (selectedCompanyKey.includes('speed') && selectedCompanyKey.includes('ecom')));
 
 
 
-                        <div className="flex items-center justify-between mb-4">
 
 
 
 
+            const uniqueKeyForUser = (u: any) => String(u?.id || u?._id || u?.email || '').trim();
 
 
 
-                            <h3 className="text-lg font-semibold text-gray-900">Delete User</h3>
 
 
 
 
+            const uniqueUsersMap = new Map<string, UserType>();
 
 
 
-                            <button onClick={handleCancelDelete} className="text-gray-400 hover:text-gray-600" disabled={!!deletingUserId}>
 
 
 
 
+            for (const u of baseUsers || []) {
 
 
 
-                                <X className="h-5 w-5" />
 
 
 
 
+                const key = uniqueKeyForUser(u);
 
 
 
-                            </button>
 
 
 
 
+                if (!key) continue;
 
 
 
-                        </div>
 
 
 
 
+                if (!uniqueUsersMap.has(key)) uniqueUsersMap.set(key, u);
 
 
 
@@ -12267,179 +10417,498 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+            }
 
 
 
 
-                        <div className="space-y-4">
 
 
 
+            const uniqueUsers = Array.from(uniqueUsersMap.values());
 
 
 
 
-                            <div className="text-sm text-gray-600">
 
 
 
+            const countByRole = (roleKey: string) => uniqueUsers.filter((u) => normalizeRole((u as any)?.role) === roleKey).length;
 
+            const speedHierarchyRoles = new Set(['sbm', 'rm', 'am', 'sales_manager', 'sales_man']);
+            const speedHierarchyUsers = uniqueUsers.filter((u) => speedHierarchyRoles.has(normalizeRole((u as any)?.role)));
 
 
 
-                                Are you sure you want to delete this user?
+            const speedHierarchyUserIds = new Set(speedHierarchyUsers.map((u) => uniqueKeyForUser(u)).filter(Boolean));
 
 
 
+            const speedHierarchyCount = Array.from(speedHierarchyUserIds).length;
 
 
 
 
-                            </div>
 
 
 
+            const totalCount = isSpeedEcomSelected ? speedHierarchyCount : uniqueUsers.length;
 
+            const roleOrder = ['md_manager', 'ob_manager', 'manager', 'sbm', 'rm', 'am', 'sales_manager', 'sales_man', 'assistant', 'sub_assistance','troubleshoot_manager'];
 
+            const roleLabels: Record<string, string> = {
 
 
 
+                md_manager: 'MD Manager',
 
 
 
+                ob_manager: 'OB Manager',
 
 
 
+                manager: 'Managers',
 
-                            <div className="flex justify-end gap-2">
 
 
+                troubleshoot_manager: 'Troubleshoot Manager',
 
 
 
+                sbm: 'SBM',
 
 
-                                <button
 
+                rm: 'RM',
 
 
 
+                am: 'AM',
+                sales_manager: 'Sales Manager',
+                sales_man: 'Sales Man',
+                assistant: 'Assistants',
 
 
 
-                                    onClick={handleCancelDelete}
+                sub_assistance: 'Sub Assistance'
 
 
 
+            };
 
 
 
 
-                                    className="px-4 py-2.5 text-sm font-medium bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
 
 
 
+            const roleCardClass: Record<string, string> = {
 
 
 
+                md_manager: 'bg-indigo-50 border-indigo-200',
 
-                                    disabled={!!deletingUserId}
 
 
+                ob_manager: 'bg-violet-50 border-violet-200',
 
 
 
+                manager: 'bg-purple-50 border-purple-200',
 
 
-                                >
 
+                troubleshoot_manager: 'bg-orange-50 border-orange-200',
 
 
 
+                sbm: 'bg-amber-50 border-amber-200',
 
 
 
-                                    Cancel
+                rm: 'bg-cyan-50 border-cyan-200',
 
 
 
+                am: 'bg-emerald-50 border-emerald-200',
+                sales_manager: 'bg-blue-50 border-blue-200',
+                sales_man: 'bg-sky-50 border-sky-200',
+                assistant: 'bg-green-50 border-green-200',
 
 
 
+                sub_assistance: 'bg-green-50 border-green-200'
 
-                                </button>
 
 
+            };
 
 
 
 
 
-                                <button
 
 
+            const roleTextClass: Record<string, string> = {
 
 
 
+                md_manager: 'text-indigo-700',
 
 
-                                    onClick={handleConfirmDelete}
 
+                ob_manager: 'text-violet-700',
 
 
 
+                manager: 'text-purple-700',
 
 
 
-                                    className="px-4 py-2.5 text-sm font-medium bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50"
+                troubleshoot_manager: 'text-orange-700',
 
 
 
+                sbm: 'text-amber-700',
 
 
 
+                rm: 'text-cyan-700',
 
-                                    disabled={!!deletingUserId}
 
 
+                am: 'text-emerald-700',
+                sales_manager: 'text-blue-700',
+                sales_man: 'text-sky-700',
+                assistant: 'text-green-700',
 
 
 
+                sub_assistance: 'text-green-700'
 
 
-                                >
 
+            };
 
 
 
 
 
 
-                                    {deletingUserId ? 'Deleting...' : 'Delete'}
 
+            const isRoleVisible = (roleKey: string) => {
 
 
 
 
 
 
-                                </button>
 
+                if (isCurrentUserAdmin) return true;
 
 
 
 
 
 
-                            </div>
 
+                if (roleKey === 'md_manager') return isCurrentUserMdManager;
 
 
 
 
 
 
-                        </div>
+
+                if (roleKey === 'ob_manager') return isCurrentUserMdManager || isCurrentUserObManager || isCurrentUserManager;
+
+
+
+
+
+
+
+                if (roleKey === 'manager') return isCurrentUserMdManager || isCurrentUserObManager || isCurrentUserManager;
+
+
+
+
+
+
+
+                if (roleKey === 'troubleshoot_manager') return isCurrentUserMdManager || isCurrentUserAdmin;
+
+
+
+
+
+
+
+                if (roleKey === 'sbm' || roleKey === 'rm' || roleKey === 'am') return isCurrentUserSbm || isCurrentUserRm || isCurrentUserAm;
+
+                if (roleKey === 'sales_manager' || roleKey === 'sales_man') return isSpeedEcomContext || isCurrentUserSbm || isCurrentUserSalesManager || isCurrentUserSalesMan;
+
+                if (roleKey === 'assistant' || roleKey === 'sub_assistance') return true;
+
+
+
+
+
+
+
+                return false;
+
+
+
+
+
+
+
+            };
+
+
+
+
+
+
+
+            const rolesToRender = roleOrder
+
+
+
+                .filter((r) => isRoleVisible(r))
+
+
+
+                .filter((r) => countByRole(r) > 0);
+
+
+
+
+
+
+
+            const gridCols = rolesToRender.length + 1;
+
+
+
+
+
+
+
+            const gridClass = gridCols <= 4
+
+
+
+                ? 'grid grid-cols-2 md:grid-cols-4 gap-4'
+
+
+
+                : 'grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4';
+
+
+
+
+
+
+
+            return (
+
+
+
+
+
+
+
+                <div className={gridClass}>
+
+
+
+
+
+
+
+                    <button
+
+
+
+
+
+
+
+                        onClick={() => setFilterRole('all')}
+
+
+
+
+
+
+
+                        className={`p-5 rounded-xl border text-left transition-all ${filterRole === 'all' ? 'bg-blue-50 border-blue-200 shadow-sm' : 'bg-white border-gray-200 hover:bg-blue-50 hover:border-blue-100'}`}
+
+
+
+
+
+
+
+                    >
+
+
+
+
+
+
+
+                        <div className="text-3xl font-bold text-gray-900">{totalCount}</div>
+
+
+
+
+
+
+
+                        <div className="text-sm text-gray-600 mt-1">Total Members</div>
+
+
+
+
+
+
+
+                    </button>
+
+
+
+
+
+
+
+                    {rolesToRender.map((roleKey) => (
+                        <button
+
+
+
+
+
+
+
+                            key={roleKey}
+
+
+
+
+
+
+
+                            onClick={() => setFilterRole(roleKey)}
+
+
+
+
+
+
+
+                            className={`p-5 rounded-xl border text-left transition-all ${filterRole === roleKey ? `${roleCardClass[roleKey]} shadow-sm` : `bg-white border-gray-200 hover:${roleCardClass[roleKey]}`}`}
+
+
+
+
+
+
+
+                        >
+
+
+
+
+
+
+
+                            <div className={`text-3xl font-bold ${roleTextClass[roleKey]}`}>{countByRole(roleKey)}</div>
+
+
+
+
+
+
+
+                            <div className="text-sm text-gray-600 mt-1">{roleLabels[roleKey] || roleKey}</div>
+
+
+
+
+
+
+
+                        </button>
+
+
+
+
+
+
+
+                    ))}
+
+
+
+
+
+
+
+                </div>
+
+
+
+
+
+
+
+            );
+
+
+
+
+
+
+
+        })()}
+        {/* Search and Filters */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+                <div className="flex-1 max-w-lg">
+                    <div className="relative">
+                        <Search className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                            type="search"
+                            className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Search users by name, email, or role..."
+
+
+
+
+
+
+
+                            value={searchTerm}
+
+
+
+
+
+
+
+                            onChange={(e) => setSearchTerm(e.target.value)}
+
+
+
+
+
+
+
+                        />
 
 
 
@@ -12463,7 +10932,6 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            )}
 
 
 
@@ -12479,15 +10947,14 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            {/* Edit Modal */}
 
+            </div>
 
 
 
 
 
 
-            {showEditModal && (
 
 
 
@@ -12495,76 +10962,77 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
 
 
+            {/* Users List */}
 
 
 
 
 
-                    <div className="absolute inset-0 bg-black/50" onClick={handleCancelEdit} />
 
 
+            <div>
 
 
 
+                {filteredAndSortedUsers.length === 0 ? (
 
 
-                    <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full border border-gray-200 p-6">
 
 
 
 
 
+                    <div className="text-center py-8">
 
 
-                        <div className="flex items-center justify-between mb-4">
 
 
 
 
 
+                        <Users className="h-12 w-12 text-gray-300 mx-auto mb-3" />
 
 
-                            <h3 className="text-lg font-semibold text-gray-900">Edit User</h3>
 
 
 
 
 
+                        <div className="text-lg font-semibold text-gray-900">No users found</div>
 
 
-                            <button onClick={handleCancelEdit} className="text-gray-400 hover:text-gray-600" disabled={!!savingUserId}>
 
 
 
 
 
+                        <div className="mt-1 text-sm text-gray-600">Try changing the filters or search term</div>
 
 
-                                <X className="h-5 w-5" />
 
 
 
 
 
+                    </div>
 
 
-                            </button>
 
 
 
 
 
+                ) : (
 
 
-                        </div>
 
 
 
 
 
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
 
 
@@ -12572,50 +11040,50 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+                        {filteredAndSortedUsers.map((user) => {
 
 
 
-                        <div className="space-y-4">
 
 
 
 
+                            const stats = getUserStats(user.id, user.email);
 
 
 
-                            <div>
 
 
 
 
+                            const targetId = (user?.id || (user as any)?._id || '').toString();
 
 
 
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
 
 
 
 
+                            const isSelf = Boolean(currentUserIdValue && targetId && targetId === currentUserIdValue);
 
 
 
-                                <input
 
 
 
 
+                            const chain = getReportingChain(user);
 
 
 
-                                    type="text"
 
 
 
 
+                            const topDownChain = chain.slice().reverse();
 
 
 
-                                    value={editingUser?.name || ''}
 
 
 
@@ -12623,15 +11091,14 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                    onChange={(e) => setEditingUser(editingUser ? { ...editingUser, name: e.target.value } : null)}
 
 
 
 
 
+                            const shouldShowHierarchy = normalizeRole(user?.role) !== 'assistant';
 
 
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 
 
 
@@ -12639,29 +11106,29 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                    placeholder="Enter full name"
 
 
 
 
 
 
+                            return (
 
-                                />
 
 
 
 
 
 
+                                <div
 
-                            </div>
 
 
 
 
 
 
+                                    key={user.id}
 
 
 
@@ -12669,139 +11136,15 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+                                    onClick={() => openUserDetails(user.id)}
 
 
-                            <div>
 
 
 
 
 
-
-
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
-
-
-
-
-
-
-
-                                <input
-
-
-
-
-
-
-
-                                    type="email"
-
-
-
-
-
-
-
-                                    value={editingUser?.email || ''}
-
-
-
-
-
-
-
-                                    onChange={(e) => setEditingUser(editingUser ? { ...editingUser, email: e.target.value } : null)}
-
-
-
-
-
-
-
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-
-
-
-
-
-
-
-                                    placeholder="Enter email address"
-
-
-
-
-
-
-
-                                />
-
-
-
-
-
-
-
-                            </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                            <div>
-
-
-
-
-
-
-
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-
-
-
-
-
-
-
-                                <select
-
-
-
-
-
-
-
-                                    value={editingUser?.role || 'user'}
-
-
-
-
-
-
-
-                                    onChange={(e) => setEditingUser(editingUser ? { ...editingUser, role: e.target.value } : null)}
-
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-
-
-
-
-
-
-
-                                    disabled={!!savingUserId || !canEditRoleForUser(editingUser)}
+                                    className="bg-white rounded-xl border border-gray-200 p-5 cursor-pointer hover:border-blue-300 hover:shadow-md transition-all"
 
 
 
@@ -12817,7 +11160,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                    {(roleOptionsForEditModal || []).map((r) => (
+                                    <div className="flex items-start justify-between gap-4">
 
 
 
@@ -12825,7 +11168,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                        <option key={r.key} value={r.key}>
+                                        <div className="flex items-start gap-4">
 
 
 
@@ -12833,7 +11176,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                            {r.name || r.key}
+                                            {getUserAvatar(user, 'lg')}
 
 
 
@@ -12841,7 +11184,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                        </option>
+                                            <div className="min-w-0">
 
 
 
@@ -12849,7 +11192,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                    ))}
+                                                <div className="flex items-center gap-2 flex-wrap">
 
 
 
@@ -12857,7 +11200,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                </select>
+                                                    <h3 className="font-bold text-gray-900 truncate text-lg">{user.name}</h3>
 
 
 
@@ -12865,7 +11208,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                            </div>
+                                                    <span className={`px-3 py-1.5 text-xs font-semibold rounded-lg flex items-center gap-1.5 ${getRoleBadgeColor(user.role)}`}>
 
 
 
@@ -12873,6 +11216,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+                                                        {getRoleIcon(user.role)}
 
 
 
@@ -12880,160 +11224,775 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+                                                        {user.role || 'User'}
 
-                            {normalizeRole((editingUser as any)?.role) === 'am' && (
 
 
 
 
 
 
+                                                    </span>
 
-                                <div>
 
 
 
 
 
 
+                                                </div>
 
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">RM</label>
 
 
 
 
 
 
+                                                <div className="mt-2 text-sm text-gray-600 flex items-center gap-2 min-w-0">
 
-                                    <select
 
 
 
 
 
 
+                                                    <Mail className="h-4 w-4 text-gray-400" />
 
-                                        value={((editingUser as any)?.managerId || '').toString()}
 
 
 
 
 
 
+                                                    <span className="truncate">{user.email}</span>
 
-                                        onChange={(e) => setEditingUser(editingUser ? { ...editingUser, managerId: e.target.value } as any : null)}
 
 
 
 
 
 
+                                                </div>
 
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 
 
 
 
 
 
+                                                {(user.department || user.position) && (
 
-                                        disabled={!!savingUserId}
 
 
 
 
 
 
+                                                    <div className="mt-2 flex items-center gap-2">
 
-                                    >
 
 
 
 
 
 
+                                                        {user.department && (
 
-                                        <option value="">Select RM</option>
 
 
 
 
 
 
+                                                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-md">
 
-                                        {(rmCandidatesForEditing || []).map((rm) => {
 
 
 
 
 
 
+                                                                {user.department}
 
-                                            const id = (rm?.id || (rm as any)?._id || '').toString();
 
 
 
 
 
 
+                                                            </span>
 
-                                            if (!id) return null;
 
 
 
 
 
 
+                                                        )}
 
-                                            return (
 
 
 
 
 
 
+                                                        {user.position && (
 
-                                                <option key={id} value={id}>
 
 
 
 
 
 
+                                                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-md">
 
-                                                    {(rm?.name || rm?.email || 'RM').toString()}
 
 
 
 
 
 
+                                                                {user.position}
 
-                                                </option>
 
 
 
 
 
 
+                                                            </span>
 
-                                            );
 
 
 
 
 
 
+                                                        )}
 
-                                        })}
 
 
 
 
 
 
+                                                    </div>
 
-                                    </select>
+
+
+
+
+
+
+                                                )}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                {shouldShowHierarchy && (
+
+
+
+
+
+
+
+                                                    <div className="mt-3">
+
+
+
+
+
+
+
+                                                        <div className="text-xs font-semibold text-gray-700">Hierarchy</div>
+
+
+
+
+
+
+
+                                                        {topDownChain.length > 0 ? (
+
+
+
+
+
+
+
+                                                            <div className="mt-1 flex flex-wrap items-center gap-2">
+
+
+
+
+
+
+
+                                                                {topDownChain.map((u, idx) => (
+
+
+
+
+
+
+
+                                                                    <React.Fragment key={(u?.id || u?.email || idx) as any}>
+
+
+
+
+
+
+
+                                                                        {idx > 0 && <ChevronRight className="h-4 w-4 text-gray-300" />}
+
+
+
+
+
+
+
+                                                                        <span className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold ${getRoleBadgeColor(u?.role || '')}`}>
+
+
+
+
+
+
+
+                                                                            {getRoleIcon(u?.role || '')}
+
+
+
+
+
+
+
+                                                                            <span className="whitespace-nowrap">
+
+
+
+
+
+
+
+                                                                                {getRoleLabel(u?.role)}
+
+
+
+
+
+
+
+                                                                            </span>
+
+
+
+
+
+
+
+                                                                            <span className="text-gray-700 font-medium">:</span>
+
+
+
+
+
+
+
+                                                                            <span className="whitespace-nowrap font-bold text-gray-900">
+
+
+
+
+
+
+
+                                                                                {u?.name || ''}
+
+
+
+
+
+
+
+                                                                            </span>
+
+
+
+
+
+
+
+                                                                        </span>
+
+
+
+
+
+
+
+                                                                    </React.Fragment>
+
+
+
+
+
+
+
+                                                                ))}
+
+
+
+
+
+
+
+                                                            </div>
+
+
+
+
+
+
+
+                                                        ) : (
+
+
+
+
+
+
+
+                                                            <div className="mt-1 text-xs text-gray-500">Unassigned</div>
+
+
+
+
+
+
+
+                                                        )}
+
+
+
+
+
+
+
+                                                    </div>
+
+
+
+
+
+
+
+                                                )}
+
+
+
+
+
+
+
+                                            </div>
+
+
+
+
+
+
+
+                                        </div>
+
+
+
+
+
+
+
+                                        <div className="text-right">
+
+
+
+
+
+
+
+                                            <div className="text-sm font-medium text-gray-600">Total Tasks</div>
+
+
+
+
+
+
+
+                                            <div className="text-xl font-bold text-gray-900">{stats.totalAssigned}</div>
+
+
+
+
+
+
+
+                                        </div>
+
+
+
+
+
+
+
+                                    </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                    {/* Task Stats Grid */}
+
+
+
+
+
+
+
+                                    <div className="grid grid-cols-4 gap-3 mt-5">
+
+
+
+
+
+
+
+                                        <div className="text-center p-3 bg-blue-50 rounded-lg">
+
+
+
+
+
+
+
+                                            <div className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Total</div>
+
+
+
+
+
+
+
+                                            <div className="text-lg font-bold text-gray-900 mt-1">{stats.totalAssigned}</div>
+
+
+
+
+
+
+
+                                        </div>
+
+
+
+
+
+
+
+                                        <div className="text-center p-3 bg-green-50 rounded-lg">
+
+
+
+
+
+
+
+                                            <div className="text-xs font-semibold text-green-700 uppercase tracking-wide">Completed</div>
+
+
+
+
+
+
+
+                                            <div className="text-lg font-bold text-gray-900 mt-1">{stats.completed}</div>
+
+
+
+
+
+
+
+                                        </div>
+
+
+
+
+
+
+
+                                        <div className="text-center p-3 bg-amber-50 rounded-lg">
+
+
+
+
+
+
+
+                                            <div className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Pending</div>
+
+
+
+
+
+
+
+                                            <div className="text-lg font-bold text-gray-900 mt-1">{stats.pending}</div>
+
+
+
+
+
+
+
+                                        </div>
+
+
+
+
+
+
+
+                                        <div className="text-center p-3 bg-red-50 rounded-lg">
+
+
+
+
+
+
+
+                                            <div className="text-xs font-semibold text-red-700 uppercase tracking-wide">Overdue</div>
+
+
+
+
+
+
+
+                                            <div className="text-lg font-bold text-gray-900 mt-1">{stats.overdue}</div>
+
+
+
+
+
+
+
+                                        </div>
+
+
+
+
+
+
+
+                                    </div>
+
+
+
+
+
+
+
+                                    {(() => {
+
+
+
+
+
+
+
+                                        const canEditAsAm = isCurrentUserAm && isSpeedEcomUser(user);
+
+
+
+
+
+
+
+                                        const canShowActions = canManageUsers || canManageUsersAsManager || canEditAsAm;
+
+
+
+
+
+
+
+                                        if (!canShowActions || isSelf) return null;
+
+
+
+
+
+
+
+                                        if (!canManageTargetUser(user)) return null;
+
+
+
+
+
+
+
+                                        return (
+
+
+
+
+
+
+
+                                            <div className="flex justify-end gap-3 mt-5 pt-5 border-t border-gray-100">
+
+
+
+
+
+
+
+                                                <button
+
+
+
+
+
+
+
+                                                    onClick={(e) => { e.stopPropagation(); handleEditClick(user); }}
+
+
+
+
+
+
+
+                                                    className="px-4 py-2 text-sm font-medium bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+
+
+
+
+
+
+
+                                                >
+
+
+
+
+
+
+
+                                                    Edit
+
+
+
+
+
+
+
+                                                </button>
+
+
+
+
+
+
+
+                                                <button
+
+
+
+
+
+
+
+                                                    onClick={(e) => { e.stopPropagation(); handleDeleteClick(user.id); }}
+
+
+
+
+
+
+
+                                                    className="px-4 py-2 text-sm font-medium bg-white border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+
+
+
+
+
+
+
+                                                >
+
+
+
+
+
+
+
+                                                    Delete
+
+
+
+
+
+
+
+                                                </button>
+
+
+
+
+
+
+
+                                            </div>
+
+
+
+
+
+
+
+                                        );
+
+
+
+
+
+
+
+                                    })()}
 
 
 
@@ -13049,7 +12008,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                            )}
+                            );
 
 
 
@@ -13057,6 +12016,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+                        })}
 
 
 
@@ -13064,40 +12024,37 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+                    </div>
 
-                            {editingUser?.role === 'assistant' && (
 
-                                null
 
-                            )}
 
 
 
-                            <div className="grid grid-cols-2 gap-4">
 
+                )}
 
 
 
 
 
 
-                                <div>
 
+            </div>
 
 
 
 
 
 
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
 
+        </div>
 
 
 
 
 
 
-                                    <input
 
 
 
@@ -13105,7 +12062,6 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                        type="text"
 
 
 
@@ -13113,95 +12069,94 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                        value={editingUser?.department || ''}
 
 
 
+        {/* Delete Modal */}
 
 
 
 
-                                        onChange={(e) => setEditingUser(editingUser ? { ...editingUser, department: e.target.value } : null)}
 
 
 
+        {showDeleteModal && (
 
 
 
 
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 
 
 
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
 
 
 
 
-                                        placeholder="Department"
 
 
 
+                <div className="absolute inset-0 bg-black/50" onClick={handleCancelDelete} />
 
 
 
 
-                                    />
 
 
 
+                <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full border border-gray-200 p-6">
 
 
 
 
-                                </div>
 
 
 
+                    <div className="flex items-center justify-between mb-4">
 
 
 
 
-                                <div>
 
 
 
+                        <h3 className="text-lg font-semibold text-gray-900">Delete User</h3>
 
 
 
 
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Position</label>
 
 
 
+                        <button onClick={handleCancelDelete} className="text-gray-400 hover:text-gray-600" disabled={!!deletingUserId}>
 
 
 
 
-                                    <input
 
 
 
+                            <X className="h-5 w-5" />
 
 
 
 
-                                        type="text"
 
 
 
+                        </button>
 
 
 
 
-                                        value={editingUser?.position || ''}
 
 
 
+                    </div>
 
 
 
 
-                                        onChange={(e) => setEditingUser(editingUser ? { ...editingUser, position: e.target.value } : null)}
 
 
 
@@ -13209,39 +12164,27 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 
 
 
 
+                    <div className="space-y-4">
 
 
 
-                                        placeholder="Position"
 
 
 
 
+                        <div className="text-sm text-gray-600">
 
 
 
-                                    />
 
 
 
 
-
-
-
-                                </div>
-
-
-
-
-
-
-
-                            </div>
+                            Are you sure you want to delete this user?
 
 
 
@@ -13265,7 +12208,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                        <div className="flex justify-end space-x-3 mt-6">
+                        <div className="flex justify-end gap-2">
 
 
 
@@ -13281,7 +12224,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                onClick={handleCancelEdit}
+                                onClick={handleCancelDelete}
 
 
 
@@ -13289,7 +12232,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                className="px-4 py-2.5 text-sm font-medium bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                                className="px-4 py-2.5 text-sm font-medium bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
 
 
 
@@ -13297,7 +12240,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                disabled={!!savingUserId}
+                                disabled={!!deletingUserId}
 
 
 
@@ -13337,7 +12280,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                onClick={handleSaveEdit}
+                                onClick={handleConfirmDelete}
 
 
 
@@ -13345,7 +12288,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                disabled={!!savingUserId}
+                                className="px-4 py-2.5 text-sm font-medium bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50"
 
 
 
@@ -13353,7 +12296,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                className="px-4 py-2.5 text-sm font-medium bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 inline-flex items-center"
+                                disabled={!!deletingUserId}
 
 
 
@@ -13369,15 +12312,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                <Save className="h-4 w-4 mr-2" />
-
-
-
-
-
-
-
-                                {savingUserId ? 'Saving...' : 'Save'}
+                                {deletingUserId ? 'Deleting...' : 'Delete'}
 
 
 
@@ -13417,7 +12352,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            )}
+            </div>
 
 
 
@@ -13425,6 +12360,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+        )}
 
 
 
@@ -13433,7 +12369,6 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            {/* Add Modal */}
 
 
 
@@ -13441,7 +12376,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-            {showAddModal && (
+        {/* Edit Modal */}
 
 
 
@@ -13449,7 +12384,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        {showEditModal && (
 
 
 
@@ -13457,7 +12392,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                    <div className="absolute inset-0 bg-black/50" onClick={handleCancelAdd} />
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
 
 
 
@@ -13465,7 +12400,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                    <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full border border-gray-200 p-6">
+                <div className="absolute inset-0 bg-black/50" onClick={handleCancelEdit} />
 
 
 
@@ -13473,7 +12408,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                        <div className="flex items-center justify-between mb-4">
+                <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full border border-gray-200 p-6">
 
 
 
@@ -13481,7 +12416,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                            <h3 className="text-lg font-semibold text-gray-900">{isCurrentUserManager ? 'Add Assistant' : 'Add Member'}</h3>
+                    <div className="flex items-center justify-between mb-4">
 
 
 
@@ -13489,7 +12424,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                            <button onClick={handleCancelAdd} className="text-gray-400 hover:text-gray-600" disabled={addingUser}>
+                        <h3 className="text-lg font-semibold text-gray-900">Edit User</h3>
 
 
 
@@ -13497,7 +12432,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                <X className="h-5 w-5" />
+                        <button onClick={handleCancelEdit} className="text-gray-400 hover:text-gray-600" disabled={!!savingUserId}>
 
 
 
@@ -13505,7 +12440,111 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                            </button>
+                            <X className="h-5 w-5" />
+
+
+
+
+
+
+
+                        </button>
+
+
+
+
+
+
+
+                    </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                    <div className="space-y-4">
+
+
+
+
+
+
+
+                        <div>
+
+
+
+
+
+
+
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+
+
+
+
+
+
+
+                            <input
+
+
+
+
+
+
+
+                                type="text"
+
+
+
+
+
+
+
+                                value={editingUser?.name || ''}
+
+
+
+
+
+
+
+                                onChange={(e) => setEditingUser(editingUser ? { ...editingUser, name: e.target.value } : null)}
+
+
+
+
+
+
+
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+
+
+
+
+
+
+
+                                placeholder="Enter full name"
+
+
+
+
+
+
+
+                            />
 
 
 
@@ -13529,7 +12568,217 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                        <div className="space-y-4">
+                        <div>
+
+
+
+
+
+
+
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+
+
+
+
+
+
+
+                            <input
+
+
+
+
+
+
+
+                                type="email"
+
+
+
+
+
+
+
+                                value={editingUser?.email || ''}
+
+
+
+
+
+
+
+                                onChange={(e) => setEditingUser(editingUser ? { ...editingUser, email: e.target.value } : null)}
+
+
+
+
+
+
+
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+
+
+
+
+
+
+
+                                placeholder="Enter email address"
+
+
+
+
+
+
+
+                            />
+
+
+
+
+
+
+
+                        </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                        <div>
+
+
+
+
+
+
+
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+
+
+
+
+
+
+
+                            <select
+
+
+
+
+
+
+
+                                value={editingUser?.role || 'user'}
+
+
+
+
+
+
+
+                                onChange={(e) => setEditingUser(editingUser ? { ...editingUser, role: e.target.value } : null)}
+
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+
+
+
+
+
+
+
+                                disabled={!!savingUserId || !canEditRoleForUser(editingUser)}
+
+
+
+
+
+
+
+                            >
+
+
+
+
+
+
+
+                                {(roleOptionsForEditModal || []).map((r) => (
+
+
+
+
+
+
+
+                                    <option key={r.key} value={r.key}>
+
+
+
+
+
+
+
+                                        {r.name || r.key}
+
+
+
+
+
+
+
+                                    </option>
+
+
+
+
+
+
+
+                                ))}
+
+
+
+
+
+
+
+                            </select>
+
+
+
+
+
+
+
+                        </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                        {normalizeRole((editingUser as any)?.role) === 'am' && (
 
 
 
@@ -13545,7 +12794,199 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">RM</label>
+
+
+
+
+
+
+
+                                <select
+
+
+
+
+
+
+
+                                    value={((editingUser as any)?.managerId || '').toString()}
+
+
+
+
+
+
+
+                                    onChange={(e) => setEditingUser(editingUser ? { ...editingUser, managerId: e.target.value } as any : null)}
+
+
+
+
+
+
+
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+
+
+
+
+
+
+
+                                    disabled={!!savingUserId}
+
+
+
+
+
+
+
+                                >
+
+
+
+
+
+
+
+                                    <option value="">Select RM</option>
+
+
+
+
+
+
+
+                                    {(rmCandidatesForEditing || []).map((rm) => {
+
+
+
+
+
+
+
+                                        const id = (rm?.id || (rm as any)?._id || '').toString();
+
+
+
+
+
+
+
+                                        if (!id) return null;
+
+
+
+
+
+
+
+                                        return (
+
+
+
+
+
+
+
+                                            <option key={id} value={id}>
+
+
+
+
+
+
+
+                                                {(rm?.name || rm?.email || 'RM').toString()}
+
+
+
+
+
+
+
+                                            </option>
+
+
+
+
+
+
+
+                                        );
+
+
+
+
+
+
+
+                                    })}
+
+
+
+
+
+
+
+                                </select>
+
+
+
+
+
+
+
+                            </div>
+
+
+
+
+
+
+
+                        )}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                        {editingUser?.role === 'assistant' && (
+
+                            null
+
+                        )}
+
+
+
+                        <div className="grid grid-cols-2 gap-4">
+
+
+
+
+
+
+
+                            <div>
+
+
+
+
+
+
+
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
 
 
 
@@ -13569,7 +13010,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                    value={newUser.name}
+                                    value={editingUser?.department || ''}
 
 
 
@@ -13577,7 +13018,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                    onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                                    onChange={(e) => setEditingUser(editingUser ? { ...editingUser, department: e.target.value } : null)}
 
 
 
@@ -13593,7 +13034,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                    placeholder="Enter full name"
+                                    placeholder="Department"
 
 
 
@@ -13617,14 +13058,6 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-
-
-
-
-
-
-
-
                             <div>
 
 
@@ -13633,7 +13066,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Position</label>
 
 
 
@@ -13649,7 +13082,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                    type="email"
+                                    type="text"
 
 
 
@@ -13657,7 +13090,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                    value={newUser.email}
+                                    value={editingUser?.position || ''}
 
 
 
@@ -13665,7 +13098,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                    onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                                    onChange={(e) => setEditingUser(editingUser ? { ...editingUser, position: e.target.value } : null)}
 
 
 
@@ -13681,7 +13114,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                    placeholder="Enter email address"
+                                    placeholder="Position"
 
 
 
@@ -13705,6 +13138,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+                        </div>
 
 
 
@@ -13712,8 +13146,8 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+                    </div>
 
-                            <div>
 
 
 
@@ -13721,7 +13155,6 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
 
 
 
@@ -13729,7 +13162,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                <div className="relative">
+                    <div className="flex justify-end space-x-3 mt-6">
 
 
 
@@ -13737,7 +13170,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                    <input
+                        <button
 
 
 
@@ -13745,7 +13178,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                        type={showPassword ? 'text' : 'password'}
+                            onClick={handleCancelEdit}
 
 
 
@@ -13753,7 +13186,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                        value={newUser.password}
+                            className="px-4 py-2.5 text-sm font-medium bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
 
 
 
@@ -13761,7 +13194,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                        onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                            disabled={!!savingUserId}
 
 
 
@@ -13769,7 +13202,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
+                        >
 
 
 
@@ -13777,7 +13210,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                        placeholder="At least 6 characters"
+                            Cancel
 
 
 
@@ -13785,7 +13218,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                    />
+                        </button>
 
 
 
@@ -13793,7 +13226,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                    <button
+                        <button
 
 
 
@@ -13801,7 +13234,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                        type="button"
+                            onClick={handleSaveEdit}
 
 
 
@@ -13809,7 +13242,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                        onClick={() => setShowPassword(!showPassword)}
+                            disabled={!!savingUserId}
 
 
 
@@ -13817,7 +13250,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            className="px-4 py-2.5 text-sm font-medium bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 inline-flex items-center"
 
 
 
@@ -13825,7 +13258,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                    >
+                        >
 
 
 
@@ -13833,7 +13266,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            <Save className="h-4 w-4 mr-2" />
 
 
 
@@ -13841,7 +13274,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                    </button>
+                            {savingUserId ? 'Saving...' : 'Save'}
 
 
 
@@ -13849,7 +13282,463 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                </div>
+                        </button>
+
+
+
+
+
+
+
+                    </div>
+
+
+
+
+
+
+
+                </div>
+
+
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+        )}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        {/* Add Modal */}
+
+
+
+
+
+
+
+        {showAddModal && (
+
+
+
+
+
+
+
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+
+
+
+
+
+
+
+                <div className="absolute inset-0 bg-black/50" onClick={handleCancelAdd} />
+
+
+
+
+
+
+
+                <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full border border-gray-200 p-6">
+
+
+
+
+
+
+
+                    <div className="flex items-center justify-between mb-4">
+
+
+
+
+
+
+
+                        <h3 className="text-lg font-semibold text-gray-900">{isCurrentUserManager ? 'Add Assistant' : 'Add Member'}</h3>
+
+
+
+
+
+
+
+                        <button onClick={handleCancelAdd} className="text-gray-400 hover:text-gray-600" disabled={addingUser}>
+
+
+
+
+
+
+
+                            <X className="h-5 w-5" />
+
+
+
+
+
+
+
+                        </button>
+
+
+
+
+
+
+
+                    </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                    <div className="space-y-4">
+
+
+
+
+
+
+
+                        <div>
+
+
+
+
+
+
+
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+
+
+
+
+
+
+
+                            <input
+
+
+
+
+
+
+
+                                type="text"
+
+
+
+
+
+
+
+                                value={newUser.name}
+
+
+
+
+
+
+
+                                onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+
+
+
+
+
+
+
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+
+
+
+
+
+
+
+                                placeholder="Enter full name"
+
+
+
+
+
+
+
+                            />
+
+
+
+
+
+
+
+                        </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                        <div>
+
+
+
+
+
+
+
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+
+
+
+
+
+
+
+                            <input
+
+
+
+
+
+
+
+                                type="email"
+
+
+
+
+
+
+
+                                value={newUser.email}
+
+
+
+
+
+
+
+                                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+
+
+
+
+
+
+
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+
+
+
+
+
+
+
+                                placeholder="Enter email address"
+
+
+
+
+
+
+
+                            />
+
+
+
+
+
+
+
+                        </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                        <div>
+
+
+
+
+
+
+
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
+
+
+
+
+
+
+
+                            <div className="relative">
+
+
+
+
+
+
+
+                                <input
+
+
+
+
+
+
+
+                                    type={showPassword ? 'text' : 'password'}
+
+
+
+
+
+
+
+                                    value={newUser.password}
+
+
+
+
+
+
+
+                                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+
+
+
+
+
+
+
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
+
+
+
+
+
+
+
+                                    placeholder="At least 6 characters"
+
+
+
+
+
+
+
+                                />
+
+
+
+
+
+
+
+                                <button
+
+
+
+
+
+
+
+                                    type="button"
+
+
+
+
+
+
+
+                                    onClick={() => setShowPassword(!showPassword)}
+
+
+
+
+
+
+
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+
+
+
+
+
+
+
+                                >
+
+
+
+
+
+
+
+                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+
+
+
+
+
+
+
+                                </button>
 
 
 
@@ -13865,6 +13754,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+                        </div>
 
 
 
@@ -13873,7 +13763,6 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                            {!isCurrentUserManager && (
 
 
 
@@ -13881,7 +13770,335 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                <>
+                        {!isCurrentUserManager && (
+
+
+
+
+
+
+
+                            <>
+
+
+
+
+
+
+
+                                <div>
+
+
+
+
+
+
+
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Team</label>
+
+
+
+
+
+
+
+                                    <select
+
+
+
+
+
+
+
+                                        value={(newUser.companyName || '').toString()}
+
+
+
+
+
+
+
+                                        onChange={(e) => setNewUser({ ...newUser, companyName: e.target.value })}
+
+
+
+
+
+
+
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+
+
+
+
+
+
+
+                                        disabled={companiesLoading || isTeamCompanyForced}
+
+
+
+
+
+
+
+                                    >
+
+
+
+
+
+
+
+                                        <option value="">Select team</option>
+
+
+
+
+
+
+
+                                        {companyOptions.map((name) => (
+
+
+
+
+
+
+
+                                            <option key={name} value={name}>
+
+
+
+
+
+
+
+                                                {name}
+
+
+
+
+
+
+
+                                            </option>
+
+
+
+
+
+
+
+                                        ))}
+
+
+
+
+
+
+
+                                    </select>
+
+
+
+
+
+
+
+                                </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                <div>
+
+
+
+
+
+
+
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+
+
+
+
+
+
+
+                                    <select
+
+
+
+
+
+
+
+                                        value={newUser.role}
+
+
+
+
+
+
+
+                                        onChange={(e) => {
+
+
+
+
+
+
+
+                                            const nextRole = e.target.value;
+
+
+
+
+
+
+
+                                            setNewUser({ ...newUser, role: nextRole, managerId: undefined });
+
+
+
+
+
+
+
+                                            setAddAdminId(!isCurrentUserSuperAdmin && currentUserRole === 'admin' ? getUserIdValue(currentUser) : '');
+
+
+
+
+
+
+
+                                            setAddSbmId('');
+
+
+
+
+
+
+
+                                            setAddRmId('');
+
+
+
+
+
+
+
+                                        }}
+
+
+
+
+
+
+
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+
+
+
+
+
+
+
+                                        disabled={isCurrentUserAdmin ? rolesLoading : false}
+
+
+
+
+
+
+
+                                    >
+
+
+
+
+
+
+
+                                        {roleOptionsForAddModal.map((r) => (
+
+
+
+
+
+
+
+                                            <option key={r.key} value={r.key}>
+
+
+
+
+
+
+
+                                                {r.name}
+
+
+
+
+
+
+
+                                            </option>
+
+
+
+
+
+
+
+                                        ))}
+
+
+
+
+
+
+
+                                    </select>
+
+
+
+
+
+
+
+                                </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                {selectedAddRoleKey === 'sbm' && (
 
 
 
@@ -13897,7 +14114,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Team</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Admin</label>
 
 
 
@@ -13913,143 +14130,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                            value={(newUser.companyName || '').toString()}
-
-
-
-
-
-
-
-                                            onChange={(e) => setNewUser({ ...newUser, companyName: e.target.value })}
-
-
-
-
-
-
-
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-
-
-
-
-
-
-
-                                            disabled={companiesLoading || isTeamCompanyForced}
-
-
-
-
-
-
-
-                                        >
-
-
-
-
-
-
-
-                                            <option value="">Select team</option>
-
-
-
-
-
-
-
-                                            {companyOptions.map((name) => (
-
-
-
-
-
-
-
-                                                <option key={name} value={name}>
-
-
-
-
-
-
-
-                                                    {name}
-
-
-
-
-
-
-
-                                                </option>
-
-
-
-
-
-
-
-                                            ))}
-
-
-
-
-
-
-
-                                        </select>
-
-
-
-
-
-
-
-                                    </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                                    <div>
-
-
-
-
-
-
-
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-
-
-
-
-
-
-
-                                        <select
-
-
-
-
-
-
-
-                                            value={newUser.role}
+                                            value={addAdminId}
 
 
 
@@ -14065,7 +14146,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                const nextRole = e.target.value;
+                                                const next = e.target.value;
 
 
 
@@ -14073,7 +14154,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                setNewUser({ ...newUser, role: nextRole, managerId: undefined });
+                                                setAddAdminId(next);
 
 
 
@@ -14081,23 +14162,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                setAddAdminId(!isCurrentUserSuperAdmin && currentUserRole === 'admin' ? getUserIdValue(currentUser) : '');
-
-
-
-
-
-
-
-                                                setAddSbmId('');
-
-
-
-
-
-
-
-                                                setAddRmId('');
+                                                setNewUser({ ...newUser, managerId: next || undefined });
 
 
 
@@ -14121,14 +14186,6 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                            disabled={isCurrentUserAdmin ? rolesLoading : false}
-
-
-
-
-
-
-
                                         >
 
 
@@ -14137,7 +14194,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                            {roleOptionsForAddModal.map((r) => (
+                                            <option value="">Select admin</option>
 
 
 
@@ -14145,7 +14202,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                <option key={r.key} value={r.key}>
+                                            {adminCandidates.map((u) => (
 
 
 
@@ -14153,7 +14210,15 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    {r.name}
+                                                <option key={getUserIdValue(u)} value={getUserIdValue(u)}>
+
+
+
+
+
+
+
+                                                    {u.name}
 
 
 
@@ -14193,6 +14258,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+                                )}
 
 
 
@@ -14201,7 +14267,22 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                    {selectedAddRoleKey === 'sbm' && (
+
+
+
+
+
+
+
+                                {selectedAddRoleKey === 'rm' && (
+
+
+
+
+
+
+
+                                    <>
 
 
 
@@ -14265,7 +14346,15 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    setNewUser({ ...newUser, managerId: next || undefined });
+                                                    setAddSbmId('');
+
+
+
+
+
+
+
+                                                    setNewUser({ ...newUser, managerId: undefined });
 
 
 
@@ -14361,7 +14450,6 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                    )}
 
 
 
@@ -14370,6 +14458,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+                                        <div>
 
 
 
@@ -14377,7 +14466,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                    {selectedAddRoleKey === 'rm' && (
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">SBM</label>
 
 
 
@@ -14385,7 +14474,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                        <>
+                                            <select
 
 
 
@@ -14393,7 +14482,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                            <div>
+                                                value={addSbmId}
 
 
 
@@ -14401,7 +14490,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Admin</label>
+                                                onChange={(e) => {
 
 
 
@@ -14409,7 +14498,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                <select
+                                                    const next = e.target.value;
 
 
 
@@ -14417,7 +14506,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    value={addAdminId}
+                                                    setAddSbmId(next);
 
 
 
@@ -14425,7 +14514,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    onChange={(e) => {
+                                                    setNewUser({ ...newUser, managerId: next || undefined });
 
 
 
@@ -14433,7 +14522,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                        const next = e.target.value;
+                                                }}
 
 
 
@@ -14441,7 +14530,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                        setAddAdminId(next);
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 
 
 
@@ -14449,7 +14538,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                        setAddSbmId('');
+                                            >
 
 
 
@@ -14457,7 +14546,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                        setNewUser({ ...newUser, managerId: undefined });
+                                                <option value="">Select SBM</option>
 
 
 
@@ -14465,7 +14554,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    }}
+                                                {sbmCandidates.map((u) => (
 
 
 
@@ -14473,7 +14562,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    <option key={getUserIdValue(u)} value={getUserIdValue(u)}>
 
 
 
@@ -14481,7 +14570,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                >
+                                                        {u.name}
 
 
 
@@ -14489,7 +14578,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    <option value="">Select admin</option>
+                                                    </option>
 
 
 
@@ -14497,7 +14586,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    {adminCandidates.map((u) => (
+                                                ))}
 
 
 
@@ -14505,7 +14594,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                        <option key={getUserIdValue(u)} value={getUserIdValue(u)}>
+                                            </select>
 
 
 
@@ -14513,7 +14602,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                            {u.name}
+                                        </div>
 
 
 
@@ -14521,7 +14610,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                        </option>
+                                    </>
 
 
 
@@ -14529,24 +14618,133 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    ))}
+                                )}
 
 
 
+{
+    selectedAddRoleKey === 'sales_manager' && (
+        <>
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Admin</label>
+                <select
+                    value={addAdminId}
+                    onChange={(e) => {
+                        const next = e.target.value;
+                        setAddAdminId(next);
+                        setAddSbmId('');
+                        setNewUser({ ...newUser, managerId: undefined });
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                    <option value="">Select admin</option>
+                    {adminCandidates.map((u) => (
+                        <option key={getUserIdValue(u)} value={getUserIdValue(u)}>
+                            {u.name}
+                        </option>
+                    ))}
+                </select>
+            </div>
 
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">SBM</label>
+                <select
+                    value={addSbmId}
+                    onChange={(e) => {
+                        const next = e.target.value;
+                        setAddSbmId(next);
+                        setNewUser({ ...newUser, managerId: next || undefined });
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                    <option value="">Select SBM</option>
+                    {sbmCandidates.map((u) => (
+                        <option key={getUserIdValue(u)} value={getUserIdValue(u)}>
+                            {u.name}
+                        </option>
+                    ))}
+                </select>
+            </div>
+        </>
+    )
+}
 
+{
+    selectedAddRoleKey === 'sales_man' && (
+        <>
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Admin</label>
+                <select
+                    value={addAdminId}
+                    onChange={(e) => {
+                        const next = e.target.value;
+                        setAddAdminId(next);
+                        setAddSbmId('');
+                        setNewUser({ ...newUser, managerId: undefined });
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                    <option value="">Select admin</option>
+                    {adminCandidates.map((u) => (
+                        <option key={getUserIdValue(u)} value={getUserIdValue(u)}>
+                            {u.name}
+                        </option>
+                    ))}
+                </select>
+            </div>
 
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">SBM</label>
+                <select
+                    value={addSbmId}
+                    onChange={(e) => {
+                        const next = e.target.value;
+                        setAddSbmId(next);
+                        setNewUser({ ...newUser, managerId: undefined });
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                    <option value="">Select SBM</option>
+                    {sbmCandidates.map((u) => (
+                        <option key={getUserIdValue(u)} value={getUserIdValue(u)}>
+                            {u.name}
+                        </option>
+                    ))}
+                </select>
+            </div>
 
-                                                </select>
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Sales Manager</label>
+                <select
+                    value={(newUser as any).salesManagerId || ''}
+                    onChange={(e) => {
+                        const next = e.target.value;
+                        setNewUser({ ...newUser, managerId: next || undefined, salesManagerId: next } as any);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                    <option value="">Select Sales Manager</option>
+                    {salesManagerCandidates.map((u) => (
+                        <option key={getUserIdValue(u)} value={getUserIdValue(u)}>
+                            {u.name}
+                        </option>
+                    ))}
+                </select>
+            </div>
+        </>
+    )
+}
 
+{
+    selectedAddRoleKey === 'am' && (
 
 
 
 
 
 
-                                            </div>
 
+        <>
 
 
 
@@ -14554,6 +14752,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+            <div>
 
 
 
@@ -14561,7 +14760,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Admin</label>
 
 
 
@@ -14569,7 +14768,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">SBM</label>
+                <select
 
 
 
@@ -14577,7 +14776,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                <select
+                    value={addAdminId}
 
 
 
@@ -14585,7 +14784,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    value={addSbmId}
+                    onChange={(e) => {
 
 
 
@@ -14593,7 +14792,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    onChange={(e) => {
+                        const next = e.target.value;
 
 
 
@@ -14601,7 +14800,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                        const next = e.target.value;
+                        setAddAdminId(next);
 
 
 
@@ -14609,7 +14808,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                        setAddSbmId(next);
+                        setAddSbmId('');
 
 
 
@@ -14617,7 +14816,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                        setNewUser({ ...newUser, managerId: next || undefined });
+                        setAddRmId('');
 
 
 
@@ -14625,7 +14824,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    }}
+                        setNewUser({ ...newUser, managerId: undefined });
 
 
 
@@ -14633,7 +14832,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    }}
 
 
 
@@ -14641,7 +14840,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                >
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 
 
 
@@ -14649,7 +14848,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    <option value="">Select SBM</option>
+                >
 
 
 
@@ -14657,7 +14856,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    {sbmCandidates.map((u) => (
+                    <option value="">Select admin</option>
 
 
 
@@ -14665,7 +14864,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                        <option key={getUserIdValue(u)} value={getUserIdValue(u)}>
+                    {adminCandidates.map((u) => (
 
 
 
@@ -14673,7 +14872,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                            {u.name}
+                        <option key={getUserIdValue(u)} value={getUserIdValue(u)}>
 
 
 
@@ -14681,7 +14880,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                        </option>
+                            {u.name}
 
 
 
@@ -14689,7 +14888,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    ))}
+                        </option>
 
 
 
@@ -14697,7 +14896,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                </select>
+                    ))}
 
 
 
@@ -14705,7 +14904,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                            </div>
+                </select>
 
 
 
@@ -14713,7 +14912,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                        </>
+            </div>
 
 
 
@@ -14721,7 +14920,6 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                    )}
 
 
 
@@ -14730,6 +14928,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+            <div>
 
 
 
@@ -14737,7 +14936,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                    {selectedAddRoleKey === 'am' && (
+                <label className="block text-sm font-medium text-gray-700 mb-1">SBM</label>
 
 
 
@@ -14745,7 +14944,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                        <>
+                <select
 
 
 
@@ -14753,7 +14952,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                            <div>
+                    value={addSbmId}
 
 
 
@@ -14761,7 +14960,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Admin</label>
+                    onChange={(e) => {
 
 
 
@@ -14769,7 +14968,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                <select
+                        const next = e.target.value;
 
 
 
@@ -14777,7 +14976,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    value={addAdminId}
+                        setAddSbmId(next);
 
 
 
@@ -14785,7 +14984,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    onChange={(e) => {
+                        setAddRmId('');
 
 
 
@@ -14793,7 +14992,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                        const next = e.target.value;
+                        setNewUser({ ...newUser, managerId: undefined });
 
 
 
@@ -14801,7 +15000,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                        setAddAdminId(next);
+                    }}
 
 
 
@@ -14809,7 +15008,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                        setAddSbmId('');
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 
 
 
@@ -14817,7 +15016,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                        setAddRmId('');
+                >
 
 
 
@@ -14825,7 +15024,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                        setNewUser({ ...newUser, managerId: undefined });
+                    <option value="">Select SBM</option>
 
 
 
@@ -14833,7 +15032,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    }}
+                    {sbmCandidates.map((u) => (
 
 
 
@@ -14841,7 +15040,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        <option key={getUserIdValue(u)} value={getUserIdValue(u)}>
 
 
 
@@ -14849,7 +15048,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                >
+                            {u.name}
 
 
 
@@ -14857,7 +15056,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    <option value="">Select admin</option>
+                        </option>
 
 
 
@@ -14865,7 +15064,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    {adminCandidates.map((u) => (
+                    ))}
 
 
 
@@ -14873,7 +15072,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                        <option key={getUserIdValue(u)} value={getUserIdValue(u)}>
+                </select>
 
 
 
@@ -14881,7 +15080,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                            {u.name}
+            </div>
 
 
 
@@ -14889,7 +15088,6 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                        </option>
 
 
 
@@ -14897,24 +15095,24 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    ))}
 
+            <div>
 
 
 
 
 
 
-                                                </select>
 
+                <label className="block text-sm font-medium text-gray-700 mb-1">RM</label>
 
 
 
 
 
 
-                                            </div>
 
+                <select
 
 
 
@@ -14922,6 +15120,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
+                    value={addRmId}
 
 
 
@@ -14929,7 +15128,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                            <div>
+                    onChange={(e) => {
 
 
 
@@ -14937,7 +15136,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">SBM</label>
+                        const next = e.target.value;
 
 
 
@@ -14945,7 +15144,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                <select
+                        setAddRmId(next);
 
 
 
@@ -14953,7 +15152,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    value={addSbmId}
+                        setNewUser({ ...newUser, managerId: next || undefined });
 
 
 
@@ -14961,7 +15160,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    onChange={(e) => {
+                    }}
 
 
 
@@ -14969,7 +15168,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                        const next = e.target.value;
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 
 
 
@@ -14977,7 +15176,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                        setAddSbmId(next);
+                >
 
 
 
@@ -14985,7 +15184,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                        setAddRmId('');
+                    <option value="">Select RM</option>
 
 
 
@@ -14993,7 +15192,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                        setNewUser({ ...newUser, managerId: undefined });
+                    {rmCandidates.map((u) => (
 
 
 
@@ -15001,7 +15200,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    }}
+                        <option key={getUserIdValue(u)} value={getUserIdValue(u)}>
 
 
 
@@ -15009,7 +15208,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            {u.name}
 
 
 
@@ -15017,7 +15216,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                >
+                        </option>
 
 
 
@@ -15025,7 +15224,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    <option value="">Select SBM</option>
+                    ))}
 
 
 
@@ -15033,7 +15232,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    {sbmCandidates.map((u) => (
+                </select>
 
 
 
@@ -15041,7 +15240,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                        <option key={getUserIdValue(u)} value={getUserIdValue(u)}>
+            </div>
 
 
 
@@ -15049,7 +15248,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                            {u.name}
+        </>
 
 
 
@@ -15057,7 +15256,8 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                        </option>
+    )
+}
 
 
 
@@ -15065,7 +15265,6 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                    ))}
 
 
 
@@ -15073,16 +15272,17 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                                </select>
 
+{
+    selectedAddRoleKey === 'assistant' && (
 
 
 
 
 
 
-                                            </div>
 
+        null
 
 
 
@@ -15090,206 +15290,8 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-
-
-
-
-
-
-
-                                            <div>
-
-
-
-
-
-
-
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">RM</label>
-
-
-
-
-
-
-
-                                                <select
-
-
-
-
-
-
-
-                                                    value={addRmId}
-
-
-
-
-
-
-
-                                                    onChange={(e) => {
-
-
-
-
-
-
-
-                                                        const next = e.target.value;
-
-
-
-
-
-
-
-                                                        setAddRmId(next);
-
-
-
-
-
-
-
-                                                        setNewUser({ ...newUser, managerId: next || undefined });
-
-
-
-
-
-
-
-                                                    }}
-
-
-
-
-
-
-
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-
-
-
-
-
-
-
-                                                >
-
-
-
-
-
-
-
-                                                    <option value="">Select RM</option>
-
-
-
-
-
-
-
-                                                    {rmCandidates.map((u) => (
-
-
-
-
-
-
-
-                                                        <option key={getUserIdValue(u)} value={getUserIdValue(u)}>
-
-
-
-
-
-
-
-                                                            {u.name}
-
-
-
-
-
-
-
-                                                        </option>
-
-
-
-
-
-
-
-                                                    ))}
-
-
-
-
-
-
-
-                                                </select>
-
-
-
-
-
-
-
-                                            </div>
-
-
-
-
-
-
-
-                                        </>
-
-
-
-
-
-
-
-                                    )}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                                    {selectedAddRoleKey === 'assistant' && (
-
-
-
-
-
-
-
-                                        null
-
-
-
-
-
-
-
-                                    )}
+    )
+}
 
 
 
@@ -15313,7 +15315,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                        </div>
+                        </div >
 
 
 
@@ -15329,7 +15331,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                        <div className="mt-6 flex justify-end gap-2">
+    <div className="mt-6 flex justify-end gap-2">
 
 
 
@@ -15337,7 +15339,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                            <button
+        <button
 
 
 
@@ -15345,7 +15347,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                onClick={handleCancelAdd}
+            onClick={handleCancelAdd}
 
 
 
@@ -15353,7 +15355,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                className="px-4 py-2.5 text-sm font-medium bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="px-4 py-2.5 text-sm font-medium bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
 
 
 
@@ -15361,7 +15363,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                disabled={addingUser}
+            disabled={addingUser}
 
 
 
@@ -15369,7 +15371,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                            >
+        >
 
 
 
@@ -15377,7 +15379,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                Cancel
+            Cancel
 
 
 
@@ -15385,7 +15387,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                            </button>
+        </button>
 
 
 
@@ -15393,7 +15395,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                            <button
+        <button
 
 
 
@@ -15401,7 +15403,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                onClick={handleSaveNewUser}
+            onClick={handleSaveNewUser}
 
 
 
@@ -15409,7 +15411,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                className="px-4 py-2.5 text-sm font-medium bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className="px-4 py-2.5 text-sm font-medium bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
 
 
 
@@ -15417,7 +15419,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                disabled={addingUser}
+            disabled={addingUser}
 
 
 
@@ -15425,7 +15427,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                            >
+        >
 
 
 
@@ -15433,7 +15435,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                                {addingUser ? 'Adding...' : 'Add'}
+            {addingUser ? 'Adding...' : 'Add'}
 
 
 
@@ -15441,7 +15443,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                            </button>
+        </button>
 
 
 
@@ -15449,7 +15451,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                        </div>
+    </div>
 
 
 
@@ -15457,7 +15459,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                    </div>
+                    </div >
 
 
 
@@ -15465,9 +15467,9 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
 
-                </div>
+                </div >
             )}
-        </div>
+        </div >
     );
 };
 export default TeamPage;
