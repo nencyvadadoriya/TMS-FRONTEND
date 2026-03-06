@@ -32930,12 +32930,6 @@ const DashboardPage = () => {
 
             toast.error('Please enter company names');
 
-
-
-
-
-
-
             return;
 
 

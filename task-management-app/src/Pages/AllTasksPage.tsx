@@ -5289,13 +5289,28 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
 
       if (roleKey === 'manager') {
         const assignedByMe = normalizeText(getAssignerEmail(task)) === myEmail;
-        const assignedToMe = normalizeText(getEmailByIdInternal(task.assignedTo)) === myEmail;
 
-        if (!assignedByMe) {
-          if (!assignedToMe) return false;
-          const assignerRole = resolveAssignerRole(task);
-          if (assignerRole !== 'md_manager' && assignerRole !== 'ob_manager') return false;
-        }
+        const assignedToEmail = normalizeText(
+          (task as any)?.assignedToUser?.email ||
+          (() => {
+            const assignedTo: any = (task as any)?.assignedTo;
+            if (!assignedTo) return '';
+            if (typeof assignedTo === 'string') {
+              if (assignedTo.includes('@')) return assignedTo;
+              return getEmailByIdInternal(assignedTo) || '';
+            }
+            const directEmail = String(assignedTo?.email || '').trim();
+            if (directEmail) return directEmail;
+            const id = String(assignedTo?.id || assignedTo?._id || '').trim();
+            if (id) return getEmailByIdInternal(id) || '';
+            return '';
+          })() ||
+          ''
+        );
+
+        const assignedToMe = Boolean(myEmail && assignedToEmail && assignedToEmail === myEmail);
+
+        if (!assignedByMe && !assignedToMe) return false;
       }
 
       // 🔥 CRITICAL FIX: sub_assistence/assistant should only see tasks assigned to them
