@@ -331,6 +331,15 @@ const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: Us
       const starsValue = Number((t as any).reviewStars);
       if (!Number.isFinite(starsValue) || starsValue < 1 || starsValue > 5) return;
 
+      // Only count reviews for tasks that were assigned in the selected month
+      if (monthRange) {
+        const createdAtRaw = (t as any).createdAt || (t as any).assignedAt;
+        if (!createdAtRaw) return;
+        const createdAt = new Date(createdAtRaw);
+        if (Number.isNaN(createdAt.getTime())) return;
+        if (createdAt < monthRange.start || createdAt >= monthRange.endExclusive) return;
+      }
+
       const existing = byAssignee.get(email) || {
         email,
         name,
