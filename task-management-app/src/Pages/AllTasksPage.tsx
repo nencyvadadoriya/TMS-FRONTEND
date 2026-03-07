@@ -1684,7 +1684,7 @@ const DesktopTaskItem = memo(({
   const isReassignedTask = statusKey === 'reassigned';
   const isInProgressTask = statusKey === 'in-progress';
 
-  const taskTypeLabel = String(task.taskType || (task as any).type || (task as any).task_type || '');
+  
   const createdAtRaw = (task as any)?.createdAt || (task as any)?.created_at || (task as any)?.timestamp || (task as any)?.createdOn || '';
   const createdAtText = (() => {
     try {
