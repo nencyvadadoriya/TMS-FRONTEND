@@ -45,6 +45,7 @@ const TeamDetailsPage: React.FC<TeamDetailsPageProps> = ({
     const [activeTab, setActiveTab] = useState<'tasks' | 'history'>('tasks');
     const [detailsTab, setDetailsTab] = useState<'all' | 'pending' | 'completed' | 'overdue'>('all');
     const [taskSearch, setTaskSearch] = useState('');
+    const [selectedMonth, setSelectedMonth] = useState<string>(''); // Month filter state
     const [historyByTaskId, setHistoryByTaskId] = useState<Record<string, TaskHistory[]>>({});
     const [historyLoadingByTaskId, setHistoryLoadingByTaskId] = useState<Record<string, boolean>>({});
     const [, setEmailHistory] = useState<any[]>([]);
@@ -123,9 +124,16 @@ const TeamDetailsPage: React.FC<TeamDetailsPageProps> = ({
         return getTasksForUser(user.id, user.email);
     }, [getTasksForUser, user]);
 
-    // Get user stats
+    // Get user stats - filtered by month if selected
     const getUserStats = useMemo(() => {
-        const assignedTasks = allTasks;
+        const monthFilteredTasks = selectedMonth
+            ? allTasks.filter(t => {
+                const taskDate = new Date(t.dueDate || t.createdAt || '');
+                const [year, month] = selectedMonth.split('-').map(Number);
+                return taskDate.getFullYear() === year && taskDate.getMonth() === month - 1;
+            })
+            : allTasks;
+        const assignedTasks = monthFilteredTasks;
         const createdTasks = getTasksCreatedByUser(user.id, user.email);
 
         const totalAssigned = assignedTasks.length;
@@ -143,7 +151,7 @@ const TeamDetailsPage: React.FC<TeamDetailsPageProps> = ({
             completionRate: totalAssigned > 0 ? Math.round((completed / totalAssigned) * 100) : 0,
             tasksCreated: createdTasks.length
         };
-    }, [allTasks, getTasksCreatedByUser, user, isOverdue]);
+    }, [allTasks, getTasksCreatedByUser, user, isOverdue, selectedMonth]);
 
     // Resolve user label for display
     const resolveUserLabel = useCallback((value: any): string => {
@@ -321,6 +329,14 @@ const TeamDetailsPage: React.FC<TeamDetailsPageProps> = ({
     // Filter and sort tasks
     const filteredTasks = allTasks
         .filter(t => {
+            // Month filter
+            if (selectedMonth) {
+                const taskDate = new Date(t.dueDate || t.createdAt || '');
+                const [year, month] = selectedMonth.split('-').map(Number);
+                if (taskDate.getFullYear() !== year || taskDate.getMonth() !== month - 1) {
+                    return false;
+                }
+            }
             const term = taskSearch.trim().toLowerCase();
             if (!term) return true;
             const title = (t.title || '').toString().toLowerCase();
@@ -551,6 +567,12 @@ const TeamDetailsPage: React.FC<TeamDetailsPageProps> = ({
                 : 'Unassigned'
             : '';
 
+    // Get current month value for default
+    const getCurrentMonthValue = () => {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -588,9 +610,20 @@ const TeamDetailsPage: React.FC<TeamDetailsPageProps> = ({
                             )}
                         </div>
                     </div>
-                    <div className="text-right">
-                        <div className="text-sm text-gray-600">Tasks Created</div>
-                        <div className="text-lg font-bold text-gray-900">{stats.tasksCreated}</div>
+                    <div className="flex flex-col items-end gap-3">
+                        {/* Month Selector */}
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="month"
+                                value={selectedMonth || getCurrentMonthValue()}
+                                onChange={(e) => setSelectedMonth(e.target.value)}
+                                className="px-3 py-2 text-sm font-medium bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none cursor-pointer"
+                            />
+                        </div>
+                        <div className="text-right">
+                            <div className="text-sm text-gray-600">Tasks Created</div>
+                            <div className="text-lg font-bold text-gray-900">{stats.tasksCreated}</div>
+                        </div>
                     </div>
                 </div>
 

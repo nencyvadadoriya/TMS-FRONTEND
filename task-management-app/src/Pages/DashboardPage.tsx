@@ -2446,6 +2446,15 @@ const DashboardPage = () => {
 
             if (!Number.isFinite(starsValue) || starsValue < 1 || starsValue > 5) return;
 
+            // Only count reviews for tasks that were assigned in the selected month
+            if (monthRange) {
+                const createdAtRaw = (t as any).createdAt || (t as any).assignedAt;
+                if (!createdAtRaw) return;
+                const createdAt = new Date(createdAtRaw);
+                if (Number.isNaN(createdAt.getTime())) return;
+                if (createdAt < monthRange.start || createdAt >= monthRange.endExclusive) return;
+            }
+
             const existing = byAssignee.get(email) || { email, name, total: 0, starSum: 0 };
 
             existing.total += 1;
@@ -2482,7 +2491,12 @@ const DashboardPage = () => {
 
 
 
-        rows.sort((a, b) => b.avgStars - a.avgStars);
+        rows.sort((a, b) => {
+            // Sort by total reviews (highest first)
+            if (b.total !== a.total) return b.total - a.total;
+            // Tie-breaker: avgStars
+            return b.avgStars - a.avgStars;
+        });
 
         // Debug: log reviewed tasks and rows to check data
 
@@ -2605,6 +2619,23 @@ const DashboardPage = () => {
 
 
                 total: r.total,
+
+
+
+                totalTasksReceived: (tasks || []).filter((t: any) => {
+                    const assignedToEmail = String(
+                        (t as any)?.assignedToUser?.email
+                        || (typeof (t as any).assignedTo === 'string' ? (t as any).assignedTo : (t as any).assignedTo?.email)
+                        || ''
+                    ).trim().toLowerCase();
+                    if (!assignedToEmail || assignedToEmail !== r.email) return false;
+                    if (!monthRange) return true;
+                    const createdAtRaw = (t as any).createdAt || (t as any).assignedAt;
+                    if (!createdAtRaw) return false;
+                    const createdAt = new Date(createdAtRaw);
+                    if (Number.isNaN(createdAt.getTime())) return false;
+                    return createdAt >= monthRange.start && createdAt < monthRange.endExclusive;
+                }).length,
 
 
 
@@ -2809,6 +2840,21 @@ const DashboardPage = () => {
 
 
             totalReviews: top ? (summaryRowsBase.find(r => r.email === top.email)?.total ?? 0) : (rows[0]?.total ?? 0),
+
+            totalTasksReceived: top ? (tasks || []).filter((t: any) => {
+                const assignedToEmail = String(
+                    (t as any)?.assignedToUser?.email
+                    || (typeof (t as any).assignedTo === 'string' ? (t as any).assignedTo : (t as any).assignedTo?.email)
+                    || ''
+                ).trim().toLowerCase();
+                if (!assignedToEmail || assignedToEmail !== top.email) return false;
+                if (!monthRange) return true;
+                const createdAtRaw = (t as any).createdAt || (t as any).assignedAt;
+                if (!createdAtRaw) return false;
+                const createdAt = new Date(createdAtRaw);
+                if (Number.isNaN(createdAt.getTime())) return false;
+                return createdAt >= monthRange.start && createdAt < monthRange.endExclusive;
+            }).length : 0,
 
 
 
@@ -44553,7 +44599,7 @@ const DashboardPage = () => {
 
                                                         totalReviews={employeeOfTheMonth?.totalReviews}
 
-
+                                                        totalTasksReceived={employeeOfTheMonth?.totalTasksReceived}
 
                                                         summaryRows={employeeOfTheMonth?.summaryRows}
 

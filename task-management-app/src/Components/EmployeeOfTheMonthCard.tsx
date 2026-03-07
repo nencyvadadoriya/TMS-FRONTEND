@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { Star, Award, CheckCircle, Users } from 'lucide-react';
 import { toAvatarUrl } from '../utils/avatar';
-
 type EmployeeOfTheMonthCardProps = {
   title?: string;
   name: string;
@@ -9,11 +8,11 @@ type EmployeeOfTheMonthCardProps = {
   performance: string;
   avg: string;
   photoUrl?: string;
-
   monthValue?: string;
   onMonthChange?: (value: string) => void;
 
   totalReviews?: number;
+  totalTasksReceived?: number;
 
   backgroundUrl?: string;
 
@@ -23,6 +22,7 @@ type EmployeeOfTheMonthCardProps = {
     avatar?: string;
     avgStarsLabel: string;
     total: number;
+    totalTasksReceived?: number;
     performance: string;
     taskStats?: {
       tasksCompleted: number;
@@ -59,6 +59,7 @@ const EmployeeOfTheMonthCard = ({
   monthValue,
   onMonthChange,
   totalReviews,
+  totalTasksReceived,
   summaryRows = [],
 }: EmployeeOfTheMonthCardProps) => {
   const safeRating = clampRating(rating);
@@ -79,26 +80,21 @@ const EmployeeOfTheMonthCard = ({
     const copy = [...list];
 
     copy.sort((a, b) => {
-      const aRating = parseStarsLabel(a?.avgStarsLabel);
-      const bRating = parseStarsLabel(b?.avgStarsLabel);
-
+      // Sort by total reviews (highest first) - like Reviews page
       const aReviews = toNumberSafe(a?.total);
       const bReviews = toNumberSafe(b?.total);
+      if (aReviews !== bReviews) return bReviews - aReviews;
 
+      // Tie-breaker: rating
+      const aRating = parseStarsLabel(a?.avgStarsLabel);
+      const bRating = parseStarsLabel(b?.avgStarsLabel);
+      if (aRating !== bRating) return bRating - aRating;
+
+      // Tie-breaker: tasks completed
       const aTasks = toNumberSafe(a?.taskStats?.tasksCompleted);
       const bTasks = toNumberSafe(b?.taskStats?.tasksCompleted);
-
-      if (aRating !== bRating) {
-        if (aRating > bRating) {
-          if (aReviews < bReviews && aTasks <= 30) return 1;
-          return -1;
-        }
-        if (bReviews < aReviews && bTasks <= 30) return -1;
-        return 1;
-      }
-
-      if (aReviews !== bReviews) return bReviews - aReviews;
       if (aTasks !== bTasks) return bTasks - aTasks;
+
       return String(a?.name || '').localeCompare(String(b?.name || ''));
     });
 
@@ -130,7 +126,7 @@ const EmployeeOfTheMonthCard = ({
   return (
     <div className="space-y-6 mb-5">
       {/* ─── MAIN CARD ─── */}
-       {/* Calendar outside the card - right side */}
+      {/* Calendar outside the card - right side */}
       <div className="flex justify-end mb-6">
         <div className="relative">
           <input
@@ -142,7 +138,7 @@ const EmployeeOfTheMonthCard = ({
         </div>
       </div>
       <div className="relative overflow-hidden rounded-3xl shadow-2xl border border-white/80">
-          
+
         {/* ✅ SOFT PASTEL GRADIENT BACKGROUND — sky blue → yellow → pink → white → green */}
         <div
           className="absolute inset-0"
@@ -151,7 +147,7 @@ const EmployeeOfTheMonthCard = ({
               'linear-gradient(135deg, #e0f4ff 0%, #fef9c3 25%, #fce7f3 50%, #f0fdf4 75%, #e0f4ff 100%)',
           }}
         />
-  
+
         {/* Soft glow blob — sky blue top right */}
         <div
           className="absolute -top-20 -right-20 w-80 h-80 rounded-full pointer-events-none"
@@ -236,13 +232,12 @@ const EmployeeOfTheMonthCard = ({
                       {[...Array(5)].map((_, i) => (
                         <Star
                           key={i}
-                          className={`h-5 w-5 ${
-                            i < Math.floor(safeRating)
+                          className={`h-5 w-5 ${i < Math.floor(safeRating)
                               ? 'text-amber-400 fill-amber-400'
                               : i < safeRating
-                              ? 'text-amber-400 fill-amber-400 opacity-50'
-                              : 'text-slate-300'
-                          }`}
+                                ? 'text-amber-400 fill-amber-400 opacity-50'
+                                : 'text-slate-300'
+                            }`}
                         />
                       ))}
                     </div>
@@ -266,11 +261,11 @@ const EmployeeOfTheMonthCard = ({
                 {performance === 'Above Target'
                   ? '"Exceptional contribution to team productivity and project completion"'
                   : performance === 'At Target'
-                  ? '"Consistent performance meeting all project deadlines"'
-                  : '"Showing improvement and dedication to tasks"'}
+                    ? '"Consistent performance meeting all project deadlines"'
+                    : '"Showing improvement and dedication to tasks"'}
               </p>
 
-              
+
 
               {/* Performance & Average */}
               <div className="grid grid-cols-3 gap-3">
@@ -307,7 +302,11 @@ const EmployeeOfTheMonthCard = ({
                   }}
                 >
                   <p className="text-xs text-sky-500 font-semibold mb-1">Reviews</p>
-                  <p className="text-base font-bold text-slate-800">{totalReviews ?? 0}</p>
+                  <p className="text-base font-bold text-slate-800">
+                    {totalReviews && totalReviews > 0 && totalTasksReceived && totalTasksReceived > 0
+                      ? `${((totalReviews / totalTasksReceived) * 100).toFixed(0)}%`
+                      : '0%'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -389,13 +388,13 @@ const EmployeeOfTheMonthCard = ({
 
                 {/* Pastel sparkles — fixed positions */}
                 {[
-                  { color: '#7dd3fc', top: '8%',  left: '50%' },
+                  { color: '#7dd3fc', top: '8%', left: '50%' },
                   { color: '#fbbf24', top: '20%', left: '88%' },
                   { color: '#f9a8d4', top: '50%', left: '92%' },
                   { color: '#6ee7b7', top: '78%', left: '80%' },
                   { color: '#7dd3fc', top: '85%', left: '30%' },
-                  { color: '#fbbf24', top: '65%', left: '5%'  },
-                  { color: '#f9a8d4', top: '30%', left: '3%'  },
+                  { color: '#fbbf24', top: '65%', left: '5%' },
+                  { color: '#f9a8d4', top: '30%', left: '3%' },
                   { color: '#6ee7b7', top: '10%', left: '18%' },
                 ].map((s, i) => (
                   <div
@@ -417,7 +416,7 @@ const EmployeeOfTheMonthCard = ({
         </div>
       </div>
 
-     
+
 
       {/* ─── TEAM SECTION ─── */}
       {sortedRows.length > 0 && (
@@ -491,7 +490,7 @@ const EmployeeOfTheMonthCard = ({
                     'linear-gradient(135deg, #e0f4ff, #f0fdf4)',
                   ];
                   const cardBorders = ['#bae6fd', '#fde68a', '#fbcfe8', '#bbf7d0', '#fbbf24', '#7dd3fc'];
-                  const badgeGrads  = [
+                  const badgeGrads = [
                     'linear-gradient(135deg, #38bdf8, #bae6fd)',
                     'linear-gradient(135deg, #fbbf24, #fde68a)',
                     'linear-gradient(135deg, #f472b6, #fbcfe8)',
@@ -499,7 +498,7 @@ const EmployeeOfTheMonthCard = ({
                     'linear-gradient(135deg, #fbbf24, #fef9c3)',
                     'linear-gradient(135deg, #38bdf8, #e0f4ff)',
                   ];
-                  const badgeTextColors = ['#0369a1','#92400e','#be185d','#065f46','#92400e','#0369a1'];
+                  const badgeTextColors = ['#0369a1', '#92400e', '#be185d', '#065f46', '#92400e', '#0369a1'];
 
                   const ci = index % cardGradients.length;
 
@@ -557,6 +556,12 @@ const EmployeeOfTheMonthCard = ({
                               </div>
                               <span className="text-slate-300">•</span>
                               <span className="text-slate-500">{r.total} reviews</span>
+                              <span className="text-slate-300">•</span>
+                              <span className="text-slate-500">
+                                {r.total > 0 && r.totalTasksReceived && r.totalTasksReceived > 0
+                                  ? `${((r.total / r.totalTasksReceived) * 100).toFixed(0)}%`
+                                  : '0%'}
+                              </span>
                             </div>
 
                             {r.taskStats && (
@@ -585,8 +590,8 @@ const EmployeeOfTheMonthCard = ({
                                 r.performance === 'Above Target'
                                   ? { background: '#f0fdf4', color: '#16a34a', borderColor: '#bbf7d0' }
                                   : r.performance === 'At Target'
-                                  ? { background: '#e0f4ff', color: '#0369a1', borderColor: '#bae6fd' }
-                                  : { background: '#fef9c3', color: '#b45309', borderColor: '#fde68a' }
+                                    ? { background: '#e0f4ff', color: '#0369a1', borderColor: '#bae6fd' }
+                                    : { background: '#fef9c3', color: '#b45309', borderColor: '#fde68a' }
                               }
                             >
                               {r.performance}
