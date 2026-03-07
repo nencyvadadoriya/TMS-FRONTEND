@@ -76,20 +76,20 @@ export interface BrandHistory {
     id?: string;
     brandId?: string | number;
     action:
-        | 'created'
-        | 'updated'
-        | 'deleted'
-        | 'restored'
-        | 'status_changed'
-        | 'brand_created'
-        | 'brand_updated'
-        | 'brand_deleted'
-        | 'collaborator_added'
-        | 'collaborator_removed'
-        | 'collaborator_role_changed'
-        | 'collaborator_invited'
-        | 'collaborator_accepted'
-        | 'collaborator_declined';
+    | 'created'
+    | 'updated'
+    | 'deleted'
+    | 'restored'
+    | 'status_changed'
+    | 'brand_created'
+    | 'brand_updated'
+    | 'brand_deleted'
+    | 'collaborator_added'
+    | 'collaborator_removed'
+    | 'collaborator_role_changed'
+    | 'collaborator_invited'
+    | 'collaborator_accepted'
+    | 'collaborator_declined';
     message: string;
     userId: string;
     userName: string;
@@ -151,6 +151,14 @@ export interface Task {
 
     // OB Manager routing
     obManagerEmail?: string | null;
+
+    // Latest comment for denormalization
+    latestComment?: {
+        content: string | null;
+        userName: string | null;
+        userEmail: string | null;
+        createdAt: string | Date | null;
+    } | null;
 }
 
 
@@ -165,9 +173,9 @@ export interface FilterState {
     brand: string;
 }
 export type TaskHistory = {
-  id: string;
-  taskId: string;
-  action: 
+    id: string;
+    taskId: string;
+    action:
     | 'task_created'
     | 'task_edited'
     | 'task_deleted'
@@ -190,13 +198,13 @@ export type TaskHistory = {
     | 'task_edit_failed'
     | 'bulk_completed'
     | 'bulk_pending';
-  message: string;
-  timestamp: string;
-  userId: string;
-  userName: string;
-  userEmail: string;
-  userRole: string;
-  additionalData?: Record<string, any>;
+    message: string;
+    timestamp: string;
+    userId: string;
+    userName: string;
+    userEmail: string;
+    userRole: string;
+    additionalData?: Record<string, any>;
 };
 
 
@@ -241,7 +249,7 @@ export interface UserType {
     location?: string;
     joinDate?: string;
     bio?: string;
-       managerId?: string;
+    managerId?: string;
     skills?: string[];
     isActive?: boolean;
     position?: string;
