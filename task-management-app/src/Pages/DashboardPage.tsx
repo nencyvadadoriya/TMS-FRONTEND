@@ -2343,19 +2343,6 @@ const DashboardPage = () => {
         }>();
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
         reviewed.forEach((t) => {
 
 
@@ -44013,6 +44000,14 @@ const DashboardPage = () => {
 
 
 
+                                        String((currentUser as any)?.role || '').trim().toLowerCase() !== 'troubleshoot_manager' ? (
+
+
+
+
+
+
+
                                         <>
 
 
@@ -44646,6 +44641,14 @@ const DashboardPage = () => {
 
 
                                         </>
+
+
+
+
+
+
+
+                                        ) : null
 
 
 
