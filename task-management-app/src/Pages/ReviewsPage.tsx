@@ -30,7 +30,10 @@ const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: Us
   const isAssistant = useMemo(() => {
     return roleKey === 'assistant';
   }, [roleKey]);
-  const canSubmit = false;
+  const canSubmit = useMemo(() => {
+    if (role === 'manager' || role === 'md_manager' || role === 'admin' || role === 'super_admin') return true;
+    return false;
+  }, [role]);
   const canView = useMemo(() => {
     if (role === 'admin' || role === 'super_admin') return true;
     const perms = (currentUser as any)?.permissions;
@@ -57,7 +60,9 @@ const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: Us
   const [stars, setStars] = useState<number>(5);
   const [comment, setComment] = useState<string>('');
 
-  const [tableStatFilter, setTableStatFilter] = useState<'all' | 'done' | 'pending' | 'reviewed'>('all');
+  const [tableStatFilter, setTableStatFilter] = useState<'all' | 'done' | 'pending' | 'reviewed' | 'review_pending'>('all');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const itemsPerPage = 20;
 
   const normalizeEmailKey = useCallback((v: unknown): string => {
     const raw = String(v || '').trim().toLowerCase();
@@ -225,20 +230,52 @@ const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: Us
       return list.filter((t: any) => String(t?.status || '').trim().toLowerCase() === 'completed');
     }
     if (tableStatFilter === 'pending') {
-      return list.filter((t: any) => String(t?.status || '').trim().toLowerCase() !== 'completed');
+      return list.filter((t: any) => {
+        const status = String(t?.status || '').trim().toLowerCase();
+        return status !== 'completed' && status !== 'done';
+      });
     }
     if (tableStatFilter === 'reviewed') {
       return list.filter((t: any) => (t as any)?.reviewStars != null);
     }
+    if (tableStatFilter === 'review_pending') {
+      return list.filter((t: any) => {
+        const status = String(t?.status || '').trim().toLowerCase();
+        const hasReview = (t as any)?.reviewStars != null;
+        return (status === 'completed' || status === 'done') && !hasReview;
+      });
+    }
     return list;
   }, [filteredTasks, tableStatFilter]);
 
+  const paginatedTableTasks = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return tableTasks.slice(startIndex, startIndex + itemsPerPage);
+  }, [tableTasks, currentPage]);
+
+  const totalPages = useMemo(() => Math.ceil(tableTasks.length / itemsPerPage), [tableTasks]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [tableStatFilter, filter, assigneeFilter]);
+
   const filteredStats = useMemo(() => {
     const list = filteredTasks || [];
-    const done = list.filter((t: any) => String(t?.status || '').trim().toLowerCase() === 'completed').length;
-    const pending = list.length - done;
+    const done = list.filter((t: any) => {
+      const status = String(t?.status || '').trim().toLowerCase();
+      return status === 'completed' || status === 'done';
+    }).length;
+    const pending = list.filter((t: any) => {
+      const status = String(t?.status || '').trim().toLowerCase();
+      return status !== 'completed' && status !== 'done';
+    }).length;
     const reviewed = list.filter((t: any) => (t as any)?.reviewStars != null).length;
-    return { total: list.length, done, pending, reviewed };
+    const reviewPending = list.filter((t: any) => {
+      const status = String(t?.status || '').trim().toLowerCase();
+      const hasReview = (t as any)?.reviewStars != null;
+      return (status === 'completed' || status === 'done') && !hasReview;
+    }).length;
+    return { total: list.length, done, pending, reviewed, reviewPending };
   }, [filteredTasks]);
 
   const fetchReviews = useCallback(async () => {
@@ -498,6 +535,7 @@ const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: Us
           <button type="button" onClick={() => setTableStatFilter('done')} className={`px-2.5 py-1 rounded-full border ${tableStatFilter === 'done' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-gray-50 text-gray-700'}`}>Done: {filteredStats.done}</button>
           <button type="button" onClick={() => setTableStatFilter('pending')} className={`px-2.5 py-1 rounded-full border ${tableStatFilter === 'pending' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-gray-50 text-gray-700'}`}>Pending: {filteredStats.pending}</button>
           <button type="button" onClick={() => setTableStatFilter('reviewed')} className={`px-2.5 py-1 rounded-full border ${tableStatFilter === 'reviewed' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-gray-50 text-gray-700'}`}>Reviewed: {filteredStats.reviewed}</button>
+          <button type="button" onClick={() => setTableStatFilter('review_pending')} className={`px-2.5 py-1 rounded-full border ${tableStatFilter === 'review_pending' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-gray-50 text-gray-700'}`}>Review Pending: {filteredStats.reviewPending}</button>
         </div>
       </div>
 
@@ -582,7 +620,7 @@ const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: Us
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {tableTasks.map((t) => {
+              {paginatedTableTasks.map((t) => {
                 const reviewedStars = (t as any).reviewStars;
                 const isReviewed = reviewedStars != null;
                 const isEditing = editingId === t.id;
@@ -675,7 +713,7 @@ const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: Us
                 );
               })}
 
-              {tableTasks.length === 0 && (
+              {paginatedTableTasks.length === 0 && (
                 <tr>
                   <td className="px-6 py-8 text-sm text-gray-500" colSpan={8}>
                     {loading ? 'Loading…' : 'No tasks found'}
@@ -685,6 +723,35 @@ const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: Us
             </tbody>
           </table>
         </div>
+
+        {totalPages > 1 && (
+          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+            <div className="text-sm text-gray-500">
+              Showing {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, tableTasks.length)} of {tableTasks.length} reviews
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1 || loading}
+                className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <span className="text-sm text-gray-600">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages || loading}
+                className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

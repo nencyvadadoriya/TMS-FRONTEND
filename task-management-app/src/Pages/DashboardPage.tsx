@@ -1508,7 +1508,7 @@ const DashboardPage = () => {
 
 
 
-    const [reviewModalStars, setReviewModalStars] = useState<number>(5);
+    const [reviewModalStars, setReviewModalStars] = useState<number>(0);
 
 
 
@@ -3239,7 +3239,7 @@ const DashboardPage = () => {
 
 
 
-        setReviewModalStars(5);
+        setReviewModalStars(0);
 
 
 
@@ -41827,7 +41827,7 @@ const DashboardPage = () => {
 
 
 
-                                disabled={reviewModalSubmitting}
+                                disabled={reviewModalSubmitting || reviewModalStars === 0}
 
 
 
