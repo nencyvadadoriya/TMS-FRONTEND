@@ -6777,197 +6777,25 @@ const DashboardPage = () => {
 
 
             });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             const scoped = filterByCompany(byRole);
-
-
-
-
-
-
-
             if (!isOtherWork) return scoped;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             const targetEmail = 'keyurismartbiz@gmail.com';
-
-
-
-
-
-
-
             const keyuri = baseUsers.find((u: any) => String((u as any)?.email || '').trim().toLowerCase() === targetEmail);
-
-
-
-
-
-
-
             const keyuriUser = keyuri || ({
-
-
-
-
-
-
-
                 id: targetEmail,
-
-
-
-
-
-
-
                 name: targetEmail.split('@')[0] || 'User',
-
-
-
-
-
-
-
                 email: targetEmail,
-
-
-
-
-
-
-
                 role: 'manager'
-
-
-
-
-
-
-
             } as any);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             const assistantsAnyCompany = baseUsers.filter((u: any) => {
-
-
-
-
-
-
-
                 const r = normalizeRole(u?.role);
-
-
-
-
-
-
-
-                return r === 'assistant' || r === 'sub_assistance';
-
-
-
-
-
-
-
+                return r === 'assistant' || r === 'sub_assistance'
             });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             const merged = [...(scoped || []), ...(assistantsAnyCompany || []), keyuriUser]
-
-
-
                 .filter((u: any) => Boolean(String((u as any)?.email || '').trim()));
-
-
-
-
-
-
-
             return Array.from(new Map(merged.map((u: any) => [String((u as any)?.email || '').trim().toLowerCase(), u])).values());
-
-
-
-
-
-
-
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         // OB Manager: show Managers + MD Managers + OB Managers + Assistants of same company
-
-
-
         if (role === 'ob_manager') {
 
 
@@ -23026,6 +22854,22 @@ const DashboardPage = () => {
                 toast.success('Comment saved successfully!');
 
 
+                // Update task in Redux store to reflect latest comment
+                const existingTask = tasks.find(t => t.id === taskId);
+                if (existingTask) {
+                    const updatedTask = {
+                        ...existingTask,
+                        latestComment: {
+                            content: formattedComment.content,
+                            userName: formattedComment.userName,
+                            userEmail: formattedComment.userEmail,
+                            createdAt: formattedComment.createdAt
+                        }
+                    };
+                    dispatch(taskUpserted(updatedTask as Task));
+                }
+
+
 
 
 
@@ -23199,7 +23043,7 @@ const DashboardPage = () => {
 
 
 
-    }, [currentUser]);
+    }, [currentUser, tasks, dispatch]);
 
 
 
@@ -23297,6 +23141,19 @@ const DashboardPage = () => {
 
                 toast.success('Comment deleted successfully');
 
+                // Update task in Redux store to reflect latest comment
+                const existingTask = tasks.find(t => t.id === taskId);
+                if (existingTask) {
+                    // Note: We don't have the next latest comment here without a fetch,
+                    // but we can clear it or the user will see it update on next refresh/fetch.
+                    // For now, let's just clear it to be safe, or we could fetch the task history.
+                    const updatedTask = {
+                        ...existingTask,
+                        latestComment: null // Clear it so it shows "No comments" or updates correctly
+                    };
+                    dispatch(taskUpserted(updatedTask as Task));
+                }
+
 
 
 
@@ -23359,7 +23216,7 @@ const DashboardPage = () => {
 
 
 
-    }, []);
+    }, [tasks, dispatch]);
 
 
 
@@ -31674,405 +31531,52 @@ const DashboardPage = () => {
 
 
         };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         const requestedBrands = isSpeedEcomCompany
-
-
-
-
-
-
-
             ? (() => {
-
-
-
-
-
-
-
                 const groupNumbers = trimEndEmpty(splitLines((bulkBrandForm.groupNumber || '') as string));
-
-
-
-
-
-
-
                 const brandNames = trimEndEmpty(splitLines((bulkBrandForm.groupName || '') as string));
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 if (groupNumbers.length === 0 || brandNames.length === 0) {
-
-
-
-
-
-
-
                     toast.error('Please paste group numbers and brand names');
-
-
-
-
-
-
-
                     return [] as Array<{ brandName: string; groupNumber: string }>;
-
-
-
-
-
-
-
                 }
-
-
-
-
-
-
-
                 if (groupNumbers.length !== brandNames.length) {
 
-
-
-
-
-
-
                     toast.error('Group Numbers and Brand Names rows count must match');
-
-
-
-
-
-
-
                     return [] as Array<{ brandName: string; groupNumber: string }>;
-
-
-
-
-
-
-
                 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 const rows: Array<{ brandName: string; groupNumber: string }> = [];
-
-
-
-
-
-
-
                 for (let i = 0; i < brandNames.length; i += 1) {
-
-
-
-
-
-
-
                     const groupNumber = groupNumbers[i] || '';
-
-
-
-
-
-
-
                     const brandName = brandNames[i] || '';
-
-
-
-
-
-
-
                     if (!groupNumber && !brandName) continue;
-
-
-
-
-
-
-
                     if (!groupNumber || !brandName) {
-
-
-
-
-
-
-
                         toast.error(`Row ${i + 1}: Group Number and Brand Name are required`);
-
-
-
-
-
-
-
                         return [];
-
-
-
-
-
-
-
                     }
-
-
-
-
-
-
-
                     rows.push({ brandName, groupNumber });
-
-
-
-
-
-
-
                 }
-
-
-
-
-
-
-
                 return rows;
-
-
-
-
-
-
-
             })()
-
-
-
-
-
-
-
             : (() => {
-
-
-
-
-
-
-
                 const raw = (bulkBrandForm.brandNames || '').trim();
-
-
-
-
-
-
-
                 if (!raw) {
-
-
-
-
-
-
-
                     toast.error('Please enter brand names');
-
-
-
-
-
-
-
                     return [] as Array<{ brandName: string; groupNumber: string }>;
-
-
-
-
-
-
-
                 }
-
-
-
-
-
-
-
                 return raw
-
-
-
-
-
-
-
                     .split(/\r?\n|,/)
-
-
-
-
-
-
-
                     .map((s) => s.trim())
-
-
-
-
-
-
-
                     .filter(Boolean)
-
-
-
-
-
-
-
                     .map((name) => ({ brandName: name, groupNumber: '' }));
-
-
-
-
-
-
-
             })();
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         if (requestedBrands.length === 0) return;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         setIsCreatingBulkBrands(true);
-
-
-
-
-
-
-
         try {
-
-
-
-
-
-
-
             const chunkSize = 50;
-
-
-
-
-
-
-
             const chunk = <T,>(list: T[], size: number): T[][] => {
-
-
-
-
-
-
-
                 const out: T[][] = [];
-
-
-
-
-
-
-
                 for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));
-
-
-
-
-
-
-
                 return out;
 
 

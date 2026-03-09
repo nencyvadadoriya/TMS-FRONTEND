@@ -1684,7 +1684,7 @@ const DesktopTaskItem = memo(({
   const isReassignedTask = statusKey === 'reassigned';
   const isInProgressTask = statusKey === 'in-progress';
 
-  const taskTypeLabel = (task.taskType || (task as any).type || (task as any).task_type || '').toString();
+  
   const createdAtRaw = (task as any)?.createdAt || (task as any)?.created_at || (task as any)?.timestamp || (task as any)?.createdOn || '';
   const createdAtText = (() => {
     try {
@@ -1800,9 +1800,9 @@ const DesktopTaskItem = memo(({
           </div>
         </div>
 
-        {/* Created At Column */}
+        {/* Created At Column - REDUCED */}
         <div className="col-span-1 min-w-0 flex items-center justify-center">
-          <span className="text-xs text-gray-700 truncate w-full text-center" title={createdAtText}>
+          <span className="text-[10px] text-gray-500 truncate w-full text-center" title={createdAtText}>
             {createdAtText}
           </span>
         </div>
@@ -1825,13 +1825,29 @@ const DesktopTaskItem = memo(({
           </div>
         </div>
 
-        {/* Type Column - FIXED WIDTH */}
-        <div className="col-span-1 min-w-0 flex items-center justify-center">
-          <div className="w-full max-w-[100px]">
-            <span className="text-xs text-gray-700 font-medium px-2 py-1 bg-gray-100 rounded-md truncate block w-full text-center" title={taskTypeLabel}>
-              {taskTypeLabel || "—"}
-            </span>
-          </div>
+        {/* Last Comment Column - NEW */}
+        <div className="col-span-2 min-w-0 flex items-center pl-4 border-l border-gray-100">
+          {(task as any).latestComment ? (
+            <div
+              className="flex flex-col gap-0.5 cursor-pointer hover:bg-gray-50 p-1 rounded transition-colors w-full"
+              onClick={() => onOpenCommentSidebar(task)}
+              title={(task as any).latestComment.content}
+            >
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold text-blue-600 truncate max-w-[80px]">
+                  {(task as any).latestComment.userName}
+                </span>
+                <span className="text-[9px] text-gray-400 shrink-0">
+                  {new Date((task as any).latestComment.createdAt).toLocaleDateString()}
+                </span>
+              </div>
+              <p className="text-xs text-gray-600 line-clamp-1 italic italic leading-tight">
+                "{(task as any).latestComment.content}"
+              </p>
+            </div>
+          ) : (
+            <span className="text-xs text-gray-300 italic">No comments</span>
+          )}
         </div>
 
         {/* Actions Column - OPTIMIZED */}
@@ -1931,14 +1947,12 @@ DesktopTaskItem.displayName = 'DesktopTaskItem';
 const CommentSidebar = memo(({
   showCommentSidebar,
   selectedTask,
-  newComment,
   commentLoading,
   currentUser,
   formatDate,
   isOverdue,
   formatBrandLabel,
   onCloseSidebar,
-  onSetNewComment,
   onSaveComment,
   getTaskComments,
   getUserInfoForDisplay,
@@ -1948,12 +1962,14 @@ const CommentSidebar = memo(({
   loadingComments,
   loadingHistory
 }: any) => {
+  const [localComment, setLocalComment] = useState('');
+  const [activeTab, setActiveTab] = useState<'details' | 'permanent-history'>('details');
+
   if (!showCommentSidebar || !selectedTask) return null;
 
   const taskComments = getTaskComments(selectedTask.id);
   const userInfo = getUserInfoForDisplay(selectedTask);
   const isCompleted = isTaskCompleted(selectedTask.id);
-  const [activeTab, setActiveTab] = useState<'details' | 'permanent-history'>('details');
 
   return (
     <div className="fixed inset-0 z-50">
@@ -2078,8 +2094,8 @@ const CommentSidebar = memo(({
                   <h4 className="font-medium text-gray-900 mb-3">Add Comment</h4>
                   <div className="flex gap-2">
                     <textarea
-                      value={newComment}
-                      onChange={(e) => onSetNewComment(e.target.value)}
+                      value={localComment}
+                      onChange={(e) => setLocalComment(e.target.value)}
                       placeholder="Type your comment here..."
                       className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[80px] resize-none"
                       rows={3}
@@ -2087,8 +2103,11 @@ const CommentSidebar = memo(({
                   </div>
                   <div className="flex justify-between items-center mt-3">
                     <button
-                      onClick={onSaveComment}
-                      disabled={!newComment.trim() || commentLoading}
+                      onClick={() => {
+                        onSaveComment(localComment);
+                        setLocalComment('');
+                      }}
+                      disabled={!localComment.trim() || commentLoading}
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2 transition-colors"
                     >
                       {commentLoading ? (
@@ -3751,7 +3770,6 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   // Comment related states
   const [showCommentSidebar, setShowCommentSidebar] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [newComment, setNewComment] = useState('');
   const [commentLoading, setCommentLoading] = useState(false);
 
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
@@ -4786,18 +4804,17 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   const handleCloseCommentSidebar = useCallback(() => {
     setShowCommentSidebar(false);
     setSelectedTask(null);
-    setNewComment('');
     setCommentLoading(false);
     setDeletingCommentId(null);
   }, []);
 
-  const handleSaveComment = useCallback(async () => {
+  const handleSaveComment = useCallback(async (content: string) => {
     if (!selectedTask) {
       toast.error("No task selected");
       return;
     }
 
-    if (!newComment.trim()) {
+    if (!content.trim()) {
       toast.error("Please enter a comment");
       return;
     }
@@ -4810,7 +4827,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     const optimisticComment: CommentType = {
       id: `optimistic-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       taskId: selectedTask.id,
-      content: newComment,
+      content: content,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       userId: currentUser.id,
@@ -4830,8 +4847,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       };
     });
 
-    const commentToSave = newComment;
-    setNewComment('');
+    const commentToSave = content;
     setCommentLoading(true);
 
     if (onSaveComment && typeof onSaveComment === 'function') {
@@ -4893,7 +4909,6 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
           toast.error('❌ Failed to save comment. Please try again.');
         }
 
-        setNewComment(commentToSave);
       } finally {
         setCommentLoading(false);
       }
@@ -4901,7 +4916,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       toast.success('💾 Comment saved locally (offline mode)');
       setCommentLoading(false);
     }
-  }, [selectedTask, newComment, currentUser, onSaveComment, addHistoryRecord]);
+  }, [selectedTask, currentUser, onSaveComment, addHistoryRecord]);
 
   const handleDeleteComment = useCallback(async (taskId: string, commentId: string) => {
     if (!onDeleteComment) {
@@ -5764,16 +5779,16 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         ) : (
           <div className="space-y-4">
             {/* Table Header - Desktop */}
-            <div className="hidden md:grid grid-cols-12 gap-3 px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 text-sm font-semibold text-gray-700">
+            <div className="hidden md:grid grid-cols-12 gap-3 px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 text-sm font-semibold text-gray-700 items-center">
               <div className="col-span-1 text-center">#</div>
               <div className="col-span-1 text-center">Status</div>
               <div className="col-span-1 text-center">Brand</div>
               <div className="col-span-2">Task Title</div>
-              <div className="col-span-1">Assign To</div>
-              <div className="col-span-1">Assign By</div>
-              <div className="col-span-1 text-center">Created At</div>
-              <div className="col-span-1">Due Date</div>
-              <div className="col-span-1 text-center">Type</div>
+              <div className="col-span-1 text-center">Assign To</div>
+              <div className="col-span-1 text-center">Assign By</div>
+              <div className="col-span-1 text-center">Created</div>
+              <div className="col-span-1 text-center">Due Date</div>
+              <div className="col-span-2 pl-4">Last Comment</div>
               <div className="col-span-1 text-right pr-4">Actions</div>
             </div>
 
@@ -6035,7 +6050,6 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       <CommentSidebar
         showCommentSidebar={showCommentSidebar}
         selectedTask={selectedTask}
-        newComment={newComment}
         commentLoading={commentLoading}
         deletingCommentId={deletingCommentId}
         loadingComments={loadingComments}
@@ -6045,7 +6059,6 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         isOverdue={isOverdue}
         formatBrandLabel={formatBrandWithGroupNumber}
         onCloseSidebar={handleCloseCommentSidebar}
-        onSetNewComment={setNewComment}
         onSaveComment={handleSaveComment}
         onDeleteComment={onDeleteComment ? (commentId: string) => handleDeleteComment(selectedTask?.id || '', commentId) : undefined}
         getTaskComments={getTaskCommentsInternal}
