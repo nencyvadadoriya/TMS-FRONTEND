@@ -302,9 +302,9 @@ const EmployeeOfTheMonthCard = ({
                   }}
                 >
                   <p className="text-xs text-sky-500 font-semibold mb-1">Reviews</p>
-                  <p className="text-base font-bold text-slate-800">
+                  <p className="text-sm font-bold text-slate-800">
                     {totalReviews && totalReviews > 0 && totalTasksReceived && totalTasksReceived > 0
-                      ? `${((totalReviews / totalTasksReceived) * 100).toFixed(0)}%`
+                      ? `${totalReviews} Reviews / ${totalTasksReceived} tasks * 100 = ${((totalReviews / totalTasksReceived) * 100).toFixed(0)}%`
                       : '0%'}
                   </p>
                 </div>
@@ -555,11 +555,9 @@ const EmployeeOfTheMonthCard = ({
                                 <span className="font-semibold text-slate-700">{r.avgStarsLabel}</span>
                               </div>
                               <span className="text-slate-300">•</span>
-                              <span className="text-slate-500">{r.total} reviews</span>
-                              <span className="text-slate-300">•</span>
                               <span className="text-slate-500">
                                 {r.total > 0 && r.totalTasksReceived && r.totalTasksReceived > 0
-                                  ? `${((r.total / r.totalTasksReceived) * 100).toFixed(0)}%`
+                                  ? `${r.total} Reviews / ${r.totalTasksReceived} tasks * 100 = ${((r.total / r.totalTasksReceived) * 100).toFixed(0)}%`
                                   : '0%'}
                               </span>
                             </div>
