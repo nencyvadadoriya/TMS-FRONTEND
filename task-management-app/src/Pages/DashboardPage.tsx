@@ -1156,6 +1156,18 @@ const DashboardPage = () => {
 
 
 
+    const normalizeEmailForMatch = useCallback((v: any): string => {
+        if (!v) return '';
+        if (typeof v === 'string') return v.trim().toLowerCase();
+        if (typeof v === 'object' && v !== null) {
+            const candidate = (v as any).email || (v as any).name || '';
+            return String(candidate || '').trim().toLowerCase();
+        }
+        return '';
+    }, []);
+
+
+
 
 
 
@@ -1305,41 +1317,10 @@ const DashboardPage = () => {
 
 
     const [sendReminderTask, setSendReminderTask] = useState<Task | null>(null);
-
-
-
     const [sendReminderOpen, setSendReminderOpen] = useState(false);
-
-
-
-
-
-
-
     const [unreadReminders, setUnreadReminders] = useState<TaskReminderClientItem[]>([]);
-
-
-
-
-
-
-
     const [activeReminderId, setActiveReminderId] = useState<string>('');
-
-
-
-
-
-
-
     const SUPPORTING_FETCH_TTL_MS = 5 * 60_000;
-
-
-
-
-
-
-
     const MD_IMPEX_COMPANY_NAME = 'MD Impex';
 
 
@@ -2610,12 +2591,15 @@ const DashboardPage = () => {
 
 
                 totalTasksReceived: (tasks || []).filter((t: any) => {
-                    const assignedToEmail = String(
-                        (t as any)?.assignedToUser?.email
-                        || (typeof (t as any).assignedTo === 'string' ? (t as any).assignedTo : (t as any).assignedTo?.email)
-                        || ''
-                    ).trim().toLowerCase();
-                    if (!assignedToEmail || assignedToEmail !== r.email) return false;
+                    const rowEmail = String((r as any)?.email || '').trim().toLowerCase();
+                    const assignedToEmail =
+                        normalizeEmailForMatch((t as any)?.assignedToUser?.email)
+                        || normalizeEmailForMatch((t as any)?.assignedToUser)
+                        || normalizeEmailForMatch((t as any)?.assignedTo?.email)
+                        || normalizeEmailForMatch((t as any)?.assignedTo)
+                        || normalizeEmailForMatch((t as any)?.assignedToId)
+                        || normalizeEmailForMatch((t as any)?.assignedToUserId);
+                    if (!assignedToEmail || !rowEmail || assignedToEmail !== rowEmail) return false;
                     if (!monthRange) return true;
                     const createdAtRaw = (t as any).createdAt || (t as any).assignedAt;
                     if (!createdAtRaw) return false;
@@ -2631,65 +2615,17 @@ const DashboardPage = () => {
 
 
             };
-
-
-
         });
 
 
-
-
-
-
-
         // Debug: log first row to see total value
-
-
-
         console.log('summaryRowsBase[0]:', summaryRowsBase[0]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         const photoUrl = top
-
-
-
             ? (users || []).find((u: any) => {
-
-
-
-                const uemail = String(u?.email || '').trim().toLowerCase();
-
-
-
+               const uemail = String(u?.email || '').trim().toLowerCase();
                 return uemail && uemail === top.email;
-
-
-
             })?.avatar
-
-
-
-            : undefined;
-
-
-
-
-
-
-
+           : undefined;
         console.log('Photo search debug:', {
 
 
@@ -2755,61 +2691,11 @@ const DashboardPage = () => {
 
 
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         return {
-
-
-
-
-
-
-
             name: top?.name || 'Not any yet',
-
-
-
-
-
-
-
             email: top?.email || '',
-
-
-
-
-
-
-
-            rating: top?.avgStars || 0,
-
-
-
-
-
-
-
+           rating: top?.avgStars || 0,
             performance: top?.performance || 'Not any yet',
-
-
-
-
-
-
-
             avg: top?.ratingPctLabel || 'Not any yet',
 
 
@@ -2829,12 +2715,12 @@ const DashboardPage = () => {
             totalReviews: top ? (summaryRowsBase.find(r => r.email === top.email)?.total ?? 0) : (rows[0]?.total ?? 0),
 
             totalTasksReceived: top ? (tasks || []).filter((t: any) => {
-                const assignedToEmail = String(
-                    (t as any)?.assignedToUser?.email
-                    || (typeof (t as any).assignedTo === 'string' ? (t as any).assignedTo : (t as any).assignedTo?.email)
-                    || ''
-                ).trim().toLowerCase();
-                if (!assignedToEmail || assignedToEmail !== top.email) return false;
+                const topEmail = String((top as any)?.email || '').trim().toLowerCase();
+                const assignedToEmail =
+                    normalizeEmailForMatch((t as any)?.assignedTo)
+                    || normalizeEmailForMatch((t as any)?.assignedToUser?.email)
+                    || normalizeEmailForMatch((t as any)?.assignedToUser);
+                if (!assignedToEmail || !topEmail || assignedToEmail !== topEmail) return false;
                 if (!monthRange) return true;
                 const createdAtRaw = (t as any).createdAt || (t as any).assignedAt;
                 if (!createdAtRaw) return false;
@@ -9355,12 +9241,6 @@ const DashboardPage = () => {
 
 
         if (role === 'md_manager' || role === 'ob_manager') {
-
-
-
-
-
-
 
             const fromCompanies = (companies || []).map(c => (c?.name || '').toString().trim()).filter(Boolean);
 

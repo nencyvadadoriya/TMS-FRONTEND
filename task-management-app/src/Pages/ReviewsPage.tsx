@@ -331,6 +331,23 @@ const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: Us
     };
 
     const monthRange = parseMonth(month);
+
+    const tasksForMonth = (tasks || []).filter((t: any) => {
+      if (!monthRange) return true;
+      const createdAtRaw = (t as any).createdAt || (t as any).assignedAt;
+      if (!createdAtRaw) return false;
+      const createdAt = new Date(createdAtRaw);
+      if (Number.isNaN(createdAt.getTime())) return false;
+      return createdAt >= monthRange.start && createdAt < monthRange.endExclusive;
+    });
+
+    const totalTasksByAssignee = new Map<string, number>();
+    tasksForMonth.forEach((t: any) => {
+      const key = resolveAssigneeEmailKey(t);
+      if (!key) return;
+      totalTasksByAssignee.set(key, (totalTasksByAssignee.get(key) || 0) + 1);
+    });
+
     const reviewed = (reviewedTasks || []).filter((t) => {
       const stars = (t as any).reviewStars;
       const reviewedAtRaw = (t as any).reviewedAt;
@@ -342,9 +359,9 @@ const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: Us
       return reviewedAt >= monthRange.start && reviewedAt < monthRange.endExclusive;
     });
 
-    const assigneeScoped = selectedAssigneeKey === 'all'
+     selectedAssigneeKey === 'all'
       ? reviewed
-      : reviewed.filter((t: any) => resolveAssigneeEmailKey(t) === selectedAssigneeKey);
+      : reviewed.filter((t: any) => resolveAssigneeEmailKey(t) === selectedAssigneeKey); 
 
     const byAssignee = new Map<string, {
       email: string;
@@ -354,7 +371,8 @@ const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: Us
       stars: Record<number, number>;
     }>();
 
-    assigneeScoped.forEach((t) => {
+    // Always show all assistants data in monthly summary
+    reviewed.forEach((t) => {
       const assignedToUser = (t as any)?.assignedToUser;
       const email = String(
         assignedToUser?.email
@@ -391,7 +409,49 @@ const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: Us
       byAssignee.set(email, existing);
     });
 
-    const rows = Array.from(byAssignee.values());
+    // Helper to normalize role keys
+    const normalizeRoleKey = (v: unknown): string => String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+    const isAssistantRoleKey = (rk: string): boolean => {
+      if (!rk) return false;
+      // Strict check: only exact assistant/sub_assistance roles (NOT managers)
+      const validRoles = ['assistant', 'sub_assistance', 'sub_assistence', 'sub_assist', 'sub_assistant'];
+      return validRoles.includes(rk);
+    };
+
+    // Build full assistance list from users array (only assistants/sub_assistances)
+    const fullAssistanceList = new Map<string, { email: string; name: string; roleKey: string }>();
+    if (Array.isArray(users)) {
+      users.forEach((u: any) => {
+        const emailKey = normalizeEmailKey(u?.email);
+        if (!emailKey || emailKey.includes('.deleted.')) return;
+        const roleKey = normalizeRoleKey(u?.role);
+        if (!isAssistantRoleKey(roleKey)) return;
+        const name = String(u?.name || emailKey);
+        fullAssistanceList.set(emailKey, { email: emailKey, name, roleKey });
+      });
+    }
+
+    // Merge reviews data with full assistance list
+    const rows: Array<{
+      email: string;
+      name: string;
+      total: number;
+      starSum: number;
+      stars: Record<number, number>;
+      totalTasks: number;
+    }> = [];
+
+    fullAssistanceList.forEach((info, email) => {
+      const reviewData = byAssignee.get(email);
+      rows.push({
+        email,
+        name: info.name,
+        total: reviewData?.total || 0,
+        starSum: reviewData?.starSum || 0,
+        stars: reviewData?.stars || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+        totalTasks: totalTasksByAssignee.get(email) || 0,
+      });
+    });
     const totalReviews = rows.reduce((sum, r) => sum + r.total, 0);
     const toPct = (n: number, d: number) => (d > 0 ? (n / d) * 100 : 0);
     const formatPct = (v: number) => `${v.toFixed(1)}%`;
@@ -437,7 +497,7 @@ const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: Us
       rows: mapped,
       topEmail,
     };
-  }, [month, resolveAssigneeEmailKey, reviewedTasks, selectedAssigneeKey]);
+  }, [tasks, users, month, normalizeEmailKey, resolveAssigneeEmailKey, reviewedTasks, selectedAssigneeKey]);
 
   const startEdit = (t: Task) => {
     setEditingId(t.id);
@@ -556,6 +616,8 @@ const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: Us
               <tr className="text-left text-sm font-semibold text-gray-700">
                 <th className="px-6 py-4">Assistance</th>
                 <th className="px-6 py-4">Reviews</th>
+                <th className="px-6 py-4">Total Tasks</th>
+                <th className="px-6 py-4">Avg Task Review %</th>
                 <th className="px-6 py-4">Total Stars</th>
                 <th className="px-6 py-4">Avg</th>
                 <th className="px-6 py-4">Rating %</th>
@@ -571,6 +633,8 @@ const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: Us
             <tbody className="divide-y divide-gray-100">
               {monthlySummary.rows.map((r) => {
                 const isTop = monthlySummary.topEmail && monthlySummary.topEmail === r.email;
+                const totalTasks = Number((r as any).totalTasks || 0);
+                const avgTaskReviewPct = totalTasks > 0 ? (Number(r.total || 0) / totalTasks) * 100 : 0;
                 return (
                   <tr key={r.email} className={isTop ? 'bg-blue-50' : 'hover:bg-gray-50'}>
                     <td className="px-6 py-5">
@@ -578,6 +642,10 @@ const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: Us
                       <div className="text-xs text-gray-500 mt-1">{r.email}</div>
                     </td>
                     <td className="px-6 py-5 text-sm text-gray-700">{r.total}</td>
+                    <td className="px-6 py-5 text-sm text-gray-700">{totalTasks}</td>
+                    <td className="px-6 py-5 text-sm text-gray-700">
+                      {`${avgTaskReviewPct.toFixed(0)}%`} <span className="text-xs text-gray-500">({r.total} Reviews / {totalTasks} Tasks)</span>
+                    </td>
                     <td className="px-6 py-5 text-sm text-gray-700">{r.starSum}</td>
                     <td className="px-6 py-5 text-sm text-gray-700">{r.avgStarsLabel}/5</td>
                     <td className="px-6 py-5 text-sm text-gray-700">{r.ratingPctLabel}</td>
@@ -594,7 +662,7 @@ const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: Us
 
               {monthlySummary.rows.length === 0 && (
                 <tr>
-                  <td className="px-6 py-8 text-sm text-gray-500" colSpan={12}>
+                  <td className="px-6 py-8 text-sm text-gray-500" colSpan={14}>
                     {loading ? 'Loading…' : 'No reviewed tasks found for selected month'}
                   </td>
                 </tr>
