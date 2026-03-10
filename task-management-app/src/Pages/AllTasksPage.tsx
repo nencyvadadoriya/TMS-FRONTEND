@@ -1661,24 +1661,29 @@ const DesktopTaskItem = memo(({
   const userIsAssigner = isTaskAssigner(task);
   const canEditThisTask = typeof canEditTask === 'function' ? canEditTask(task) : userIsAssigner;
   const role = String((currentUser as any)?.role || '').trim().toLowerCase();
-  const taskCompanyKey = String((task as any)?.companyName || (task as any)?.company || '').trim().toLowerCase().replace(/\s+/g, '');
-  taskCompanyKey === 'speedecom';
+
+  const normalizeEmailSafe = (v: unknown): string => {
+    if (!v) return '';
+    if (typeof v === 'string') return v.trim().toLowerCase();
+    if (typeof v === 'object' && v !== null) {
+      const email = (v as any).email;
+      if (typeof email === 'string') return email.trim().toLowerCase();
+    }
+    return String(v).trim().toLowerCase();
+  };
+
+  const myEmail = normalizeEmailSafe((currentUser as any)?.email);
+  const assignedByEmailForCheck =
+    normalizeEmailSafe((task as any)?.assignedBy) ||
+    normalizeEmailSafe((task as any)?.assignedByUser?.email);
+  const isCreator = Boolean(myEmail && assignedByEmailForCheck && myEmail === assignedByEmailForCheck);
+
   const canDeleteThisTask = (role === 'admin' || role === 'super_admin' || role === 'manager' || role === 'md_manager') && userIsAssigner;
 
-  const canAccessCreateTask = (() => {
-    const perms = (currentUser as any)?.permissions;
-    if (!perms || typeof perms !== 'object') return true;
-    if (Object.keys(perms).length === 0) return true;
-    if (typeof (perms as any).create_task === 'undefined') return true;
-
-    const perm = String((perms as any).create_task || '').trim().toLowerCase();
-    if (['deny', 'no', 'false', '0', 'disabled'].includes(perm)) return false;
-    if (['allow', 'allowed', 'yes', 'true', '1'].includes(perm)) return true;
-    return perm !== 'deny';
-  })();
-
-  const canShowEditIcon = canAccessCreateTask && canEditThisTask;
-  const canShowDeleteIcon = canAccessCreateTask && canDeleteThisTask;
+  // Edit/Delete should not be coupled to create_task permission.
+  // Show edit if user can edit OR they are the creator (assignedBy matches user).
+  const canShowEditIcon = Boolean(canEditThisTask || isCreator);
+  const canShowDeleteIcon = Boolean(canDeleteThisTask);
   const isOverdueTask = isOverdue(task.dueDate, task.status);
   const statusKey = String(task.status || '').trim().toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-');
   const isReassignedTask = statusKey === 'reassigned';
