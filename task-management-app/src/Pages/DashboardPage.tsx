@@ -2622,10 +2622,10 @@ const DashboardPage = () => {
         console.log('summaryRowsBase[0]:', summaryRowsBase[0]);
         const photoUrl = top
             ? (users || []).find((u: any) => {
-               const uemail = String(u?.email || '').trim().toLowerCase();
+                const uemail = String(u?.email || '').trim().toLowerCase();
                 return uemail && uemail === top.email;
             })?.avatar
-           : undefined;
+            : undefined;
         console.log('Photo search debug:', {
 
 
@@ -2694,7 +2694,7 @@ const DashboardPage = () => {
         return {
             name: top?.name || 'Not any yet',
             email: top?.email || '',
-           rating: top?.avgStars || 0,
+            rating: top?.avgStars || 0,
             performance: top?.performance || 'Not any yet',
             avg: top?.ratingPctLabel || 'Not any yet',
 
@@ -4733,56 +4733,14 @@ const DashboardPage = () => {
 
             try {
 
-
-
-
-
-
-
                 const companyName = String(payload?.companyName || '').trim();
-
-
-
-
-
-
-
                 const affectedUserId = String(payload?.userId || '').trim();
-
-
-
-
-
-
-
                 if (!companyName || !affectedUserId) return;
-
-
-
-
-
-
-
                 window.dispatchEvent(new CustomEvent('assignmentsApplied', {
-
-
-
                     detail: {
-
-
-
                         companyName,
-
-
-
                         userId: affectedUserId,
-
-
-
                     }
-
-
-
                 }));
 
 
@@ -29986,6 +29944,14 @@ const DashboardPage = () => {
 
 
 
+    const setStatusFilter = useCallback((v: string) => handleFilterChange('status', v), [handleFilterChange]);
+
+    const setDateFilterInternal = useCallback((v: string) => handleFilterChange('date', v), [handleFilterChange]);
+
+    const setAssignedFilter = useCallback((v: string) => handleFilterChange('assigned', v), [handleFilterChange]);
+
+
+
     const handleAdvancedFilterChange = useCallback((filterType: string, value: string) => {
 
 
@@ -32947,31 +32913,16 @@ const DashboardPage = () => {
 
 
 
-    const validateForm = useCallback(() => {
+    const validateForm = useCallback((data?: NewTaskForm) => {
 
-
-
-
-
-
+        const formToValidate = data || newTask;
 
         const errors: Record<string, string> = {};
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-        if (!newTask.title.trim()) {
+        if (!formToValidate.title.trim()) {
 
 
 
@@ -32995,7 +32946,7 @@ const DashboardPage = () => {
 
 
 
-        if (!newTask.assignedTo) {
+        if (!formToValidate.assignedTo) {
 
 
 
@@ -33019,7 +32970,7 @@ const DashboardPage = () => {
 
 
 
-        if (!newTask.dueDate) {
+        if (!formToValidate.dueDate) {
 
 
 
@@ -33043,7 +32994,7 @@ const DashboardPage = () => {
 
 
 
-            const selectedDate = new Date(newTask.dueDate);
+            const selectedDate = new Date(formToValidate.dueDate);
 
 
 
@@ -33092,9 +33043,6 @@ const DashboardPage = () => {
 
 
             const yesterday = new Date(today);
-
-
-
 
 
 
@@ -33163,7 +33111,7 @@ const DashboardPage = () => {
 
 
 
-        if (!newTask.companyName || newTask.companyName.trim() === '') {
+        if (!formToValidate.companyName || formToValidate.companyName.trim() === '') {
 
 
 
@@ -33203,7 +33151,7 @@ const DashboardPage = () => {
 
 
 
-        if (!newTask.brand || newTask.brand.trim() === '') {
+        if (!formToValidate.brand || formToValidate.brand.trim() === '') {
 
 
 
@@ -38126,71 +38074,15 @@ const DashboardPage = () => {
 
 
 
+    const handleSaveTaskFromModal = useCallback(async (modalData?: NewTaskForm) => {
 
-    const handleSaveTaskFromModal = useCallback(async () => {
-
-
-
-
-
-
-
-        if (!validateForm()) return;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        const taskToUse = modalData || newTask;
+        if (!validateForm(taskToUse)) return;
         setIsCreatingTask(true);
-
-
-
-
-
-
-
         try {
-
-
-
-
-
-
-
             const selectedBrandObj = brands.find(b =>
-
-
-
-
-
-
-
-                normalizeText(b.name) === normalizeText(newTask.brand) &&
-
-
-
-
-
-
-
-                normalizeText((b as any).company || (b as any).companyName) === normalizeText(newTask.companyName)
-
-
-
-
-
-
-
+                normalizeText(b.name) === normalizeText(taskToUse.brand) &&
+                normalizeText((b as any).company || (b as any).companyName) === normalizeText(taskToUse.companyName)
             );
 
 
@@ -38249,99 +38141,27 @@ const DashboardPage = () => {
 
             const taskData = {
 
+                title: taskToUse.title,
 
+                assignedTo: taskToUse.assignedTo,
 
+                dueDate: taskToUse.dueDate,
 
+                priority: taskToUse.priority === 'urgent' ? 'high' : taskToUse.priority,
 
+                taskType: taskToUse.taskType,
 
+                companyName: taskToUse.companyName,
 
-                title: newTask.title,
-
-
-
-
-
-
-
-                assignedTo: newTask.assignedTo,
-
-
-
-
-
-
-
-                dueDate: newTask.dueDate,
-
-
-
-
-
-
-
-                priority: newTask.priority === 'urgent' ? 'high' : newTask.priority,
-
-
-
-
-
-
-
-                taskType: newTask.taskType,
-
-
-
-
-
-
-
-                companyName: newTask.companyName,
-
-
-
-
-
-
-
-                brand: newTask.brand,
-
-
-
-
-
-
+                brand: taskToUse.brand,
 
                 brandId: resolvedBrandId,
 
-
-
-
-
-
-
                 status: 'pending' as TaskStatus,
-
-
-
-
-
-
 
                 assignedBy: currentUser.email,
 
-
-
-
-
-
-
-                assignedToUser: users.find(u => u.email === newTask.assignedTo),
-
-
-
-
-
-
+                assignedToUser: users.find(u => u.email === taskToUse.assignedTo),
 
             };
 
@@ -43392,7 +43212,7 @@ const DashboardPage = () => {
 
 
 
-                                        <>
+                                            <>
 
 
 
@@ -43400,7 +43220,7 @@ const DashboardPage = () => {
 
 
 
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
 
 
 
@@ -43408,27 +43228,27 @@ const DashboardPage = () => {
 
 
 
-                                                {(() => {
+                                                    {(() => {
 
 
 
-                                                    const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
+                                                        const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
 
 
 
-                                                    const canSee = roleKey === 'admin' || roleKey === 'super_admin' || roleKey === 'manager' || roleKey === 'md_manager' || roleKey === 'ob_manager' || roleKey === 'all_manager';
+                                                        const canSee = roleKey === 'admin' || roleKey === 'super_admin' || roleKey === 'manager' || roleKey === 'md_manager' || roleKey === 'ob_manager' || roleKey === 'all_manager';
 
 
 
-                                                    if (!canSee) return null;
+                                                        if (!canSee) return null;
 
 
 
-                                                    return (
+                                                        return (
 
 
 
-                                                        <button
+                                                            <button
 
 
 
@@ -43436,7 +43256,7 @@ const DashboardPage = () => {
 
 
 
-                                                            type="button"
+                                                                type="button"
 
 
 
@@ -43444,7 +43264,7 @@ const DashboardPage = () => {
 
 
 
-                                                            onClick={() => setDashboardSpotlight('employee-of-month')}
+                                                                onClick={() => setDashboardSpotlight('employee-of-month')}
 
 
 
@@ -43452,7 +43272,7 @@ const DashboardPage = () => {
 
 
 
-                                                            className={`bg-white p-6 rounded-2xl shadow-sm border-2 transition-all duration-200 hover:shadow-md ${dashboardSpotlight === 'employee-of-month'
+                                                                className={`bg-white p-6 rounded-2xl shadow-sm border-2 transition-all duration-200 hover:shadow-md ${dashboardSpotlight === 'employee-of-month'
 
 
 
@@ -43460,7 +43280,7 @@ const DashboardPage = () => {
 
 
 
-                                                                ? 'border-blue-500 shadow-lg shadow-blue-50'
+                                                                    ? 'border-blue-500 shadow-lg shadow-blue-50'
 
 
 
@@ -43468,7 +43288,7 @@ const DashboardPage = () => {
 
 
 
-                                                                : 'border-transparent hover:border-gray-200'
+                                                                    : 'border-transparent hover:border-gray-200'
 
 
 
@@ -43476,11 +43296,11 @@ const DashboardPage = () => {
 
 
 
-                                                                }`}
+                                                                    }`}
 
 
 
-                                                        >
+                                                            >
 
 
 
@@ -43488,7 +43308,7 @@ const DashboardPage = () => {
 
 
 
-                                                            <div className="flex items-start justify-between">
+                                                                <div className="flex items-start justify-between">
 
 
 
@@ -43496,7 +43316,7 @@ const DashboardPage = () => {
 
 
 
-                                                                <div>
+                                                                    <div>
 
 
 
@@ -43504,7 +43324,7 @@ const DashboardPage = () => {
 
 
 
-                                                                    <h2 className="text-sm font-semibold text-gray-900">
+                                                                        <h2 className="text-sm font-semibold text-gray-900">
 
 
 
@@ -43512,7 +43332,7 @@ const DashboardPage = () => {
 
 
 
-                                                                        <span className="inline-flex items-center gap-2">
+                                                                            <span className="inline-flex items-center gap-2">
 
 
 
@@ -43520,7 +43340,7 @@ const DashboardPage = () => {
 
 
 
-                                                                            <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-amber-100/70 text-amber-700 ring-1 ring-amber-200 shadow-sm">
+                                                                                <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-amber-100/70 text-amber-700 ring-1 ring-amber-200 shadow-sm">
 
 
 
@@ -43528,7 +43348,23 @@ const DashboardPage = () => {
 
 
 
-                                                                                <Crown className="h-4 w-4" />
+                                                                                    <Crown className="h-4 w-4" />
+
+
+
+
+
+
+
+                                                                                </span>
+
+
+
+
+
+
+
+                                                                                <span>Employee of the Month </span>
 
 
 
@@ -43544,11 +43380,235 @@ const DashboardPage = () => {
 
 
 
-                                                                            <span>Employee of the Month </span>
+                                                                        </h2>
 
 
 
 
+
+
+
+                                                                        <p className="text-xs text-gray-500 mt-1 ">Based on manager reviews (month wise)</p>
+
+
+
+
+
+
+
+                                                                    </div>
+
+
+
+
+
+
+
+                                                                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${dashboardSpotlight === 'employee-of-month'
+
+
+
+
+
+
+
+                                                                        ? 'bg-blue-100 text-blue-600'
+
+
+
+
+
+
+
+                                                                        : 'bg-gray-100 text-gray-600'
+
+
+
+
+
+
+
+                                                                        }`}>
+
+
+
+
+
+
+
+                                                                        {dashboardSpotlight === 'employee-of-month' ? 'Selected' : 'Select'}
+
+
+
+
+
+
+
+                                                                    </span>
+
+
+
+
+
+
+
+                                                                </div>
+
+
+
+
+
+
+
+                                                            </button>
+
+
+
+                                                        );
+
+
+
+                                                    })()}
+
+
+
+
+
+
+
+                                                    {(() => {
+
+
+
+                                                        const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
+
+
+
+                                                        const canSee =
+
+                                                            roleKey === 'manager' ||
+
+                                                            roleKey === 'md_manager' ||
+
+                                                            roleKey === 'ob_manager' ||
+
+                                                            roleKey === 'all_manager' ||
+
+                                                            roleKey === 'admin' ||
+
+                                                            roleKey === 'super_admin';
+
+
+
+                                                        if (!canSee) return null;
+
+
+
+                                                        return (
+
+
+
+                                                            <>
+
+
+
+                                                                <button
+
+
+
+                                                                    type="button"
+
+
+
+                                                                    onClick={() => setDashboardSpotlight('manager-monthly-ranking')}
+
+
+
+                                                                    className={`bg-white p-6 rounded-2xl shadow-sm border-2 transition-all duration-200 hover:shadow-md ${dashboardSpotlight === 'manager-monthly-ranking'
+
+
+
+                                                                        ? 'border-blue-500 shadow-lg shadow-blue-50'
+
+
+
+                                                                        : 'border-transparent hover:border-gray-200'
+
+
+
+                                                                        }`}
+
+
+
+                                                                >
+
+
+
+                                                                    <div className="flex items-start justify-between">
+
+
+
+                                                                        <div>
+
+
+
+                                                                            <h2 className="text-sm font-semibold text-gray-900">
+
+
+
+                                                                                <span className="inline-flex items-center gap-2">
+
+
+
+                                                                                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-amber-100/70 text-amber-700 ring-1 ring-amber-200 shadow-sm">
+
+
+
+                                                                                        <Trophy className="h-4 w-4" />
+
+
+
+                                                                                    </span>
+
+
+
+                                                                                    <span>Employee of the Month Marketer</span>
+
+
+
+                                                                                </span>
+
+
+
+                                                                            </h2>
+
+
+
+                                                                            <p className="text-xs text-gray-500">Assign vs Achieved (month wise)</p>
+
+
+
+                                                                        </div>
+
+
+
+                                                                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${dashboardSpotlight === 'manager-monthly-ranking'
+
+
+
+                                                                            ? 'bg-blue-100 text-blue-600'
+
+
+
+                                                                            : 'bg-gray-100 text-gray-600'
+
+
+
+                                                                            }`}>
+
+
+
+                                                                            {dashboardSpotlight === 'manager-monthly-ranking' ? 'Selected' : 'Select'}
 
 
 
@@ -43556,195 +43616,79 @@ const DashboardPage = () => {
 
 
 
+                                                                    </div>
 
 
 
+                                                                </button>
 
-                                                                    </h2>
 
 
 
 
 
 
+                                                                <button
 
-                                                                    <p className="text-xs text-gray-500 mt-1 ">Based on manager reviews (month wise)</p>
 
 
+                                                                    type="button"
 
 
 
+                                                                    onClick={() => setDashboardSpotlight('power-star-of-month')}
 
 
-                                                                </div>
 
+                                                                    className={`bg-white p-6 rounded-2xl shadow-sm border-2 transition-all duration-200 hover:shadow-md ${dashboardSpotlight === 'power-star-of-month'
 
 
 
+                                                                        ? 'border-blue-500 shadow-lg shadow-blue-50'
 
 
 
-                                                                <span className={`text-xs font-medium px-2 py-1 rounded-full ${dashboardSpotlight === 'employee-of-month'
+                                                                        : 'border-transparent hover:border-gray-200'
 
 
 
+                                                                        }`}
 
 
 
+                                                                >
 
-                                                                    ? 'bg-blue-100 text-blue-600'
 
 
+                                                                    <div className="flex items-start justify-between">
 
 
 
+                                                                        <div>
 
 
-                                                                    : 'bg-gray-100 text-gray-600'
 
+                                                                            <h2 className="text-sm font-semibold text-gray-900">
 
 
 
+                                                                                <span className="inline-flex items-center gap-2">
 
 
 
-                                                                    }`}>
+                                                                                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-amber-100/70 text-amber-700 ring-1 ring-amber-200 shadow-sm">
 
 
 
+                                                                                        <Star className="h-4 w-4" />
 
 
 
+                                                                                    </span>
 
-                                                                    {dashboardSpotlight === 'employee-of-month' ? 'Selected' : 'Select'}
 
 
-
-
-
-
-
-                                                                </span>
-
-
-
-
-
-
-
-                                                            </div>
-
-
-
-
-
-
-
-                                                        </button>
-
-
-
-                                                    );
-
-
-
-                                                })()}
-
-
-
-
-
-
-
-                                                {(() => {
-
-
-
-                                                    const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
-
-
-
-                                                    const canSee =
-
-                                                        roleKey === 'manager' ||
-
-                                                        roleKey === 'md_manager' ||
-
-                                                        roleKey === 'ob_manager' ||
-
-                                                        roleKey === 'all_manager' ||
-
-                                                        roleKey === 'admin' ||
-
-                                                        roleKey === 'super_admin';
-
-
-
-                                                    if (!canSee) return null;
-
-
-
-                                                    return (
-
-
-
-                                                        <>
-
-
-
-                                                            <button
-
-
-
-                                                                type="button"
-
-
-
-                                                                onClick={() => setDashboardSpotlight('manager-monthly-ranking')}
-
-
-
-                                                                className={`bg-white p-6 rounded-2xl shadow-sm border-2 transition-all duration-200 hover:shadow-md ${dashboardSpotlight === 'manager-monthly-ranking'
-
-
-
-                                                                    ? 'border-blue-500 shadow-lg shadow-blue-50'
-
-
-
-                                                                    : 'border-transparent hover:border-gray-200'
-
-
-
-                                                                    }`}
-
-
-
-                                                            >
-
-
-
-                                                                <div className="flex items-start justify-between">
-
-
-
-                                                                    <div>
-
-
-
-                                                                        <h2 className="text-sm font-semibold text-gray-900">
-
-
-
-                                                                            <span className="inline-flex items-center gap-2">
-
-
-
-                                                                                <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-amber-100/70 text-amber-700 ring-1 ring-amber-200 shadow-sm">
-
-
-
-                                                                                    <Trophy className="h-4 w-4" />
+                                                                                    <span>Power Star of the Month</span>
 
 
 
@@ -43752,19 +43696,39 @@ const DashboardPage = () => {
 
 
 
-                                                                                <span>Employee of the Month Marketer</span>
+                                                                            </h2>
 
 
 
-                                                                            </span>
+                                                                            <p className="text-xs text-gray-500 mt-1">Week wise (Churn / Live-Assign% / Hits)</p>
 
 
 
-                                                                        </h2>
+                                                                        </div>
 
 
 
-                                                                        <p className="text-xs text-gray-500">Assign vs Achieved (month wise)</p>
+                                                                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${dashboardSpotlight === 'power-star-of-month'
+
+
+
+                                                                            ? 'bg-blue-100 text-blue-600'
+
+
+
+                                                                            : 'bg-gray-100 text-gray-600'
+
+
+
+                                                                            }`}>
+
+
+
+                                                                            {dashboardSpotlight === 'power-star-of-month' ? 'Selected' : 'Select'}
+
+
+
+                                                                        </span>
 
 
 
@@ -43772,259 +43736,115 @@ const DashboardPage = () => {
 
 
 
-                                                                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${dashboardSpotlight === 'manager-monthly-ranking'
+                                                                </button>
 
 
 
-                                                                        ? 'bg-blue-100 text-blue-600'
+                                                            </>
 
 
 
-                                                                        : 'bg-gray-100 text-gray-600'
+                                                        );
 
 
 
-                                                                        }`}>
+                                                    })()}
 
 
 
-                                                                        {dashboardSpotlight === 'manager-monthly-ranking' ? 'Selected' : 'Select'}
 
 
 
-                                                                    </span>
 
+                                                </div>
 
 
-                                                                </div>
 
 
 
-                                                            </button>
 
 
+                                                {dashboardSpotlight === 'employee-of-month' ? (
 
 
 
+                                                    <>
 
 
-                                                            <button
 
+                                                        <EmployeeOfTheMonthCard
 
 
-                                                                type="button"
 
+                                                            name={employeeOfTheMonth?.name || 'Not any yet'}
 
 
-                                                                onClick={() => setDashboardSpotlight('power-star-of-month')}
 
+                                                            rating={employeeOfTheMonth?.rating || 0}
 
 
-                                                                className={`bg-white p-6 rounded-2xl shadow-sm border-2 transition-all duration-200 hover:shadow-md ${dashboardSpotlight === 'power-star-of-month'
 
+                                                            performance={employeeOfTheMonth?.performance || 'Not any yet'}
 
 
-                                                                    ? 'border-blue-500 shadow-lg shadow-blue-50'
 
+                                                            avg={employeeOfTheMonth?.avg || 'Not any yet'}
 
 
-                                                                    : 'border-transparent hover:border-gray-200'
 
+                                                            photoUrl={employeeOfTheMonth?.photoUrl}
 
 
-                                                                    }`}
 
+                                                            totalReviews={employeeOfTheMonth?.totalReviews}
 
+                                                            totalTasksReceived={employeeOfTheMonth?.totalTasksReceived}
 
-                                                            >
+                                                            summaryRows={employeeOfTheMonth?.summaryRows}
 
 
 
-                                                                <div className="flex items-start justify-between">
+                                                            monthValue={reviewsMonth}
 
 
 
-                                                                    <div>
+                                                            onMonthChange={setReviewsMonth}
 
 
 
-                                                                        <h2 className="text-sm font-semibold text-gray-900">
+                                                        />
 
 
 
-                                                                            <span className="inline-flex items-center gap-2">
+                                                    </>
 
 
 
-                                                                                <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-amber-100/70 text-amber-700 ring-1 ring-amber-200 shadow-sm">
+                                                ) : dashboardSpotlight === 'manager-monthly-ranking' ? (
 
 
 
-                                                                                    <Star className="h-4 w-4" />
+                                                    <ManagerMonthlyRankingPage currentUser={currentUser} />
 
 
 
-                                                                                </span>
+                                                ) : (
 
 
 
-                                                                                <span>Power Star of the Month</span>
+                                                    <PowerStarOfTheMonthPage currentUser={currentUser} />
 
 
 
-                                                                            </span>
+                                                )}
 
 
 
-                                                                        </h2>
 
 
 
-                                                                        <p className="text-xs text-gray-500 mt-1">Week wise (Churn / Live-Assign% / Hits)</p>
 
-
-
-                                                                    </div>
-
-
-
-                                                                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${dashboardSpotlight === 'power-star-of-month'
-
-
-
-                                                                        ? 'bg-blue-100 text-blue-600'
-
-
-
-                                                                        : 'bg-gray-100 text-gray-600'
-
-
-
-                                                                        }`}>
-
-
-
-                                                                        {dashboardSpotlight === 'power-star-of-month' ? 'Selected' : 'Select'}
-
-
-
-                                                                    </span>
-
-
-
-                                                                </div>
-
-
-
-                                                            </button>
-
-
-
-                                                        </>
-
-
-
-                                                    );
-
-
-
-                                                })()}
-
-
-
-
-
-
-
-                                            </div>
-
-
-
-
-
-
-
-                                            {dashboardSpotlight === 'employee-of-month' ? (
-
-
-
-                                                <>
-
-
-
-                                                    <EmployeeOfTheMonthCard
-
-
-
-                                                        name={employeeOfTheMonth?.name || 'Not any yet'}
-
-
-
-                                                        rating={employeeOfTheMonth?.rating || 0}
-
-
-
-                                                        performance={employeeOfTheMonth?.performance || 'Not any yet'}
-
-
-
-                                                        avg={employeeOfTheMonth?.avg || 'Not any yet'}
-
-
-
-                                                        photoUrl={employeeOfTheMonth?.photoUrl}
-
-
-
-                                                        totalReviews={employeeOfTheMonth?.totalReviews}
-
-                                                        totalTasksReceived={employeeOfTheMonth?.totalTasksReceived}
-
-                                                        summaryRows={employeeOfTheMonth?.summaryRows}
-
-
-
-                                                        monthValue={reviewsMonth}
-
-
-
-                                                        onMonthChange={setReviewsMonth}
-
-
-
-                                                    />
-
-
-
-                                                </>
-
-
-
-                                            ) : dashboardSpotlight === 'manager-monthly-ranking' ? (
-
-
-
-                                                <ManagerMonthlyRankingPage currentUser={currentUser} />
-
-
-
-                                            ) : (
-
-
-
-                                                <PowerStarOfTheMonthPage currentUser={currentUser} />
-
-
-
-                                            )}
-
-
-
-
-
-
-
-                                        </>
+                                            </>
 
 
 
@@ -47431,7 +47251,7 @@ const DashboardPage = () => {
 
 
 
-                                    setFilter={(value) => handleFilterChange('status', value)}
+                                    setFilter={setStatusFilter}
 
 
 
@@ -47447,7 +47267,7 @@ const DashboardPage = () => {
 
 
 
-                                    setDateFilter={(value) => handleFilterChange('date', value)}
+                                    setDateFilter={setDateFilterInternal}
 
 
 
@@ -47463,7 +47283,7 @@ const DashboardPage = () => {
 
 
 
-                                    setAssignedFilter={(value) => handleFilterChange('assigned', value)}
+                                    setAssignedFilter={setAssignedFilter}
 
 
 
@@ -49257,7 +49077,6 @@ const DashboardPage = () => {
 
 
 
-                onChange={handleInputChange}
 
 
 

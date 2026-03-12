@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { PlusCircle, X } from 'lucide-react';
 
 
@@ -42,7 +43,6 @@ type Props = {
 
   formErrors: FormErrors;
 
-  onChange: (field: keyof NewTaskForm, value: string) => void;
 
 
 
@@ -76,7 +76,7 @@ type Props = {
 
 
 
-  onSubmit: () => void;
+  onSubmit: (data: NewTaskForm) => void;
 
   isSubmitting: boolean;
 
@@ -98,7 +98,6 @@ const AddTaskModal = ({
 
   formErrors,
 
-  onChange,
 
   users,
 
@@ -131,6 +130,40 @@ const AddTaskModal = ({
   showCompanyDropdownIcon = false,
 
 }: Props) => {
+
+  const [localTask, setLocalTask] = useState<NewTaskForm>(newTask);
+
+
+
+  useEffect(() => {
+
+    if (open) {
+
+      setLocalTask(newTask);
+
+    }
+
+  }, [open, newTask]);
+
+
+
+  const handleInternalChange = (field: keyof NewTaskForm, value: string) => {
+
+    setLocalTask((prev) => ({ ...prev, [field]: value }));
+
+  };
+
+
+
+  const handleSubmit = (e?: React.FormEvent) => {
+
+    if (e) e.preventDefault();
+
+    onSubmit(localTask);
+
+  };
+
+
 
   if (!open) return null;
 
@@ -196,9 +229,9 @@ const AddTaskModal = ({
 
                 className={`w-full px-4 py-3 md:py-3.5 text-sm md:text-base border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.title ? 'border-red-500' : 'border-gray-300'}`}
 
-                value={newTask.title}
+                value={localTask.title}
 
-                onChange={(e) => onChange('title', e.target.value)}
+                onChange={(e) => handleInternalChange('title', e.target.value)}
 
               />
 
@@ -218,9 +251,9 @@ const AddTaskModal = ({
 
                 className={`w-full px-4 py-3 md:py-3.5 text-sm md:text-base border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.dueDate ? 'border-red-500' : 'border-gray-300'}`}
 
-                value={newTask.dueDate}
+                value={localTask.dueDate}
 
-                onChange={(e) => onChange('dueDate', e.target.value)}
+                onChange={(e) => handleInternalChange('dueDate', e.target.value)}
 
                 min={new Date().toISOString().split('T')[0]}
 
@@ -238,9 +271,9 @@ const AddTaskModal = ({
 
               <select
 
-                value={newTask.assignedTo}
+                value={localTask.assignedTo}
 
-                onChange={(e) => onChange('assignedTo', e.target.value)}
+                onChange={(e) => handleInternalChange('assignedTo', e.target.value)}
 
                 className={`w-full px-4 py-3 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.assignedTo ? 'border-red-500' : 'border-gray-300'}`}
 
@@ -308,9 +341,9 @@ const AddTaskModal = ({
 
                   <select
 
-                    value={newTask.companyName}
+                    value={localTask.companyName}
 
-                    onChange={(e) => onChange('companyName', e.target.value)}
+                    onChange={(e) => handleInternalChange('companyName', e.target.value)}
 
                     className={selectClass}
 
@@ -374,13 +407,13 @@ const AddTaskModal = ({
 
               <select
 
-                value={newTask.brand}
+                value={localTask.brand}
 
-                onChange={(e) => onChange('brand', e.target.value)}
+                onChange={(e) => handleInternalChange('brand', e.target.value)}
 
                 className={`w-full px-4 py-3 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.brand ? 'border-red-500' : 'border-gray-300'}`}
 
-                disabled={!newTask.companyName}
+                disabled={!localTask.companyName}
 
               >
 
@@ -438,9 +471,9 @@ const AddTaskModal = ({
 
                   : 'border-gray-300 hover:border-gray-400'}`}
 
-                value={newTask.taskType}
+                value={localTask.taskType}
 
-                onChange={(e) => onChange('taskType', e.target.value)}
+                onChange={(e) => handleInternalChange('taskType', e.target.value)}
 
                 disabled={availableTaskTypesForNewTask.length === 0}
 
@@ -514,9 +547,9 @@ const AddTaskModal = ({
 
                     type="button"
 
-                    onClick={() => onChange('priority', priority)}
+                    onClick={() => handleInternalChange('priority', priority as TaskPriority)}
 
-                    className={`py-2.5 text-xs font-medium rounded-lg border transition-all ${newTask.priority === (priority as TaskPriority)
+                    className={`py-2.5 text-xs font-medium rounded-lg border transition-all ${localTask.priority === (priority as TaskPriority)
 
                       ? priority === 'high'
 
@@ -570,7 +603,7 @@ const AddTaskModal = ({
 
               type="button"
 
-              onClick={onSubmit}
+              onClick={handleSubmit}
 
               disabled={isSubmitting}
 
