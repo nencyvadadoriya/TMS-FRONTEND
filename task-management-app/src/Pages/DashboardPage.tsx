@@ -26920,173 +26920,56 @@ const DashboardPage = () => {
 
         if (searchTerm) {
 
-
-
-
-
-
-
             const term = searchTerm.toLowerCase();
-
-
-
-
-
-
 
             filtered = filtered.filter((task) => {
 
-
-
-
-
-
-
                 const title = (task.title || '').toLowerCase();
 
-
-
-
-
-
+                // Speed Ecom users: search by task title only
+                if (isSpeedEcomUser) {
+                    return title.includes(term);
+                }
 
                 const company = (task.companyName || (task as any).company || '').toLowerCase();
-
-
-
-
-
-
-
                 const brand = (task.brand || '').toLowerCase();
-
-
-
-
-
-
-
                 const typeVal = (task.taskType || (task as any).type || '').toLowerCase();
 
-
-
                 const assignedToUser = (task as any).assignedToUser;
-
                 const assignedByUser = (task as any).assignedByUser;
 
-
-
                 const assignedToEmail = String(
-
                     assignedToUser?.email ||
-
                     (typeof (task as any).assignedTo === 'string' ? (task as any).assignedTo : (task as any).assignedTo?.email) ||
-
                     ''
-
                 ).toLowerCase();
-
-
 
                 const assignedToName = String(
-
-                    assignedToUser?.name ||
-
-                    ''
-
+                    assignedToUser?.name || ''
                 ).toLowerCase();
-
-
 
                 const assignedByEmail = String(
-
                     assignedByUser?.email ||
-
                     (typeof (task as any).assignedBy === 'string' ? (task as any).assignedBy : (task as any).assignedBy?.email) ||
-
                     ''
-
                 ).toLowerCase();
-
-
 
                 const assignedByName = String(
-
-                    assignedByUser?.name ||
-
-                    ''
-
+                    assignedByUser?.name || ''
                 ).toLowerCase();
 
-
-
-
-
-
-
                 return (
-
-
-
-
-
-
-
                     title.includes(term) ||
-
-
-
-
-
-
-
                     company.includes(term) ||
-
-
-
-
-
-
-
                     brand.includes(term) ||
-
-
-
-
-
-
-
                     typeVal.includes(term) ||
-
                     assignedToEmail.includes(term) ||
-
                     assignedToName.includes(term) ||
-
                     assignedByEmail.includes(term) ||
-
                     assignedByName.includes(term)
-
-
-
-
-
-
-
                 );
 
-
-
-
-
-
-
             });
-
-
-
-
-
-
 
         }
 
@@ -28302,67 +28185,22 @@ const DashboardPage = () => {
 
             const term = searchTerm.toLowerCase();
 
-
-
-
-
-
-
             filtered = filtered.filter((task) => {
-
-
-
-
-
-
 
                 const title = (task.title || '').toLowerCase();
 
-
-
-
-
-
+                // Speed Ecom users: search by task title only
+                if (isSpeedEcomUser) {
+                    return title.includes(term);
+                }
 
                 const company = (task.companyName || (task as any).company || '').toLowerCase();
-
-
-
-
-
-
-
                 const brand = (task.brand || '').toLowerCase();
-
-
-
-
-
-
-
                 const typeVal = (task.taskType || (task as any).type || '').toLowerCase();
-
-
-
-
-
-
 
                 return title.includes(term) || company.includes(term) || brand.includes(term) || typeVal.includes(term);
 
-
-
-
-
-
-
             });
-
-
-
-
-
-
 
         }
 
@@ -28946,107 +28784,56 @@ const DashboardPage = () => {
 
         if (searchTerm) {
 
-
-
             const term = searchTerm.toLowerCase();
-
-
 
             filtered = filtered.filter((task) => {
 
-
-
                 const title = (task.title || '').toLowerCase();
 
-
+                // Speed Ecom users: search by task title only
+                if (isSpeedEcomUser) {
+                    return title.includes(term);
+                }
 
                 const company = (task.companyName || (task as any).company || '').toLowerCase();
-
-
-
                 const brand = (task.brand || '').toLowerCase();
-
-
-
                 const typeVal = (task.taskType || (task as any).type || '').toLowerCase();
 
-
-
                 const assignedToUser = (task as any).assignedToUser;
-
                 const assignedByUser = (task as any).assignedByUser;
 
-
-
                 const assignedToEmail = String(
-
                     assignedToUser?.email ||
-
                     (typeof (task as any).assignedTo === 'string' ? (task as any).assignedTo : (task as any).assignedTo?.email) ||
-
                     ''
-
                 ).toLowerCase();
-
-
 
                 const assignedToName = String(
-
-                    assignedToUser?.name ||
-
-                    ''
-
+                    assignedToUser?.name || ''
                 ).toLowerCase();
-
-
 
                 const assignedByEmail = String(
-
                     assignedByUser?.email ||
-
                     (typeof (task as any).assignedBy === 'string' ? (task as any).assignedBy : (task as any).assignedBy?.email) ||
-
                     ''
-
                 ).toLowerCase();
-
-
 
                 const assignedByName = String(
-
-                    assignedByUser?.name ||
-
-                    ''
-
+                    assignedByUser?.name || ''
                 ).toLowerCase();
 
-
-
                 return (
-
                     title.includes(term) ||
-
                     company.includes(term) ||
-
                     brand.includes(term) ||
-
                     typeVal.includes(term) ||
-
                     assignedToEmail.includes(term) ||
-
                     assignedToName.includes(term) ||
-
                     assignedByEmail.includes(term) ||
-
                     assignedByName.includes(term)
-
                 );
 
-
-
             });
-
-
 
         }
 
@@ -49760,19 +49547,7 @@ const DashboardPage = () => {
 
                 setManagerBrandName={(next) => setManagerBrandName(next)}
 
-
-
-
-
-
-
                 isSubmitting={isCreatingManagerBrand}
-
-
-
-
-
-
 
                 onSubmit={() => handleManagerCreateBrand()}
 
@@ -49780,36 +49555,10 @@ const DashboardPage = () => {
 
 
 
-
-
                 onClose={() => setShowManagerAddBrandModal(false)}
-
-
-
-
-
-
-
             />
-
-
-
-
-
-
-
         </div>
-
-
-
-
-
-
-
     );
 };
 
 export default DashboardPage;
-
-
-
