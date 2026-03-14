@@ -84,6 +84,8 @@ type Props = {
 
   showCompanyDropdownIcon?: boolean;
 
+  onFieldChange?: (field: keyof NewTaskForm, value: string) => void;
+
 };
 
 
@@ -129,6 +131,8 @@ const AddTaskModal = ({
 
   showCompanyDropdownIcon = false,
 
+  onFieldChange,
+
 }: Props) => {
 
   const [localTask, setLocalTask] = useState<NewTaskForm>(newTask);
@@ -136,20 +140,30 @@ const AddTaskModal = ({
 
 
   useEffect(() => {
-
     if (open) {
-
       setLocalTask(newTask);
-
     }
-
-  }, [open, newTask]);
+  }, [open]);
 
 
 
   const handleInternalChange = (field: keyof NewTaskForm, value: string) => {
 
-    setLocalTask((prev) => ({ ...prev, [field]: value }));
+    setLocalTask((prev) => {
+      const next = { ...prev, [field]: value };
+      // When company changes, reset brand and assignedTo
+      if (field === 'companyName' && value !== prev.companyName) {
+        next.brand = '';
+        next.assignedTo = '';
+        next.taskType = '';
+      }
+      return next;
+    });
+
+    // Propagate key field changes to parent so dependent dropdowns re-filter
+    if (onFieldChange && (field === 'companyName' || field === 'brand' || field === 'assignedTo')) {
+      onFieldChange(field, value);
+    }
 
   };
 

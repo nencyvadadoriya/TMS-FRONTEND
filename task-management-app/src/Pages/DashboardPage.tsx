@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -7564,6 +7564,8 @@ const DashboardPage = () => {
 
 
 
+    const [isPending, startTransition] = useTransition();
+
     const [isCreatingBulkBrands, setIsCreatingBulkBrands] = useState(false);
 
 
@@ -9365,7 +9367,7 @@ const DashboardPage = () => {
 
             return [SPEED_E_COM_COMPANY_NAME];
         }
-        const needsCompanyList = role === 'admin' || role === 'super_admin' || role === 'sbm' || role === 'rm' || role === 'am' || role === 'ar';
+        const needsCompanyList = role === 'admin' || role === 'super_admin' || role === 'sbm' || role === 'rm' || role === 'am' || role === 'ar' || role === 'sales_manager' || role === 'sales_man';
         const fromCompanies = (companies || []).map(c => (c?.name || '').toString().trim()).filter(Boolean);
 
 
@@ -9382,7 +9384,12 @@ const DashboardPage = () => {
 
 
 
-            return [...new Set(fromCompanies)].sort();
+            const list = [...new Set(fromCompanies)];
+            const isSalesRole = role === 'sales_manager' || role === 'sales_man';
+            if (isSalesRole && !list.some(c => normalizeCompanyKey(c) === SPEED_E_COM_COMPANY_KEY)) {
+                list.push(SPEED_E_COM_COMPANY_NAME);
+            }
+            return list.sort();
 
 
 
@@ -9745,18 +9752,6 @@ const DashboardPage = () => {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
         const onlyRaw = ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
 
 
@@ -9837,7 +9832,7 @@ const DashboardPage = () => {
 
 
 
-        if (role !== 'md_manager' && role !== 'ob_manager' && role !== 'manager' && role !== 'assistant') return;
+        if (role !== 'md_manager' && role !== 'ob_manager' && role !== 'manager' && role !== 'assistant' && role !== 'sales_manager' && role !== 'sales_man') return;
 
 
 
@@ -9901,7 +9896,7 @@ const DashboardPage = () => {
 
 
 
-        const defaultCompany = resolvedCompany || MD_IMPEX_COMPANY_NAME;
+        const defaultCompany = resolvedCompany || (['sales_manager', 'sales_man'].includes(role) ? SPEED_E_COM_COMPANY_NAME : MD_IMPEX_COMPANY_NAME);
 
 
 
@@ -15000,6 +14995,7 @@ const DashboardPage = () => {
 
 
         const role = String((currentUser as any)?.role || '').toString().trim().toLowerCase();
+        const isSalesManager = role === 'sales_manager' || role === 'sales_man';
         if (role === 'troubleshoot_manager') {
             return ['Troubleshoot'];
         }
@@ -15010,15 +15006,7 @@ const DashboardPage = () => {
 
 
 
-
-
-
-
         const company = newTask.companyName;
-
-
-
-
 
 
 
@@ -15026,23 +15014,7 @@ const DashboardPage = () => {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
         const ensureManagerOtherWork = (list: string[]) => {
-
-
-
-
 
 
 
@@ -15050,15 +15022,7 @@ const DashboardPage = () => {
 
 
 
-
-
-
-
             const normalized = (list || []).map((t) => (t || '').toString().trim().toLowerCase());
-
-
-
-
 
 
 
@@ -15066,13 +15030,9 @@ const DashboardPage = () => {
 
 
 
-
-
-
-
             return [...(list || []), 'Other Work'];
         };
-        if (role === 'admin' || role === 'super_admin' || normalizeCompanyKey(company) === SPEED_E_COM_COMPANY_KEY) {
+        if (role === 'admin' || role === 'super_admin' || isSalesManager || normalizeCompanyKey(company) === SPEED_E_COM_COMPANY_KEY) {
 
 
 
@@ -15282,20 +15242,28 @@ const DashboardPage = () => {
 
 
     const availableTaskTypesForEditTask = useMemo(() => {
-
-
-
-
-
-
-
         if (!editFormData.companyName) return availableTaskTypesForFilters;
 
+        const role = String((currentUser as any)?.role || '').toString().trim().toLowerCase();
+        const isSalesManager = role === 'sales_manager' || role === 'sales_man';
 
+        const ensureEditOtherWork = (list: string[]) => {
+            if (role !== 'manager') return list;
+            const normalized = (list || []).map((t) => (t || '').toString().trim().toLowerCase());
+            if (normalized.includes('other work')) return list;
+            return [...(list || []), 'Other Work'];
+        };
 
+        if (role === 'admin' || role === 'super_admin' || isSalesManager || normalizeCompanyKey(editFormData.companyName) === SPEED_E_COM_COMPANY_KEY) {
+            const baseCompany = restrictTaskTypesForCompany(editFormData.companyName, getTaskTypesForCompany(editFormData.companyName));
+            const withOtherWork = ensureEditOtherWork(baseCompany);
 
-
-
+            const current = (editFormData.taskType || '').toString().trim();
+            if (!current) return withOtherWork;
+            const exists = withOtherWork.some((t) => (t || '').toString().trim().toLowerCase() === current.toLowerCase());
+            if (exists) return withOtherWork;
+            return [...withOtherWork, current];
+        }
 
         if (editFormData.brand && editFormData.assignedTo) {
 
@@ -15441,7 +15409,7 @@ const DashboardPage = () => {
 
 
 
-    }, [availableTaskTypesForFilters, editFormData.assignedTo, editFormData.brand, editFormData.companyName, editFormData.taskType, getTaskTypesForCompany, getTaskTypesForCompanyBrand, getTaskTypesForCompanyUser, getTaskTypesForCompanyUserBrand, restrictTaskTypesForCompany]);
+    }, [availableTaskTypesForFilters, currentUser, editFormData.assignedTo, editFormData.brand, editFormData.companyName, editFormData.taskType, getTaskTypesForCompany, getTaskTypesForCompanyBrand, getTaskTypesForCompanyUser, getTaskTypesForCompanyUserBrand, restrictTaskTypesForCompany]);
 
 
 
@@ -34551,6 +34519,7 @@ const DashboardPage = () => {
 
 
             const isAdminLike = role === 'admin' || role === 'super_admin' || role === 'troubleshoot_manager';
+            const isSalesManager = role === 'sales_manager' || role === 'sales_man';
 
 
 
@@ -34558,7 +34527,7 @@ const DashboardPage = () => {
 
 
 
-            const response = isAdminLike
+            const response = (isAdminLike || isSalesManager)
 
 
 
@@ -48978,39 +48947,24 @@ const DashboardPage = () => {
                 isSbmUser={isSbmRole || String((currentUser as any)?.role || '').trim().toLowerCase() === 'troubleshoot_manager'}
 
 
+                onFieldChange={(field, value) => {
+                    startTransition(() => {
+                        setNewTask((prev) => {
+                            const next = { ...prev, [field]: value };
+                            if (field === 'companyName' && value !== prev.companyName) {
+                                next.brand = '';
+                                next.assignedTo = '';
+                                next.taskType = '';
+                            }
+                            return next;
+                        });
+                    });
+                }}
 
                 showCompanyDropdownIcon={(() => {
-
-
-
-
-
-
-
                     const r = String((currentUser as any)?.role || '').trim().toLowerCase();
-
-
-
-
-
-
-
                     return r === 'admin' || r === 'super_admin';
-
-
-
-
-
-
-
                 })()}
-
-
-
-
-
-
-
             />
 
 
