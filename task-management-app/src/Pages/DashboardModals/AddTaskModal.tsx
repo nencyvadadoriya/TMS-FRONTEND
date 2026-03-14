@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { PlusCircle, X } from 'lucide-react';
 
 
@@ -64,7 +64,7 @@ type Props = {
 
   onAddBrand: () => void;
 
-  getAvailableBrandOptions: () => Array<{ value: string; label: string }>;
+  availableBrandOptions: Array<{ value: string; label: string }>;
 
 
 
@@ -115,7 +115,7 @@ const AddTaskModal = ({
 
   onAddBrand,
 
-  getAvailableBrandOptions,
+  availableBrandOptions,
 
   canBulkAddTaskTypes,
 
@@ -433,7 +433,7 @@ const AddTaskModal = ({
 
                 <option value="">Select a brand</option>
 
-                {getAvailableBrandOptions().map((opt) => (
+                {availableBrandOptions.map((opt) => (
 
                   <option key={opt.value} value={opt.value}>
 
@@ -667,5 +667,5 @@ const AddTaskModal = ({
 
 
 
-export default AddTaskModal;
+export default memo(AddTaskModal);
 

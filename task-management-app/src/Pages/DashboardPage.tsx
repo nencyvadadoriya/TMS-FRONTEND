@@ -21593,7 +21593,7 @@ const DashboardPage = () => {
 
 
 
-    const getAvailableBrandOptions = useCallback((): Array<{ value: string; label: string }> => {
+    const availableBrandsForNewTask = useMemo((): Array<{ value: string; label: string }> => {
 
 
 
@@ -48896,7 +48896,7 @@ const DashboardPage = () => {
 
 
 
-                getAvailableBrandOptions={getAvailableBrandOptions}
+                availableBrandOptions={availableBrandsForNewTask}
 
 
 
