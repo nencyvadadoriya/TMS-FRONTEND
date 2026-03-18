@@ -42,6 +42,7 @@ import toast from "react-hot-toast";
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
 import AllTasksPage from "./AllTasksPage";
+import AdminHeadlineManager from "../Components/AdminHeadlineManager";
 import CalendarView from "./CalendarView";
 import TeamPage from "./TeamPage";
 import UserProfilePage from "./UserProfilePage";
@@ -299,6 +300,7 @@ const DashboardPage = () => {
     | "md-impex-strike"
     | "md-impex-access"
     | "personal-tasks"
+    | "headline"
   >("dashboard");
   const [dashboardSpotlight, setDashboardSpotlight] = useState<
     "employee-of-month" | "manager-monthly-ranking" | "power-star-of-month"
@@ -3468,6 +3470,7 @@ const DashboardPage = () => {
       | "md-impex-strike"
       | "md-impex-access"
       | "personal-tasks"
+      | "headline"
     > = {
       dashboard: "dashboard",
       tasks: "all-tasks",
@@ -3488,6 +3491,7 @@ const DashboardPage = () => {
       "md-impex-strike": "md-impex-strike",
       "md-impex-access": "md-impex-access",
       "personal-tasks": "personal-tasks",
+      "headline": "headline",
     };
     const targetView = viewMap[page];
     if (!targetView) return;
@@ -3510,6 +3514,7 @@ const DashboardPage = () => {
       "md-impex-strike": "",
       "md-impex-access": "",
       "personal-tasks": "",
+      "headline": "",
     };
     const moduleId = viewToModule[targetView];
     if (moduleId && !hasAccess(moduleId)) {
@@ -3536,6 +3541,7 @@ const DashboardPage = () => {
       "md-impex-strike": routepath.mdImpexStrike,
       "md-impex-access": routepath.mdImpexAccess,
       "personal-tasks": routepath.personalTasks,
+      "headline": routepath.headline,
     };
     const targetPath = routeMap[page];
     setCurrentView(targetView);
@@ -3592,6 +3598,18 @@ const DashboardPage = () => {
     }
     if (path === routepath.personalTasks) {
       setCurrentView("personal-tasks");
+      return;
+    }
+    if (path === routepath.headline) {
+      const roleKey = String((currentUser as any)?.role || "")
+        .trim()
+        .toLowerCase();
+      if (roleKey !== "admin" && roleKey !== "super_admin") {
+        toast.error("Access denied");
+        navigate(routepath.dashboard);
+        return;
+      }
+      setCurrentView("headline");
       return;
     }
     if (path === routepath.tasks) {
@@ -9085,25 +9103,8 @@ const DashboardPage = () => {
                 />
               ) : currentView === "manager-monthly-rankings" ? (
                 <ManagerMonthlyRankingPage currentUser={currentUser} />
-              ) : currentView === "brands" ? (
-                <BrandsListPage
-                  isSidebarCollapsed={isSidebarCollapsed}
-                  currentUser={currentUser}
-                  tasks={tasks}
-                  onSelectBrand={(brandId) => {
-                    setSelectedBrandId(brandId);
-                    setCurrentView("brand-detail");
-                  }}
-                />
-              ) : currentView === "brand-detail" ? (
-                <BrandDetailPage
-                  brandId={selectedBrandId || ""}
-                  brands={apiBrands}
-                  currentUser={currentUser}
-                  isSidebarCollapsed={isSidebarCollapsed}
-                  onBack={() => setCurrentView("brands")}
-                  tasks={tasks}
-                />
+              ) : currentView === "headline" ? (
+                <AdminHeadlineManager />
               ) : null}
             </div>
           </div>

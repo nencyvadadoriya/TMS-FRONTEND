@@ -15,6 +15,7 @@ import ChatModal from "./Components/ChatModal";
 import TaskReminderCard from "./Components/TaskReminderCard";
 
 import PersonalTaskReminderCard from "./Components/PersonalTaskReminderCard";
+import HeadlineBanner from "./Components/HeadlineBanner";
 
 import { chatService } from "./Services/Chat.service";
 
@@ -516,6 +517,7 @@ export default function App() {
 
   return (
     <>
+      {token && <HeadlineBanner />}
       <Toaster position="top-right" reverseOrder={false} />
       <Outlet />
       {token && <FloatingChat

@@ -53,6 +53,28 @@ const ensureServiceWorker = async (): Promise<ServiceWorkerRegistration | null> 
   }
 };
 
+const playNotificationSound = () => {
+  try {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A5
+    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.1, audioContext.currentTime + 0.01);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.5);
+  } catch {
+    // ignore
+  }
+};
+
 let foregroundListenerAttached = false;
 
 export const initForegroundPushListener = async () => {
@@ -74,6 +96,7 @@ export const initForegroundPushListener = async () => {
 
   const messaging = getMessaging();
   onMessage(messaging, (payload: any) => {
+    playNotificationSound();
     const notification = payload?.notification || {};
     const data = payload?.data || {};
 

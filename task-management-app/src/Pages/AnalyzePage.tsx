@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as echarts from 'echarts';
+import { Trash2, PlusCircle, Filter, Calendar, Building2, BarChart3, CheckCircle2, Clock, AlertCircle, Users, Download, CalendarClock } from 'lucide-react';
 import ManagerAnalysisChart from '../Components/ManagerAnalysisChart';
-import { Trash2 } from 'lucide-react';
-
 import type { Task } from '../Types/Types';
 
 type ChartType =
@@ -114,6 +113,7 @@ const BUILTIN_CHARTS: { key: string; label: string }[] = [
     { key: 'manager_analysis', label: 'Manager analysis' },
     { key: 'leaderboard', label: 'Leaderboard' },
     { key: 'status_breakdown', label: 'Status breakdown' },
+    { key: 'overdue_by_company', label: 'Overdue by company' },
 ];
 
 type YEntity = 'task' | 'time' | 'time_entry' | 'custom_field' | 'budget' | 'cost' | 'revenue';
@@ -222,6 +222,8 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
     const leaderboardChartInstanceRef = useRef<ReturnType<typeof echarts.init> | null>(null);
     const performanceChartRef = useRef<HTMLDivElement | null>(null);
     const performanceChartInstanceRef = useRef<ReturnType<typeof echarts.init> | null>(null);
+    const overdueByCompanyChartRef = useRef<HTMLDivElement | null>(null);
+    const overdueByCompanyChartInstanceRef = useRef<ReturnType<typeof echarts.init> | null>(null);
     const [chartType, setChartType] = useState<ChartType>('bar');
     const [assignedChartType, setAssignedChartType] = useState<ChartType>('pie');
     const [assignedToChartType, setAssignedToChartType] = useState<ChartType>('bar');
@@ -240,6 +242,16 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
     const [performanceGroupBy, setPerformanceGroupBy] = useState<'company' | 'brand'>('company');
     const [performanceStartDate, setPerformanceStartDate] = useState<string>('');
     const [performanceEndDate, setPerformanceEndDate] = useState<string>('');
+    
+    // Global Filters
+    const [globalCompany, setGlobalCompany] = useState<string>('all');
+    const [globalTimePeriod, setGlobalTimePeriod] = useState<'daily' | 'weekly' | 'monthly' | 'all' | 'custom'>('all');
+    const [globalMonth, setGlobalMonth] = useState<string>(new Date().toISOString().substring(0, 7));
+    const [globalStartDate, setGlobalStartDate] = useState<string>('');
+    const [globalEndDate, setGlobalEndDate] = useState<string>('');
+    const [globalDateField, setGlobalDateField] = useState<'createdAt' | 'dueDate' | 'completedAt' | 'updatedAt'>('createdAt');
+    const [reportFilterCompany, setReportFilterCompany] = useState<string>('all');
+    const [overdueChartCompany, setOverdueChartCompany] = useState<string>('all');
 
     const [customWidgets, setCustomWidgets] = useState<CustomWidget[]>([]);
     const [isAddWidgetOpen, setIsAddWidgetOpen] = useState(false);
@@ -290,7 +302,8 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
     const gridRef = useRef<HTMLDivElement>(null);
 
     const isAdminUser = useMemo(() => {
-        return (currentUserRole || '').toString().trim().toLowerCase() === 'admin';
+        const r = (currentUserRole || '').toString().trim().toLowerCase();
+        return r === 'admin' || r === 'super admin' || r === 'superadmin';
     }, [currentUserRole]);
 
     const storageUserKey = useMemo(() => {
@@ -306,11 +319,490 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
         return `${HIDDEN_CUSTOM_WIDGETS_STORAGE_KEY}::${storageUserKey}`;
     }, [storageUserKey]);
 
+    const normalizeText = (v: unknown): string => (v || '').toString().trim();
     const normalizeStatusForFilter = (v: string): string => {
         const s = (v || '').toString().trim().toLowerCase();
         if (s === 'in progress' || s === 'in_progress' || s === 'in-progress') return 'in-progress';
         return s;
     };
+
+    const getCompletionStatus = (t: Task): string => {
+        const status = normalizeText((t as any)?.status || '');
+        if (status === 'completed') return 'Completed';
+
+        const due = new Date(normalizeText((t as any)?.dueDate));
+        if (Number.isNaN(due.getTime())) return 'Unscheduled';
+
+        const now = new Date();
+        if (due.getTime() < now.getTime()) return 'Overdue';
+        return 'Upcoming';
+    };
+
+    const getDimensionLabel = (key: DimensionKey): string => {
+        return DIMENSION_OPTIONS.find((o) => o.value === key)?.label || key;
+    };
+
+    const stripDeletedEmailSuffix = (raw: string): string => {
+        const s = (raw || '').toString().trim();
+        if (!s) return '';
+        const idx = s.toLowerCase().indexOf('.deleted.');
+        if (idx === -1) return s;
+        return s.slice(0, idx);
+    };
+
+    const extractUserLabel = (value: unknown, nameHint?: unknown): string => {
+        const hint = normalizeText(nameHint);
+        if (hint) return hint;
+
+        if (!value) return 'Unknown';
+        if (typeof value === 'string') {
+            const s = value.trim();
+            if (!s) return 'Unknown';
+            if (s.includes('@')) return s.split('@')[0] || s;
+            return s;
+        }
+        if (typeof value === 'object') {
+            const name = normalizeText((value as any)?.name);
+            if (name) return name;
+            const email = normalizeText((value as any)?.email);
+            if (email) return email.includes('@') ? email.split('@')[0] || email : email;
+            const id = normalizeText((value as any)?.id || (value as any)?._id);
+            if (id) return id;
+        }
+        return 'Unknown';
+    };
+
+    const getMetricLabel = (metric: MetricKey): string => {
+        // First check additional metrics
+        const customMetric = additionalMetrics.find((m) => m.value === metric);
+        if (customMetric) return customMetric.label;
+
+        // Then check standard options
+        return ALL_METRIC_OPTIONS.find((o) => o.value === metric)?.label || metric;
+    };
+
+    const getAutoWidgetTitle = (args: {
+        xAxis: DimensionKey;
+        groupBy: DimensionKey | 'none';
+        metrics: MetricKey[];
+    }): string => {
+        const safe = Array.isArray(args.metrics) && args.metrics.length ? args.metrics : (['count'] as MetricKey[]);
+        const metricLabel = safe.map((m) => getMetricLabel(m)).join(', ');
+        return `Total tasks by ${getDimensionLabel(args.xAxis)}${args.groupBy === 'none' ? '' : ` and ${getDimensionLabel(args.groupBy)}`
+            } (${metricLabel})`;
+    };
+
+    const getMetricValue = (t: Task, yEntity: YEntity, metric: MetricKey): number | null => {
+        if (yEntity === 'task') {
+            if (metric === 'count') return 1;
+
+            const status = normalizeText((t as any)?.status || '');
+            if (metric === 'completed') return status === 'completed' ? 1 : null;
+            if (metric === 'pending') return status === 'pending' ? 1 : null;
+            if (metric === 'in_progress') return status === 'in-progress' ? 1 : null;
+            if (metric === 'on_hold') return status === 'on-hold' ? 1 : null;
+            if (metric === 'cancelled') return status === 'cancelled' ? 1 : null;
+
+            const completion = getCompletionStatus(t);
+            if (metric === 'overdue') return completion === 'Overdue' ? 1 : null;
+            if (metric === 'upcoming') return completion === 'Upcoming' ? 1 : null;
+            if (metric === 'unscheduled') return completion === 'Unscheduled' ? 1 : null;
+
+            // Check additional custom metrics
+            const isCustomMetric = additionalMetrics.some(m => m.value === metric);
+            if (isCustomMetric) {
+                const customMetricValue = (t as any)?.[metric];
+                if (customMetricValue !== undefined) {
+                    const num = Number(customMetricValue);
+                    return Number.isFinite(num) ? num : null;
+                }
+            }
+
+            return null;
+        }
+
+        if (yEntity === 'time' && metric === 'time_to_complete_hours') {
+            const status = normalizeText((t as any)?.status || '');
+            if (status !== 'completed') return null;
+            const createdAt = new Date(normalizeText((t as any)?.createdAt));
+            const updatedAt = new Date(normalizeText((t as any)?.updatedAt));
+            if (Number.isNaN(createdAt.getTime()) || Number.isNaN(updatedAt.getTime())) return null;
+            const ms = updatedAt.getTime() - createdAt.getTime();
+            if (ms <= 0) return null;
+            return ms / (1000 * 60 * 60);
+        }
+
+        if (yEntity === 'time_entry' && metric === 'actual_time_hours') {
+            const candidate =
+                (t as any)?.actualTimeHours ??
+                (t as any)?.timeSpentHours ??
+                (t as any)?.actualTime ??
+                (t as any)?.timeSpent;
+            const n = Number(candidate);
+            return Number.isFinite(n) && n > 0 ? n : null;
+        }
+
+        if (yEntity === 'custom_field' && metric === 'custom_field_time_hours') {
+            const candidate = (t as any)?.customFieldTimeHours ?? (t as any)?.customFieldTime;
+            const n = Number(candidate);
+            return Number.isFinite(n) && n > 0 ? n : null;
+        }
+
+        if (yEntity === 'budget' || yEntity === 'cost' || yEntity === 'revenue') {
+            const candidate = (t as any)?.[metric] ?? (t as any)?.[`${yEntity}_${metric}`];
+            const n = Number(candidate);
+            return Number.isFinite(n) ? n : null;
+        }
+
+        return null;
+    };
+
+    const formatYear = (raw: unknown): string => {
+        const d = new Date(normalizeText(raw));
+        if (Number.isNaN(d.getTime())) return 'Unknown';
+        return `${d.getFullYear()}`;
+    };
+
+    const formatYearRange = (raw: unknown): string => {
+        const d = new Date(normalizeText(raw));
+        if (Number.isNaN(d.getTime())) return 'Unknown';
+        const y = d.getFullYear();
+        return `${y}-${y + 1}`;
+    };
+
+    const formatMonth = (raw: unknown): string => {
+        const d = new Date(normalizeText(raw));
+        if (Number.isNaN(d.getTime())) return 'Unknown';
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    };
+
+    const formatDay = (raw: unknown): string => {
+        const d = new Date(normalizeText(raw));
+        if (Number.isNaN(d.getTime())) return 'Unknown';
+        return d.toISOString().slice(0, 10);
+    };
+
+    const formatWeek = (raw: unknown): string => {
+        const d = new Date(normalizeText(raw));
+        if (Number.isNaN(d.getTime())) return 'Unknown';
+        const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+        const dayNum = date.getUTCDay() || 7;
+        date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+        const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+        const weekNo = Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+        return `${date.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+    };
+
+    const getDimensionValue = (t: Task, key: DimensionKey): string => {
+        if (key === 'assignee') return extractUserLabel((t as any)?.assignedTo, (t as any)?.assignedToName);
+        if (key === 'assignee_role') return normalizeText((t as any)?.assignedTo?.role) || 'Unknown';
+        if (key === 'creator') return extractUserLabel((t as any)?.assignedBy, (t as any)?.assignedByName);
+        if (key === 'creator_role') return normalizeText((t as any)?.assignedBy?.role) || 'Unknown';
+        if (key === 'section') return normalizeText((t as any)?.category) || 'Unknown';
+        if (key === 'task_type') return normalizeText((t as any)?.taskType || (t as any)?.type) || 'Unknown';
+        if (key === 'tag') {
+            const tags = (t as any)?.tags;
+            if (Array.isArray(tags) && tags.length) {
+                const first = normalizeText(tags[0]);
+                return first || 'Unknown';
+            }
+            return 'No tag';
+        }
+        if (key === 'completion_status') return getCompletionStatus(t);
+        if (key === 'status') return normalizeText((t as any)?.status);
+        if (key === 'priority') return normalizeText((t as any)?.priority);
+        if (key === 'company') return normalizeText((t as any)?.companyName || (t as any)?.company) || 'Unknown';
+        if (key === 'brand') return normalizeText((t as any)?.brand) || 'Unknown';
+        if (key === 'project') return normalizeText((t as any)?.project) || 'Unknown';
+        if (key === 'created_day') return formatDay((t as any)?.createdAt);
+        if (key === 'created_week') return formatWeek((t as any)?.createdAt);
+        if (key === 'created_month') return formatMonth((t as any)?.createdAt);
+        if (key === 'created_year') return formatYear((t as any)?.createdAt);
+        if (key === 'created_year_range') return formatYearRange((t as any)?.createdAt);
+        if (key === 'due_day') return formatDay((t as any)?.dueDate);
+        if (key === 'due_week') return formatWeek((t as any)?.dueDate);
+        if (key === 'due_month') return formatMonth((t as any)?.dueDate);
+        if (key === 'due_year') return formatYear((t as any)?.dueDate);
+        if (key === 'due_year_range') return formatYearRange((t as any)?.dueDate);
+        if (key === 'completed_day') {
+            const completedAt = (t as any)?.completedAt || ((t as any)?.status === 'completed' ? (t as any)?.updatedAt : '');
+            return formatDay(completedAt);
+        }
+        if (key === 'completed_week') {
+            const completedAt = (t as any)?.completedAt || ((t as any)?.status === 'completed' ? (t as any)?.updatedAt : '');
+            return formatWeek(completedAt);
+        }
+        if (key === 'completed_month') {
+            const completedAt = (t as any)?.completedAt || ((t as any)?.status === 'completed' ? (t as any)?.updatedAt : '');
+            return formatMonth(completedAt);
+        }
+        if (key === 'completed_year') {
+            const completedAt = (t as any)?.completedAt || ((t as any)?.status === 'completed' ? (t as any)?.updatedAt : '');
+            return formatYear(completedAt);
+        }
+        if (key === 'completed_year_range') {
+            const completedAt = (t as any)?.completedAt || ((t as any)?.status === 'completed' ? (t as any)?.updatedAt : '');
+            return formatYearRange(completedAt);
+        }
+        if (key === 'department') return normalizeText((t as any)?.department) || 'Unknown';
+        if (key === 'team') return normalizeText((t as any)?.team) || 'Unknown';
+        if (key === 'location') return normalizeText((t as any)?.location) || 'Unknown';
+        if (key === 'phase') return normalizeText((t as any)?.phase) || 'Unknown';
+        if (key === 'milestone') return normalizeText((t as any)?.milestone) || 'Unknown';
+        if (key === 'sprint') return normalizeText((t as any)?.sprint) || 'Unknown';
+        return 'Unknown';
+    };
+
+    const companies = useMemo(() => {
+        const map = new Map<string, string>();
+        (tasks || []).forEach((t: any) => {
+            const raw = normalizeText(t.companyName || t.company);
+            if (!raw) return;
+            const key = raw.toLowerCase();
+            // Keep the version that has more uppercase letters, or just the first one.
+            // Actually, let's just keep the first one but prefer one with capital letters if possible.
+            if (!map.has(key)) {
+                map.set(key, raw);
+            } else {
+                const existing = map.get(key)!;
+                // If the new one has more uppercase letters, it might be the "official" name
+                const existingUpper = (existing.match(/[A-Z]/g) || []).length;
+                const newUpper = (raw.match(/[A-Z]/g) || []).length;
+                if (newUpper > existingUpper) {
+                    map.set(key, raw);
+                }
+            }
+        });
+        return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
+    }, [tasks]);
+
+    const effectiveDateRange = useMemo(() => {
+        if (globalTimePeriod === 'all') return { start: '', end: '' };
+        if (globalTimePeriod === 'custom') return { start: globalStartDate, end: globalEndDate };
+
+        const now = new Date();
+        const start = new Date(now);
+        const end = new Date(now);
+
+        if (globalTimePeriod === 'daily') {
+            start.setHours(0, 0, 0, 0);
+            end.setHours(23, 59, 59, 999);
+        } else if (globalTimePeriod === 'weekly') {
+            const day = start.getDay();
+            const diff = start.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+            start.setDate(diff);
+            start.setHours(0, 0, 0, 0);
+            end.setDate(start.getDate() + 6);
+            end.setHours(23, 59, 59, 999);
+        } else if (globalTimePeriod === 'monthly') {
+            const [year, month] = globalMonth.split('-').map(Number);
+            start.setFullYear(year, month - 1, 1);
+            start.setHours(0, 0, 0, 0);
+            end.setFullYear(year, month, 0);
+            end.setHours(23, 59, 59, 999);
+        }
+
+        const formatDate = (d: Date) => {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        };
+
+        return { start: formatDate(start), end: formatDate(end) };
+    }, [globalTimePeriod, globalStartDate, globalEndDate]);
+
+    const filteredTasksByGlobalDates = useMemo(() => {
+        let list = tasks || [];
+
+        // Filter by Company
+        if (globalCompany !== 'all') {
+            list = list.filter((t: any) => {
+                const c = normalizeText(t.companyName || t.company).toLowerCase();
+                return c === globalCompany.toLowerCase();
+            });
+        }
+
+        // Filter by Date Range
+        const { start, end } = effectiveDateRange;
+        if (start || end) {
+            list = list.filter((t: any) => {
+                const dateVal = t[globalDateField];
+                if (!dateVal) return false;
+                const d = new Date(dateVal).getTime();
+                if (start) {
+                    const s = new Date(start).getTime();
+                    if (d < s) return false;
+                }
+                if (end) {
+                    const e = new Date(end).setHours(23, 59, 59, 999);
+                    if (d > e) return false;
+                }
+                return true;
+            });
+        }
+
+        return list;
+    }, [tasks, globalCompany, effectiveDateRange, globalDateField]);
+
+    const globalSummary = useMemo(() => {
+        const total = filteredTasksByGlobalDates.length;
+        const completed = filteredTasksByGlobalDates.filter((t: any) => normalizeText(t.status).toLowerCase() === 'completed').length;
+        const pending = filteredTasksByGlobalDates.filter((t: any) => normalizeText(t.status).toLowerCase() === 'pending').length;
+        const inProgress = filteredTasksByGlobalDates.filter((t: any) => normalizeStatusForFilter(t.status) === 'in-progress').length;
+        const overdue = filteredTasksByGlobalDates.filter((t) => getCompletionStatus(t) === 'Overdue').length;
+        const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+        return { total, completed, pending, inProgress, overdue, rate };
+    }, [filteredTasksByGlobalDates]);
+
+    const smartInsights = useMemo(() => {
+        if (!filteredTasksByGlobalDates.length) return null;
+
+        // Bottleneck detection (Status)
+        const statusMap: Record<string, number> = {};
+        const typeMap: Record<string, number> = {};
+        const userMap: Record<string, number> = {};
+        const priorityMap: Record<string, number> = {};
+        let overdueHighPriority = 0;
+
+        filteredTasksByGlobalDates.forEach((t: any) => {
+            const s = normalizeText(t.status).toLowerCase();
+            const p = normalizeText(t.priority).toLowerCase();
+
+            if (s !== 'completed') statusMap[s] = (statusMap[s] || 0) + 1;
+            if (p) priorityMap[p] = (priorityMap[p] || 0) + 1;
+            if (p === 'high' || p === 'urgent') {
+                if (getCompletionStatus(t) === 'Overdue') {
+                    overdueHighPriority++;
+                }
+            }
+
+            const type = normalizeText(t.taskType || t.type);
+            if (type) typeMap[type] = (typeMap[type] || 0) + 1;
+
+            if (s === 'completed') {
+                const u = extractUserLabel(t.assignedTo, t.assignedToName);
+                if (u && u !== 'Unknown') userMap[u] = (userMap[u] || 0) + 1;
+            }
+        });
+
+        const getTop = (map: Record<string, number>) => {
+            let max = 0;
+            let topKey = '';
+            for (const k in map) {
+                if (map[k] > max) {
+                    max = map[k];
+                    topKey = k;
+                }
+            }
+            return { key: topKey, value: max };
+        };
+
+        const topStatus = getTop(statusMap);
+        const topType = getTop(typeMap);
+        const topUser = getTop(userMap);
+        const topPriority = getTop(priorityMap);
+
+        let health = 'Good';
+        if (globalSummary.rate < 30) health = 'Critical';
+        else if (globalSummary.rate < 60) health = 'Attention Needed';
+
+        return {
+            health,
+            bottleneckStatus: topStatus.key,
+            bottleneckType: topType.key,
+            topPerformer: topUser.key,
+            performerCount: topUser.value,
+            topPriority: topPriority.key,
+            overdueHighPriority,
+            companyName: globalCompany === 'all' ? 'Across all companies' : `For ${globalCompany}`,
+        };
+    }, [filteredTasksByGlobalDates, globalSummary, globalCompany]);
+
+    const userReportData = useMemo(() => {
+        const userMap: Record<string, { name: string; total: number; completed: number; pending: number; overdue: number }> = {};
+        
+        let reportTasks = filteredTasksByGlobalDates;
+        if (reportFilterCompany !== 'all') {
+            reportTasks = reportTasks.filter(t => {
+                const c = normalizeText(t.companyName || t.company).toLowerCase();
+                return c === reportFilterCompany.toLowerCase();
+            });
+        }
+
+        reportTasks.forEach(t => {
+            const u = extractUserLabel(t.assignedTo, t.assignedToName) || 'Unassigned';
+            if (!userMap[u]) {
+                userMap[u] = { name: u, total: 0, completed: 0, pending: 0, overdue: 0 };
+            }
+            
+            userMap[u].total++;
+            const status = normalizeText(t.status).toLowerCase();
+            if (status === 'completed') userMap[u].completed++;
+            else if (status === 'pending') userMap[u].pending++;
+            
+            if (getCompletionStatus(t) === 'Overdue') {
+                userMap[u].overdue++;
+            }
+        });
+        
+        return Object.values(userMap)
+            .map(u => ({
+                ...u,
+                rate: u.total > 0 ? Math.round((u.completed / u.total) * 100) : 0
+            }))
+            .sort((a, b) => b.completed - a.completed || b.total - a.total);
+    }, [filteredTasksByGlobalDates, reportFilterCompany]);
+
+    const handleExportReport = () => {
+        if (!userReportData.length) return;
+        
+        const headers = ['User', 'Total Tasks', 'Completed', 'Pending', 'Overdue', 'Success Rate (%)'];
+        const rows = userReportData.map(r => [
+            r.name,
+            r.total,
+            r.completed,
+            r.pending,
+            r.overdue,
+            r.rate
+        ]);
+        
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.join(','))
+        ].join('\n');
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const filename = `User_Performance_Report_${reportFilterCompany === 'all' ? 'All' : reportFilterCompany}_${globalMonth}.csv`;
+        
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const overdueByCompany = useMemo(() => {
+        const counts: Record<string, number> = {};
+        
+        filteredTasksByGlobalDates.forEach(t => {
+            if (getCompletionStatus(t) === 'Overdue') {
+                const taskCompany = normalizeText(t.companyName || t.company) || 'Unknown';
+                if (overdueChartCompany !== 'all' && taskCompany.toLowerCase() !== overdueChartCompany.toLowerCase()) return;
+
+                const u = extractUserLabel(t.assignedTo, t.assignedToName) || 'Unassigned';
+                counts[u] = (counts[u] || 0) + 1;
+            }
+        });
+        
+        return Object.entries(counts)
+            .map(([name, count]) => ({ name, count }))
+            .sort((a, b) => b.count - a.count);
+    }, [filteredTasksByGlobalDates, overdueChartCompany]);
 
     const appendQ = (prev: string, extra: string): string => {
         const p = (prev || '').trim();
@@ -680,234 +1172,6 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
         };
     };
 
-    const getDimensionLabel = (key: DimensionKey): string => {
-        return DIMENSION_OPTIONS.find((o) => o.value === key)?.label || key;
-    };
-
-    const normalizeText = (v: unknown): string => (v || '').toString().trim();
-
-    const stripDeletedEmailSuffix = (raw: string): string => {
-        const s = (raw || '').toString().trim();
-        if (!s) return '';
-        const idx = s.toLowerCase().indexOf('.deleted.');
-        if (idx === -1) return s;
-        return s.slice(0, idx);
-    };
-
-    const extractUserLabel = (value: unknown, nameHint?: unknown): string => {
-        const hint = normalizeText(nameHint);
-        if (hint) return hint;
-
-        if (!value) return 'Unknown';
-        if (typeof value === 'string') {
-            const s = value.trim();
-            if (!s) return 'Unknown';
-            if (s.includes('@')) return s.split('@')[0] || s;
-            return s;
-        }
-        if (typeof value === 'object') {
-            const name = normalizeText((value as any)?.name);
-            if (name) return name;
-            const email = normalizeText((value as any)?.email);
-            if (email) return email.includes('@') ? email.split('@')[0] || email : email;
-            const id = normalizeText((value as any)?.id || (value as any)?._id);
-            if (id) return id;
-        }
-        return 'Unknown';
-    };
-
-    const getCompletionStatus = (t: Task): string => {
-        const status = normalizeText((t as any)?.status || '');
-        if (status === 'completed') return 'Completed';
-
-        const due = new Date(normalizeText((t as any)?.dueDate));
-        if (Number.isNaN(due.getTime())) return 'Unscheduled';
-
-        const now = new Date();
-        if (due.getTime() < now.getTime()) return 'Overdue';
-        return 'Upcoming';
-    };
-
-    const getMetricLabel = (metric: MetricKey): string => {
-        // First check additional metrics
-        const customMetric = additionalMetrics.find((m) => m.value === metric);
-        if (customMetric) return customMetric.label;
-
-        // Then check standard options
-        return ALL_METRIC_OPTIONS.find((o) => o.value === metric)?.label || metric;
-    };
-
-    const getAutoWidgetTitle = (args: {
-        xAxis: DimensionKey;
-        groupBy: DimensionKey | 'none';
-        metrics: MetricKey[];
-    }): string => {
-        const safe = Array.isArray(args.metrics) && args.metrics.length ? args.metrics : (['count'] as MetricKey[]);
-        const metricLabel = safe.map((m) => getMetricLabel(m)).join(', ');
-        return `Total tasks by ${getDimensionLabel(args.xAxis)}${args.groupBy === 'none' ? '' : ` and ${getDimensionLabel(args.groupBy)}`
-            } (${metricLabel})`;
-    };
-
-    const getMetricValue = (t: Task, yEntity: YEntity, metric: MetricKey): number | null => {
-        if (yEntity === 'task') {
-            if (metric === 'count') return 1;
-
-            const status = normalizeText((t as any)?.status || '');
-            if (metric === 'completed') return status === 'completed' ? 1 : null;
-            if (metric === 'pending') return status === 'pending' ? 1 : null;
-            if (metric === 'in_progress') return status === 'in-progress' ? 1 : null;
-            if (metric === 'on_hold') return status === 'on-hold' ? 1 : null;
-            if (metric === 'cancelled') return status === 'cancelled' ? 1 : null;
-
-            const completion = getCompletionStatus(t);
-            if (metric === 'overdue') return completion === 'Overdue' ? 1 : null;
-            if (metric === 'upcoming') return completion === 'Upcoming' ? 1 : null;
-            if (metric === 'unscheduled') return completion === 'Unscheduled' ? 1 : null;
-
-            // Check additional custom metrics
-            const isCustomMetric = additionalMetrics.some(m => m.value === metric);
-            if (isCustomMetric) {
-                const customMetricValue = (t as any)?.[metric];
-                if (customMetricValue !== undefined) {
-                    const num = Number(customMetricValue);
-                    return Number.isFinite(num) ? num : null;
-                }
-            }
-
-            return null;
-        }
-
-        if (yEntity === 'time' && metric === 'time_to_complete_hours') {
-            const status = normalizeText((t as any)?.status || '');
-            if (status !== 'completed') return null;
-            const createdAt = new Date(normalizeText((t as any)?.createdAt));
-            const updatedAt = new Date(normalizeText((t as any)?.updatedAt));
-            if (Number.isNaN(createdAt.getTime()) || Number.isNaN(updatedAt.getTime())) return null;
-            const ms = updatedAt.getTime() - createdAt.getTime();
-            if (ms <= 0) return null;
-            return ms / (1000 * 60 * 60);
-        }
-
-        if (yEntity === 'time_entry' && metric === 'actual_time_hours') {
-            const candidate =
-                (t as any)?.actualTimeHours ??
-                (t as any)?.timeSpentHours ??
-                (t as any)?.actualTime ??
-                (t as any)?.timeSpent;
-            const n = Number(candidate);
-            return Number.isFinite(n) && n > 0 ? n : null;
-        }
-
-        if (yEntity === 'custom_field' && metric === 'custom_field_time_hours') {
-            const candidate = (t as any)?.customFieldTimeHours ?? (t as any)?.customFieldTime;
-            const n = Number(candidate);
-            return Number.isFinite(n) && n > 0 ? n : null;
-        }
-
-        if (yEntity === 'budget' || yEntity === 'cost' || yEntity === 'revenue') {
-            const candidate = (t as any)?.[metric] ?? (t as any)?.[`${yEntity}_${metric}`];
-            const n = Number(candidate);
-            return Number.isFinite(n) ? n : null;
-        }
-
-        return null;
-    };
-
-    const formatYear = (raw: unknown): string => {
-        const d = new Date(normalizeText(raw));
-        if (Number.isNaN(d.getTime())) return 'Unknown';
-        return `${d.getFullYear()}`;
-    };
-
-    const formatYearRange = (raw: unknown): string => {
-        const d = new Date(normalizeText(raw));
-        if (Number.isNaN(d.getTime())) return 'Unknown';
-        const y = d.getFullYear();
-        return `${y}-${y + 1}`;
-    };
-
-    const formatMonth = (raw: unknown): string => {
-        const d = new Date(normalizeText(raw));
-        if (Number.isNaN(d.getTime())) return 'Unknown';
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    };
-
-    const formatDay = (raw: unknown): string => {
-        const d = new Date(normalizeText(raw));
-        if (Number.isNaN(d.getTime())) return 'Unknown';
-        return d.toISOString().slice(0, 10);
-    };
-
-    const formatWeek = (raw: unknown): string => {
-        const d = new Date(normalizeText(raw));
-        if (Number.isNaN(d.getTime())) return 'Unknown';
-        const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-        const dayNum = date.getUTCDay() || 7;
-        date.setUTCDate(date.getUTCDate() + 4 - dayNum);
-        const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-        const weekNo = Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-        return `${date.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
-    };
-
-    const getDimensionValue = (t: Task, key: DimensionKey): string => {
-        if (key === 'assignee') return extractUserLabel((t as any)?.assignedTo, (t as any)?.assignedToName);
-        if (key === 'assignee_role') return normalizeText((t as any)?.assignedTo?.role) || 'Unknown';
-        if (key === 'creator') return extractUserLabel((t as any)?.assignedBy, (t as any)?.assignedByName);
-        if (key === 'creator_role') return normalizeText((t as any)?.assignedBy?.role) || 'Unknown';
-        if (key === 'section') return normalizeText((t as any)?.category) || 'Unknown';
-        if (key === 'task_type') return normalizeText((t as any)?.taskType || (t as any)?.type) || 'Unknown';
-        if (key === 'tag') {
-            const tags = (t as any)?.tags;
-            if (Array.isArray(tags) && tags.length) {
-                const first = normalizeText(tags[0]);
-                return first || 'Unknown';
-            }
-            return 'No tag';
-        }
-        if (key === 'completion_status') return getCompletionStatus(t);
-        if (key === 'status') return normalizeText((t as any)?.status);
-        if (key === 'priority') return normalizeText((t as any)?.priority);
-        if (key === 'company') return normalizeText((t as any)?.companyName || (t as any)?.company) || 'Unknown';
-        if (key === 'brand') return normalizeText((t as any)?.brand) || 'Unknown';
-        if (key === 'project') return normalizeText((t as any)?.project) || 'Unknown';
-        if (key === 'created_day') return formatDay((t as any)?.createdAt);
-        if (key === 'created_week') return formatWeek((t as any)?.createdAt);
-        if (key === 'created_month') return formatMonth((t as any)?.createdAt);
-        if (key === 'created_year') return formatYear((t as any)?.createdAt);
-        if (key === 'created_year_range') return formatYearRange((t as any)?.createdAt);
-        if (key === 'due_day') return formatDay((t as any)?.dueDate);
-        if (key === 'due_week') return formatWeek((t as any)?.dueDate);
-        if (key === 'due_month') return formatMonth((t as any)?.dueDate);
-        if (key === 'due_year') return formatYear((t as any)?.dueDate);
-        if (key === 'due_year_range') return formatYearRange((t as any)?.dueDate);
-        if (key === 'completed_day') {
-            const completedAt = (t as any)?.completedAt || ((t as any)?.status === 'completed' ? (t as any)?.updatedAt : '');
-            return formatDay(completedAt);
-        }
-        if (key === 'completed_week') {
-            const completedAt = (t as any)?.completedAt || ((t as any)?.status === 'completed' ? (t as any)?.updatedAt : '');
-            return formatWeek(completedAt);
-        }
-        if (key === 'completed_month') {
-            const completedAt = (t as any)?.completedAt || ((t as any)?.status === 'completed' ? (t as any)?.updatedAt : '');
-            return formatMonth(completedAt);
-        }
-        if (key === 'completed_year') {
-            const completedAt = (t as any)?.completedAt || ((t as any)?.status === 'completed' ? (t as any)?.updatedAt : '');
-            return formatYear(completedAt);
-        }
-        if (key === 'completed_year_range') {
-            const completedAt = (t as any)?.completedAt || ((t as any)?.status === 'completed' ? (t as any)?.updatedAt : '');
-            return formatYearRange(completedAt);
-        }
-        if (key === 'department') return normalizeText((t as any)?.department) || 'Unknown';
-        if (key === 'team') return normalizeText((t as any)?.team) || 'Unknown';
-        if (key === 'location') return normalizeText((t as any)?.location) || 'Unknown';
-        if (key === 'phase') return normalizeText((t as any)?.phase) || 'Unknown';
-        if (key === 'milestone') return normalizeText((t as any)?.milestone) || 'Unknown';
-        if (key === 'sprint') return normalizeText((t as any)?.sprint) || 'Unknown';
-        return 'Unknown';
-    };
 
     const buildOptionForWidget = (widget: CustomWidget): echarts.EChartsOption => {
         const forceRotateXAxis = widget.chartType === 'bar_label_rotation';
@@ -996,7 +1260,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
             return true;
         };
 
-        const filteredTasks = (tasks || []).filter(matchesFilters);
+        const filteredTasks = (filteredTasksByGlobalDates || []).filter(matchesFilters);
 
         const palette = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#ef4444', '#22c55e', '#f97316'];
 
@@ -1344,7 +1608,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
         };
 
         const counts = new Map<string, number>();
-        (tasks || []).forEach((t) => {
+        (filteredTasksByGlobalDates || []).forEach((t) => {
             const label = getCreatorLabel(t);
             counts.set(label, (counts.get(label) || 0) + 1);
         });
@@ -1352,7 +1616,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
         const categories = Array.from(counts.keys()).sort((a, b) => a.localeCompare(b));
         const data = categories.map((name) => counts.get(name) || 0);
         return { categories, data };
-    }, [tasks]);
+    }, [filteredTasksByGlobalDates]);
 
     const assignedSummary = useMemo(() => {
         const myEmail = (currentUserEmailProp || '').toString().trim().toLowerCase();
@@ -1371,7 +1635,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
 
         if (!myEmail) return { assignedByMe, assignedToMe, myEmail };
 
-        (tasks || []).forEach((t) => {
+        (filteredTasksByGlobalDates || []).forEach((t) => {
             const assignedByEmail = extractEmail((t as any)?.assignedBy);
             const assignedToEmail = extractEmail((t as any)?.assignedTo);
 
@@ -1380,7 +1644,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
         });
 
         return { assignedByMe, assignedToMe, myEmail };
-    }, [tasks, currentUserEmailProp]);
+    }, [filteredTasksByGlobalDates, currentUserEmailProp]);
 
     const assignedToByMeCounts = useMemo(() => {
         const myEmail = (currentUserEmailProp || '').toString().trim().toLowerCase();
@@ -1422,7 +1686,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
         if (!myEmail) return { categories: [], data: [], myEmail };
 
         const counts = new Map<string, number>();
-        (tasks || []).forEach((t) => {
+        (filteredTasksByGlobalDates || []).forEach((t) => {
             const assignedByEmail = extractEmail((t as any)?.assignedBy);
             if (assignedByEmail !== myEmail) return;
 
@@ -1433,7 +1697,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
         const categories = Array.from(counts.keys()).sort((a, b) => a.localeCompare(b));
         const data = categories.map((name) => counts.get(name) || 0);
         return { categories, data, myEmail };
-    }, [tasks, currentUserEmailProp]);
+    }, [filteredTasksByGlobalDates, currentUserEmailProp]);
 
     const trendsOptions = useMemo(() => {
         const normalize = (v: unknown) => (v || '').toString().trim();
@@ -1462,7 +1726,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
         const companies = new Set<string>();
         const brands = new Set<string>();
 
-        (tasks || []).forEach((t) => {
+        (filteredTasksByGlobalDates || []).forEach((t) => {
             const assignee = getAssigneeKey(t);
             if (assignee && assignee !== 'Unknown') assignees.add(assignee);
 
@@ -1480,7 +1744,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
             normalizeKey,
             getAssigneeKey,
         };
-    }, [tasks]);
+    }, [filteredTasksByGlobalDates]);
 
     const completionTrends = useMemo(() => {
         const normalizeKey = trendsOptions.normalizeKey;
@@ -1507,7 +1771,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
 
         const acc = new Map<string, { completed: number; pending: number }>();
 
-        (tasks || []).forEach((t) => {
+        (filteredTasksByGlobalDates || []).forEach((t) => {
             if (trendsAssignee !== 'all') {
                 const assigneeKey = getAssigneeKey(t);
                 if (normalizeKey(assigneeKey) !== normalizeKey(trendsAssignee)) return;
@@ -1542,7 +1806,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
             completed: keys.map((k) => acc.get(k)!.completed),
             pending: keys.map((k) => acc.get(k)!.pending),
         };
-    }, [tasks, trendsAssignee, trendsBrand, trendsCompany, trendsGranularity, trendsOptions, trendsStartDate, trendsEndDate]);
+    }, [filteredTasksByGlobalDates, trendsAssignee, trendsBrand, trendsCompany, trendsGranularity, trendsOptions, trendsStartDate, trendsEndDate]);
 
     const leaderboardData = useMemo(() => {
         const normalizeKey = trendsOptions.normalizeKey;
@@ -1553,7 +1817,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
 
         const statsByAssignee = new Map<string, { completed: number; total: number }>();
 
-        (tasks || []).forEach((t) => {
+        (filteredTasksByGlobalDates || []).forEach((t) => {
             const company = (t.companyName || (t as any)?.company || '').toString();
             const brand = (t.brand || '').toString();
             if (leaderboardCompany !== 'all' && normalizeKey(company) !== normalizeKey(leaderboardCompany)) return;
@@ -1589,7 +1853,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
             values: top.map((r) => (leaderboardMetric === 'rate' ? Number(r.rate.toFixed(2)) : r.completed)),
             metricLabel: leaderboardMetric === 'rate' ? 'Completion Rate (%)' : 'Completed Tasks',
         };
-    }, [tasks, trendsOptions, leaderboardMetric, leaderboardStartDate, leaderboardEndDate, leaderboardCompany, leaderboardBrand, leaderboardTopN]);
+    }, [filteredTasksByGlobalDates, trendsOptions, leaderboardMetric, leaderboardStartDate, leaderboardEndDate, leaderboardCompany, leaderboardBrand, leaderboardTopN]);
 
     const performanceData = useMemo(() => {
         const start = performanceStartDate ? new Date(`${performanceStartDate}T00:00:00`) : null;
@@ -1609,7 +1873,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
 
         const map = new Map<string, Record<string, number>>();
 
-        (tasks || []).forEach((t) => {
+        (filteredTasksByGlobalDates || []).forEach((t) => {
             const base = new Date(((t as any)?.updatedAt || t.createdAt || t.dueDate || '').toString());
             if (Number.isNaN(base.getTime())) return;
             if (start && base < start) return;
@@ -1638,7 +1902,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
         }));
 
         return { categories, series };
-    }, [tasks, trendsOptions, performanceGroupBy, performanceStartDate, performanceEndDate]);
+    }, [filteredTasksByGlobalDates, trendsOptions, performanceGroupBy, performanceStartDate, performanceEndDate]);
 
     useEffect(() => {
         if (!isAddWidgetOpen) return;
@@ -1716,6 +1980,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
         newWidgetStartDate,
         newWidgetEndDate,
         tasks,
+        filteredTasksByGlobalDates,
     ]);
 
     useEffect(() => {
@@ -1783,7 +2048,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
             });
             requestAnimationFrame(() => chart.resize());
         });
-    }, [customWidgets, tasks]);
+    }, [customWidgets, filteredTasksByGlobalDates]);
 
     useEffect(() => {
         const onResize = () => {
@@ -1863,6 +2128,29 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
             resizeObserver.disconnect();
             chart.dispose();
             performanceChartInstanceRef.current = null;
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!overdueByCompanyChartRef.current) return;
+
+        const dom = overdueByCompanyChartRef.current;
+        const chart = echarts.getInstanceByDom(dom) ?? echarts.init(dom);
+        overdueByCompanyChartInstanceRef.current = chart;
+
+        const onResize = () => chart.resize();
+        window.addEventListener('resize', onResize);
+
+        const resizeObserver = new ResizeObserver(() => {
+            chart.resize();
+        });
+        resizeObserver.observe(dom);
+
+        return () => {
+            window.removeEventListener('resize', onResize);
+            resizeObserver.disconnect();
+            chart.dispose();
+            overdueByCompanyChartInstanceRef.current = null;
         };
     }, []);
 
@@ -2241,6 +2529,48 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
     }, [assignedSummary, assignedChartType]);
 
     useEffect(() => {
+        const chart = overdueByCompanyChartInstanceRef.current;
+        if (!chart || hiddenBuiltinSet.has('overdue_by_company')) return;
+
+        const hasData = overdueByCompany.length > 0;
+        const emptyTitle = hasData ? undefined : {
+            text: 'No Overdue Tasks Found',
+            left: 'center',
+            top: 'middle',
+            textStyle: { color: '#9ca3af', fontSize: 14, fontWeight: 400 }
+        };
+
+        const option: echarts.EChartsOption = {
+            title: emptyTitle,
+            tooltip: { trigger: 'axis' },
+            grid: { left: 40, right: 20, top: 30, bottom: 80 },
+            xAxis: {
+                type: 'category',
+                data: overdueByCompany.map(x => x.name),
+                axisLabel: { rotate: 30 },
+            },
+            yAxis: {
+                type: 'value',
+                minInterval: 1,
+            },
+            series: [
+                {
+                    name: 'Overdue Tasks',
+                    data: overdueByCompany.map(x => x.count),
+                    type: 'bar',
+                    itemStyle: { color: '#ef4444' },
+                    label: { show: true, position: 'top' }
+                }
+            ]
+        };
+
+        chart.setOption(option, true);
+        requestAnimationFrame(() => {
+            chart.resize();
+        });
+    }, [overdueByCompany, hiddenBuiltinSet]);
+
+    useEffect(() => {
         const chart = assignedToChartInstanceRef.current;
         if (!chart) return;
 
@@ -2599,11 +2929,36 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
                     <h1 className="text-3xl font-bold text-gray-900">Analyze</h1>
                     <p className="text-gray-600">Task analytics overview</p>
                 </div>
+
                 <div className="flex items-center gap-3">
+                    <div className="text-sm font-medium text-gray-500 mr-2">Charts per row:</div>
+                    <div className="flex bg-gray-100 p-1 rounded-xl items-center">
+                        {[1, 2, 3, 4].map((n) => (
+                            <button
+                                key={n}
+                                onClick={() => {
+                                    setChartsPerRow(n as any);
+                                    setUserHasChangedChartsPerRow(true);
+                                }}
+                                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${chartsPerRow === n
+                                    ? 'bg-white text-blue-600 shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-700'
+                                    }`}
+                            >
+                                {n}
+                            </button>
+                        ))}
+                    </div>
+                    {!userHasChangedChartsPerRow && (
+                        <span className="text-[10px] font-semibold text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full" title={recommendReason}>
+                            Rec: {recommendCols}
+                        </span>
+                    )}
+
                     {isAdminUser && (
                         <button
                             type="button"
-                            className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 bg-white hover:bg-gray-50"
+                            className="bg-blue-600 text-white px-4 py-2 rounded-xl font-medium hover:bg-blue-700 transition shadow-sm flex items-center gap-2"
                             onClick={() => {
                                 setNewWidgetTitle('');
                                 setNewWidgetChartType('bar');
@@ -2622,28 +2977,378 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
                                 setIsAddWidgetOpen(true);
                             }}
                         >
-                            + Add widget
+                            <PlusCircle className="h-4 w-4" />
+                            Add Chart
                         </button>
                     )}
-                    <label className="text-sm text-gray-500">
-                        Charts per row
-                        <select
-                            className="ml-2 border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white"
-                            value={chartsPerRow}
-                            onChange={(e) => {
-                                setChartsPerRow(Number(e.target.value) as 1 | 2 | 3 | 4);
-                                setUserHasChangedChartsPerRow(true);
-                            }}
+                </div>
+            </div>
+
+            {/* Global Filters */}
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-wrap items-center gap-4">
+                <div className="flex flex-col gap-1 min-w-[200px]">
+                    <div className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        <Building2 className="h-3 w-3" />
+                        Company
+                    </div>
+                    <select
+                        value={globalCompany}
+                        onChange={(e) => setGlobalCompany(e.target.value)}
+                        className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    >
+                        <option value="all">All Companies</option>
+                        {companies.map(c => (
+                            <option key={c} value={c}>{c}</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="flex flex-col gap-1 min-w-[150px]">
+                    <div className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        <Calendar className="h-3 w-3" />
+                        Time Period
+                    </div>
+                    <select
+                        value={globalTimePeriod}
+                        onChange={(e) => setGlobalTimePeriod(e.target.value as any)}
+                        className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    >
+                        <option value="all">All Time</option>
+                        <option value="daily">Today</option>
+                        <option value="weekly">This Week</option>
+                        <option value="monthly">This Month</option>
+                        <option value="custom">Custom Range</option>
+                    </select>
+                </div>
+
+                {globalTimePeriod === 'monthly' && (
+                    <div className="flex flex-col gap-1 min-w-[150px]">
+                        <div className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                            <CalendarClock className="h-3 w-3" />
+                            Select Month
+                        </div>
+                        <input
+                            type="month"
+                            value={globalMonth}
+                            onChange={(e) => setGlobalMonth(e.target.value)}
+                            className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                    </div>
+                )}
+
+                <div className="flex flex-col gap-1 min-w-[150px]">
+                    <div className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        <Filter className="h-3 w-3" />
+                        Date Field
+                    </div>
+                    <select
+                        value={globalDateField}
+                        onChange={(e) => setGlobalDateField(e.target.value as any)}
+                        className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    >
+                        <option value="createdAt">Created Date</option>
+                        <option value="dueDate">Due Date</option>
+                        <option value="completedAt">Completed Date</option>
+                        <option value="updatedAt">Updated Date</option>
+                    </select>
+                </div>
+
+                {globalTimePeriod === 'custom' && (
+                    <>
+                        <div className="flex flex-col gap-1">
+                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Start Date</label>
+                            <input
+                                type="date"
+                                value={globalStartDate}
+                                onChange={(e) => setGlobalStartDate(e.target.value)}
+                                className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">End Date</label>
+                            <input
+                                type="date"
+                                value={globalEndDate}
+                                onChange={(e) => setGlobalEndDate(e.target.value)}
+                                className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                        </div>
+                    </>
+                )}
+
+                <div className="flex-grow" />
+
+                <button
+                    onClick={() => {
+                        setGlobalCompany('all');
+                        setGlobalTimePeriod('all');
+                        setGlobalStartDate('');
+                        setGlobalEndDate('');
+                        setGlobalDateField('createdAt');
+                        setGlobalMonth(new Date().toISOString().substring(0, 7));
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                >
+                    Clear All
+                </button>
+            </div>
+
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <BarChart3 className="h-12 w-12 text-blue-600" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-500 mb-1">Total Tasks</span>
+                    <span className="text-2xl font-bold text-gray-900">{globalSummary.total}</span>
+                    <div className="mt-4 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-blue-500 rounded-full" style={{ width: '100%' }} />
+                    </div>
+                </div>
+                
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <CheckCircle2 className="h-12 w-12 text-emerald-600" />
+                    </div>
+                    <span className="text-sm font-medium text-emerald-600 mb-1">Completed</span>
+                    <span className="text-2xl font-bold text-gray-900">{globalSummary.completed}</span>
+                    <div className="mt-4 h-1.5 w-full bg-emerald-50 rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${globalSummary.rate}%` }} />
+                    </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <Clock className="h-12 w-12 text-amber-600" />
+                    </div>
+                    <span className="text-sm font-medium text-amber-600 mb-1">Pending</span>
+                    <span className="text-2xl font-bold text-gray-900">{globalSummary.pending}</span>
+                    <div className="mt-4 h-1.5 w-full bg-amber-50 rounded-full overflow-hidden">
+                        <div className="h-full bg-amber-500 rounded-full" style={{ width: `${globalSummary.total > 0 ? (globalSummary.pending / globalSummary.total) * 100 : 0}%` }} />
+                    </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <AlertCircle className="h-12 w-12 text-red-600" />
+                    </div>
+                    <span className="text-sm font-medium text-red-600 mb-1">Overdue</span>
+                    <span className="text-2xl font-bold text-gray-900">{globalSummary.overdue}</span>
+                    <div className="mt-4 h-1.5 w-full bg-red-50 rounded-full overflow-hidden">
+                        <div className="h-full bg-red-500 rounded-full" style={{ width: `${globalSummary.total > 0 ? (globalSummary.overdue / globalSummary.total) * 100 : 0}%` }} />
+                    </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col bg-emerald-50/20">
+                    <span className="text-sm font-medium text-emerald-700 mb-1">Completion Rate</span>
+                    <span className="text-3xl font-bold text-emerald-700">{globalSummary.rate}%</span>
+                    <div className="mt-4 h-2 w-full bg-white rounded-full overflow-hidden border border-emerald-100">
+                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${globalSummary.rate}%` }} />
+                    </div>
+                    <p className="text-[10px] text-emerald-600 mt-2 font-medium uppercase tracking-tighter">Overall Efficiency</p>
+                </div>
+            </div>
+            
+            {/* Smart Analysis Summary */}
+            {smartInsights && (
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-6">
+                    <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-4">
+                            <BarChart3 className="h-5 w-5 text-blue-600" />
+                            <h3 className="text-lg font-bold text-gray-900">Overall Analysis Summary</h3>
+                        </div>
+                        <div className="space-y-4">
+                            <p className="text-gray-600 leading-relaxed text-sm">
+                                {globalCompany === 'all' ? 'Across all companies' : `For ${globalCompany}`}, 
+                                the overall team health is <span className={`font-bold ${smartInsights.health === 'Good' ? 'text-emerald-600' : smartInsights.health === 'Critical' ? 'text-red-600' : 'text-amber-600'}`}>
+                                {smartInsights.health}</span>. 
+                                {globalSummary.total > 0 && (
+                                    <>
+                                        {' '}With a completion rate of <span className="font-bold text-gray-900">{globalSummary.rate}%</span>, 
+                                        the primary bottleneck is currently tasks in <span className="font-bold text-gray-900 capitalize">"{smartInsights.bottleneckStatus || 'N/A'}"</span> status. 
+                                        Most task activities are related to <span className="font-bold text-gray-900">"{smartInsights.bottleneckType || 'N/A'}"</span>.
+                                        The majority of tasks are categorized as <span className="font-bold text-gray-900 capitalize">"{smartInsights.topPriority || 'N/A'}"</span> priority.
+                                    </>
+                                )}
+                            </p>
+                            <div className="flex flex-wrap gap-3">
+                                {smartInsights.topPerformer && (
+                                    <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-100 inline-flex items-center gap-2">
+                                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                                        <span className="text-xs text-emerald-800">
+                                            <span className="font-bold">{smartInsights.topPerformer}</span> is the top performer ({smartInsights.performerCount} completions)
+                                        </span>
+                                    </div>
+                                )}
+                                {globalSummary.overdue > 0 && (
+                                    <div className="bg-red-50 p-3 rounded-xl border border-red-100 inline-flex items-center gap-2">
+                                        <AlertCircle className="h-4 w-4 text-red-600" />
+                                        <div className="flex flex-col">
+                                            <span className="text-xs text-red-800 font-medium">
+                                                <span className="font-bold">{globalSummary.overdue}</span> critical tasks are overdue
+                                            </span>
+                                            {smartInsights.overdueHighPriority > 0 && (
+                                                <span className="text-[10px] text-red-700 font-bold uppercase tracking-wider">
+                                                    Includes {smartInsights.overdueHighPriority} High/Urgent tasks
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="w-full md:w-64 flex flex-col justify-center border-t md:border-t-0 md:border-l border-gray-100 pt-6 md:pt-0 md:pl-6">
+                        <div className="text-center mb-2">
+                            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Overall Progress</span>
+                        </div>
+                        <div className="relative h-32 w-32 mx-auto flex items-center justify-center">
+                            <svg className="h-40 w-40 transform -rotate-90">
+                                <circle
+                                    cx="80"
+                                    cy="80"
+                                    r="70"
+                                    fill="transparent"
+                                    stroke="#f3f4f6"
+                                    strokeWidth="12"
+                                />
+                                <circle
+                                    cx="80"
+                                    cy="80"
+                                    r="70"
+                                    fill="transparent"
+                                    stroke={smartInsights.health === 'Good' ? '#10b981' : smartInsights.health === 'Critical' ? '#ef4444' : '#f59e0b'}
+                                    strokeWidth="12"
+                                    strokeDasharray={439.8}
+                                    strokeDashoffset={439.8 - (439.8 * globalSummary.rate) / 100}
+                                    strokeLinecap="round"
+                                    className="transition-all duration-1000 ease-out"
+                                />
+                            </svg>
+                            <div className="absolute flex flex-col items-center">
+                                <span className="text-3xl font-bold text-gray-900">{globalSummary.rate}%</span>
+                                <span className="text-[10px] text-gray-400 font-medium">DONE</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Detailed User Performance Report */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-8">
+                <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-blue-50 rounded-lg">
+                            <Users className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-gray-900">Detailed User Performance Report</h3>
+                            <p className="text-xs text-gray-500 mt-1">
+                                {globalMonth} • {reportFilterCompany === 'all' ? (globalCompany === 'all' ? 'All Companies' : globalCompany) : reportFilterCompany}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="relative group">
+                            <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                            <select
+                                value={reportFilterCompany}
+                                onChange={(e) => setReportFilterCompany(e.target.value)}
+                                className="pl-9 pr-8 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-semibold rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 hover:border-gray-300 transition-all appearance-none cursor-pointer"
+                            >
+                                <option value="all">Company: All</option>
+                                {companies.map((c) => (
+                                    <option key={c} value={c}>
+                                        {c}
+                                    </option>
+                                ))}
+                            </select>
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" /></svg>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={handleExportReport}
+                            disabled={userReportData.length === 0}
+                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl shadow-sm shadow-blue-200 transition-all active:scale-95"
                         >
-                            <option value={1}>1</option>
-                            <option value={2}>2</option>
-                            <option value={3}>3</option>
-                            <option value={4}>4</option>
-                        </select>
-                    </label>
-                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded" title={recommendReason}>
-                        Recommended: {recommendCols}
-                    </span>
+                            <Download className="h-4 w-4" />
+                            Export CSV
+                        </button>
+                    </div>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-gray-50/50">
+                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">User</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Total</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center text-emerald-600">Completed</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center text-amber-600">Pending</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center text-red-600">Overdue</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Success Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {userReportData.length === 0 ? (
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-12 text-center text-gray-400 italic">
+                                        No user data found for this selection
+                                    </td>
+                                </tr>
+                            ) : (
+                                userReportData.map((row) => (
+                                    <tr key={row.name} className="hover:bg-blue-50/30 transition-colors group">
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white text-[10px] font-bold shadow-sm">
+                                                    {row.name.charAt(0).toUpperCase()}
+                                                </div>
+                                                <span className="text-sm font-semibold text-gray-700">{row.name}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-center whitespace-nowrap">
+                                            <span className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-gray-100 text-sm font-bold text-gray-700">
+                                                {row.total}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-center whitespace-nowrap">
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700">
+                                                {row.completed}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-center whitespace-nowrap">
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700">
+                                                {row.pending}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-center whitespace-nowrap">
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-50 text-red-700 font-mono">
+                                                {row.overdue}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap min-w-[160px]">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex-grow bg-gray-100 h-2 rounded-full overflow-hidden max-w-[100px]">
+                                                    <div 
+                                                        className={`h-full rounded-full transition-all duration-500 ${
+                                                            row.rate > 75 ? 'bg-emerald-500' : row.rate > 40 ? 'bg-amber-500' : 'bg-red-500'
+                                                        }`}
+                                                        style={{ width: `${row.rate}%` }}
+                                                    />
+                                                </div>
+                                                <span className={`text-xs font-bold ${
+                                                    row.rate > 75 ? 'text-emerald-700' : row.rate > 40 ? 'text-amber-700' : 'text-red-700'
+                                                }`}>
+                                                    {row.rate}%
+                                                </span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -2687,6 +3392,44 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
                 ref={gridRef}
                 className={`grid grid-cols-1 ${chartsPerRow === 2 ? 'lg:grid-cols-2' : chartsPerRow === 3 ? 'lg:grid-cols-3' : chartsPerRow === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-1'} gap-6`}
             >
+                {!hiddenBuiltinSet.has('overdue_by_company') && (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <AlertCircle className="h-5 w-5 text-red-600" />
+                                <h2 className="text-lg font-semibold text-gray-900">Overdue Tasks by User</h2>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                {isAdminUser && (
+                                    <select
+                                        value={overdueChartCompany}
+                                        onChange={(e) => setOverdueChartCompany(e.target.value)}
+                                        className="border border-gray-300 rounded-lg px-2 py-1 text-xs text-gray-700 bg-white"
+                                    >
+                                        <option value="all">All Companies</option>
+                                        {companies.map(c => (
+                                            <option key={c} value={c}>{c}</option>
+                                        ))}
+                                    </select>
+                                )}
+                                <button
+                                    type="button"
+                                    className={`p-2 rounded-lg transition-colors ${
+                                        isAdminUser
+                                            ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                                            : 'text-gray-300 cursor-not-allowed'
+                                    }`}
+                                    aria-label={isAdminUser ? 'Hide chart' : 'Only admins can hide charts'}
+                                    disabled={!isAdminUser}
+                                    onClick={() => toggleBuiltinChart('overdue_by_company')}
+                                >
+                                    <Trash2 className="h-5 w-5" />
+                                </button>
+                            </div>
+                        </div>
+                        <div ref={overdueByCompanyChartRef} className="w-full" style={{ height: 360 }} />
+                    </div>
+                )}
                 {!hiddenBuiltinSet.has('assign_by') && (
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                         <div className="flex items-center justify-between mb-4">
@@ -2883,7 +3626,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
 
                 {!hiddenBuiltinSet.has('manager_analysis') && (
                     <ManagerAnalysisChart
-                        tasks={tasks}
+                        tasks={filteredTasksByGlobalDates}
                         canDelete={isAdminUser}
                         onDelete={() => toggleBuiltinChart('manager_analysis')}
                     />

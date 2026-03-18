@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   X, LogOut, ListTodo, ChevronLeft, ChevronRight, Menu, Sun, Moon,
-  Users, Home, Calendar, CheckSquare, User, Building, BarChart3, Shield, Star, Briefcase, AlertTriangle
+  Users, Home, Calendar, CheckSquare, User, Building, BarChart3, Shield, Star, Briefcase, AlertTriangle, Megaphone
 } from 'lucide-react';
 
 import type { UserType } from '../Types/Types';
@@ -16,7 +16,7 @@ interface SidebarProps {
   isCollapsed: boolean;
   setIsCollapsed: (collapsed: boolean) => void;
   navigateTo: (page: string) => void;
-  currentView?: 'dashboard' | 'all-tasks' | 'calendar' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'analyze' | 'access' | 'assign' | 'speed-ecom-reassign' | 'company-brand-task-types' | 'reviews' | 'manager-monthly-rankings' | 'other-work' | 'md-impex-strike' | 'md-impex-access' | 'personal-tasks';
+  currentView?: 'dashboard' | 'all-tasks' | 'calendar' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'analyze' | 'access' | 'assign' | 'speed-ecom-reassign' | 'company-brand-task-types' | 'reviews' | 'manager-monthly-rankings' | 'other-work' | 'md-impex-strike' | 'md-impex-access' | 'personal-tasks' | 'headline';
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -59,6 +59,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
   const canSeeMdImpexAccess = roleKey === 'md_manager';
+  const isAdmin = roleKey === 'admin' || roleKey === 'super_admin';
 
   const getDisplayInitial = () => {
     if (!currentUser) return 'U';
@@ -231,6 +232,17 @@ const Sidebar: React.FC<SidebarProps> = ({
             icon: User,
             current: currentView === 'profile',
             onClick: () => navigateTo('profile'),
+            badge: 0
+          }
+        ]
+        : []),
+      ...(isAdmin
+        ? [
+          {
+            name: 'Headline',
+            icon: Megaphone,
+            current: currentView === 'headline',
+            onClick: () => navigateTo('headline'),
             badge: 0
           }
         ]
