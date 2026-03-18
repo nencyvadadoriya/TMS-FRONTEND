@@ -1,11 +1,6 @@
 import { Edit, X } from 'lucide-react';
-
-
-
 import * as React from 'react';
-
-
-
+import mdImpexAccessService from '../../Services/MdImpexAccess.services';
 import type { Task, TaskPriority, TaskStatus, UserType } from '../../Types/Types';
 
 
@@ -75,167 +70,213 @@ type Props = {
   disableDueDate?: boolean;
 
   currentUserEmail: string;
-
   currentUser?: UserType;
-
 };
 
+const normalizeMdEmail = (value: unknown): string => {
+  const raw = (value == null ? "" : String(value)).trim().toLowerCase();
+  if (!raw) return "";
+  const marker = ".deleted.";
+  const idx = raw.indexOf(marker);
+  const base = idx === -1 ? raw : raw.slice(0, idx).trim();
+  return base;
+};
 
+// Helper functions defined outside component to avoid recreation
+const normalizeEmail = (email: string) => email.trim().toLowerCase();
+const normalizeRoleKey = (v: unknown) => String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+const normalizeCompanyKey = (v: unknown) => String(v || '').trim().toLowerCase().replace(/\s+/g, '');
 
-const showMdImpexEditModal = ({
-
+const MdImpexEditTaskModal = ({
   open,
-
   editingTask,
-
   onClose,
-
   editFormData,
-
   editFormErrors,
-
   onChange,
-
   users,
-
   availableTaskTypesForEditTask,
-
   availableCompanies,
-
   getEditFormBrandOptions,
-
   onSubmit,
-
   isSubmitting,
-
   disableDueDate,
-
   currentUserEmail,
-
   currentUser,
-
 }: Props) => {
+  // ========== ALL HOOKS AT THE TOP (before any early return) ==========
+  const [mdMembers, setMdMembers] = React.useState<UserType[]>([]);
+  const [mdAllowedTaskTypes, setMdAllowedTaskTypes] = React.useState<string[]>([]);
+  const [mdAllowedBrands, setMdAllowedBrands] = React.useState<string[]>([]);
+  const [loadingAccess, setLoadingAccess] = React.useState(false);
 
-  if (!open || !editingTask) return null;
+  // Memoize role/id values - must be before early return
+  const myRoleKey = React.useMemo(() => normalizeRoleKey((currentUser as any)?.role || ''), [currentUser]);
+  const myId = React.useMemo(() => String((currentUser as any)?.id || (currentUser as any)?._id || '').trim(), [currentUser]);
+  const myManagerId = React.useMemo(() => String((currentUser as any)?.managerId || '').trim(), [currentUser]);
 
+  // Filter brands - must be before early return
+  const filteredBrands = React.useMemo(() => {
+    const allOptions = getEditFormBrandOptions();
+    if (!open) return allOptions;
+    if (mdAllowedBrands.length === 0) return allOptions;
+    
+    return allOptions.filter(opt => 
+      mdAllowedBrands.some(allowed => 
+        allowed.toLowerCase().trim() === opt.label.toLowerCase().trim()
+      )
+    );
+  }, [open, mdAllowedBrands, getEditFormBrandOptions]);
 
+  // Filter task types - must be before early return
+  const filteredTaskTypes = React.useMemo(() => {
+    if (!open) return [];
+    const allTypes = availableTaskTypesForEditTask || [];
+    if (mdAllowedTaskTypes.length === 0) return allTypes;
 
-  const normalizeEmail = (email: string) => email.trim().toLowerCase();
+    const normalizedToOriginal = new Map<string, string>();
+    allTypes.forEach(t => {
+      normalizedToOriginal.set(t.toLowerCase().trim(), t);
+    });
 
-  const normalizeRoleKey = (v: unknown) => String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+    const result: string[] = [];
+    const seen = new Set<string>();
 
-  const normalizeCompanyKey = (v: unknown) => String(v || '').trim().toLowerCase().replace(/\s+/g, '');
+    mdAllowedTaskTypes.forEach(allowed => {
+      const normalized = allowed.toLowerCase().trim();
+      if (seen.has(normalized)) return;
+      const displayValue = normalizedToOriginal.get(normalized) || allowed;
+      result.push(displayValue);
+      seen.add(normalized);
+    });
 
-  const taskAssigner = normalizeEmail(editingTask.assignedBy || (editingTask as any).assignedByUser?.email || '');
+    return result;
+  }, [open, mdAllowedTaskTypes, availableTaskTypesForEditTask]);
 
-  const taskAssignee = normalizeEmail(editingTask.assignedTo || (editingTask as any).assignedToUser?.email || '');
-
-  const currentEmail = normalizeEmail(currentUserEmail);
-
-
-
-  const isAssigner = currentEmail === taskAssigner;
-
-  const isAssignee = currentEmail === taskAssignee;
-
-  const isSpeedEcom = editingTask?.companyName?.toLowerCase().replace(/\s+/g, '') === 'speedecom';
-
-
-
-  const myRoleKey = normalizeRoleKey((currentUser as any)?.role || '');
-
-  const myId = String((currentUser as any)?.id || (currentUser as any)?._id || '').trim();
-
-  const myManagerId = String((currentUser as any)?.managerId || '').trim();
-
-
-
-  const allowedPairIds = (() => {
-
-    const ids = new Set<string>();
-
-    if (myId) ids.add(myId);
-
-    const list = Array.isArray(users) ? users : [];
-
-    if (myRoleKey === 'rm') {
-
-      list.forEach((u: any) => {
-
-        const uid = String(u?.id || u?._id || '').trim();
-
-        const urole = normalizeRoleKey(u?.role);
-
-        const mgr = String(u?.managerId || '').trim();
-
-        if (uid && urole === 'am' && mgr && myId && mgr === myId) ids.add(uid);
-
-      });
-
-    }
-
-    if (myRoleKey === 'am') {
-
-      if (myManagerId) ids.add(myManagerId);
-
-    }
-
-    return ids;
-
-  })();
-
-
-
+  // Filter users - must be before early return
   const filteredUsers = React.useMemo(() => {
+    if (!open || !editingTask) return [];
+    if (mdMembers.length > 0) return mdMembers;
 
     const list = Array.isArray(users) ? users : [];
-
     const taskCompanyKey = normalizeCompanyKey(editingTask?.companyName || (editingTask as any)?.company);
+    const myIdStr = myId;
+    const myMgrId = myManagerId;
 
-
-
-    // SBM should see all Speed E Com users for Speed E Com tasks
+    const allowedPairIds = (() => {
+      const ids = new Set<string>();
+      if (myIdStr) ids.add(myIdStr);
+      if (myRoleKey === 'rm') {
+        list.forEach((u: any) => {
+          const uid = String(u?.id || u?._id || '').trim();
+          const urole = normalizeRoleKey(u?.role);
+          const mgr = String(u?.managerId || '').trim();
+          if (uid && urole === 'am' && mgr && myIdStr && mgr === myIdStr) ids.add(uid);
+        });
+      }
+      if (myRoleKey === 'am' && myMgrId) {
+        ids.add(myMgrId);
+      }
+      return ids;
+    })();
 
     if (myRoleKey === 'sbm' && taskCompanyKey === 'speedecom') {
-
       return list.filter((u: any) => normalizeCompanyKey(u?.companyName || u?.company) === 'speedecom');
-
     }
-
-
-
-    // RM/AM should see only pair + sbm/admin/super_admin for the same company as task
 
     if (myRoleKey === 'rm' || myRoleKey === 'am') {
-
       return list.filter((u: any) => {
-
         const uid = String(u?.id || u?._id || '').trim();
-
         const urole = normalizeRoleKey(u?.role);
-
         const uCompanyKey = normalizeCompanyKey(u?.companyName || u?.company);
-
         if (taskCompanyKey && (!uCompanyKey || uCompanyKey !== taskCompanyKey)) return false;
-
         if (urole === 'sbm' || urole === 'admin' || urole === 'super_admin') return true;
-
         return Boolean(uid && allowedPairIds.has(uid));
-
       });
-
     }
 
-
-
     return list;
+  }, [open, editingTask, mdMembers, users, myRoleKey, myId, myManagerId]);
 
-  }, [allowedPairIds, editingTask, myRoleKey, normalizeCompanyKey, normalizeRoleKey, users]);
+  // Fetch access data effect - must be before early return
+  React.useEffect(() => {
+    const fetchAccessData = async () => {
+      if (!open || !currentUserEmail) return;
 
+      setLoadingAccess(true);
+      try {
+        const [membersRes, accessRes] = await Promise.all([
+          mdImpexAccessService.getAllMembers(),
+          mdImpexAccessService.getAllPersonAccess()
+        ]);
 
+        if (membersRes.success && membersRes.data) {
+          const allMembers = (membersRes.data || []).map((m: any) => ({
+            ...m,
+            id: String(m.id || m._id || '')
+          }));
 
-  // Only disable all fields for Speed E Com tasks when the user is the ASSIGNEE (not the assigner)
+          const currentNormalized = normalizeMdEmail(currentUserEmail);
+          const myInfo = allMembers.find((m: any) => normalizeMdEmail(m.email) === currentNormalized);
+          const myRoleNormalized = myInfo?.role?.toLowerCase()?.replace(/\s+/g, '_') || '';
 
+          const myAccess = accessRes.success && accessRes.data
+            ? accessRes.data.find((item: any) => normalizeMdEmail(item.assignedToEmail) === currentNormalized)
+            : null;
+
+          if (myAccess && myAccess.allowedAssignees && myAccess.allowedAssignees.length > 0) {
+            const allowedIds = new Set((myAccess.allowedAssignees || []).map((id: any) => String(id)));
+            const filteredMembers = allMembers.filter((m: any) =>
+              allowedIds.has(String(m.id)) || normalizeMdEmail(m.email) === currentNormalized
+            );
+
+            setMdMembers(filteredMembers.map((m: any) => ({
+              id: m.id,
+              email: m.email,
+              name: m.name
+            })));
+
+            setMdAllowedTaskTypes(myAccess.allowedTaskTypes || []);
+            setMdAllowedBrands(myAccess.allowedBrands || []);
+          } else if (['md_manager', 'admin', 'super_admin', 'troubleshoot_manager'].includes(myRoleNormalized)) {
+            setMdMembers(allMembers.map((m: any) => ({
+              id: m.id,
+              email: m.email,
+              name: m.name
+            })));
+            setMdAllowedTaskTypes(myAccess?.allowedTaskTypes || []);
+            setMdAllowedBrands(myAccess?.allowedBrands || []);
+          } else {
+            const me = allMembers.filter((m: any) => normalizeMdEmail(m.email) === currentNormalized);
+            setMdMembers(me.map((m: any) => ({
+              id: m.id,
+              email: m.email,
+              name: m.name
+            })));
+            setMdAllowedTaskTypes([]);
+            setMdAllowedBrands([]);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching access for MD Impex Edit:", error);
+      } finally {
+        setLoadingAccess(false);
+      }
+    };
+
+    fetchAccessData();
+  }, [open, currentUserEmail]);
+
+  // ========== EARLY RETURN AFTER ALL HOOKS ==========
+  if (!open || !editingTask) return null;
+
+  // Computed values for rendering (not hooks)
+  const taskAssigner = normalizeEmail(editingTask.assignedBy || (editingTask as any).assignedByUser?.email || '');
+  const taskAssignee = normalizeEmail(editingTask.assignedTo || (editingTask as any).assignedToUser?.email || '');
+  const currentEmail = normalizeEmail(currentUserEmail);
+  const isAssigner = currentEmail === taskAssigner;
+  const isAssignee = currentEmail === taskAssignee;
+  const isSpeedEcom = normalizeCompanyKey(editingTask?.companyName || (editingTask as any)?.company) === 'speedecom';
   const shouldDisableAllForSpeedEcom = isSpeedEcom && isAssignee && !isAssigner;
 
 
@@ -318,32 +359,20 @@ const showMdImpexEditModal = ({
 
               <div>
 
-                <label className="block text-sm font-medium text-gray-900 mb-2">Assign To *</label>
+                <label className="block text-sm font-medium text-gray-900 mb-2">Email Address *</label>
 
                 <select
-
                   value={editFormData.assignedTo}
-
                   onChange={(e) => onChange('assignedTo', e.target.value)}
-
                   className={`w-full px-4 py-3 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${editFormErrors.assignedTo ? 'border-red-500' : 'border-gray-300'}`}
-
-                  disabled={shouldDisableAllForSpeedEcom}
-
+                  disabled={shouldDisableAllForSpeedEcom || loadingAccess}
                 >
-
-                  <option value="">Select team member</option>
-
+                  <option value="">{loadingAccess ? 'Loading access...' : 'Select email address'}</option>
                   {filteredUsers.map((user) => (
-
-                    <option key={user.id} value={user.email}>
-
-                      {user.name} ({user.email})
-
+                    <option key={String(user.id || user.email)} value={String(user.email || '')}>
+                      {user.name?.trim() ? `${user.name.trim()} (${user.email.trim()})` : (user.email || '').trim()}
                     </option>
-
                   ))}
-
                 </select>
 
                 {editFormErrors.assignedTo && <p className="mt-1 text-sm text-red-600">{editFormErrors.assignedTo}</p>}
@@ -463,29 +492,17 @@ const showMdImpexEditModal = ({
                   <label className="block text-sm font-medium text-gray-900 mb-2">Task Type</label>
 
                   <select
-
                     className="w-full px-4 py-3 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-
                     value={editFormData.taskType}
-
                     onChange={(e) => onChange('taskType', e.target.value)}
-
-                    disabled={shouldDisableAllForSpeedEcom}
-
+                    disabled={shouldDisableAllForSpeedEcom || filteredTaskTypes.length === 0}
                   >
-
                     <option value="">Select a task type</option>
-
-                    {availableTaskTypesForEditTask.map((typeName) => (
-
-                      <option key={typeName} value={typeName.toLowerCase()}>
-
-                        {typeName}
-
+                    {filteredTaskTypes.map((typeName) => (
+                      <option key={String(typeName)} value={String(typeName || '').trim()}>
+                        {String(typeName || '').trim()}
                       </option>
-
                     ))}
-
                   </select>
 
                 </div>
@@ -516,7 +533,7 @@ const showMdImpexEditModal = ({
 
                     <option key={company} value={company}>
 
-                      {company}
+                      {String(company || '').trim()}
 
                     </option>
 
@@ -540,13 +557,13 @@ const showMdImpexEditModal = ({
 
                   onChange={(e) => onChange('brand', e.target.value)}
 
-                  disabled={!editFormData.companyName || shouldDisableAllForSpeedEcom}
+                  disabled={!editFormData.companyName || shouldDisableAllForSpeedEcom || filteredBrands.length === 0}
 
                 >
 
                   <option value="">Select a brand</option>
 
-                  {getEditFormBrandOptions().map((opt) => (
+                  {filteredBrands.map((opt) => (
 
                     <option key={opt?.value} value={opt?.value}>
 
@@ -646,5 +663,5 @@ const showMdImpexEditModal = ({
 
 
 
-export default showMdImpexEditModal;
+export default MdImpexEditTaskModal;
 

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2, Users, Shield, X, Check, Loader2, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, Users, Shield, X, Check, Loader2, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import mdImpexAccessService from '../Services/MdImpexAccess.services';
+import { taskTypeService, type TaskTypeItem } from '../Services/TaskType.service';
+import { brandService } from '../Services/Brand.service';
 
 import toast from 'react-hot-toast';
 
@@ -28,6 +30,8 @@ type PersonAccessItem = {
   assignedToRole: string;
   accessRole: string;
   allowedAssignees: string[];
+  allowedTaskTypes?: string[];
+  allowedBrands?: string[];
   createdAt: string;
   updatedAt?: string;
 };
@@ -37,6 +41,7 @@ const ROLE_OPTIONS = [
   { value: 'assistant', label: 'Assistant' },
   { value: 'ob_manager', label: 'OB Manager' },
   { value: 'md_manager', label: 'MD Manager' },
+  { value: 'troubleshoot_manager', label: 'Troubleshoot Manager' },
 ];
 
 export default function MdImpexAccessPage() {
@@ -44,6 +49,8 @@ export default function MdImpexAccessPage() {
   const [roles, setRoles] = useState<RoleItem[]>([]);
   const [members, setMembers] = useState<MemberItem[]>([]);
   const [personAccess, setPersonAccess] = useState<PersonAccessItem[]>([]);
+  const [taskTypes, setTaskTypes] = useState<TaskTypeItem[]>([]);
+  const [brands, setBrands] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -57,8 +64,93 @@ export default function MdImpexAccessPage() {
   const [selectedRole, setSelectedRole] = useState('');
   const [selectedPerson, setSelectedPerson] = useState('');
   const [allowedAssignees, setAllowedAssignees] = useState<string[]>([]);
+  const [allowedTaskTypes, setAllowedTaskTypes] = useState<string[]>([]);
+  const [allowedBrands, setAllowedBrands] = useState<string[]>([]);
   const [showPersonModal, setShowPersonModal] = useState(false);
   const [editingPersonAccess, setEditingPersonAccess] = useState<PersonAccessItem | null>(null);
+
+  // Combined roles for display and selection
+  const allRoles = useMemo(() => {
+    const dynamicRoles = roles.map(r => ({
+      value: r.role.toLowerCase().replace(/\s+/g, '_'),
+      label: r.role,
+      isDynamic: true,
+      id: r.id
+    }));
+
+    // Filter out static roles that might already exist in dynamic roles to avoid duplicates
+    const filteredStatic = ROLE_OPTIONS
+      .filter(opt => !dynamicRoles.some(dr => dr.value === opt.value))
+      .map(opt => ({ ...opt, isDynamic: false, id: undefined }));
+
+    return [...filteredStatic, ...dynamicRoles];
+  }, [roles]);
+
+  // Pagination state for Roles List
+  const [currentRolePage, setCurrentRolePage] = useState(1);
+  const rolesPerPage = 5;
+
+  const paginatedRoles = useMemo(() => {
+    const startIndex = (currentRolePage - 1) * rolesPerPage;
+    return allRoles.slice(startIndex, startIndex + rolesPerPage);
+  }, [allRoles, currentRolePage]);
+
+  const totalRolePages = Math.ceil(allRoles.length / rolesPerPage);
+
+  // Pagination state for Person-wise Access
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 3;
+
+  // Paginated person access
+  const paginatedPersonAccess = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return personAccess.slice(startIndex, startIndex + itemsPerPage);
+  }, [personAccess, currentPage]);
+
+  const totalPages = Math.ceil(personAccess.length / itemsPerPage);
+
+  const getRoleLabel = (roleValue: string) => {
+    const found = allRoles.find(r => r.value === roleValue);
+    if (found) return found.label;
+    
+    // Fallback: check if it's a raw role name from the item
+    const roleFromRoles = roles.find(r => r.role.toLowerCase().replace(/\s+/g, '_') === roleValue || r.role === roleValue);
+    if (roleFromRoles) return roleFromRoles.role;
+
+    return roleValue;
+  };
+
+  const loadTaskTypes = async () => {
+    try {
+      const res = await taskTypeService.getTaskTypes();
+      if (res?.success) setTaskTypes(res.data || []);
+      else setTaskTypes([]);
+    } catch {
+      setTaskTypes([]);
+    }
+  };
+
+  const loadBrands = async () => {
+    try {
+      // Fetch all brands with a high limit to ensure we get all of them
+      // We use getBrands with includeDeleted: true to match the main brand page logic
+      const res = await brandService.getBrands({ limit: 5000, includeDeleted: true });
+      if (res?.success && Array.isArray(res.data)) {
+        // Filter specifically for MD Impex, being flexible with naming
+        // This includes brands created by managers as long as they are assigned to MD Impex
+        const mdImpexBrands = res.data.filter((b: any) => {
+          const company = String(b?.company || b?.companyName || "").trim().toLowerCase().replace(/\s+/g, "");
+          return company === "mdimpex";
+        });
+        setBrands(mdImpexBrands);
+      } else {
+        setBrands([]);
+      }
+    } catch (error) {
+      console.error("Failed to load brands", error);
+      setBrands([]);
+    }
+  };
 
   const memberById = useMemo(() => {
     const map = new Map<string, MemberItem>();
@@ -95,6 +187,9 @@ export default function MdImpexAccessPage() {
       } else {
         setError(personAccessRes.message);
       }
+      
+      // Load brands as well
+      await loadBrands();
     } catch (e: any) {
       setError(e?.message || 'Failed to load data');
     } finally {
@@ -104,6 +199,7 @@ export default function MdImpexAccessPage() {
 
   useEffect(() => {
     void loadData();
+    void loadTaskTypes();
   }, []);
 
   // Filter members by selected role
@@ -135,9 +231,9 @@ export default function MdImpexAccessPage() {
     setAddingRole(true);
     try {
       // Use mdImpexAccessService for MD Manager permissions
-      const res = await mdImpexAccessService.createRole({ 
+      const res = await mdImpexAccessService.createRole({
         role: name,
-        description: '' 
+        description: ''
       });
       if (res.success) {
         toast.success('Role added');
@@ -180,13 +276,17 @@ export default function MdImpexAccessPage() {
     const payload = {
       assignedToEmail: selectedPerson,
       assignedToRole: selectedRole,
-      allowedAssignees: selectedRole === 'md_manager' ? [] : allowedAssignees
+      allowedAssignees: allowedAssignees,
+      allowedTaskTypes: allowedTaskTypes,
+      allowedBrands: allowedBrands
     };
 
     let res;
     if (editingPersonAccess) {
       res = await mdImpexAccessService.updatePersonAccess(editingPersonAccess.id, {
-        allowedAssignees: selectedRole === 'md_manager' ? [] : allowedAssignees
+        allowedAssignees: allowedAssignees,
+        allowedTaskTypes: allowedTaskTypes,
+        allowedBrands: allowedBrands
       });
     } else {
       res = await mdImpexAccessService.createPersonAccess(payload);
@@ -208,6 +308,8 @@ export default function MdImpexAccessPage() {
     setSelectedRole(item.assignedToRole);
     setSelectedPerson(item.assignedToEmail);
     setAllowedAssignees(item.allowedAssignees || []);
+    setAllowedTaskTypes(item.allowedTaskTypes || []);
+    setAllowedBrands(item.allowedBrands || []);
     setShowPersonModal(true);
   };
 
@@ -229,15 +331,61 @@ export default function MdImpexAccessPage() {
     setSelectedRole('');
     setSelectedPerson('');
     setAllowedAssignees([]);
+    setAllowedTaskTypes([]);
+    setAllowedBrands([]);
     setEditingPersonAccess(null);
   };
 
   const toggleAssignee = (userId: string) => {
-    setAllowedAssignees(prev => 
-      prev.includes(userId) 
+    setAllowedAssignees(prev =>
+      prev.includes(userId)
         ? prev.filter(e => e !== userId)
         : [...prev, userId]
     );
+  };
+
+  const toggleTaskType = (taskTypeName: string) => {
+    const key = (taskTypeName || '').toString().trim().toLowerCase();
+    if (!key) return;
+    setAllowedTaskTypes(prev =>
+      prev.includes(key)
+        ? prev.filter(t => t !== key)
+        : [...prev, key]
+    );
+  };
+
+  const toggleBrand = (brandName: string) => {
+    const key = (brandName || '').toString().trim();
+    if (!key) return;
+    setAllowedBrands(prev =>
+      prev.includes(key)
+        ? prev.filter(b => b !== key)
+        : [...prev, key]
+    );
+  };
+
+  const toggleAllAssignees = () => {
+    if (allowedAssignees.length === availableAssignees.length) {
+      setAllowedAssignees([]);
+    } else {
+      setAllowedAssignees(availableAssignees.map(m => m.id));
+    }
+  };
+
+  const toggleAllTaskTypes = () => {
+    if (allowedTaskTypes.length === taskTypes.length) {
+      setAllowedTaskTypes([]);
+    } else {
+      setAllowedTaskTypes(taskTypes.map(t => String(t.name || '').trim().toLowerCase()));
+    }
+  };
+
+  const toggleAllBrands = () => {
+    if (allowedBrands.length === brands.length) {
+      setAllowedBrands([]);
+    } else {
+      setAllowedBrands(brands.map(b => String(b.name || '').trim()));
+    }
   };
 
   return (
@@ -293,11 +441,11 @@ export default function MdImpexAccessPage() {
                     MD Impex Members ({members.length})
                   </h2>
                 </div>
-                <div className="max-h-[600px] overflow-y-auto">
+                <div className="flex flex-col h-[500px]">
                   {members.length === 0 ? (
-                    <p className="p-4 text-gray-500 text-center">No members found</p>
+                    <p className="p-4 text-gray-500 text-center flex-1 flex flex-col justify-center">No members found</p>
                   ) : (
-                    <ul className="divide-y divide-gray-100">
+                    <ul className="divide-y divide-gray-100 flex-1 overflow-y-auto custom-scrollbar">
                       {members.map((member) => (
                         <li key={member.id} className="p-3 hover:bg-gray-50">
                           <p className="font-medium text-gray-900 text-sm">{member.name}</p>
@@ -320,9 +468,9 @@ export default function MdImpexAccessPage() {
                     Roles ({roles.length})
                   </h2>
                 </div>
-                <div className="max-h-[600px] overflow-y-auto">
-                  {roles.length === 0 ? (
-                    <div className="p-8 text-center">
+                <div className="flex flex-col h-[500px]">
+                  {allRoles.length === 0 ? (
+                    <div className="p-8 text-center flex-1 flex flex-col justify-center">
                       <p className="text-gray-500">No roles created yet</p>
                       <button
                         onClick={() => setShowCreateModal(true)}
@@ -332,30 +480,60 @@ export default function MdImpexAccessPage() {
                       </button>
                     </div>
                   ) : (
-                    <ul className="divide-y divide-gray-100">
-                      {roles.map((role) => (
-                        <li key={role.id} className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <h3 className="font-semibold text-gray-900 text-sm">{role.role}</h3>
-                              {role.description && (
-                                <p className="text-xs text-gray-500 mt-1">{role.description}</p>
+                    <>
+                      <ul className="divide-y divide-gray-100 flex-1 overflow-hidden">
+                        {paginatedRoles.map((role) => (
+                          <li key={role.value} className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <h3 className="font-semibold text-gray-900 text-sm">{role.label}</h3>
+                                  {role.isDynamic ? (
+                                    <span className="px-1.5 py-0.5 text-[10px] font-medium bg-purple-100 text-purple-700 rounded">Dynamic</span>
+                                  ) : (
+                                    <span className="px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-600 rounded">Static</span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-gray-400 mt-1">
+                                  {role.isDynamic ? (roles.find(r => r.id === role.id)?.emails?.length || 0) : 'Static'} role
+                                </p>
+                              </div>
+                              {role.isDynamic && role.id && (
+                                <button
+                                  onClick={() => handleDeleteRole(role.id!, role.label)}
+                                  className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                  title="Delete Role"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
                               )}
-                              <p className="text-xs text-gray-400 mt-1">
-                                {role.emails?.length || 0} member(s)
-                              </p>
                             </div>
-                            <button
-                              onClick={() => handleDeleteRole(role.id, role.role)}
-                              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Delete Role"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
+                          </li>
+                        ))}
+                      </ul>
+                      {/* Roles Pagination */}
+                      {totalRolePages > 1 && (
+                        <div className="p-3 border-t border-gray-100 flex items-center justify-center gap-2 bg-gray-50/30">
+                          <button
+                            onClick={() => setCurrentRolePage(prev => Math.max(1, prev - 1))}
+                            disabled={currentRolePage === 1}
+                            className="p-1 rounded border border-gray-200 bg-white disabled:opacity-50"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </button>
+                          <span className="text-xs font-bold text-gray-600">
+                            {currentRolePage} / {totalRolePages}
+                          </span>
+                          <button
+                            onClick={() => setCurrentRolePage(prev => Math.min(totalRolePages, prev + 1))}
+                            disabled={currentRolePage === totalRolePages}
+                            className="p-1 rounded border border-gray-200 bg-white disabled:opacity-50"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -370,9 +548,9 @@ export default function MdImpexAccessPage() {
                     Person-wise Access ({personAccess.length})
                   </h2>
                 </div>
-                <div className="max-h-[600px] overflow-y-auto">
+                <div className="flex flex-col min-h-[500px]">
                   {personAccess.length === 0 ? (
-                    <div className="p-8 text-center">
+                    <div className="p-8 text-center flex-1 flex flex-col justify-center">
                       <p className="text-gray-500">No person-wise access configured yet</p>
                       <button
                         onClick={() => setShowPersonModal(true)}
@@ -382,48 +560,160 @@ export default function MdImpexAccessPage() {
                       </button>
                     </div>
                   ) : (
-                    <ul className="divide-y divide-gray-100">
-                      {personAccess.map((item) => (
-                        <li key={item.id} className="p-4">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <h3 className="font-semibold text-gray-900">{item.assignedToName}</h3>
-                                <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">
-                                  {item.assignedToRole}
-                                </span>
+                    <>
+                      <ul className="divide-y divide-gray-100 flex-1">
+                        {paginatedPersonAccess.map((item) => (
+                          <li key={item.id} className="p-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <h3 className="font-semibold text-gray-900">{item.assignedToName}</h3>
+                                  <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">
+                                    {item.assignedToRole}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-gray-500 mb-2">{item.assignedToEmail}</p>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-sm font-medium text-gray-700">Access Role:</span>
+                                  <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">
+                                    {getRoleLabel(item.accessRole)}
+                                  </span>
+                                </div>
+                                
+                                {/* Brands Display */}
+                                {item.allowedBrands && item.allowedBrands.length > 0 && (
+                                  <div className="text-sm text-gray-600 mt-2">
+                                    <span className="font-medium">Allowed Brands:</span>
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {item.allowedBrands.map((brand) => (
+                                        <span key={brand} className="px-1.5 py-0.5 bg-purple-50 text-purple-700 text-[10px] rounded border border-purple-100">
+                                          {brand}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                <div className="text-sm text-gray-600 mt-2">
+                                  <span className="font-medium">Can assign to:</span>
+                                  {item.allowedAssignees.length === 0 ? (
+                                    <span className="ml-1 text-gray-400">Everyone (Full Access)</span>
+                                  ) : (
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {item.allowedAssignees.map((userId) => {
+                                        const m = memberById.get(userId);
+                                        return (
+                                          <span key={userId} className="px-1.5 py-0.5 bg-blue-50 text-blue-700 text-[10px] rounded border border-blue-100">
+                                            {m?.email || userId}
+                                          </span>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                              <p className="text-sm text-gray-500 mb-2">{item.assignedToEmail}</p>
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className="text-sm font-medium text-gray-700">Access Role:</span>
-                                <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">
-                                  {item.accessRole}
-                                </span>
-                              </div>
-                              <div className="text-sm text-gray-600">
-                                <span className="font-medium">Can assign to:</span> {item.allowedAssignees.length} member(s)
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleEditPersonAccess(item)}
+                                  className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                  title="Edit Access"
+                                >
+                                  <Check className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeletePersonAccess(item.id, item.assignedToName)}
+                                  className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                  title="Delete Access"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => handleEditPersonAccess(item)}
-                                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                title="Edit Access"
-                              >
-                                <Check className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDeletePersonAccess(item.id, item.assignedToName)}
-                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                title="Delete Access"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                          </li>
+                        ))}
+                      </ul>
+
+                      {/* Pagination Controls */}
+                      {totalPages > 1 && (
+                        <div className="p-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/30">
+                          <p className="text-xs text-gray-500 font-medium">
+                            Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, personAccess.length)} of {personAccess.length}
+                          </p>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                              disabled={currentPage === 1}
+                              className="p-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                            >
+                              <ChevronLeft className="w-4 h-4" />
+                            </button>
+                            <div className="flex items-center gap-1 overflow-x-auto py-1 max-w-[150px] sm:max-w-none">
+                              {(() => {
+                                const maxVisiblePages = 5;
+                                let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+                                let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+                                
+                                if (endPage - startPage + 1 < maxVisiblePages) {
+                                  startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                                }
+
+                                const pages = [];
+                                for (let i = startPage; i <= endPage; i++) {
+                                  pages.push(i);
+                                }
+
+                                return (
+                                  <>
+                                    {startPage > 1 && (
+                                      <>
+                                        <button
+                                          onClick={() => setCurrentPage(1)}
+                                          className="w-8 h-8 text-xs font-bold rounded-lg transition-all text-gray-600 hover:bg-gray-100"
+                                        >
+                                          1
+                                        </button>
+                                        {startPage > 2 && <span className="text-gray-400 px-1">...</span>}
+                                      </>
+                                    )}
+                                    {pages.map((i) => (
+                                      <button
+                                        key={i}
+                                        onClick={() => setCurrentPage(i)}
+                                        className={`w-8 h-8 text-xs font-bold rounded-lg transition-all shrink-0 ${
+                                          currentPage === i
+                                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+                                            : 'text-gray-600 hover:bg-gray-100'
+                                        }`}
+                                      >
+                                        {i}
+                                      </button>
+                                    ))}
+                                    {endPage < totalPages && (
+                                      <>
+                                        {endPage < totalPages - 1 && <span className="text-gray-400 px-1">...</span>}
+                                        <button
+                                          onClick={() => setCurrentPage(totalPages)}
+                                          className="w-8 h-8 text-xs font-bold rounded-lg transition-all text-gray-600 hover:bg-gray-100"
+                                        >
+                                          {totalPages}
+                                        </button>
+                                      </>
+                                    )}
+                                  </>
+                                );
+                              })()}
                             </div>
+                            <button
+                              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                              disabled={currentPage === totalPages}
+                              className="p-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                            >
+                              <ChevronRight className="w-4 h-4" />
+                            </button>
                           </div>
-                        </li>
-                      ))}
-                    </ul>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -492,13 +782,16 @@ export default function MdImpexAccessPage() {
         {/* Person Access Modal */}
         {showPersonModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {editingPersonAccess ? 'Edit Person Access' : 'Add Person Access'}
-                </h3>
-                <div className="flex items-center gap-2">
-                  {/* Add Role button for MD Manager - same as AccessPage */}
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-gray-50/50">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">
+                    {editingPersonAccess ? 'Edit Access Configuration' : 'Configure New Access'}
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">Set permissions for MD Impex team members</p>
+                </div>
+                <div className="flex items-center gap-3">
                   <button
                     type="button"
                     onClick={() => {
@@ -506,177 +799,225 @@ export default function MdImpexAccessPage() {
                       setNewRole({ key: '', name: '' });
                       setShowCreateModal(true);
                     }}
-                    className="hidden sm:inline-flex items-center px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-medium rounded-lg"
+                    className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-700 text-sm font-semibold rounded-xl hover:bg-blue-100 transition-colors"
                   >
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Role
+                    New Role
                   </button>
                   <button
                     onClick={() => {
                       setShowPersonModal(false);
                       resetPersonForm();
                     }}
-                    className="p-1 text-gray-400 hover:text-gray-600"
+                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
                   >
-                    <X className="w-5 h-5" />
+                    <X className="w-6 h-6" />
                   </button>
                 </div>
               </div>
-              <div className="p-4 space-y-4">
-                {/* Role Dropdown */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Select Role <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={selectedRole}
-                      onChange={(e) => {
-                        setSelectedRole(e.target.value);
-                        setSelectedPerson('');
-                      }}
-                      className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none appearance-none"
-                    >
-                      <option value="">Select a role...</option>
-                      {ROLE_OPTIONS.map((role) => (
-                        <option key={role.value} value={role.value}>
-                          {role.label}
-                        </option>
-                      ))}
-                      {roles.map((role) => (
-                        <option key={role.id} value={role.role.toLowerCase().replace(/\s+/g, '_')}>
-                          {role.role}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                  </div>
-                </div>
 
-                {/* Person Dropdown */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Select Person <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={selectedPerson}
-                      onChange={(e) => setSelectedPerson(e.target.value)}
-                      disabled={!selectedRole}
-                      className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none appearance-none disabled:opacity-50"
-                    >
-                      <option value="">Select a person...</option>
-                      {filteredMembers.map((member) => (
-                        <option key={member.id} value={member.email}>
-                          {member.name} ({member.email})
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                  </div>
-                </div>
-
-                {/* MD Manager Full Access Notice */}
-                {selectedRole === 'md_manager' && (
-                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <p className="text-sm text-green-800">
-                      <strong>MD Manager</strong> will have full access to all MD Impex features and can assign tasks to any team member.
-                    </p>
-                  </div>
-                )}
-
-                {/* Allowed Assignees */}
-                {selectedPerson && selectedRole !== 'md_manager' && (
-                  <div>
-                    {/* Selected Person Email */}
-                    <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Selected Person Email
+              <div className="flex-1 overflow-y-auto p-8">
+                <div className="space-y-8">
+                  {/* Top Row: Role and Email side-by-side */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        Role <span className="text-rose-500">*</span>
                       </label>
-                      <span className="inline-flex items-center px-3 py-1.5 bg-green-100 text-green-800 text-sm font-medium rounded-full">
-                        {selectedPerson}
-                      </span>
+                      <div className="relative">
+                        <select
+                          value={selectedRole}
+                          onChange={(e) => {
+                            setSelectedRole(e.target.value);
+                            setSelectedPerson('');
+                          }}
+                          className="w-full pl-4 pr-10 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 font-medium focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none appearance-none transition-all"
+                        >
+                          <option value="">Select Role...</option>
+                          {allRoles.map((role) => (
+                            <option key={role.value} value={role.value}>
+                              {role.label}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                      </div>
                     </div>
 
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Allowed Assignees (Optional - select additional people)
-                    </label>
-                    <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3 space-y-2">
-                      {availableAssignees.length === 0 ? (
-                        <p className="text-gray-500 text-sm text-center">No available assignees</p>
-                      ) : (
-                        availableAssignees.map((member) => (
-                          <label
-                            key={member.id}
-                            className="flex items-center gap-3 p-2 bg-gray-50 rounded cursor-pointer hover:bg-gray-100"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={allowedAssignees.includes(member.id)}
-                              onChange={() => toggleAssignee(member.id)}
-                              className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                            />
-                            <div className="flex-1">
-                              <p className="text-sm font-medium text-gray-900">{member.name}</p>
-                              <p className="text-xs text-gray-500">{member.email}</p>
-                            </div>
-                          </label>
-                        ))
-                      )}
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        Email <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={selectedPerson}
+                          onChange={(e) => setSelectedPerson(e.target.value)}
+                          disabled={!selectedRole}
+                          className="w-full pl-4 pr-10 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 font-medium focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none appearance-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <option value="">{selectedRole ? 'Select Email...' : 'Select a role first'}</option>
+                          {filteredMembers.map((member) => (
+                            <option key={member.id} value={member.email}>
+                              {member.name} ({member.email})
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                      </div>
                     </div>
-                    {/* Selected Emails Display */}
-                    {allowedAssignees.length > 0 && (
-                      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Additional Selected Emails ({allowedAssignees.length})
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                          {allowedAssignees.map((userId) => {
-                            const m = memberById.get(userId);
-                            const label = m ? `${m.email}` : userId;
-                            return (
-                            <span
-                              key={userId}
-                              className="inline-flex items-center gap-1 px-2 py-1 bg-white text-xs text-gray-700 rounded border border-gray-200"
-                            >
-                              {label}
-                              <button
-                                type="button"
-                                onClick={() => toggleAssignee(userId)}
-                                className="text-gray-400 hover:text-red-500"
-                              >
-                                <X className="w-3 h-3" />
-                              </button>
-                            </span>
-                            );
-                          })}
+                  </div>
+
+                  {/* Middle Row: MD Manager Notice */}
+                  {selectedRole === 'md_manager' && (
+                    <div className="p-4 bg-blue-50 border border-blue-100 rounded-2xl flex gap-3">
+                      <Shield className="w-5 h-5 text-blue-600 shrink-0" />
+                      <p className="text-sm text-blue-800 leading-relaxed">
+                        <strong>MD Manager Note:</strong> Typically has full access, but you can configure specific restrictions below.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Bottom Row: 3 boxes side-by-side */}
+                  {selectedPerson ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      {/* Task Types Box */}
+                      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col h-[400px]">
+                        <div className="px-6 py-4 bg-gray-50/50 border-b border-gray-100 flex items-center justify-between shrink-0">
+                          <h4 className="font-bold text-gray-900 text-sm">Task Types</h4>
+                          <button
+                            onClick={toggleAllTaskTypes}
+                            className="text-xs font-bold text-blue-600 hover:text-blue-700"
+                          >
+                            {allowedTaskTypes.length === taskTypes.length ? 'Deselect All' : 'Select All'}
+                          </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                          {taskTypes.length === 0 ? (
+                            <p className="text-gray-500 text-sm text-center py-4">No task types found</p>
+                          ) : (
+                            taskTypes.map((t, index) => {
+                              const label = String((t as any)?.name || '').trim();
+                              const key = label.toLowerCase();
+                              return (
+                                <label key={key} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 cursor-pointer group transition-colors">
+                                  <input
+                                    type="checkbox"
+                                    checked={allowedTaskTypes.includes(key)}
+                                    onChange={() => toggleTaskType(label)}
+                                    className="w-5 h-5 text-blue-600 border-gray-200 rounded-lg focus:ring-blue-500/20 transition-all"
+                                  />
+                                  <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                                    {index + 1}. {label}
+                                  </span>
+                                </label>
+                              );
+                            })
+                          )}
                         </div>
                       </div>
-                    )}
-                  </div>
-                )}
+
+                      {/* Brands Box */}
+                      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col h-[400px]">
+                        <div className="px-6 py-4 bg-gray-50/50 border-b border-gray-100 flex items-center justify-between shrink-0">
+                          <h4 className="font-bold text-gray-900 text-sm">Brands</h4>
+                          <button
+                            onClick={toggleAllBrands}
+                            className="text-xs font-bold text-blue-600 hover:text-blue-700"
+                          >
+                            {allowedBrands.length === brands.length ? 'Deselect All' : 'Select All'}
+                          </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                          {brands.length === 0 ? (
+                            <p className="text-gray-500 text-sm text-center py-4">No brands found</p>
+                          ) : (
+                            brands.map((b, index) => {
+                              const label = String(b?.name || '').trim();
+                              return (
+                                <label key={label} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 cursor-pointer group transition-colors">
+                                  <input
+                                    type="checkbox"
+                                    checked={allowedBrands.includes(label)}
+                                    onChange={() => toggleBrand(label)}
+                                    className="w-5 h-5 text-blue-600 border-gray-200 rounded-lg focus:ring-blue-500/20 transition-all"
+                                  />
+                                  <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                                    {index + 1}. {label}
+                                  </span>
+                                </label>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Assignees Box */}
+                      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col h-[400px]">
+                        <div className="px-6 py-4 bg-gray-50/50 border-b border-gray-100 flex items-center justify-between shrink-0">
+                          <h4 className="font-bold text-gray-900 text-sm">Emails (Assignees)</h4>
+                          <button
+                            onClick={toggleAllAssignees}
+                            className="text-xs font-bold text-blue-600 hover:text-blue-700"
+                          >
+                            {allowedAssignees.length === availableAssignees.length ? 'Deselect All' : 'Select All'}
+                          </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                          {availableAssignees.length === 0 ? (
+                            <p className="text-gray-500 text-sm text-center py-4">No available assignees</p>
+                          ) : (
+                            availableAssignees.map((member, index) => (
+                              <label key={member.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 cursor-pointer group transition-colors">
+                                <input
+                                  type="checkbox"
+                                  checked={allowedAssignees.includes(member.id)}
+                                  onChange={() => toggleAssignee(member.id)}
+                                  className="w-5 h-5 text-blue-600 border-gray-200 rounded-lg focus:ring-blue-500/20 transition-all"
+                                />
+                                <div className="flex-1">
+                                  <p className="text-sm font-bold text-gray-900 leading-none">
+                                    {index + 1}. {member.name}
+                                  </p>
+                                  <p className="text-[10px] text-gray-500 mt-1 font-medium">{member.email}</p>
+                                </div>
+                              </label>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="h-64 flex flex-col items-center justify-center p-12 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                      <Shield className="w-12 h-12 text-gray-300 mb-4" />
+                      <h4 className="text-gray-900 font-bold">Waiting for Selection</h4>
+                      <p className="text-sm text-gray-500 mt-2 max-w-[200px]">Select a role and email above to begin configuration</p>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center justify-end gap-2 p-4 border-t border-gray-200">
+
+              {/* Modal Footer */}
+              <div className="px-8 py-6 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-3">
                 <button
                   onClick={() => {
                     setShowPersonModal(false);
                     resetPersonForm();
                   }}
-                  className="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 rounded-lg transition-colors"
+                  className="px-6 py-3 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors"
                 >
-                  Cancel
+                  Discard Changes
                 </button>
                 <button
                   onClick={handleSavePersonAccess}
                   disabled={saving || !selectedPerson}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white text-sm font-bold rounded-2xl hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all disabled:opacity-50 disabled:shadow-none"
                 >
                   {saving ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
-                    <Plus className="w-4 h-4" />
+                    <Check className="w-5 h-5" />
                   )}
-                  {editingPersonAccess ? 'Update Access' : 'Add Access'}
+                  {editingPersonAccess ? 'Update Permissions' : 'Save Configuration'}
                 </button>
               </div>
             </div>

@@ -35,6 +35,7 @@ import { companyService } from '../Services/Company.service';
 import CreateBrandModal from './CreateBrandModal';
 import EditBrandModal from './EditBrandModal';
 import EditCompanyModal from './EditCompanyModal';
+import BulkBrandAddModal from './BulkBrandAddModal';
 
 import { routepath } from '../Routes/route';
 
@@ -97,6 +98,10 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
     const canEditBrand = useMemo(() => hasAccess('brand_edit'), [hasAccess]);
     const canDeleteBrand = useMemo(() => hasAccess('brand_delete'), [hasAccess]);
     const canBulkAddCompanies = useMemo(() => hasAccess('company_bulk_add'), [hasAccess]);
+    const canBulkAddBrands = useMemo(() => {
+        const r = String((currentUser as any)?.role || '').trim().toLowerCase();
+        return r === 'super_admin' || r === 'admin' || r === 'md_manager' || r === 'manager' || hasAccess('brand_bulk_add');
+    }, [currentUser, hasAccess]);
     const canEditCompany = useMemo(() => {
         const r = String((currentUser as any)?.role || '').trim().toLowerCase();
         const roleAllows = r === 'super_admin' || r === 'admin' || r === 'md_manager' || r === 'ob_manager';
@@ -149,6 +154,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
     const [currentPage, setCurrentPage] = useState(1);
     const [brandsPerPage, setBrandsPerPage] = useState<number>(DEFAULT_BRANDS_PER_PAGE);
     const [brandsTotal, setBrandsTotal] = useState<number>(0);
+    const [showBulkAddModal, setShowBulkAddModal] = useState(false);
 
     const [brandHistoryPage, setBrandHistoryPage] = useState(1);
     const [brandHistoryLimit] = useState(30);
@@ -161,7 +167,6 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         return Array.isArray(allTasks) ? allTasks : [];
     }, [propTasks, allTasks]);
 
-    // FIXED: Updated reportTasks logic to include all tasks for managers and include completed tasks
     const reportTasks = useMemo(() => {
         const tasks = Array.isArray(effectiveTasks) ? effectiveTasks : [];
 
@@ -199,18 +204,13 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         };
 
         if (role === 'assistant') {
-            // Assistants see tasks assigned to them (including completed)
             return tasks.filter(isAssignedToCurrentUser);
         }
 
         if (role === 'manager') {
-            // Managers see tasks assigned to them (including completed)
-            // Also see tasks where they are the assigner
             return tasks.filter((t: any) => {
-                // If task is assigned to this manager
                 if (isAssignedToCurrentUser(t)) return true;
 
-                // If manager assigned this task to someone else
                 const assignedByRaw = t?.assignedBy;
                 const byEmail = normalize(getEmail(assignedByRaw));
                 const byId = String(getId(assignedByRaw) || '').trim();
@@ -221,7 +221,6 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
             });
         }
 
-        // Admin sees all tasks
         return tasks;
     }, [effectiveTasks, currentUser, role]);
 
@@ -307,7 +306,6 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         _rawTimestamp?: any;
     };
 
-    // FIXED: Updated history logic to include relevant history for managers and assistants
     const recentBrandActivity = useMemo(() => {
         const items: BrandsPageHistoryItem[] = [];
 
@@ -325,37 +323,6 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
 
         let sources: any[] = [...(brands || []), ...(deletedBrands || [])];
 
-        // For assistants, only include their assigned brands
-        if (role === 'assistant') {
-            sources = sources.filter((b: any) => {
-                const id = String(b?.id || b?._id || '').trim();
-                if (id && assignedBrandKeys.has(id)) return true;
-                return assignedBrandKeys.has(`${normalize(b?.name)}|${normalize(b?.company)}`);
-            });
-        }
-
-        // For managers, include brands they own and brands from their tasks
-        if (role === 'manager') {
-            const assignedFromTasks = new Set<string>();
-            (reportTasks || []).forEach((t: any) => {
-                const brandId = String(t?.brandId || '').trim();
-                if (brandId) assignedFromTasks.add(brandId);
-                const brandName = String(t?.brandName || t?.brand || '').trim();
-                const companyName = String(t?.companyName || t?.company || '').trim();
-
-                if (brandName || companyName) {
-                    assignedFromTasks.add(`${normalize(brandName)}|${normalize(companyName)}`);
-                }
-            });
-
-            const fromAllBrands = [...(apiBrands || []), ...(deletedBrands || [])];
-            sources = fromAllBrands.filter((b: any) => {
-                const id = String(b?.id || b?._id || '').trim();
-                if (id && assignedFromTasks.has(id)) return true;
-                return assignedFromTasks.has(`${normalize(b?.name)}|${normalize(b?.company)}`);
-            });
-        }
-
         const seen = new Set<string>();
 
         sources.forEach((b: any) => {
@@ -364,8 +331,6 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
             const brandName = String(b?.name || '').trim();
             const brandGroupNumber = String((b as any)?.groupNumber || '').trim();
             const brandCompany = String(b?.company || '').trim();
-
-            if (role === 'sbm' && !brandGroupNumber) return;
 
             const dedupeKey = `${brandId}|${brandName.toLowerCase()}|${brandCompany.toLowerCase()}|${String(b?.status || '')}`;
             if (seen.has(dedupeKey)) return;
@@ -412,14 +377,11 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         const currentEmail = myEmail;
         const currentId = myId;
 
-        // FIXED: Filter history based on user role and permissions
         const shouldIncludeHistory = (h: any) => {
             String(h?.action || '').toLowerCase();
 
-            // Always include non-task history
             if (!isTaskHistory(h)) return true;
 
-            // For assistants, only include history related to their tasks
             if (role === 'assistant') {
                 const meta = (h as any)?.metadata || {};
                 const assignedToEmail = normalize(meta?.assignedToEmail || meta?.assignedTo || meta?.assistantEmail || meta?.assigneeEmail || meta?.assignedToUser?.email);
@@ -430,7 +392,6 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                 return false;
             }
 
-            // For managers, include history for tasks they're involved with
             if (role === 'manager') {
                 const meta = (h as any)?.metadata || {};
                 const assignedToEmail = normalize(meta?.assignedToEmail || meta?.assignedTo || meta?.assistantEmail || meta?.assigneeEmail || meta?.assignedToUser?.email);
@@ -438,18 +399,13 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                 const assignedByEmail = normalize(meta?.assignedByEmail || meta?.assignedBy || meta?.assignerEmail || meta?.assignedByUser?.email);
                 const assignedById = String(meta?.assignedById || meta?.assignerId || meta?.assignedByUser?.id || meta?.assignedByUser?._id || '').trim();
 
-                // Include if assigned to this manager
                 if (currentEmail && assignedToEmail && assignedToEmail === currentEmail) return true;
                 if (currentId && assignedToId && assignedToId === currentId) return true;
-
-                // Include if assigned by this manager
                 if (currentEmail && assignedByEmail && assignedByEmail === currentEmail) return true;
                 if (currentId && assignedById && assignedById === currentId) return true;
-
                 return false;
             }
 
-            // Admin sees all history
             return true;
         };
 
@@ -466,7 +422,6 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         _rawTimestamp?: any;
     };
 
-    // FIXED: Updated company history logic
     const recentCompanyActivity = useMemo(() => {
         const items: CompaniesPageHistoryItem[] = [];
 
@@ -521,7 +476,6 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
             return t;
         };
 
-        // FIXED: Filter company history based on user role
         const shouldIncludeHistory = (h: any) => {
             const action = String(h?.action || '').toLowerCase();
             const isTaskHistory = action.includes('task');
@@ -680,14 +634,13 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         if (role === 'assistant') return [] as Array<{ managerId: string; managerLabel: string; brands: Brand[]; companies: string[] }>;
 
         const myId = String((currentUser as any)?.id || (currentUser as any)?._id || '').trim();
-        const currentRole = role;
 
         const groups = new Map<string, { managerId: string; managerLabel: string; brands: Brand[]; companies: string[] }>();
 
         (accessibleBrands || []).forEach((b: any) => {
             const owner = (b?.owner && typeof b.owner === 'object') ? (b.owner.id || b.owner._id) : b?.owner;
             const ownerId = String(owner || '');
-            if (currentRole === 'manager' && myId && ownerId !== myId) return;
+            if (role === 'manager' && myId && ownerId !== myId) return;
 
             const ownerRole = userRoleById.get(ownerId);
             if (ownerRole !== 'manager' && ownerRole !== 'md_manager') return;
@@ -702,7 +655,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
 
         (companyDocs || []).forEach((c: any) => {
             const creatorId = String(c?.createdBy || c?.owner || '');
-            if (currentRole === 'manager' && myId && creatorId !== myId) return;
+            if (role === 'manager' && myId && creatorId !== myId) return;
             const creatorRole = userRoleById.get(creatorId);
             if (creatorRole !== 'manager' && creatorRole !== 'md_manager') return;
 
@@ -1104,6 +1057,19 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         }
     }, [fetchBrands]);
 
+    const handleBulkAddBrands = useCallback(async (brands: any[]) => {
+        try {
+            const res = await brandService.bulkUpsertBrands({ brands });
+            if (res.success) {
+                toast.success(`${res.data.length} brands processed successfully`);
+                setShowBulkAddModal(false);
+                fetchBrands();
+            }
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'Failed to bulk add brands');
+        }
+    }, [fetchBrands]);
+
     const handleUpdateBrand = useCallback(async (brandData: any) => {
         if (!selectedBrand) return;
 
@@ -1264,7 +1230,6 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
             const n = String(b?.name || '').trim().toLowerCase();
             if (n !== name.toLowerCase()) return false;
 
-            // If company filter is active, prefer the brand in that company
             if (filters.company !== 'all') {
                 return String(b?.company || '').trim() === String(filters.company || '').trim();
             }
@@ -1277,7 +1242,6 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         const company = String((candidate as any).company || '').trim();
         const groupNumber = String((candidate as any).groupNumber || '').trim();
 
-        // Your logic: only prepend groupNumber for speed Ecom
         if (company === 'speed Ecom' && groupNumber) {
             return `${groupNumber} - ${name}`;
         }
@@ -1308,7 +1272,6 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
     const endItemIndex = totalBrands === 0 ? 0 : Math.min(startItemIndex + (paginatedBrands.length || 0) - 1, totalBrands);
 
     useEffect(() => {
-        // Reset to first page when filters or brand set change
         setCurrentPage(1);
     }, [filters, brandsPerPage]);
 
@@ -1664,7 +1627,6 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         `;
     }, [isSidebarCollapsed]);
 
-    // Loading Skeleton Component
     const LoadingSkeleton = () => (
         <div className="min-h-screen bg-gray-50">
             {/* Header Skeleton */}
@@ -1755,6 +1717,17 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                 <h1 className="text-3xl font-bold text-gray-900">Brands</h1>
                             </div>
                             <p className="text-gray-600">Manage and track all your brands in one place</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            {canBulkAddBrands && (
+                                <button
+                                    onClick={() => setShowBulkAddModal(true)}
+                                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
+                                >
+                                    <Package className="h-4 w-4" />
+                                    Bulk Add Brands
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -1922,7 +1895,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                                         handleDeleteBrand(brand);
                                                     }
                                                 }}
-                                                className="px-3 py-1.5 text-xs font-medium bg-red-100 text-red-700 rounded-lg hover:bg-red-200 flex items-center gap-1"
+                                                className="px-3 py-1.5 text-xs font-medium bg-red-50 text-red-700 rounded-lg hover:bg-red-100 flex items-center gap-1"
                                             >
                                                 <Trash2 className="h-3 w-3" />
                                                 Permanently Delete
@@ -2126,7 +2099,6 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                 </div>
                             </div>
                         ) : viewMode === 'grid' ? (
-                            // Grid View
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {paginatedBrands.map((brand) => {
                                     const taskCount = brandTaskCounts.get(String(brand.id)) || 0;
@@ -2156,7 +2128,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                                                        <p className="text-sm text-gray-600 truncate max-w-xs">
                                                             {brand.company}
                                                         </p>
                                                     </div>
@@ -2251,7 +2223,6 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                 })}
                             </div>
                         ) : (
-                            // List View
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
                                 <div className="overflow-x-auto">
                                     <table className="min-w-full divide-y divide-gray-200">
@@ -2538,7 +2509,10 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
 
                                     <div className="mt-6 rounded-xl border border-gray-200 p-5">
                                         <div className="flex items-center justify-between mb-4">
-                                            <h3 className="text-lg font-semibold text-gray-900">Companies</h3>
+                                            <div>
+                                                <h2 className="text-xl font-bold text-gray-900">Companies</h2>
+                                                <p className="text-sm text-gray-600 mt-1">All companies</p>
+                                            </div>
                                             <span className="text-sm text-gray-500">{companiesForReport.length}</span>
                                         </div>
 
@@ -2607,7 +2581,10 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
 
                                     <div className="mt-6 rounded-xl border border-gray-200 p-5">
                                         <div className="flex items-center justify-between mb-4">
-                                            <h3 className="text-lg font-semibold text-gray-900">Manager Task Assignments (Brand / Company)</h3>
+                                            <div>
+                                                <h2 className="text-xl font-bold text-gray-900">Manager Task Assignments (Brand / Company)</h2>
+                                                <p className="text-sm text-gray-600 mt-1">Manager-to-assistant brand assignments</p>
+                                            </div>
                                             <span className="text-sm text-gray-500">{managerAssistantBrandAssignments.length} managers</span>
                                         </div>
 
@@ -2659,7 +2636,10 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
 
                                     <div className="mt-6 rounded-xl border border-gray-200 p-5">
                                         <div className="flex items-center justify-between mb-4">
-                                            <h3 className="text-lg font-semibold text-gray-900">Company History</h3>
+                                            <div>
+                                                <h2 className="text-xl font-bold text-gray-900">Company History</h2>
+                                                <p className="text-sm text-gray-600 mt-1">Recent company activity</p>
+                                            </div>
                                             <span className="text-sm text-gray-500">{recentCompanyActivity.length} recent activities</span>
                                         </div>
 
@@ -2713,7 +2693,10 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
 
                                     <div className="mt-6 rounded-xl border border-gray-200 p-5">
                                         <div className="flex items-center justify-between mb-4">
-                                            <h3 className="text-lg font-semibold text-gray-900">Brand History</h3>
+                                            <div>
+                                                <h2 className="text-xl font-bold text-gray-900">Brand History</h2>
+                                                <p className="text-sm text-gray-600 mt-1">Recent brand activity</p>
+                                            </div>
                                             <span className="text-sm text-gray-500">{brandHistoryTotal} activities</span>
                                         </div>
 
@@ -2721,7 +2704,6 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                             <div className="text-sm text-gray-500">No brand activity found.</div>
                                         ) : (
                                             <div className="space-y-3">
-
                                                 {brandHistoryItems.map((h: any, idx: number) => {
                                                     const action = String((h as any)?.action || '').toLowerCase();
                                                     const actor = (h?.userName || h?.userEmail || 'Unknown').toString();
@@ -2975,6 +2957,13 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                 isOpen={showCreateModal}
                 onClose={() => setShowCreateModal(false)}
                 onCreate={handleCreateBrand}
+                companies={companies}
+            />
+
+            <BulkBrandAddModal
+                isOpen={showBulkAddModal}
+                onClose={() => setShowBulkAddModal(false)}
+                onBulkAdd={handleBulkAddBrands}
                 companies={companies}
             />
 
