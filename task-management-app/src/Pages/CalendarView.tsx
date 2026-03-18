@@ -974,13 +974,13 @@ const CalendarView: React.FC<CalendarViewProps> = (props) => {
                   return (
                     <div
                       key={index}
-                      className={`min-h-20 sm:min-h-32 bg-white p-1.5 sm:p-2 cursor-pointer transition-all duration-200 ${!isCurrentMonth ? 'bg-gray-50' : ''
-                        } ${isSelected ? 'ring-2 ring-blue-500 shadow-sm' : ''
+                      className={`min-h-[80px] sm:min-h-32 bg-white p-1 sm:p-2 cursor-pointer transition-all duration-200 ${!isCurrentMonth ? 'bg-gray-50' : ''
+                        } ${isSelected ? 'ring-2 ring-blue-500 shadow-sm z-10' : ''
                         } ${isToday ? 'bg-blue-50' : ''
                         } hover:bg-gray-50 hover:shadow-sm`}
                       onClick={() => handleSelectDate(date)}
                     >
-                      <div className="flex justify-between items-start">
+                      <div className="flex justify-between items-center sm:items-start mb-1 sm:mb-2">
                         <span
                           className={`text-xs sm:text-sm font-medium ${isCurrentMonth ? 'text-gray-900' : 'text-gray-400'
                             } ${isToday ? 'text-blue-600 font-bold' : ''}`}
@@ -988,23 +988,23 @@ const CalendarView: React.FC<CalendarViewProps> = (props) => {
                           {date.getDate()}
                         </span>
                         {dateTasks.length > 0 && (
-                          <span className="text-[10px] font-medium text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">
-                            {dateTasks.length} task{dateTasks.length > 1 ? 's' : ''}
+                          <span className="text-[9px] sm:text-[10px] font-medium text-gray-600 bg-gray-100 px-1 sm:px-2 py-0.5 rounded-full whitespace-nowrap">
+                            {dateTasks.length}<span className="hidden sm:inline"> task{dateTasks.length > 1 ? 's' : ''}</span>
                           </span>
                         )}
                       </div>
 
                       {/* Task Indicators */}
-                      <div className="mt-2 space-y-1">
+                      <div className="space-y-1">
                         {dateTasks.slice(0, 3).map(task => (
                           <div
                             key={task.id}
-                            className={`text-[11px] px-2 py-1 rounded-md truncate ${getPriorityBadgeClasses((task as any)?.priority)}`}
+                            className={`text-[9px] sm:text-[11px] leading-tight px-1 sm:px-2 py-0.5 sm:py-1 rounded sm:rounded-md truncate ${getPriorityBadgeClasses((task as any)?.priority)}`}
                             title={`${task.title} - ${(task as any)?.priority || 'unknown'} priority`}
                           >
                             <div className="flex items-center">
                               <div
-                                className={`w-2 h-2 rounded-full mr-1 ${getPriorityColor((task as any)?.priority)}`}
+                                className={`w-1 sm:w-2 h-1 sm:h-2 rounded-full mr-1 shrink-0 ${getPriorityColor((task as any)?.priority)}`}
                               ></div>
                               <span className="truncate font-medium">
                                 {task.title}
@@ -1013,8 +1013,8 @@ const CalendarView: React.FC<CalendarViewProps> = (props) => {
                           </div>
                         ))}
                         {dateTasks.length > 3 && (
-                          <div className="text-[11px] text-gray-500 text-center">
-                            +{dateTasks.length - 3} more
+                          <div className="text-[9px] sm:text-[11px] text-gray-500 text-center font-medium">
+                            +{dateTasks.length - 3} <span className="hidden sm:inline">more</span>
                           </div>
                         )}
                       </div>

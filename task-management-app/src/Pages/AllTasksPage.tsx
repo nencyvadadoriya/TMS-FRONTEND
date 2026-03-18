@@ -188,10 +188,8 @@ interface MobileTaskItemProps {
   getUserInfoForDisplay: (task: Task) => { name: string; email: string };
   brandLabel?: string;
   onToggleStatus: (taskId: string, originalTask: Task) => Promise<void>;
-  onEditTaskClick: (task: Task) => void;
   onOpenCommentSidebar: (task: Task) => Promise<void>;
   onOpenReassignModal: (task: Task) => void;
-  onPermanentApproval: (taskId: string, value: boolean) => Promise<void>;
   onOpenApprovalModal: (task: Task, action: 'approve' | 'reject') => void;
   onDeleteTask: (taskId: string) => Promise<void>;
   onSetOpenMenuId: (id: string | null) => void;
@@ -206,6 +204,9 @@ interface MobileTaskItemProps {
   disableStatusToggle?: boolean;
   showDeleteButton?: boolean;
   hasUnreadComments?: (taskId: string) => boolean;
+  canEditTask?: (task: Task) => boolean;
+  onEditTaskClick: (task: Task) => void;
+  onPermanentApproval: (taskId: string, value: boolean) => Promise<void>;
 }
 
 interface DesktopTaskItemProps {
@@ -1452,14 +1453,19 @@ const MobileTaskItem = memo(({
   onToggleStatus,
   onOpenCommentSidebar,
   onDeleteTask,
-  showAssignButton,
-  onAssignClick,
   isTaskAssigner,
   isTaskCompleted,
   isTaskPermanentlyApproved,
   isTaskPendingApproval,
+  onOpenHistoryModal,
+  showAssignButton,
+  onAssignClick,
   disableStatusToggle,
   hasUnreadComments,
+  canEditTask,
+  onEditTaskClick,
+  onPermanentApproval,
+  isUpdatingApproval,
 }: MobileTaskItemProps) => {
   const userInfo = getUserInfoForDisplay(task);
   const assignerInfo = useMemo(() => {
@@ -1483,6 +1489,25 @@ const MobileTaskItem = memo(({
   const taskCompanyKey = String((task as any)?.companyName || (task as any)?.company || '').trim().toLowerCase().replace(/\s+/g, '');
   taskCompanyKey === 'speedecom';
   const canDeleteThisTask = (role === 'admin' || role === 'super_admin' || role === 'manager' || role === 'md_manager') && userIsAssigner;
+
+  const canEditThisTask = typeof canEditTask === 'function' ? canEditTask(task) : userIsAssigner;
+  const normalizeEmailSafe = (v: unknown): string => {
+    if (!v) return '';
+    if (typeof v === 'string') return v.trim().toLowerCase();
+    if (typeof v === 'object' && v !== null) {
+      const email = (v as any).email;
+      if (typeof email === 'string') return email.trim().toLowerCase();
+    }
+    return String(v).trim().toLowerCase();
+  };
+  const myEmail = normalizeEmailSafe((currentUser as any)?.email);
+  const assignedByEmailForCheck =
+    normalizeEmailSafe((task as any)?.assignedBy) ||
+    normalizeEmailSafe((task as any)?.assignedByUser?.email);
+  const isCreator = Boolean(myEmail && assignedByEmailForCheck && myEmail === assignedByEmailForCheck);
+  const canShowEditIcon = Boolean(canEditThisTask || isCreator);
+  const canShowDeleteIcon = Boolean(canDeleteThisTask);
+
   const isOverdueTask = isOverdue(task.dueDate, task.status);
   const statusKey = String(task.status || '').trim().toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-');
   const isReassignedTask = statusKey === 'reassigned';
@@ -1548,36 +1573,73 @@ const MobileTaskItem = memo(({
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {showAssignButton && (
+          <div className="flex items-center gap-1 flex-wrap justify-end mt-2 md:mt-0">
+            {showAssignButton && typeof onAssignClick === 'function' && (
               <button
                 onClick={() => onAssignClick(task)}
-                className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                 title="Assign"
               >
                 <UserPlus className="h-4 w-4" />
               </button>
             )}
-            {canDeleteThisTask && (
+            <button
+              onClick={() => onOpenCommentSidebar(task)}
+              className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors relative"
+              title="View comments"
+            >
+              <MessageSquare className="h-4 w-4" />
+              {hasUnreadComments && hasUnreadComments(task.id) && (
+                <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-red-500" />
+              )}
+            </button>
+
+            <button
+              onClick={() => onOpenHistoryModal(task)}
+              className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              title="View history"
+            >
+              <History className="h-4 w-4" />
+            </button>
+
+            {canShowEditIcon && (
+              <button
+                onClick={() => onEditTaskClick(task)}
+                disabled={isPermanentlyApproved}
+                className={`p-1 rounded-lg transition-colors ${isPermanentlyApproved ? 'text-gray-400 cursor-not-allowed' : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'}`}
+                title={isPermanentlyApproved ? "Editing not allowed for permanently approved tasks" : "Edit task"}
+              >
+                <Edit className="h-4 w-4" />
+              </button>
+            )}
+
+            {canShowDeleteIcon && typeof onDeleteTask === 'function' && (
               <button
                 onClick={() => onDeleteTask(task.id)}
                 disabled={isDeleting}
-                className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                className="p-1 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                 title="Delete"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
             )}
-            <button
-              onClick={() => onOpenCommentSidebar(task)}
-              className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors relative"
-              title="View comments"
-            >
-              <MessageSquare className="h-4 w-4" />
-              {hasUnreadComments && hasUnreadComments(task.id) && (
-                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500" />
-              )}
-            </button>
+
+            {userIsAssigner && isCompleted && (
+              <button
+                onClick={() => onPermanentApproval(task.id, !isPermanentlyApproved)}
+                disabled={isUpdatingApproval}
+                className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+                title={isPermanentlyApproved ? 'Remove Permanent Approval' : 'Permanently Approve'}
+              >
+                {isUpdatingApproval ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : isPermanentlyApproved ? (
+                  <EyeOff className="h-4 w-4 text-red-500" />
+                ) : (
+                  <Eye className="h-4 w-4 text-blue-500" />
+                )}
+              </button>
+            )}
           </div>
         </div>
 
@@ -1689,7 +1751,7 @@ const DesktopTaskItem = memo(({
   const isReassignedTask = statusKey === 'reassigned';
   const isInProgressTask = statusKey === 'in-progress';
 
-  
+
   const createdAtRaw = (task as any)?.createdAt || (task as any)?.created_at || (task as any)?.timestamp || (task as any)?.createdOn || '';
   const createdAtText = (() => {
     try {
@@ -5944,6 +6006,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                       onAssignClick={handleOpenReassignModal}
                       disableStatusToggle={isObManagerRole || !isTaskAssignee(task)}
                       hasUnreadComments={(taskId: string) => Boolean(unreadCommentsMap && (unreadCommentsMap as any)[taskId])}
+                      canEditTask={canEditTask}
                     />
                   </div>
 
