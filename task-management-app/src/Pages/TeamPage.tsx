@@ -2,7 +2,6 @@ import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react'
 
 
 
-const MD_IMPEX_COMPANY_NAME = 'MD Impex';
 
 
 

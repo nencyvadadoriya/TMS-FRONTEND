@@ -293,13 +293,13 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
                             const roleKey = roleName.toLowerCase().replace(/[\s-]+/g, '_');
                             return { roleKey, roleName };
                         })
-                        .filter(({ roleKey }) => {
+                        .filter(({ roleKey }: { roleKey: string }) => {
                             // Check if roleKey matches any allowed pattern
                             return allowedRolePatterns.some(pattern => 
                                 roleKey === pattern || roleKey.includes(pattern)
                             );
                         })
-                        .map(({ roleKey, roleName }) => ({
+                        .map(({ roleKey, roleName }: { roleKey: string; roleName: string }) => ({
                             key: roleKey,
                             name: roleName,
                         }))
