@@ -1511,9 +1511,9 @@ const MobileTaskItem = memo(({
                   {getTaskStatusIcon(task.id, isCompleted)}
                 </button>
               )}
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <h3 className="font-semibold text-gray-900">{task.title}</h3>
+                  <h3 className="font-semibold text-gray-900 break-words">{task.title}</h3>
                   {isOverdueTask && !isCompleted && (
                     <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">
                       Overdue
@@ -1525,7 +1525,7 @@ const MobileTaskItem = memo(({
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-gray-600 mb-2 line-clamp-2">{task.message}</p>
+                <p className="text-sm text-gray-600 mb-2 line-clamp-2 break-words">{task.message}</p>
                 <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
                   <span className="inline-flex items-center gap-1">
                     <User className="h-3 w-3" />
@@ -1535,7 +1535,7 @@ const MobileTaskItem = memo(({
                   <span className="inline-flex items-center gap-1">
                     <UserPlus className="h-3 w-3" />
                     <span className="text-gray-400">Assign By</span>
-                    {assignerInfo.email || '—'}
+                    <span className="break-all">{assignerInfo.email || '—'}</span>
                   </span>
                   <span className="inline-flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
@@ -1579,32 +1579,32 @@ const MobileTaskItem = memo(({
               )}
             </button>
           </div>
+        </div>
 
-          <div className="flex items-center justify-between pt-3 border-t">
-            <div className="flex items-center gap-2">
-              {isCompleted && (
-                <span className={`text-xs px-2 py-1 rounded-full ${isPermanentlyApproved ? 'bg-blue-100 text-blue-800 border border-blue-200' : isPendingApproval ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' : 'bg-green-100 text-green-800 border border-green-200'}`}>
-                  {isPermanentlyApproved ? ' Permanent' : isPendingApproval ? '⏳ Pending Approval' : ' Approved'}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              {task.type && (
-                <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded">
-                  {task.type}
-                </span>
-              )}
-              {brandLabelText && (
-                <span className="text-xs bg-blue-50 text-blue-800 px-2 py-1 rounded" title={brandLabelText}>
-                  {brandLabelText}
-                </span>
-              )}
-              {task.company && (
-                <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">
-                  {task.company}
-                </span>
-              )}
-            </div>
+        <div className="flex items-center justify-between pt-3 border-t">
+          <div className="flex items-center gap-2">
+            {isCompleted && (
+              <span className={`text-xs px-2 py-1 rounded-full ${isPermanentlyApproved ? 'bg-blue-100 text-blue-800 border border-blue-200' : isPendingApproval ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' : 'bg-green-100 text-green-800 border border-green-200'}`}>
+                {isPermanentlyApproved ? ' Permanent' : isPendingApproval ? '⏳ Pending Approval' : ' Approved'}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {task.type && (
+              <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded break-words">
+                {task.type}
+              </span>
+            )}
+            {brandLabelText && (
+              <span className="text-xs bg-blue-50 text-blue-800 px-2 py-1 rounded break-words" title={brandLabelText}>
+                {brandLabelText}
+              </span>
+            )}
+            {task.company && (
+              <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded break-words">
+                {task.company}
+              </span>
+            )}
           </div>
         </div>
       </div>
