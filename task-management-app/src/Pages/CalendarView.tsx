@@ -730,17 +730,17 @@ const CalendarView: React.FC<CalendarViewProps> = (props) => {
   return (
     <div className="space-y-6 rounded-xl bg-gradient-to-br from-slate-50 to-white p-4 md:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Calendar View</h1>
+          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Calendar View</h1>
           <p className="text-gray-500">Manage your tasks schedule visually</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as StatusFilterMode)}
-              className="h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+              className="h-9 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-200 sm:w-auto"
             >
               <option value="all">All status</option>
               <option value="pending">Pending</option>
@@ -750,7 +750,7 @@ const CalendarView: React.FC<CalendarViewProps> = (props) => {
             <select
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value as PriorityFilterMode)}
-              className="h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+              className="h-9 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-200 sm:w-auto"
             >
               <option value="all">All priority</option>
               <option value="high">High</option>
@@ -924,25 +924,25 @@ const CalendarView: React.FC<CalendarViewProps> = (props) => {
         <div className="lg:col-span-2">
           <div className="bg-white shadow-sm rounded-xl border border-gray-200">
             {/* Calendar Header */}
-            <div className="p-6 border-b">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900">{monthYear}</h2>
-                <div className="flex items-center space-x-2">
+            <div className="p-4 sm:p-6 border-b">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-base font-semibold text-gray-900 sm:text-xl">{monthYear}</h2>
+                <div className="flex items-center gap-1 sm:gap-2">
                   <button
                     onClick={handlePrevDay}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
                   >
                     <ChevronLeft className="h-5 w-5" />
                   </button>
                   <button
                     onClick={handleJumpToToday}
-                    className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                    className="px-2.5 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                   >
                     Today
                   </button>
                   <button
                     onClick={handleNextDay}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
                   >
                     <ChevronRight className="h-5 w-5" />
                   </button>
@@ -952,8 +952,9 @@ const CalendarView: React.FC<CalendarViewProps> = (props) => {
               {/* Days of Week */}
               <div className="grid grid-cols-7 mt-6">
                 {daysOfWeek.map(day => (
-                  <div key={day} className="text-center py-2 text-sm font-medium text-gray-500">
-                    {day}
+                  <div key={day} className="text-center py-2 text-xs font-medium text-gray-500 sm:text-sm">
+                    <span className="sm:hidden">{day[0]}</span>
+                    <span className="hidden sm:inline">{day}</span>
                   </div>
                 ))}
               </div>
@@ -973,37 +974,37 @@ const CalendarView: React.FC<CalendarViewProps> = (props) => {
                   return (
                     <div
                       key={index}
-                      className={`min-h-32 bg-white p-2 cursor-pointer transition-all duration-200 ${!isCurrentMonth ? 'bg-gray-50' : ''
-                        } ${isSelected ? 'ring-2 ring-blue-500 shadow-sm' : ''
+                      className={`min-h-[80px] sm:min-h-32 bg-white p-1 sm:p-2 cursor-pointer transition-all duration-200 ${!isCurrentMonth ? 'bg-gray-50' : ''
+                        } ${isSelected ? 'ring-2 ring-blue-500 shadow-sm z-10' : ''
                         } ${isToday ? 'bg-blue-50' : ''
                         } hover:bg-gray-50 hover:shadow-sm`}
                       onClick={() => handleSelectDate(date)}
                     >
-                      <div className="flex justify-between items-start">
+                      <div className="flex justify-between items-center sm:items-start mb-1 sm:mb-2">
                         <span
-                          className={`text-sm font-medium ${isCurrentMonth ? 'text-gray-900' : 'text-gray-400'
+                          className={`text-xs sm:text-sm font-medium ${isCurrentMonth ? 'text-gray-900' : 'text-gray-400'
                             } ${isToday ? 'text-blue-600 font-bold' : ''}`}
                         >
                           {date.getDate()}
                         </span>
                         {dateTasks.length > 0 && (
-                          <span className="text-[10px] font-medium text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">
-                            {dateTasks.length} task{dateTasks.length > 1 ? 's' : ''}
+                          <span className="text-[9px] sm:text-[10px] font-medium text-gray-600 bg-gray-100 px-1 sm:px-2 py-0.5 rounded-full whitespace-nowrap">
+                            {dateTasks.length}<span className="hidden sm:inline"> task{dateTasks.length > 1 ? 's' : ''}</span>
                           </span>
                         )}
                       </div>
 
                       {/* Task Indicators */}
-                      <div className="mt-2 space-y-1">
+                      <div className="space-y-1">
                         {dateTasks.slice(0, 3).map(task => (
                           <div
                             key={task.id}
-                            className={`text-xs px-2 py-1 rounded-md truncate ${getPriorityBadgeClasses((task as any)?.priority)}`}
+                            className={`text-[9px] sm:text-[11px] leading-tight px-1 sm:px-2 py-0.5 sm:py-1 rounded sm:rounded-md truncate ${getPriorityBadgeClasses((task as any)?.priority)}`}
                             title={`${task.title} - ${(task as any)?.priority || 'unknown'} priority`}
                           >
                             <div className="flex items-center">
                               <div
-                                className={`w-2 h-2 rounded-full mr-1 ${getPriorityColor((task as any)?.priority)}`}
+                                className={`w-1 sm:w-2 h-1 sm:h-2 rounded-full mr-1 shrink-0 ${getPriorityColor((task as any)?.priority)}`}
                               ></div>
                               <span className="truncate font-medium">
                                 {task.title}
@@ -1012,8 +1013,8 @@ const CalendarView: React.FC<CalendarViewProps> = (props) => {
                           </div>
                         ))}
                         {dateTasks.length > 3 && (
-                          <div className="text-[11px] text-gray-500 text-center">
-                            +{dateTasks.length - 3} more
+                          <div className="text-[9px] sm:text-[11px] text-gray-500 text-center font-medium">
+                            +{dateTasks.length - 3} <span className="hidden sm:inline">more</span>
                           </div>
                         )}
                       </div>
@@ -1048,8 +1049,8 @@ const CalendarView: React.FC<CalendarViewProps> = (props) => {
 
         {/* Side Panel - Selected Date Tasks */}
         <div className="lg:col-span-1">
-          <div className="bg-white shadow-sm rounded-xl border border-gray-200 sticky top-6">
-            <div className="p-6 border-b">
+          <div className="bg-white shadow-sm rounded-xl border border-gray-200 lg:sticky lg:top-6">
+            <div className="p-4 sm:p-6 border-b">
               <h3 className="text-lg font-semibold text-gray-900">
                 {selectedDate
                   ? selectedDate.toLocaleDateString('en-US', {
@@ -1066,7 +1067,7 @@ const CalendarView: React.FC<CalendarViewProps> = (props) => {
             </div>
 
             {selectedDate && (
-              <div className="px-6 pt-5">
+              <div className="px-4 sm:px-6 pt-5">
                 <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
                   <div className="flex items-center justify-between">
                     <div className="text-sm font-semibold text-gray-900">{monthYear}</div>
@@ -1120,7 +1121,7 @@ const CalendarView: React.FC<CalendarViewProps> = (props) => {
               </div>
             )}
 
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               {selectedDateTasks.length === 0 ? (
                 <div className="text-center py-8">
                   <div className="text-gray-400 mb-2">No tasks scheduled</div>

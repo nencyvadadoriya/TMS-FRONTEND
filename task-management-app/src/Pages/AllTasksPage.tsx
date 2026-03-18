@@ -188,10 +188,8 @@ interface MobileTaskItemProps {
   getUserInfoForDisplay: (task: Task) => { name: string; email: string };
   brandLabel?: string;
   onToggleStatus: (taskId: string, originalTask: Task) => Promise<void>;
-  onEditTaskClick: (task: Task) => void;
   onOpenCommentSidebar: (task: Task) => Promise<void>;
   onOpenReassignModal: (task: Task) => void;
-  onPermanentApproval: (taskId: string, value: boolean) => Promise<void>;
   onOpenApprovalModal: (task: Task, action: 'approve' | 'reject') => void;
   onDeleteTask: (taskId: string) => Promise<void>;
   onSetOpenMenuId: (id: string | null) => void;
@@ -206,6 +204,9 @@ interface MobileTaskItemProps {
   disableStatusToggle?: boolean;
   showDeleteButton?: boolean;
   hasUnreadComments?: (taskId: string) => boolean;
+  canEditTask?: (task: Task) => boolean;
+  onEditTaskClick: (task: Task) => void;
+  onPermanentApproval: (taskId: string, value: boolean) => Promise<void>;
 }
 
 interface DesktopTaskItemProps {
@@ -1466,14 +1467,19 @@ const MobileTaskItem = memo(({
   onToggleStatus,
   onOpenCommentSidebar,
   onDeleteTask,
-  showAssignButton,
-  onAssignClick,
   isTaskAssigner,
   isTaskCompleted,
   isTaskPermanentlyApproved,
   isTaskPendingApproval,
+  onOpenHistoryModal,
+  showAssignButton,
+  onAssignClick,
   disableStatusToggle,
   hasUnreadComments,
+  canEditTask,
+  onEditTaskClick,
+  onPermanentApproval,
+  isUpdatingApproval,
 }: MobileTaskItemProps) => {
   const userInfo = getUserInfoForDisplay(task);
   const assignerInfo = useMemo(() => {
@@ -1497,6 +1503,25 @@ const MobileTaskItem = memo(({
   const taskCompanyKey = String((task as any)?.companyName || (task as any)?.company || '').trim().toLowerCase().replace(/\s+/g, '');
   taskCompanyKey === 'speedecom';
   const canDeleteThisTask = (role === 'admin' || role === 'super_admin' || role === 'manager' || role === 'md_manager') && userIsAssigner;
+
+  const canEditThisTask = typeof canEditTask === 'function' ? canEditTask(task) : userIsAssigner;
+  const normalizeEmailSafe = (v: unknown): string => {
+    if (!v) return '';
+    if (typeof v === 'string') return v.trim().toLowerCase();
+    if (typeof v === 'object' && v !== null) {
+      const email = (v as any).email;
+      if (typeof email === 'string') return email.trim().toLowerCase();
+    }
+    return String(v).trim().toLowerCase();
+  };
+  const myEmail = normalizeEmailSafe((currentUser as any)?.email);
+  const assignedByEmailForCheck =
+    normalizeEmailSafe((task as any)?.assignedBy) ||
+    normalizeEmailSafe((task as any)?.assignedByUser?.email);
+  const isCreator = Boolean(myEmail && assignedByEmailForCheck && myEmail === assignedByEmailForCheck);
+  const canShowEditIcon = Boolean(canEditThisTask || isCreator);
+  const canShowDeleteIcon = Boolean(canDeleteThisTask);
+
   const isOverdueTask = isOverdue(task.dueDate, task.status);
   const statusKey = String(task.status || '').trim().toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-');
   const isReassignedTask = statusKey === 'reassigned';
@@ -1525,9 +1550,9 @@ const MobileTaskItem = memo(({
                   {getTaskStatusIcon(task.id, isCompleted)}
                 </button>
               )}
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <h3 className="font-semibold text-gray-900">{task.title}</h3>
+                  <h3 className="font-semibold text-gray-900 break-words">{task.title}</h3>
                   {isOverdueTask && !isCompleted && (
                     <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">
                       Overdue
@@ -1539,7 +1564,7 @@ const MobileTaskItem = memo(({
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-gray-600 mb-2 line-clamp-2">{task.message}</p>
+                <p className="text-sm text-gray-600 mb-2 line-clamp-2 break-words">{task.message}</p>
                 <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
                   <span className="inline-flex items-center gap-1">
                     <User className="h-3 w-3" />
@@ -1549,7 +1574,7 @@ const MobileTaskItem = memo(({
                   <span className="inline-flex items-center gap-1">
                     <UserPlus className="h-3 w-3" />
                     <span className="text-gray-400">Assign By</span>
-                    {assignerInfo.email || '—'}
+                    <span className="break-all">{assignerInfo.email || '—'}</span>
                   </span>
                   <span className="inline-flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
@@ -1562,63 +1587,100 @@ const MobileTaskItem = memo(({
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {showAssignButton && (
+          <div className="flex items-center gap-1 flex-wrap justify-end mt-2 md:mt-0">
+            {showAssignButton && typeof onAssignClick === 'function' && (
               <button
                 onClick={() => onAssignClick(task)}
-                className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                 title="Assign"
               >
                 <UserPlus className="h-4 w-4" />
               </button>
             )}
-            {canDeleteThisTask && (
+            <button
+              onClick={() => onOpenCommentSidebar(task)}
+              className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors relative"
+              title="View comments"
+            >
+              <MessageSquare className="h-4 w-4" />
+              {hasUnreadComments && hasUnreadComments(task.id) && (
+                <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-red-500" />
+              )}
+            </button>
+
+            <button
+              onClick={() => onOpenHistoryModal(task)}
+              className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              title="View history"
+            >
+              <History className="h-4 w-4" />
+            </button>
+
+            {canShowEditIcon && (
+              <button
+                onClick={() => onEditTaskClick(task)}
+                disabled={isPermanentlyApproved}
+                className={`p-1 rounded-lg transition-colors ${isPermanentlyApproved ? 'text-gray-400 cursor-not-allowed' : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'}`}
+                title={isPermanentlyApproved ? "Editing not allowed for permanently approved tasks" : "Edit task"}
+              >
+                <Edit className="h-4 w-4" />
+              </button>
+            )}
+
+            {canShowDeleteIcon && typeof onDeleteTask === 'function' && (
               <button
                 onClick={() => onDeleteTask(task.id)}
                 disabled={isDeleting}
-                className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                className="p-1 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                 title="Delete"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
             )}
-            <button
-              onClick={() => onOpenCommentSidebar(task)}
-              className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors relative"
-              title="View comments"
-            >
-              <MessageSquare className="h-4 w-4" />
-              {hasUnreadComments && hasUnreadComments(task.id) && (
-                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500" />
-              )}
-            </button>
-          </div>
 
-          <div className="flex items-center justify-between pt-3 border-t">
-            <div className="flex items-center gap-2">
-              {isCompleted && (
-                <span className={`text-xs px-2 py-1 rounded-full ${isPermanentlyApproved ? 'bg-blue-100 text-blue-800 border border-blue-200' : isPendingApproval ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' : 'bg-green-100 text-green-800 border border-green-200'}`}>
-                  {isPermanentlyApproved ? ' Permanent' : isPendingApproval ? '⏳ Pending Approval' : ' Approved'}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              {task.type && (
-                <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded">
-                  {task.type}
-                </span>
-              )}
-              {brandLabelText && (
-                <span className="text-xs bg-blue-50 text-blue-800 px-2 py-1 rounded" title={brandLabelText}>
-                  {brandLabelText}
-                </span>
-              )}
-              {task.company && (
-                <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">
-                  {task.company}
-                </span>
-              )}
-            </div>
+            {userIsAssigner && isCompleted && (
+              <button
+                onClick={() => onPermanentApproval(task.id, !isPermanentlyApproved)}
+                disabled={isUpdatingApproval}
+                className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+                title={isPermanentlyApproved ? 'Remove Permanent Approval' : 'Permanently Approve'}
+              >
+                {isUpdatingApproval ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : isPermanentlyApproved ? (
+                  <EyeOff className="h-4 w-4 text-red-500" />
+                ) : (
+                  <Eye className="h-4 w-4 text-blue-500" />
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between pt-3 border-t">
+          <div className="flex items-center gap-2">
+            {isCompleted && (
+              <span className={`text-xs px-2 py-1 rounded-full ${isPermanentlyApproved ? 'bg-blue-100 text-blue-800 border border-blue-200' : isPendingApproval ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' : 'bg-green-100 text-green-800 border border-green-200'}`}>
+                {isPermanentlyApproved ? ' Permanent' : isPendingApproval ? '⏳ Pending Approval' : ' Approved'}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {task.type && (
+              <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded break-words">
+                {task.type}
+              </span>
+            )}
+            {brandLabelText && (
+              <span className="text-xs bg-blue-50 text-blue-800 px-2 py-1 rounded break-words" title={brandLabelText}>
+                {brandLabelText}
+              </span>
+            )}
+            {task.company && (
+              <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded break-words">
+                {task.company}
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -1703,7 +1765,7 @@ const DesktopTaskItem = memo(({
   const isReassignedTask = statusKey === 'reassigned';
   const isInProgressTask = statusKey === 'in-progress';
 
-  
+
   const createdAtRaw = (task as any)?.createdAt || (task as any)?.created_at || (task as any)?.timestamp || (task as any)?.createdOn || '';
   const createdAtText = (() => {
     try {
@@ -5973,6 +6035,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                       onAssignClick={handleOpenReassignModal}
                       disableStatusToggle={isObManagerRole || !isTaskAssignee(task)}
                       hasUnreadComments={(taskId: string) => Boolean(unreadCommentsMap && (unreadCommentsMap as any)[taskId])}
+                      canEditTask={canEditTask}
                     />
                   </div>
 
