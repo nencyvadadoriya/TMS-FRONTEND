@@ -65,6 +65,7 @@ import BulkAddBrandsModal from './DashboardModals/BulkAddBrandsModal';
 import BulkAddCompaniesModal from './DashboardModals/BulkAddCompaniesModal';
 import BulkAddTaskTypesModal from './DashboardModals/BulkAddTaskTypesModal';
 import ManagerAddBrandModal from './DashboardModals/ManagerAddBrandModal';
+import AdminHeadlineManager from '../Components/AdminHeadlineManager';
 
 import type {
     Brand,
@@ -1304,7 +1305,7 @@ const DashboardPage = () => {
 
 
 
-    const [currentView, setCurrentView] = useState<'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'access' | 'company-brand-task-types' | 'assign' | 'reviews' | 'other-work' | 'speed-ecom-reassign' | 'manager-monthly-rankings' | 'md-impex-strike' | 'md-impex-access' | 'personal-tasks'>('dashboard');
+    const [currentView, setCurrentView] = useState<'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'access' | 'company-brand-task-types' | 'assign' | 'reviews' | 'other-work' | 'speed-ecom-reassign' | 'manager-monthly-rankings' | 'md-impex-strike' | 'md-impex-access' | 'personal-tasks' | 'headline'>('dashboard');
 
 
 
@@ -12045,7 +12046,7 @@ const DashboardPage = () => {
         const merged = Array.from(new Set([...fromOverrides, ...fromTasks]));
 
         const selectedCompanyKey = normalizeCompanyKey(companyName);
-        
+
         const matchingCompanyId = (companies || []).find((c: any) => {
             const name = String(c?.name || c?.companyName || c?.title || '').trim();
             return normalizeCompanyKey(name) === selectedCompanyKey;
@@ -16541,7 +16542,7 @@ const DashboardPage = () => {
 
 
 
-        const viewMap: Record<string, 'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'access' | 'company-brand-task-types' | 'assign' | 'speed-ecom-reassign' | 'reviews' | 'other-work' | 'manager-monthly-rankings' | 'md-impex-strike' | 'md-impex-access' | 'personal-tasks'> = {
+        const viewMap: Record<string, 'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'access' | 'company-brand-task-types' | 'assign' | 'speed-ecom-reassign' | 'reviews' | 'other-work' | 'manager-monthly-rankings' | 'md-impex-strike' | 'md-impex-access' | 'personal-tasks' | 'headline'> = {
 
 
 
@@ -16687,7 +16688,8 @@ const DashboardPage = () => {
 
 
 
-            'personal-tasks': 'personal-tasks'
+            'personal-tasks': 'personal-tasks',
+            'headline': 'headline'
 
 
 
@@ -37432,10 +37434,10 @@ const DashboardPage = () => {
         const isMdImpexTask = (task.companyName || '').toLowerCase().replace(/\s+/g, '') === 'mdimpex';
         const currentUserCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase();
         const currentUserRole = String((currentUser as any)?.role || '').trim().toLowerCase();
-        const isMdImpexUser = currentUserCompany.includes('mdimpex') || 
-                            currentUserCompany.includes('md_impex') || 
-                            currentUserCompany.includes('md impex') ||
-                            currentUserRole === 'md_manager';
+        const isMdImpexUser = currentUserCompany.includes('mdimpex') ||
+            currentUserCompany.includes('md_impex') ||
+            currentUserCompany.includes('md impex') ||
+            currentUserRole === 'md_manager';
 
         if (isMdImpexTask || isMdImpexUser) {
 
@@ -48635,6 +48637,8 @@ const DashboardPage = () => {
 
 
 
+                            ) : currentView === 'headline' ? (
+                                <AdminHeadlineManager />
                             ) : currentView === 'manager-monthly-rankings' ? (
 
 
@@ -48765,10 +48769,10 @@ const DashboardPage = () => {
 
                 const currentUserCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase();
                 const currentUserRole = String((currentUser as any)?.role || '').trim().toLowerCase();
-                const isMdImpexUser = currentUserCompany.includes('mdimpex') || 
-                                    currentUserCompany.includes('md_impex') || 
-                                    currentUserCompany.includes('md impex') ||
-                                    currentUserRole === 'md_manager';
+                const isMdImpexUser = currentUserCompany.includes('mdimpex') ||
+                    currentUserCompany.includes('md_impex') ||
+                    currentUserCompany.includes('md impex') ||
+                    currentUserRole === 'md_manager';
 
                 if (isMdImpexUser) {
 
