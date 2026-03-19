@@ -148,46 +148,23 @@ const AddTaskModal = ({
 
 
   const handleInternalChange = (field: keyof NewTaskForm, value: string) => {
-    let autoCompany = '';
 
     setLocalTask((prev) => {
       const next = { ...prev, [field]: value };
-      
       // When company changes, reset brand and assignedTo
       if (field === 'companyName' && value !== prev.companyName) {
         next.brand = '';
         next.assignedTo = '';
         next.taskType = '';
       }
-
-      // Auto-select company when a user is assigned (for Admin/SuperAdmin)
-      if (field === 'assignedTo' && showCompanyDropdownIcon && value) {
-        const selectedUser = users.find(u => (u.email || '').toLowerCase() === value.toLowerCase());
-        const userCompany = selectedUser?.companyName || selectedUser?.company;
-        if (userCompany && userCompany !== prev.companyName) {
-          next.companyName = userCompany;
-          autoCompany = userCompany;
-          // Trigger reset for dependent fields
-          next.brand = '';
-          next.taskType = '';
-        }
-      }
-
       return next;
     });
 
-    // Propagate key field changes to parent
-    if (onFieldChange) {
-      // If company was auto-selected, notify parent FIRST so it can perform resets
-      // then notify about the assignedTo change so it's preserved
-      if (autoCompany) {
-        onFieldChange('companyName', autoCompany);
-      }
-      
-      if (field === 'companyName' || field === 'brand' || field === 'assignedTo') {
-        onFieldChange(field, value);
-      }
+    // Propagate key field changes to parent so dependent dropdowns re-filter
+    if (onFieldChange && (field === 'companyName' || field === 'brand' || field === 'assignedTo')) {
+      onFieldChange(field, value);
     }
+
   };
 
 
@@ -456,7 +433,7 @@ const AddTaskModal = ({
 
                 <option value="">Select a brand</option>
 
-                {Array.isArray(availableBrandOptions) && availableBrandOptions.map((opt) => (
+                {availableBrandOptions.map((opt) => (
 
                   <option key={opt.value} value={opt.value}>
 

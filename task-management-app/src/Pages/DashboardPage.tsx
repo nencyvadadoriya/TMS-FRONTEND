@@ -8216,29 +8216,9 @@ const DashboardPage = () => {
 
 
         if (companyKey === SPEED_E_COM_COMPANY_KEY) {
-
-
-
-
-
-
-
             const safe = Array.isArray(list) ? list.filter(Boolean) : [];
-
-
-
-
-
-
-
-            return safe.length > 0 ? safe : [...SPEED_E_COM_FIXED_TASK_TYPES];
-
-
-
-
-
-
-
+            // Always ensure fixed task types are included for Speed Ecom
+            return Array.from(new Set([...safe, ...SPEED_E_COM_FIXED_TASK_TYPES]));
         }
 
 
@@ -12057,237 +12037,44 @@ const DashboardPage = () => {
 
 
     const getTaskTypesForCompany = useCallback((companyName: string): string[] => {
-
-
-
-
-
-
-
         const companyKey = normalizeText(companyName);
-
-
-
-
-
-
-
         if (!companyKey) return [];
 
-
-
-
-
-
-
         const fromTasks = Array.from(taskTypesByCompanyFromTasks.get(companyKey) || []);
-
-
-
-
-
-
-
         const fromOverrides = Array.isArray(taskTypeCompanyOverrides?.[companyKey]) ? taskTypeCompanyOverrides[companyKey] : [];
-
-
-
-
-
-
-
         const merged = Array.from(new Set([...fromOverrides, ...fromTasks]));
 
-
-
-
-
-
-
         const selectedCompanyKey = normalizeCompanyKey(companyName);
-
-
-
-
-
-
-
-        if (selectedCompanyKey === SPEED_E_COM_COMPANY_KEY) {
-
-
-
-
-
-
-
-            const speedCompanyId = (companies || []).find((c: any) => {
-
-
-
-                const name = String(c?.name || c?.companyName || c?.title || '').trim();
-
-
-
-                return normalizeCompanyKey(name) === SPEED_E_COM_COMPANY_KEY;
-
-
-
-            })?._id || (companies || []).find((c: any) => {
-
-
-
-                const name = String(c?.name || c?.companyName || c?.title || '').trim();
-
-
-
-                return normalizeCompanyKey(name) === SPEED_E_COM_COMPANY_KEY;
-
-
-
-            })?.id;
-
-
-
-
-
-
-
-            const fromApi = (taskTypes || [])
-
-
-
-                .filter((t: any) => {
-
-
-
-                    const companyId = String(t?.companyId || '').trim();
-
-
-
-                    if (!companyId || !speedCompanyId) return false;
-
-
-
-                    return companyId === String(speedCompanyId);
-
-
-
-                })
-
-
-
-                .map((t: any) => (t?.name || '').toString().trim())
-
-
-
-                .filter(Boolean);
-
-
-
-
-
-
-
-            const combined = Array.from(new Set([...fromApi, ...merged]));
-
-
-
-            return restrictTaskTypesForCompany(companyName, combined).sort((a, b) => a.localeCompare(b));
-
-
-
-
-
-
-
-        }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        
+        const matchingCompanyId = (companies || []).find((c: any) => {
+            const name = String(c?.name || c?.companyName || c?.title || '').trim();
+            return normalizeCompanyKey(name) === selectedCompanyKey;
+        })?._id || (companies || []).find((c: any) => {
+            const name = String(c?.name || c?.companyName || c?.title || '').trim();
+            return normalizeCompanyKey(name) === selectedCompanyKey;
+        })?.id;
+
+        const fromApi = (taskTypes || [])
+            .filter((t: any) => {
+                const typeCompanyId = String(t?.companyId || '').trim();
+                // Include if it matches selected company OR if it's a global task type (no companyId)
+                return !typeCompanyId || (matchingCompanyId && typeCompanyId === String(matchingCompanyId));
+            })
+            .map((t: any) => (t?.name || '').toString().trim())
+            .filter(Boolean);
+
+        const combined = Array.from(new Set([...fromApi, ...merged]));
+        const baseResult = restrictTaskTypesForCompany(companyName, combined);
 
         const role = (currentUser?.role || '').toString().toLowerCase();
-
-
-
-
-
-
-
         if (role === 'manager') {
-
-
-
-
-
-
-
             const allowedKeys = allowedTaskTypeKeysForManager;
-
-
-
-
-
-
-
-            return merged
-
-
-
-
-
-
-
+            return baseResult
                 .filter((t) => allowedKeys.has((t || '').toString().trim().toLowerCase()))
-
-
-
-
-
-
-
                 .sort((a, b) => a.localeCompare(b));
-
-
-
-
-
-
-
         }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        return merged.sort((a, b) => a.localeCompare(b));
-
-
-
-
-
-
-
+        return baseResult.sort((a, b) => a.localeCompare(b));
     }, [allowedTaskTypeKeysForManager, companies, currentUser?.role, normalizeCompanyKey, normalizeText, restrictTaskTypesForCompany, taskTypeCompanyOverrides, taskTypes, taskTypesByCompanyFromTasks]);
 
 
