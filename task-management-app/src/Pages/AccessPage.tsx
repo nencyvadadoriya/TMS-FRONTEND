@@ -3,6 +3,7 @@ import { Check, X as XIcon, Pencil, Trash2, Shield, UserPlus, Users, ChevronRigh
 import toast from 'react-hot-toast';
 import type { UserType } from '../Types/Types';
 import { accessService } from '../Services/Access.Services';
+import mdImpexAccessService from '../Services/MdImpexAccess.services';
 
 type PermissionValue = 'allow' | 'deny';
 
@@ -127,15 +128,16 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
 
     const accessPermission = ((currentUser as any)?.permissions?.access_management || 'deny').toString().toLowerCase();
     const currentRole = normalizeRole((currentUser as any)?.role);
+    const isMdManager = currentRole === 'md_manager';
     const isAdminUser = currentRole === 'admin' || currentRole === 'super_admin';
-    const canOpenAccessPage = isAdminUser && accessPermission !== 'deny';
+    const canOpenAccessPage = (isAdminUser || isMdManager) && accessPermission !== 'deny';
 
     if (!canOpenAccessPage) {
         return (
             <div className="bg-white rounded-xl border border-gray-200 p-8">
                 <div className="text-lg font-semibold text-gray-900">Access denied</div>
                 <div className="mt-2 text-sm text-gray-600">
-                    You do not have permission to view this page.
+                    You do not have permission to view this page. {isMdManager && 'I need to give the item manager access to the role of Perfectland Impex.'}
                 </div>
             </div>
         );
@@ -209,10 +211,32 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
                 }))
                 .filter((r: any) => Boolean(r?.id));
 
-            const hasReportsAnalytics = mapped.some((r) => String(r?.id || '').trim().toLowerCase() === 'reports_analytics');
+            // Filter modules for MD Manager - only show specific modules
+            let filtered = mapped;
+            if (isMdManager) {
+                const allowedModuleIds = [
+                    'personal_tasks_page',
+                    'company_task_type',
+                    'create_task',
+                    'task_type_bulk_add',
+                    'delete_task',
+                    'edit_any_task',
+                    'company_brand_task_type',
+                    'reports_analytics',
+                    'brand_create',
+                    'brand_bulk_add',
+                    'brand_delete',
+                    'brand_edit',
+                ];
+                filtered = mapped.filter((r) =>
+                    allowedModuleIds.includes((r?.id || '').toLowerCase())
+                );
+            }
+
+            const hasReportsAnalytics = filtered.some((r) => String(r?.id || '').trim().toLowerCase() === 'reports_analytics');
             if (!hasReportsAnalytics) {
-                const analyzeRow = mapped.find((r) => String(r?.id || '').trim().toLowerCase() === 'analyze_page');
-                mapped.push({
+                const analyzeRow = filtered.find((r) => String(r?.id || '').trim().toLowerCase() === 'analyze_page');
+                filtered.push({
                     id: 'reports_analytics',
                     module: 'Reports / Analytics',
                     admin: analyzeRow?.admin || 'allow',
@@ -221,9 +245,9 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
                 });
             }
 
-            const hasStrikePage = mapped.some((r) => String(r?.id || '').trim().toLowerCase() === 'strike_page');
-            if (!hasStrikePage) {
-                mapped.push({
+            const hasStrikePage = filtered.some((r) => String(r?.id || '').trim().toLowerCase() === 'strike_page');
+            if (!hasStrikePage && !isMdManager) {
+                filtered.push({
                     id: 'strike_page',
                     module: 'Strike Page',
                     admin: 'allow',
@@ -232,18 +256,18 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
                 });
             }
 
-            const hasPersonalTasksPage = mapped.some((r) => String(r?.id || '').trim().toLowerCase() === 'personal_tasks_page');
+            const hasPersonalTasksPage = filtered.some((r) => String(r?.id || '').trim().toLowerCase() === 'personal_tasks_page');
             if (!hasPersonalTasksPage) {
-                mapped.push({
+                filtered.push({
                     id: 'personal_tasks_page',
                     module: 'Personal Tasks Page',
                     admin: 'allow',
                     manager: 'allow',
-                    assistant: 'allow',
+                    assistant: 'deny',
                 });
             }
 
-            setRows(mapped);
+            setRows(filtered);
         } catch (e: any) {
             const status = e?.response?.status;
             const message = e?.response?.data?.message || e?.response?.data?.msg || e?.message;
@@ -254,6 +278,52 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
 
     const loadRoles = useCallback(async () => {
         try {
+            // If MD Manager, load MD Impex-specific roles
+            if (isMdManager) {
+                const mdRes = await mdImpexAccessService.getAllRoles();
+                const mdList = Array.isArray((mdRes as any)?.data) ? (mdRes as any).data : [];
+                
+                if (mdList && mdList.length > 0) {
+                    // Whitelist specific role patterns for MD Manager
+                    const allowedRolePatterns = ['md_manager', 'ob_manager', 'manager', 'assistant', 'sub_assistance', 'sbm', 'troubleshoot_manager'];
+                    
+                    const mdMapped: RoleItem[] = mdList
+                        .map((r: any) => {
+                            const roleName = String(r.role || '').trim();
+                            const roleKey = roleName.toLowerCase().replace(/[\s-]+/g, '_');
+                            return { roleKey, roleName };
+                        })
+                        .filter(({ roleKey }: { roleKey: string }) => {
+                            // Check if roleKey matches any allowed pattern
+                            return allowedRolePatterns.some(pattern => 
+                                roleKey === pattern || roleKey.includes(pattern)
+                            );
+                        })
+                        .map(({ roleKey, roleName }: { roleKey: string; roleName: string }) => ({
+                            key: roleKey,
+                            name: roleName,
+                        }))
+                        .filter((r: RoleItem) => Boolean(r.key));
+                    
+                    if (mdMapped.length > 0) {
+                        setRoles(mdMapped);
+                        return;
+                    }
+                }
+                
+                // Fallback if no MD Impex roles found
+                setRoles([
+                    { key: 'md_manager', name: 'MD Manager' },
+                    { key: 'ob_manager', name: 'OB Manager' },
+                    { key: 'manager', name: 'Manager' },
+                    { key: 'assistant', name: 'Assistant' },
+                    { key: 'sub_assistance', name: 'Sub Assistance' },
+                    { key: 'troubleshoot_manager', name: 'Troubleshoot Manager' },
+                ]);
+                return;
+            }
+
+            // Admin flow - load generic roles
             const res = await accessService.getRoles();
             const list = Array.isArray((res as any)?.data) ? (res as any).data : [];
             const mapped: RoleItem[] = list
@@ -285,14 +355,28 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
         } catch (e: any) {
             const status = e?.response?.status;
             const message = e?.response?.data?.message || e?.response?.data?.msg || e?.message;
+            console.error('Load roles error:', e);
             toast.error(`${status ? `(${status}) ` : ''}${message || 'Failed to load roles'}`);
-            setRoles([
-                { key: 'admin', name: 'Administrator' },
-                { key: 'manager', name: 'Manager' },
-                { key: 'assistant', name: 'Assistant' },
-            ]);
+            
+            // For MD Manager, show MD Impex roles even on error
+            if (isMdManager) {
+                setRoles([
+                    { key: 'md_manager', name: 'MD Manager' },
+                    { key: 'ob_manager', name: 'OB Manager' },
+                    { key: 'manager', name: 'Manager' },
+                    { key: 'assistant', name: 'Assistant' },
+                    { key: 'sub_assistance', name: 'Sub Assistance' },
+                    { key: 'troubleshoot_manager', name: 'Troubleshoot Manager' },
+                ]);
+            } else {
+                setRoles([
+                    { key: 'admin', name: 'Administrator' },
+                    { key: 'manager', name: 'Manager' },
+                    { key: 'assistant', name: 'Assistant' },
+                ]);
+            }
         }
-    }, []);
+    }, [isMdManager]);
 
     const loadUserPermissions = useCallback(async (userId: string) => {
         try {
@@ -318,9 +402,24 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
     }, [canOpenAccessPage, loadModules, loadRoles]);
 
     const effectiveUsers = useMemo(() => {
-        if (Array.isArray(users) && users.length > 0) return users;
-        return [currentUser];
-    }, [currentUser, users]);
+        let list = (Array.isArray(users) && users.length > 0) ? users : [currentUser];
+        
+        // Filter to MD Impex users only if MD Manager
+        if (isMdManager) {
+            const normalizeCompanyKey = (value: unknown) => String(value || '')
+                .toLowerCase()
+                .trim()
+                .replace(/\s+/g, '');
+            const mdImpexKey = 'mdimpex';
+            
+            list = list.filter((u: any) => {
+                const companyKey = normalizeCompanyKey(u?.companyName || u?.company || '');
+                return companyKey === mdImpexKey;
+            });
+        }
+        
+        return list;
+    }, [currentUser, users, isMdManager]);
 
     const filteredUsersByRole = useMemo(() => {
         const targetRole = normalizeRole(selectedRoleTemplate);
@@ -329,11 +428,20 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
 
     useEffect(() => {
         if (roles.length === 0) return;
+        
+        // For MD Manager, default to first MD Impex role
+        if (isMdManager && selectedRoleTemplate === 'assistant') {
+            const firstMdRole = roles.length > 0 ? roles[0]?.key : 'assistant';
+            setSelectedRoleTemplate(firstMdRole);
+            return;
+        }
+        
         const exists = roles.some(r => normalizeRole(r.key) === normalizeRole(selectedRoleTemplate));
         if (!exists) {
-            setSelectedRoleTemplate('assistant');
+            const defaultRole = isMdManager && roles.length > 0 ? roles[0]?.key : 'assistant';
+            setSelectedRoleTemplate(defaultRole);
         }
-    }, [roles, selectedRoleTemplate]);
+    }, [roles, selectedRoleTemplate, isMdManager]);
 
     useEffect(() => {
         if (filteredUsersByRole.length === 0) {
@@ -850,7 +958,7 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
                                 />
                             </div>
 
-                            {canManageAccess && (
+                            {isAdminUser && (
                                 <div className="flex items-center gap-2">
                                     <button
                                         onClick={openAddModule}
@@ -915,14 +1023,14 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
                                                     <button
                                                         type="button"
                                                         onClick={() => setSelectedRoleTemplate(r.key)}
-                                                        className={`group relative w-full px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${canManageAccess && !isCore ? 'pr-16' : ''} ${normalizeRole(selectedRoleTemplate) === normalizeRole(r.key)
+                                                        className={`group relative w-full px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${isAdminUser && !isCore ? 'pr-16' : ''} ${normalizeRole(selectedRoleTemplate) === normalizeRole(r.key)
                                                             ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 border border-indigo-600'
                                                             : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-indigo-200'
                                                             }`}
                                                     >
                                                         <span className="capitalize  ">{(r.name || r.key)}</span>
 
-                                                        {canManageAccess && !isCore && (
+                                                        {isAdminUser && !isCore && (
                                                             <span className="absolute top-1 right-1 flex items-center gap-1">
                                                                 <button
                                                                     type="button"
@@ -984,7 +1092,7 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
                                             </select>
                                         </div>
 
-                                        {canManageAccess && (
+                                        {isAdminUser && (
                                             <div className="flex items-center gap-2">
                                                 <button
                                                     type="button"
@@ -1050,7 +1158,7 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
                                                         <td className="px-6 py-5 font-medium text-gray-900">
                                                             <div className="flex items-center justify-between gap-3">
                                                                 <span>{row.module}</span>
-                                                                {canManageAccess && (
+                                                                {isAdminUser && (
                                                                     <div className="flex items-center gap-2">
                                                                         <button
                                                                             type="button"
@@ -1117,7 +1225,7 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
                     </div>
                 </div>
 
-                {showModuleForm && (
+                {isAdminUser && showModuleForm && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                         <div className="absolute inset-0 bg-black/30" onClick={() => setShowModuleForm(false)} />
                         <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
@@ -1172,7 +1280,7 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
                     </div>
                 )}
 
-                {showAddUserModal && (
+                {isAdminUser && showAddUserModal && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                         <div className="absolute inset-0 bg-black/30" onClick={() => setShowAddUserModal(false)} />
                         <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden">
@@ -1187,7 +1295,7 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
                                             <p className="text-sm text-blue-100/90 mt-0.5">Create a user and assign permissions</p>
                                         </div>
                                     </div>
-                                    {canManageAccess && (
+                                    {isAdminUser && (
                                         <button
                                             type="button"
                                             onClick={() => {
@@ -1241,7 +1349,7 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
                     </div>
                 )}
 
-                {showAddRoleModal && (
+                {isAdminUser && showAddRoleModal && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                         <div className="absolute inset-0 bg-black/30" onClick={() => { if (addingRole) return; setShowAddRoleModal(false); }} />
                         <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden">
@@ -1298,7 +1406,7 @@ const AccessPage: React.FC<AccessPageProps> = ({ currentUser, users, onAddUser, 
                     </div>
                 )}
 
-                {showEditRoleModal && (
+                {isAdminUser && showEditRoleModal && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                         <div className="absolute inset-0 bg-black/30" onClick={() => { if (savingRoleEdit) return; setShowEditRoleModal(false); }} />
                         <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden">

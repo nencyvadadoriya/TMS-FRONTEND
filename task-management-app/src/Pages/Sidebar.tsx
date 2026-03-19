@@ -291,8 +291,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           <div className="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
             <div className="flex-shrink-0 flex items-center justify-between px-4">
               <div className="flex items-center">
-                <div className="h-8 w-8 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-                  <ListTodo className="h-5 w-5 text-white" />
+                <div className="h-8 w-8 overflow-hidden rounded-lg flex items-center justify-center">
+                  <img src="/logo.jpeg" alt="Logo" className="h-full w-full object-cover" />
                 </div>
                 {!isCollapsed && (
                   <span className="ml-3 text-xl font-bold text-gray-900 dark:text-white">TaskFlow</span>
@@ -370,15 +370,15 @@ const Sidebar: React.FC<SidebarProps> = ({
           <div className="flex-shrink-0 flex items-center justify-between h-16 px-4 border-b border-gray-200 dark:border-gray-700">
             {!isCollapsed ? (
               <div className="flex items-center">
-                <div className="h-8 w-8 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-                  <ListTodo className="h-5 w-5 text-white" />
+                <div className="h-8 w-8 overflow-hidden rounded-lg flex items-center justify-center">
+                  <img src="/logo.jpeg" alt="Logo" className="h-full w-full object-cover" />
                 </div>
                 <span className="ml-3 text-xl font-bold text-gray-900 dark:text-white">TaskFlow</span>
               </div>
             ) : (
               <div className="flex items-center justify-center w-full">
-                <div className="h-8 w-8 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-                  <ListTodo className="h-5 w-5 text-white" />
+                <div className="h-8 w-8 overflow-hidden rounded-lg flex items-center justify-center">
+                  <img src="/logo.jpeg" alt="Logo" className="h-full w-full object-cover" />
                 </div>
               </div>
             )}

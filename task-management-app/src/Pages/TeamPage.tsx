@@ -6,6 +6,10 @@ import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react'
 
 
 
+
+
+
+
 import { useNavigate } from 'react-router-dom';
 
 
@@ -1852,13 +1856,6 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
 
         // Simulate loading delay for better UX
-
-
-
-
-
-
-
         setTimeout(() => {
 
 
@@ -3060,6 +3057,46 @@ const canManageTargetUser = useCallback((target: UserType): boolean => {
 
 
 
+        const targetCreatedByEmail = (target as any)?.createdByEmail?.toString().trim().toLowerCase() || '';
+
+
+
+
+
+
+
+        const currentUserEmail = (currentUser as any)?.email?.toString().trim().toLowerCase() || '';
+
+
+
+
+
+
+
+        if (targetCreatedByEmail && currentUserEmail && targetCreatedByEmail === currentUserEmail) {
+
+
+
+
+
+
+
+            return true;
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
         if (r === 'manager') return true;
 
 
@@ -3356,7 +3393,7 @@ const canManageTargetUser = useCallback((target: UserType): boolean => {
 
 
 
-}, [currentUserIdValue, isCurrentUserAdmin, isCurrentUserAm, isCurrentUserMdManager, isCurrentUserObManager, isCurrentUserManager, isCurrentUserRm, isCurrentUserSbm, isSpeedEcomUser, normalizeRole]);
+}, [currentUserIdValue, currentUser, isCurrentUserAdmin, isCurrentUserAm, isCurrentUserMdManager, isCurrentUserObManager, isCurrentUserManager, isCurrentUserRm, isCurrentUserSbm, isSpeedEcomUser, normalizeRole]);
 
 
 
@@ -5075,7 +5112,6 @@ const loadRoles = useCallback(async () => {
                 }))
                 .filter((r: RoleItem) => Boolean(r.key));
         }
-
         const fallback: RoleItem[] = [
             { key: 'admin', name: 'Admin' },
             { key: 'md_manager', name: 'MD Manager' },
@@ -5088,18 +5124,15 @@ const loadRoles = useCallback(async () => {
             { key: 'sub_assistance', name: 'Sub Assistance' },
             { key: 'sales_manager', name: 'Sales Manager' },
             { key: 'sales_man', name: 'Sales Man' },
+            { key: 'troubleshoot_manager', name: 'Troubleshoot Manager' },
         ];
-
         const merged = [...fallback, ...list];
-
         const uniq = new Map<string, RoleItem>();
-
         merged.forEach((r) => {
             const k = normalizeRole(r.key);
             if (!k) return;
             if (!uniq.has(k)) uniq.set(k, { key: k, name: r.name || r.key });
         });
-
         setAvailableRoles(Array.from(uniq.values()));
     } catch {
         setAvailableRoles([
@@ -5114,6 +5147,7 @@ const loadRoles = useCallback(async () => {
             { key: 'sub_assistance', name: 'Sub Assistance' },
             { key: 'sales_manager', name: 'Sales Manager' },
             { key: 'sales_man', name: 'Sales Man' },
+            { key: 'troubleshoot_manager', name: 'Troubleshoot Manager' },
         ]);
     } finally {
         setRolesLoading(false);
@@ -5453,29 +5487,12 @@ const roleOptionsForAddModal = useMemo(() => {
 
 
         const baseOptions = [
-
-
-
             { key: 'md_manager', name: 'MD Manager' },
-
-
-
             { key: 'ob_manager', name: 'OB Manager' },
-
-
-
             { key: 'manager', name: 'Manager' },
-
-
-
             { key: 'assistant', name: 'Assistant' },
-
-
-
             { key: 'sub_assistance', name: 'Sub Assistance' },
-
-
-
+            { key: 'troubleshoot_manager', name: 'Troubleshoot Manager' },
         ];
 
 
@@ -10667,27 +10684,57 @@ return (
 
             };
 
+            // Get dynamic MD Impex roles that are not in the static roleOrder
+            const dynamicMdImpexRoles = (availableRoles || [])
+                .filter((r: RoleItem) => !roleOrder.includes(r.key))
+                .filter((r: RoleItem) => {
+                    // Filter out Speed E Com related roles
+                    const speedEComKeywords = ['speed', 'ecom', 'speed_ecom', 'speedecom', 'speed-ecom'];
+                    return !speedEComKeywords.some(keyword => r.key.toLowerCase().includes(keyword) || r.name.toLowerCase().includes(keyword));
+                })
+                // Filter out 'admin' role - it should not show in MD Manager's grid
+                .filter((r: RoleItem) => r.key !== 'admin');
 
+            // Add dynamic roles to roleOrder and roleLabels
+            const extendedRoleOrder = [...roleOrder, ...dynamicMdImpexRoles.map((r: RoleItem) => r.key)];
+            
+            // Extend roleLabels with dynamic role names
+            const extendedRoleLabels: Record<string, string> = {
+                ...roleLabels,
+                ...dynamicMdImpexRoles.reduce((acc: Record<string, string>, r: RoleItem) => {
+                    acc[r.key] = r.name;
+                    return acc;
+                }, {})
+            };
 
+            // Generate dynamic card classes for new roles
+            const dynamicCardClasses = dynamicMdImpexRoles.reduce((acc: Record<string, string>, r: RoleItem, idx: number) => {
+                const colors = ['bg-pink-50 border-pink-200', 'bg-teal-50 border-teal-200', 'bg-lime-50 border-lime-200', 'bg-rose-50 border-rose-200', 'bg-slate-50 border-slate-200', 'bg-fuchsia-50 border-fuchsia-200'];
+                acc[r.key] = colors[idx % colors.length];
+                return acc;
+            }, {});
 
+            // Generate dynamic text classes for new roles
+            const dynamicTextClasses = dynamicMdImpexRoles.reduce((acc: Record<string, string>, r: RoleItem, idx: number) => {
+                const colors = ['text-pink-700', 'text-teal-700', 'text-lime-700', 'text-rose-700', 'text-slate-700', 'text-fuchsia-700'];
+                acc[r.key] = colors[idx % colors.length];
+                return acc;
+            }, {});
 
+            const extendedRoleCardClass: Record<string, string> = {
+                ...roleCardClass,
+                ...dynamicCardClasses
+            };
 
+            const extendedRoleTextClass: Record<string, string> = {
+                ...roleTextClass,
+                ...dynamicTextClasses
+            };
 
-            const rolesToRender = roleOrder
-
-
-
-                .filter((r) => isRoleVisible(r))
-
-
-
-                .filter((r) => countByRole(r) > 0);
-
-
-
-
-
-
+            const rolesToRender = extendedRoleOrder
+                .filter((r) => isRoleVisible(r) || dynamicMdImpexRoles.some((dr: RoleItem) => dr.key === r))
+                // Don't filter out roles with 0 count - show all MD Impex roles
+                .filter((r) => countByRole(r) > 0 || dynamicMdImpexRoles.some((dr: RoleItem) => dr.key === r));
 
             const gridCols = rolesToRender.length + 1;
 
@@ -10810,7 +10857,7 @@ return (
 
 
 
-                            className={`p-5 rounded-xl border text-left transition-all ${filterRole === roleKey ? `${roleCardClass[roleKey]} shadow-sm` : `bg-white border-gray-200 hover:${roleCardClass[roleKey]}`}`}
+                            className={`p-5 rounded-xl border text-left transition-all ${filterRole === roleKey ? `${extendedRoleCardClass[roleKey] || 'bg-gray-50 border-gray-200'} shadow-sm` : `bg-white border-gray-200 hover:${extendedRoleCardClass[roleKey] || 'bg-gray-50'}`}`}
 
 
 
@@ -10826,7 +10873,7 @@ return (
 
 
 
-                            <div className={`text-3xl font-bold ${roleTextClass[roleKey]}`}>{countByRole(roleKey)}</div>
+                            <div className={`text-3xl font-bold ${extendedRoleTextClass[roleKey] || 'text-gray-700'}`}>{countByRole(roleKey)}</div>
 
 
 
@@ -10834,7 +10881,7 @@ return (
 
 
 
-                            <div className="text-sm text-gray-600 mt-1">{roleLabels[roleKey] || roleKey}</div>
+                            <div className="text-sm text-gray-600 mt-1">{extendedRoleLabels[roleKey] || roleKey}</div>
 
 
 

@@ -270,11 +270,14 @@ const EditTaskModal = ({
                   disabled={!editFormData.companyName || shouldDisableAllForSpeedEcom}
                 >
                   <option value="">Select a brand</option>
-                  {getEditFormBrandOptions().map((opt) => (
-                    <option key={opt?.value} value={opt?.value}>
-                      {opt?.label}
-                    </option>
-                  ))}
+                  {(() => {
+                    const options = getEditFormBrandOptions();
+                    return Array.isArray(options) && options.map((opt) => (
+                      <option key={opt?.value} value={opt?.value}>
+                        {opt?.label}
+                      </option>
+                    ));
+                  })()}
                 </select>
                 {!editFormData.companyName && (
                   <p className="mt-1 text-xs text-gray-500">Select a company first to see available brands</p>

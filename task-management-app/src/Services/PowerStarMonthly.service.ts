@@ -11,6 +11,9 @@ export type PowerStarMonthlyRow = {
     liveAssign: number[]; // [w1,w2,w3,w4]
     hits: number[]; // [w1,w2,w3,w4]
     freeze?: boolean; // MD Manager can freeze a person from top ranking
+    freezeChurn?: boolean;
+    freezeLiveAssign?: boolean;
+    freezeHits?: boolean;
 };
 
 export type PowerStarMonthlyResponse = {
@@ -46,7 +49,10 @@ class PowerStarMonthlyService {
                     churn: normalizeWeekArray((r as any).churn),
                     liveAssign: normalizeWeekArray((r as any).liveAssign),
                     hits: normalizeWeekArray((r as any).hits),
-                    freeze: Boolean((r as any).freeze)
+                    freeze: Boolean((r as any).freeze),
+                    freezeChurn: Boolean((r as any).freezeChurn),
+                    freezeLiveAssign: Boolean((r as any).freezeLiveAssign),
+                    freezeHits: Boolean((r as any).freezeHits)
                 }));
             }
             return {
@@ -60,7 +66,7 @@ class PowerStarMonthlyService {
         }
     }
 
-    async saveMonthly(payload: { monthKey: string; rows: Array<{ userId: string; churn: number[]; liveAssign: number[]; hits: number[]; freeze?: boolean }> }) {
+    async saveMonthly(payload: { monthKey: string; rows: Array<{ userId: string; churn: number[]; liveAssign: number[]; hits: number[]; freeze?: boolean; freezeChurn?: boolean; freezeLiveAssign?: boolean; freezeHits?: boolean }> }) {
         try {
             const res = await apiClient.put(this.baseUrl, payload);
             return {

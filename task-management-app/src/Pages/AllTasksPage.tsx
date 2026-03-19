@@ -620,6 +620,13 @@ const BulkImporter = memo(({
 }) => {
   const [bulkTaskInput, setBulkTaskInput] = useState<string>('');
 
+  const isMdImpexUser = useMemo(() => {
+    const normalizeCompanyKeyLocal = (v: unknown): string => String(v || '').trim().toLowerCase().replace(/\s+/g, '');
+    const myKey = normalizeCompanyKeyLocal((currentUser as any)?.companyName || (currentUser as any)?.company || '');
+    const mdKey = normalizeCompanyKeyLocal(MD_IMPEX_COMPANY_NAME);
+    return Boolean(myKey && mdKey && myKey === mdKey);
+  }, [currentUser]);
+
   const canonicalizeTaskTypeLabel = useCallback((value: unknown): string => {
     const raw = (value == null ? '' : String(value)).trim();
     if (!raw) return '';
@@ -739,7 +746,7 @@ const BulkImporter = memo(({
   const availableCompanyOptions = useMemo(() => {
     const role = String((currentUser as any)?.role || '').trim().toLowerCase();
     const keys = Object.keys(companyBrandMap || {});
-    if (role === 'troubleshoot_manager') {
+    if (isMdImpexUser || role === 'troubleshoot_manager') {
       const match = keys.find((k) => String(k).trim().toLowerCase() === 'md impex');
       return [match || MD_IMPEX_COMPANY_NAME];
     }
@@ -752,7 +759,7 @@ const BulkImporter = memo(({
       return keys.slice(0, 1);
     }
     return keys;
-  }, [companyBrandMap, currentUser, defaults.companyName]);
+  }, [companyBrandMap, currentUser, defaults.companyName, isMdImpexUser]);
 
   const effectiveCompanyName = useMemo(() => {
     const raw = String(defaults.companyName || '').trim();
@@ -859,12 +866,12 @@ const BulkImporter = memo(({
   // Handle company change - reset brand when company changes
   const handleCompanyChange = useCallback((companyName: string) => {
     const role = String((currentUser as any)?.role || '').trim().toLowerCase();
-    if (role === 'troubleshoot_manager') return;
+    if (isMdImpexUser || role === 'troubleshoot_manager') return;
     onDefaultsChange({
       companyName: companyName,
       brand: '' // Reset brand when company changes
     });
-  }, [currentUser, onDefaultsChange]);
+  }, [currentUser, isMdImpexUser, onDefaultsChange]);
 
   // Apply default assigner to all tasks
   const handleApplyAssignerToAll = useCallback(() => {
@@ -1045,7 +1052,7 @@ const BulkImporter = memo(({
                 value={companySelectValue}
                 onChange={(e) => handleCompanyChange(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                disabled={availableCompanyOptions.length === 1 || String((currentUser as any)?.role || '').trim().toLowerCase() === 'troubleshoot_manager'}
+                disabled={isMdImpexUser || availableCompanyOptions.length === 1 || String((currentUser as any)?.role || '').trim().toLowerCase() === 'troubleshoot_manager'}
               >
                 <option value="">Select company</option>
                 {availableCompanyOptions.map(company => (
@@ -1295,14 +1302,21 @@ Add user notifications
                                   handleFieldChange(draft.id, 'brand', '');
                                 }}
                                 className={`w-full px-3 py-2 border ${draft.errors.some(e => e.includes('Company')) ? 'border-red-300' : 'border-gray-200'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm`}
+                                disabled={isMdImpexUser}
                               >
                                 <option value="">Select company</option>
-                                <option value="all">All Companies</option>
-                                {Object.keys(companyBrandMap).map(company => (
-                                  <option key={company} value={company}>
-                                    {company.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
-                                  </option>
-                                ))}
+                                {isMdImpexUser ? (
+                                  <option value={MD_IMPEX_COMPANY_NAME}>{MD_IMPEX_COMPANY_NAME}</option>
+                                ) : (
+                                  <>
+                                    <option value="all">All Companies</option>
+                                    {Object.keys(companyBrandMap).map(company => (
+                                      <option key={company} value={company}>
+                                        {company.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                                      </option>
+                                    ))}
+                                  </>
+                                )}
                               </select>
 
                               <select
@@ -3947,6 +3961,10 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     setBulkImportDefaults((prev) => {
       const current = (prev?.companyName || '').toString().trim();
       if (current) return prev;
+      const normalizeCompanyKeyLocal = (v: unknown): string => String(v || '').trim().toLowerCase().replace(/\s+/g, '');
+      const myCompanyKey = normalizeCompanyKeyLocal((currentUser as any)?.companyName || (currentUser as any)?.company || '');
+      const mdKey = normalizeCompanyKeyLocal(MD_IMPEX_COMPANY_NAME);
+      if (myCompanyKey && mdKey && myCompanyKey === mdKey) return { ...prev, companyName: MD_IMPEX_COMPANY_NAME };
       if (role === 'troubleshoot_manager') return { ...prev, companyName: MD_IMPEX_COMPANY_NAME };
       const raw = ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
       const normalized = raw ? raw.toLowerCase() : '';
@@ -4371,6 +4389,11 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       assigner: currentUser.email || '',
       dueDate: new Date().toISOString().split('T')[0],
       companyName: (() => {
+        const normalizeCompanyKeyLocal = (v: unknown): string => String(v || '').trim().toLowerCase().replace(/\s+/g, '');
+        const myCompanyKey = normalizeCompanyKeyLocal((currentUser as any)?.companyName || (currentUser as any)?.company || '');
+        const mdKey = normalizeCompanyKeyLocal(MD_IMPEX_COMPANY_NAME);
+        if (myCompanyKey && mdKey && myCompanyKey === mdKey) return MD_IMPEX_COMPANY_NAME;
+
         const prevCompany = (prev.companyName || '').toString().trim();
         if (prevCompany) return prevCompany;
 
@@ -4423,7 +4446,13 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         dueDate: draft.dueDate,
         priority: (draft.priority || bulkImportDefaults.priority) as BulkPriority,
         taskType: (draft.taskType || bulkImportDefaults.taskType) || undefined,
-        companyName: draft.companyName || bulkImportDefaults.companyName,
+        companyName: (() => {
+          const normalizeCompanyKeyLocal = (v: unknown): string => String(v || '').trim().toLowerCase().replace(/\s+/g, '');
+          const myCompanyKey = normalizeCompanyKeyLocal((currentUser as any)?.companyName || (currentUser as any)?.company || '');
+          const mdKey = normalizeCompanyKeyLocal(MD_IMPEX_COMPANY_NAME);
+          if (myCompanyKey && mdKey && myCompanyKey === mdKey) return MD_IMPEX_COMPANY_NAME;
+          return draft.companyName || bulkImportDefaults.companyName;
+        })(),
         brand: draft.brand || bulkImportDefaults.brand,
         rowNumber: draft.rowNumber
       }));

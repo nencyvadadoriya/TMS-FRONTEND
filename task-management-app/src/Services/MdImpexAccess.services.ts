@@ -53,6 +53,8 @@ type PersonAccessItem = {
     assignedToRole: string;
     accessRole: string;
     allowedAssignees: string[];
+    allowedTaskTypes?: string[];
+    allowedBrands?: string[];
     createdAt: string;
     updatedAt?: string;
 };
@@ -62,11 +64,15 @@ type CreatePersonAccessPayload = {
     assignedToRole: string;
     accessRole?: string;
     allowedAssignees: string[];
+    allowedTaskTypes?: string[];
+    allowedBrands?: string[];
 };
 
 type UpdatePersonAccessPayload = {
     accessRole?: string;
     allowedAssignees: string[];
+    allowedTaskTypes?: string[];
+    allowedBrands?: string[];
 };
 
 class MdImpexAccessService {

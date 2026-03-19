@@ -456,7 +456,7 @@ const AddTaskModal = ({
 
                 <option value="">Select a brand</option>
 
-                {availableBrandOptions.map((opt) => (
+                {Array.isArray(availableBrandOptions) && availableBrandOptions.map((opt) => (
 
                   <option key={opt.value} value={opt.value}>
 
