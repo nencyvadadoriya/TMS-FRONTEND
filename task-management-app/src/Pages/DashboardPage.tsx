@@ -1,105 +1,217 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+
 import { useNavigate, useLocation } from 'react-router-dom';
+
 import { io, Socket } from 'socket.io-client';
+
 import {
-    LayoutDashboard,
+
+
     ListTodo,
+
     PlusCircle,
+
     AlertCircle,
+
     CheckCircle,
+
     Clock,
+
     Bell,
+
     Trash2,
+
     Grid,
+
     List,
+
     Filter,
+
     TrendingUp,
+
     TrendingDown,
+
     BarChart3,
+
     CalendarDays,
+
     UserCheck,
+
     Flag,
+
     Building,
+
     Tag,
+
     Edit,
+
     User,
+
     Star,
+
     Trophy,
+
     Crown,
+
     MessageSquare,
+
     X,
+
     Send,
+
     Loader2,
+
 } from 'lucide-react';
 
+
+
 import toast from 'react-hot-toast';
+
 import Sidebar from './Sidebar';
+
 import Navbar from './Navbar';
+
 import AllTasksPage from './AllTasksPage';
+
 import CalendarView from './CalendarView';
+
 import TeamPage from './TeamPage';
+
 import UserProfilePage from './UserProfilePage';
+
 import BrandsListPage from './BrandsListPage';
+
 import BrandDetailPage from './BrandDetailPage';
+
 import AccessPage from './AccessPage';
+
 import CompanyBrandTaskTypePage from './CompanyBrandTaskTypePage';
+
 import AssignPage from './AssignPage';
+
 import ReviewsPage from './ReviewsPage';
+
 import OtherWorkPage from './OtherWorkPage';
+
 import MdImpexStrikePage from './MdImpexStrikePage';
+
 import MdImpexAccessPage from './MdImpexAccessPage';
+
 import ManagerMonthlyRankingPage from './ManagerMonthlyRankingPage';
+
 import PowerStarOfTheMonthPage from './PowerStarOfTheMonthPage';
+
 import SpeedEcomReassignPage from './SpeedEcomReassignPage';
+
 import AdvancedFilters from './AdvancedFilters';
+
 import AnalyzePage from './AnalyzePage';
+
 import { DashboardPageSkeleton } from '../Components/LoadingSkeletons';
+
 import EmployeeOfTheMonthCard from '../Components/EmployeeOfTheMonthCard';
+
 import TaskReminderCard from '../Components/TaskReminderCard';
+
 import AddTaskModal from './DashboardModals/AddTaskModal';
+
 import MdImpexAddTaskModal from './DashboardModals/MdImpexAddTaskModal';
+
 import EditTaskModal from './DashboardModals/EditTaskModal';
+
 import MdImpexEditTaskModal from './DashboardModals/MdImpexEditTaskModal';
+
 import SendReminderModal from './DashboardModals/SendReminderModal';
+
 import BulkAddBrandsModal from './DashboardModals/BulkAddBrandsModal';
+
 import BulkAddCompaniesModal from './DashboardModals/BulkAddCompaniesModal';
+
 import BulkAddTaskTypesModal from './DashboardModals/BulkAddTaskTypesModal';
+
 import ManagerAddBrandModal from './DashboardModals/ManagerAddBrandModal';
 
+
+
 import type {
+
     Brand,
+
     CommentType,
+
     Company,
+
     Task,
+
     TaskHistory,
+
     TaskPriority,
+
     TaskStatus,
+
     TaskTypeItem,
+
     UserType,
+
 } from '../Types/Types';
 
+
+
 import { taskService } from '../Services/Task.services';
+
 import apiClient from '../Services/apiClient';
+
 import { authService } from '../Services/User.Services';
+
 import { brandService } from '../Services/Brand.service';
+
 import { companyService } from '../Services/Company.service';
+
 import { taskTypeService } from '../Services/TaskType.service';
+
 import { companyTaskTypeService } from '../Services/CompanyTaskType.service';
+
 import { companyBrandTaskTypeService } from '../Services/CompanyBrandTaskType.service';
+
 import { assignService } from '../Services/Assign.service';
+
 import { routepath } from '../Routes/route';
+
 import PersonalTasksPage from './PersonalTasksPage';
+
+import AssignedByMe from './AssignedByMe';
+
+import AssignedToMe from './AssignedToMe';
+
 import { useAppDispatch, useAppSelector } from '../Store/hooks';
+
 import {
+
     fetchTasks as fetchTasksThunk,
+
     selectAllTasks,
+
     taskAdded,
+
     taskRemoved,
+
     taskUpserted,
+
     tasksAddedMany,
+
     tasksReset
+
 } from '../Store/tasksSlice';
+
 type TaskReminderClientItem = {
+
+
+
+
+
+
+
+
 
 
 
@@ -115,7 +227,23 @@ type TaskReminderClientItem = {
 
 
 
+
+
+
+
+
+
+
+
     taskId: string;
+
+
+
+
+
+
+
+
 
 
 
@@ -131,7 +259,23 @@ type TaskReminderClientItem = {
 
 
 
+
+
+
+
+
+
+
+
     message: string;
+
+
+
+
+
+
+
+
 
 
 
@@ -147,7 +291,23 @@ type TaskReminderClientItem = {
 
 
 
+
+
+
+
+
+
+
+
     task?: {
+
+
+
+
+
+
+
+
 
 
 
@@ -163,7 +323,23 @@ type TaskReminderClientItem = {
 
 
 
+
+
+
+
+
+
+
+
         dueDate?: string | Date | null;
+
+
+
+
+
+
+
+
 
 
 
@@ -179,7 +355,23 @@ type TaskReminderClientItem = {
 
 
 
+
+
+
+
+
+
+
+
         companyName?: string;
+
+
+
+
+
+
+
+
 
 
 
@@ -195,6 +387,14 @@ type TaskReminderClientItem = {
 
 
 
+
+
+
+
+
+
+
+
     };
 
 
@@ -203,7 +403,31 @@ type TaskReminderClientItem = {
 
 
 
+
+
+
+
+
+
+
+
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -227,7 +451,23 @@ const resolveSocketUrl = () => {
 
 
 
+
+
+
+
+
+
+
+
     const envBaseUrl = import.meta.env.VITE_API_BASE_URL;
+
+
+
+
+
+
+
+
 
 
 
@@ -243,7 +483,23 @@ const resolveSocketUrl = () => {
 
 
 
+
+
+
+
+
+
+
+
     const isDev = Boolean(import.meta.env.DEV);
+
+
+
+
+
+
+
+
 
 
 
@@ -259,7 +515,23 @@ const resolveSocketUrl = () => {
 
 
 
+
+
+
+
+
+
+
+
         return String(envSocketUrl).trim().replace(/\/+$/, '');
+
+
+
+
+
+
+
+
 
 
 
@@ -275,7 +547,23 @@ const resolveSocketUrl = () => {
 
 
 
+
+
+
+
+
+
+
+
     const apiBase =
+
+
+
+
+
+
+
+
 
 
 
@@ -291,7 +579,23 @@ const resolveSocketUrl = () => {
 
 
 
+
+
+
+
+
+
+
+
             ? envBaseUrl
+
+
+
+
+
+
+
+
 
 
 
@@ -307,7 +611,23 @@ const resolveSocketUrl = () => {
 
 
 
+
+
+
+
+
+
+
+
     const trimmed = String(apiBase || '').trim().replace(/\/+$/, '');
+
+
+
+
+
+
+
+
 
 
 
@@ -323,7 +643,31 @@ const resolveSocketUrl = () => {
 
 
 
+
+
+
+
+
+
+
+
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -347,7 +691,23 @@ const stripDeletedEmailSuffix = (value: unknown): string => {
 
 
 
+
+
+
+
+
+
+
+
     const raw = (value == null ? '' : String(value)).trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -363,7 +723,23 @@ const stripDeletedEmailSuffix = (value: unknown): string => {
 
 
 
+
+
+
+
+
+
+
+
     const marker = '.deleted.';
+
+
+
+
+
+
+
+
 
 
 
@@ -379,7 +755,23 @@ const stripDeletedEmailSuffix = (value: unknown): string => {
 
 
 
+
+
+
+
+
+
+
+
     if (idx === -1) return raw;
+
+
+
+
+
+
+
+
 
 
 
@@ -395,7 +787,31 @@ const stripDeletedEmailSuffix = (value: unknown): string => {
 
 
 
+
+
+
+
+
+
+
+
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -427,7 +843,39 @@ const pad2 = (n: number) => String(n).padStart(2, '0');
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 const monthKeyOfDate = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -451,7 +899,23 @@ const performanceLevelForAvg = (avgStars: number) => {
 
 
 
+
+
+
+
+
+
+
+
     const v = Number(avgStars);
+
+
+
+
+
+
+
+
 
 
 
@@ -467,7 +931,23 @@ const performanceLevelForAvg = (avgStars: number) => {
 
 
 
+
+
+
+
+
+
+
+
     if (v >= 4.5) return 'Excellent';
+
+
+
+
+
+
+
+
 
 
 
@@ -483,6 +963,14 @@ const performanceLevelForAvg = (avgStars: number) => {
 
 
 
+
+
+
+
+
+
+
+
     if (v >= 3.0) return 'Good';
 
 
@@ -491,7 +979,23 @@ const performanceLevelForAvg = (avgStars: number) => {
 
 
 
+
+
+
+
+
+
+
+
     return 'Improve';
+
+
+
+
+
+
+
+
 
 
 
@@ -515,7 +1019,31 @@ const performanceLevelForAvg = (avgStars: number) => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 interface NewTaskForm {
+
+
+
+
+
+
+
+
 
 
 
@@ -531,7 +1059,23 @@ interface NewTaskForm {
 
 
 
+
+
+
+
+
+
+
+
     assignedTo: string;
+
+
+
+
+
+
+
+
 
 
 
@@ -547,7 +1091,23 @@ interface NewTaskForm {
 
 
 
+
+
+
+
+
+
+
+
     priority: TaskPriority;
+
+
+
+
+
+
+
+
 
 
 
@@ -563,7 +1123,23 @@ interface NewTaskForm {
 
 
 
+
+
+
+
+
+
+
+
     companyName: string;
+
+
+
+
+
+
+
+
 
 
 
@@ -579,7 +1155,31 @@ interface NewTaskForm {
 
 
 
+
+
+
+
+
+
+
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -603,7 +1203,23 @@ interface EditTaskForm {
 
 
 
+
+
+
+
+
+
+
+
     id: string;
+
+
+
+
+
+
+
+
 
 
 
@@ -619,7 +1235,23 @@ interface EditTaskForm {
 
 
 
+
+
+
+
+
+
+
+
     assignedTo: string;
+
+
+
+
+
+
+
+
 
 
 
@@ -635,7 +1267,23 @@ interface EditTaskForm {
 
 
 
+
+
+
+
+
+
+
+
     priority: TaskPriority;
+
+
+
+
+
+
+
+
 
 
 
@@ -651,7 +1299,23 @@ interface EditTaskForm {
 
 
 
+
+
+
+
+
+
+
+
     companyName: string;
+
+
+
+
+
+
+
+
 
 
 
@@ -667,6 +1331,14 @@ interface EditTaskForm {
 
 
 
+
+
+
+
+
+
+
+
     status: TaskStatus;
 
 
@@ -675,7 +1347,31 @@ interface EditTaskForm {
 
 
 
+
+
+
+
+
+
+
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -699,7 +1395,23 @@ interface StatMeta {
 
 
 
+
+
+
+
+
+
+
+
     name: string;
+
+
+
+
+
+
+
+
 
 
 
@@ -715,7 +1427,23 @@ interface StatMeta {
 
 
 
+
+
+
+
+
+
+
+
     change: string;
+
+
+
+
+
+
+
+
 
 
 
@@ -731,7 +1459,23 @@ interface StatMeta {
 
 
 
+
+
+
+
+
+
+
+
     icon: any;
+
+
+
+
+
+
+
+
 
 
 
@@ -747,7 +1491,23 @@ interface StatMeta {
 
 
 
+
+
+
+
+
+
+
+
     color: string;
+
+
+
+
+
+
+
+
 
 
 
@@ -763,7 +1523,31 @@ interface StatMeta {
 
 
 
+
+
+
+
+
+
+
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -787,7 +1571,23 @@ interface FilterState {
 
 
 
+
+
+
+
+
+
+
+
     status: string;
+
+
+
+
+
+
+
+
 
 
 
@@ -803,7 +1603,23 @@ interface FilterState {
 
 
 
+
+
+
+
+
+
+
+
     assigned: string;
+
+
+
+
+
+
+
+
 
 
 
@@ -819,7 +1635,23 @@ interface FilterState {
 
 
 
+
+
+
+
+
+
+
+
     taskType: string;
+
+
+
+
+
+
+
+
 
 
 
@@ -835,7 +1667,23 @@ interface FilterState {
 
 
 
+
+
+
+
+
+
+
+
     brand: string;
+
+
+
+
+
+
+
+
 
 
 
@@ -847,7 +1695,27 @@ interface FilterState {
 
 
 
+
+
+
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -871,7 +1739,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const navigate = useNavigate();
+
+
+
+
+
+
+
+
 
 
 
@@ -895,6 +1779,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const dispatch = useAppDispatch();
 
 
@@ -903,17 +1803,54 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+    const [currentUser, setCurrentUser] = useState<UserType>({
+        id: '',
+        name: '',
+        email: '',
+        role: '',
+        password: '',
+        company: '',
+        companyName: '',
+        phone: '',
+        avatar: '',
+        department: '',
+        position: '',
+        joinDate: new Date().toISOString(),
+        lastLogin: new Date().toISOString(),
+        permissions: {},
+        isActive: true,
+        isEmployee: true
+    } as any);
+
     const tasks = useAppSelector(selectAllTasks);
 
+    const assignedByMePendingCount = useMemo(() => {
+        if (!currentUser?.email) return 0;
+        return tasks.filter(t => {
+            const assignedByEmail = typeof t.assignedBy === 'object' ? t.assignedBy?.email : t.assignedBy;
+            return assignedByEmail === currentUser.email && t.status === 'completed' && !t.completedApproval;
+        }).length;
+    }, [tasks, currentUser?.email]);
 
-
-
-
-
+    const assignedToMePendingCount = useMemo(() => {
+        if (!currentUser?.email) return 0;
+        return tasks.filter(t => {
+            const assignedToEmail = typeof t.assignedTo === 'object' ? t.assignedTo?.email : t.assignedTo;
+            const assignedToUserEmail = (t as any).assignedToUser?.email;
+            const isAssignedToMe = assignedToEmail === currentUser.email || assignedToUserEmail === currentUser.email;
+            return isAssignedToMe && t.status === 'pending';
+        }).length;
+    }, [tasks, currentUser?.email]);
 
     const seenTaskIdsRef = useRef<Set<string>>(new Set());
-
-
 
     const normalizeEmailForMatch = useCallback((v: any): string => {
         if (!v) return '';
@@ -925,13 +1862,12 @@ const DashboardPage = () => {
         return '';
     }, []);
 
-
-
-
-
-
-
     const hasFetchedTasksOnceRef = useRef(false);
+
+
+
+
+
 
 
 
@@ -947,7 +1883,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const [showAddTaskModal, setShowAddTaskModal] = useState(false);
+
+
+
+
+
+
+
+
 
 
 
@@ -963,7 +1915,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const [showMdImpexEditModal, setShowMdImpexEditModal] = useState(false);
+
+
+
+
+
+
+
+
 
 
 
@@ -979,6 +1947,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const [showManagerAddBrandModal, setShowManagerAddBrandModal] = useState(false);
 
 
@@ -987,63 +1963,29 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const [managerBrandName, setManagerBrandName] = useState('');
-
-
-
-
-
-
-
     const [isCreatingManagerBrand, setIsCreatingManagerBrand] = useState(false);
-
-
-
-
-
-
-
     const [editingTask, setEditingTask] = useState<Task | null>(null);
-
-
-
-
-
-
-
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-
-
-
-
-
-
-
     const [sidebarOpen, setSidebarOpen] = useState(false);
-
-
-
-
-
-
-
     const [showLogout, setShowLogout] = useState(false);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     const [users, setUsers] = useState<UserType[]>([]);
+
+
+
+
+
+
+
+
 
 
 
@@ -1059,7 +2001,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const [apiBrands, setApiBrands] = useState<Brand[]>([]);
+
+
+
+
+
+
+
+
 
 
 
@@ -1075,12 +2033,33 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const [sendReminderTask, setSendReminderTask] = useState<Task | null>(null);
+
     const [sendReminderOpen, setSendReminderOpen] = useState(false);
+
     const [unreadReminders, setUnreadReminders] = useState<TaskReminderClientItem[]>([]);
+
     const [activeReminderId, setActiveReminderId] = useState<string>('');
+
     const SUPPORTING_FETCH_TTL_MS = 5 * 60_000;
+
     const MD_IMPEX_COMPANY_NAME = 'MD Impex';
+
+
+
+
+
+
+
+
 
 
 
@@ -1096,7 +2075,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const brandsFetchedAtRef = useRef<number | null>(null);
+
+
+
+
+
+
+
+
 
 
 
@@ -1112,7 +2107,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const taskTypesFetchedAtRef = useRef<number | null>(null);
+
+
+
+
+
+
+
+
 
 
 
@@ -1128,7 +2139,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const brandsFetchInFlightRef = useRef<Promise<void> | null>(null);
+
+
+
+
+
+
+
+
 
 
 
@@ -1144,7 +2171,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const taskTypesFetchInFlightRef = useRef<Promise<void> | null>(null);
+
+
+
+
+
+
+
+
 
 
 
@@ -1160,7 +2203,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const [showTaskCommentSidebar, setShowTaskCommentSidebar] = useState(false);
+
+
+
+
 
 
 
@@ -1168,7 +2223,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
     const [commentDraft, setCommentDraft] = useState('');
+
+
+
+
 
 
 
@@ -1176,7 +2239,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
     const [commentSidebarLoadingComments, setCommentSidebarLoadingComments] = useState(false);
+
+
+
+
 
 
 
@@ -1188,11 +2259,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const [speedEcomReassignTask, setSpeedEcomReassignTask] = useState<Task | null>(null);
 
 
 
+
+
+
+
     const [isSpeedEcomReassignSubmitting, setIsSpeedEcomReassignSubmitting] = useState<boolean>(false);
+
+
+
+
+
+
+
+
 
 
 
@@ -1208,7 +2299,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const [searchTerm, setSearchTerm] = useState('');
+
+
+
+
+
+
+
+
 
 
 
@@ -1220,7 +2327,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
     const [reviewsMonth, setReviewsMonth] = useState<string>(() => monthKeyOfDate(new Date()));
+
+
+
+
+
+
+
+
 
 
 
@@ -1232,7 +2351,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
     const [allMdImpexUsers, setAllMdImpexUsers] = useState<any[]>([]); // New state for comprehensive user data
+
+
+
+
+
+
+
+
 
 
 
@@ -1248,7 +2379,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const [reviewModalStars, setReviewModalStars] = useState<number>(0);
+
+
+
+
+
+
+
+
 
 
 
@@ -1264,7 +2411,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const [reviewModalSubmitting, setReviewModalSubmitting] = useState(false);
+
+
+
+
+
+
+
+
 
 
 
@@ -1288,7 +2451,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const [isCreatingTask, setIsCreatingTask] = useState(false);
+
+
+
+
+
+
+
+
 
 
 
@@ -1304,7 +2491,23 @@ const DashboardPage = () => {
 
 
 
-    const [currentView, setCurrentView] = useState<'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'access' | 'company-brand-task-types' | 'assign' | 'reviews' | 'other-work' | 'speed-ecom-reassign' | 'manager-monthly-rankings' | 'md-impex-strike' | 'md-impex-access' | 'personal-tasks'>('dashboard');
+
+
+
+
+
+
+
+
+    const [currentView, setCurrentView] = useState<'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'access' | 'company-brand-task-types' | 'assign' | 'reviews' | 'other-work' | 'speed-ecom-reassign' | 'manager-monthly-rankings' | 'md-impex-strike' | 'md-impex-access' | 'personal-tasks' | 'assigned-by-me' | 'assigned-to-me'>('dashboard');
+
+
+
+
+
+
+
+
 
 
 
@@ -1320,7 +2523,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+
+
+
+
+
+
+
+
 
 
 
@@ -1336,7 +2555,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+
+
+
+
+
+
+
 
 
 
@@ -1360,7 +2595,6 @@ const DashboardPage = () => {
 
 
 
-    const [currentUser, setCurrentUser] = useState<UserType>({
 
 
 
@@ -1368,87 +2602,11 @@ const DashboardPage = () => {
 
 
 
-        id: '',
 
 
 
 
 
-
-
-        name: 'Loading...',
-
-
-
-
-
-
-
-        role: 'user',
-
-
-
-
-
-
-
-        email: '',
-
-
-
-
-
-
-
-        phone: '',
-
-
-
-
-
-
-
-        avatar: '',
-
-
-
-
-
-
-
-        department: '',
-
-
-
-
-
-
-
-        position: '',
-
-
-
-
-
-
-
-        joinDate: new Date().toISOString(),
-
-
-
-
-
-
-
-        lastLogin: new Date().toISOString(),
-
-
-
-
-
-
-
-    });
 
 
 
@@ -1472,7 +2630,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const socketRef = useRef<Socket | null>(null);
+
+
+
+
+
+
+
+
 
 
 
@@ -1488,6 +2662,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const userMappingsFetchedAtRef = useRef<Map<string, number>>(new Map());
 
 
@@ -1496,7 +2678,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const USER_MAPPINGS_TTL_MS = 60_000;
+
+
+
+
+
+
+
+
 
 
 
@@ -1520,6 +2718,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const fetchMyReminders = useCallback(async () => {
 
 
@@ -1528,7 +2742,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         try {
+
+
+
+
+
+
+
+
 
 
 
@@ -1544,7 +2774,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const list = Array.isArray(res?.data?.data) ? (res.data.data as any[]) : [];
+
+
+
+
+
+
+
+
 
 
 
@@ -1560,7 +2806,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 .map((r: any) => ({
+
+
+
+
+
+
+
+
 
 
 
@@ -1576,7 +2838,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     taskId: String(r?.taskId || '').trim(),
+
+
+
+
+
+
+
+
 
 
 
@@ -1592,7 +2870,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     message: String(r?.message || '').trim(),
+
+
+
+
+
+
+
+
 
 
 
@@ -1608,7 +2902,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     task: r?.task || {}
+
+
+
+
+
+
+
+
 
 
 
@@ -1624,7 +2934,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 .filter((r) => Boolean(r.id));
+
+
+
+
+
+
+
+
 
 
 
@@ -1640,7 +2966,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             setActiveReminderId((prev) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -1656,7 +2998,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return normalized[0]?.id || '';
+
+
+
+
+
+
+
+
 
 
 
@@ -1672,7 +3030,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         } catch {
+
+
+
+
+
+
+
+
 
 
 
@@ -1688,7 +3062,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -1698,29 +3088,55 @@ const DashboardPage = () => {
 
     }, []);
 
+
+
     const acknowledgeReminder = useCallback(async (reminderId: string) => {
+
+
 
         const id = String(reminderId || '').trim();
 
+
+
         if (!id) return;
+
+
 
         try {
 
+
+
             await apiClient.patch(`/reminders/${id}/seen`);
+
+
 
         } catch {
 
+
+
             // ignore
+
+
 
         }
 
+
+
         setUnreadReminders((prev) => prev.filter((r) => r.id !== id));
+
+
 
         setActiveReminderId((prev) => {
 
+
+
             if (prev !== id) return prev;
 
+
+
             const remaining = unreadReminders.filter((r) => r.id !== id);
+
+
 
             return remaining[0]?.id || '';
 
@@ -1730,7 +3146,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         });
+
+
+
+
+
+
+
+
 
 
 
@@ -1754,7 +3186,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const activeReminder = useMemo(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -1770,7 +3226,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!id) return null;
+
+
+
+
+
+
+
+
 
 
 
@@ -1786,33 +3258,71 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, [activeReminderId, unreadReminders]);
+
+
 
     useEffect(() => {
 
+
+
         let mounted = true;
+
+
 
         const fetchReviewedForSummary = async () => {
 
+
+
             try {
+
+
 
                 const res = await taskService.getTaskReviews({ reviewed: true });
 
+
+
                 if (!mounted) return;
+
+
 
                 if (res && (res as any).success) {
 
+
+
                     setReviewedTasksForSummary((res as any).data || []);
+
+
 
                 }
 
+
+
             } catch {
+
+
 
                 return;
 
+
+
             }
 
+
+
         };
+
+
+
+
 
 
 
@@ -1820,19 +3330,43 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         return () => {
+
+
 
             mounted = false;
 
+
+
         };
+
+
 
     }, []);
 
 
 
+
+
+
+
     const employeeOfTheMonth = useMemo(() => {
 
+
+
         const parseMonth = (value: string) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -1848,17 +3382,43 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!Number.isFinite(y) || !Number.isFinite(m) || y < 1970 || m < 1 || m > 12) return null;
+
+
 
             const start = new Date(y, m - 1, 1, 0, 0, 0, 0);
 
+
+
             const endExclusive = new Date(y, m, 1, 0, 0, 0, 0);
+
+
 
             return { start, endExclusive };
 
+
+
         };
 
+
+
         const monthRange = parseMonth(reviewsMonth);
+
+
+
+
+
+
+
+
 
 
 
@@ -1870,13 +3430,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         const currentUserCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase();
+
+
+
+
 
 
 
         const isMdImpexUser = currentUserCompany.includes('mdimpex') || currentUserCompany.includes('md_impex');
 
+
+
         console.log('EmployeeOfTheMonth Debug:', {
+
+
+
+
 
 
 
@@ -1884,7 +3458,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             isMdImpexUser,
+
+
+
+
 
 
 
@@ -1892,17 +3474,35 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             totalMdImpexUsersAvailable: allMdImpexUsers?.length,
+
+
+
+
 
 
 
             usersList: users?.map(u => ({ email: u.email, name: u.name, hasAvatar: !!u.avatar, avatar: u.avatar }))
 
+
+
         });
+
+
 
         let reviewedData = reviewedTasksForSummary || [];
 
+
+
         // If user is from MDIMPEX, use all tasks data to show comprehensive view
+
+
+
+
 
 
 
@@ -1910,13 +3510,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             reviewedData = (tasks || []).filter((t) => {
+
+
 
                 const stars = (t as any).reviewStars;
 
+
+
                 const reviewedAtRaw = (t as any).reviewedAt;
 
+
+
                 if (stars == null) return false;
+
+
+
+
 
 
 
@@ -1924,7 +3538,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 if (!monthRange) return true;
+
+
+
+
 
 
 
@@ -1932,7 +3554,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 if (Number.isNaN(reviewedAt.getTime())) return false;
+
+
+
+
 
 
 
@@ -1940,11 +3570,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             });
 
 
 
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -1960,7 +3606,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const stars = (t as any).reviewStars;
+
+
+
+
+
+
+
+
 
 
 
@@ -1976,7 +3638,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (stars == null) return false;
+
+
+
+
+
+
+
+
 
 
 
@@ -1992,7 +3670,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!monthRange) return true;
+
+
+
+
+
+
+
+
 
 
 
@@ -2008,7 +3702,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (Number.isNaN(reviewedAt.getTime())) return false;
+
+
+
+
+
+
+
+
 
 
 
@@ -2024,7 +3734,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -2048,7 +3782,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             email: string;
+
+
+
+
+
+
+
+
 
 
 
@@ -2064,7 +3814,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             total: number;
+
+
+
+
+
+
+
+
 
 
 
@@ -2080,10 +3846,29 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }>();
 
 
+
+
+
         reviewed.forEach((t) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -2099,7 +3884,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const email = String(
+
+
+
+
+
+
+
+
 
 
 
@@ -2115,7 +3916,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 || (typeof (t as any).assignedTo === 'string' ? (t as any).assignedTo : (t as any).assignedTo?.email)
+
+
+
+
+
+
+
+
 
 
 
@@ -2131,7 +3948,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             ).trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -2147,7 +3980,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (email.includes('.deleted.')) return;
+
+
+
+
+
+
+
+
 
 
 
@@ -2163,7 +4012,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const starsValue = Number((t as any).reviewStars);
+
+
+
+
+
+
+
+
 
 
 
@@ -2173,59 +4038,117 @@ const DashboardPage = () => {
 
             if (!Number.isFinite(starsValue) || starsValue < 1 || starsValue > 5) return;
 
+
+
             // Only count reviews for tasks that were assigned in the selected month
+
             if (monthRange) {
+
                 const createdAtRaw = (t as any).createdAt || (t as any).assignedAt;
+
                 if (!createdAtRaw) return;
+
                 const createdAt = new Date(createdAtRaw);
+
                 if (Number.isNaN(createdAt.getTime())) return;
+
                 if (createdAt < monthRange.start || createdAt >= monthRange.endExclusive) return;
+
             }
+
+
 
             const existing = byAssignee.get(email) || { email, name, total: 0, starSum: 0 };
 
+
+
             existing.total += 1;
+
+
 
             existing.starSum += starsValue;
 
+
+
             byAssignee.set(email, existing);
 
+
+
         });
+
+
 
         const rows = Array.from(byAssignee.values()).map((r) => {
 
+
+
             const avgStars = r.total > 0 ? (r.starSum / r.total) : 0;
+
+
 
             const ratingPct = r.total > 0 ? (r.starSum / (r.total * 5)) * 100 : 0;
 
+
+
             return {
+
+
 
                 ...r,
 
+
+
                 avgStars,
+
+
 
                 ratingPct,
 
+
+
                 ratingPctLabel: `${ratingPct.toFixed(1)}%`,
+
+
 
                 avgStarsLabel: `${avgStars.toFixed(1)}`,
 
+
+
                 performance: performanceLevelForAvg(avgStars),
+
+
 
             };
 
+
+
         });
+
+
+
+
 
 
 
         rows.sort((a, b) => {
+
             // Sort by total reviews (highest first)
+
             if (b.total !== a.total) return b.total - a.total;
+
             // Tie-breaker: avgStars
+
             return b.avgStars - a.avgStars;
+
         });
 
+
+
         // Debug: log reviewed tasks and rows to check data
+
+
+
+
 
 
 
@@ -2233,11 +4156,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         console.log('first 3 reviewed tasks:', reviewed.slice(0, 3));
 
 
 
+
+
+
+
         console.log('rows after aggregation:', rows.slice(0, 3));
+
+
+
+
+
+
+
+
 
 
 
@@ -2253,11 +4192,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         // Debug: log top performer and first row data
 
 
 
+
+
+
+
         console.log('Top performer:', top);
+
+
+
+
 
 
 
@@ -2269,7 +4224,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const summaryRowsBase = rows.slice(0, 10).map((r) => {
+
+
+
+
 
 
 
@@ -2277,7 +4244,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const uemail = String(u?.email || '').trim().toLowerCase();
+
+
+
+
 
 
 
@@ -2285,7 +4260,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             })?.avatar;
+
+
+
+
+
+
+
+
 
 
 
@@ -2297,7 +4284,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             if (!avatar && isMdImpexUser && allMdImpexUsers?.length > 0) {
+
+
+
+
 
 
 
@@ -2305,7 +4300,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     const uemail = String(u?.email || '').trim().toLowerCase();
+
+
+
+
 
 
 
@@ -2313,7 +4316,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 })?.avatar;
+
+
+
+
 
 
 
@@ -2325,7 +4336,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return {
+
+
+
+
 
 
 
@@ -2333,7 +4356,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 name: r.name,
+
+
+
+
 
 
 
@@ -2341,7 +4372,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 avgStarsLabel: r.avgStarsLabel,
+
+
+
+
 
 
 
@@ -2349,23 +4388,47 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 totalTasksReceived: (tasks || []).filter((t: any) => {
+
                     const rowEmail = String((r as any)?.email || '').trim().toLowerCase();
+
                     const assignedToEmail =
+
                         normalizeEmailForMatch((t as any)?.assignedToUser?.email)
+
                         || normalizeEmailForMatch((t as any)?.assignedToUser)
+
                         || normalizeEmailForMatch((t as any)?.assignedTo?.email)
+
                         || normalizeEmailForMatch((t as any)?.assignedTo)
+
                         || normalizeEmailForMatch((t as any)?.assignedToId)
+
                         || normalizeEmailForMatch((t as any)?.assignedToUserId);
+
                     if (!assignedToEmail || !rowEmail || assignedToEmail !== rowEmail) return false;
+
                     if (!monthRange) return true;
+
                     const createdAtRaw = (t as any).createdAt || (t as any).assignedAt;
+
                     if (!createdAtRaw) return false;
+
                     const createdAt = new Date(createdAtRaw);
+
                     if (Number.isNaN(createdAt.getTime())) return false;
+
                     return createdAt >= monthRange.start && createdAt < monthRange.endExclusive;
+
                 }).length,
+
+
+
+
 
 
 
@@ -2373,19 +4436,39 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             };
+
         });
 
 
+
+
+
         // Debug: log first row to see total value
+
         console.log('summaryRowsBase[0]:', summaryRowsBase[0]);
+
         const photoUrl = top
+
             ? (users || []).find((u: any) => {
+
                 const uemail = String(u?.email || '').trim().toLowerCase();
+
                 return uemail && uemail === top.email;
+
             })?.avatar
+
             : undefined;
+
         console.log('Photo search debug:', {
+
+
+
+
 
 
 
@@ -2393,7 +4476,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             foundPhotoUrl: photoUrl,
+
+
+
+
 
 
 
@@ -2401,7 +4492,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         });
+
+
+
+
+
+
+
+
 
 
 
@@ -2413,7 +4516,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         let finalPhotoUrl = photoUrl;
+
+
+
+
 
 
 
@@ -2421,7 +4532,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             console.log('MDIMPEX user: searching comprehensive user data for photo');
+
+
+
+
 
 
 
@@ -2429,7 +4548,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const uemail = String(u?.email || '').trim().toLowerCase();
+
+
+
+
 
 
 
@@ -2437,7 +4564,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             })?.avatar;
+
+
+
+
 
 
 
@@ -2445,17 +4580,39 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             console.log('Found photo in comprehensive data:', finalPhotoUrl);
 
 
 
+
+
+
+
         }
+
         return {
+
             name: top?.name || 'Not any yet',
+
             email: top?.email || '',
+
             rating: top?.avgStars || 0,
+
             performance: top?.performance || 'Not any yet',
+
             avg: top?.ratingPctLabel || 'Not any yet',
+
+
+
+
+
+
+
+
 
 
 
@@ -2471,22 +4628,53 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             totalReviews: top ? (summaryRowsBase.find(r => r.email === top.email)?.total ?? 0) : (rows[0]?.total ?? 0),
 
+
+
             totalTasksReceived: top ? (tasks || []).filter((t: any) => {
+
                 const topEmail = String((top as any)?.email || '').trim().toLowerCase();
+
                 const assignedToEmail =
+
                     normalizeEmailForMatch((t as any)?.assignedTo)
+
                     || normalizeEmailForMatch((t as any)?.assignedToUser?.email)
+
                     || normalizeEmailForMatch((t as any)?.assignedToUser);
+
                 if (!assignedToEmail || !topEmail || assignedToEmail !== topEmail) return false;
+
                 if (!monthRange) return true;
+
                 const createdAtRaw = (t as any).createdAt || (t as any).assignedAt;
+
                 if (!createdAtRaw) return false;
+
                 const createdAt = new Date(createdAtRaw);
+
                 if (Number.isNaN(createdAt.getTime())) return false;
+
                 return createdAt >= monthRange.start && createdAt < monthRange.endExclusive;
+
             }).length : 0,
+
+
+
+
+
+
+
+
 
 
 
@@ -2498,7 +4686,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 ? summaryRowsBase
+
+
+
+
 
 
 
@@ -2506,7 +4702,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     {
+
+
+
+
 
 
 
@@ -2514,7 +4718,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                         name: 'Not any yet',
+
+
+
+
 
 
 
@@ -2522,7 +4734,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                         avgStarsLabel: '0.0',
+
+
+
+
 
 
 
@@ -2530,7 +4750,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                         performance: 'Not any yet',
+
+
+
+
 
 
 
@@ -2538,7 +4766,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     ...summaryRowsBase,
+
+
+
+
 
 
 
@@ -2550,7 +4786,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         };
+
+
+
+
+
+
+
+
 
 
 
@@ -2566,11 +4818,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const pendingManagerReviewTasks = useMemo(() => {
 
 
 
+
+
+
+
         const normalizeEmailSafe = (v: unknown): string => String(v || '').trim().toLowerCase();
+
+
+
+
 
 
 
@@ -2582,7 +4850,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const isAssistantRoleKey = (roleKey: string): boolean => {
+
+
+
+
 
 
 
@@ -2590,7 +4870,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             if (roleKey === 'assistant' || roleKey.includes('assistant')) return true;
+
+
+
+
 
 
 
@@ -2598,7 +4886,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         };
+
+
+
+
+
+
+
+
 
 
 
@@ -2610,7 +4910,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         if (roleKey !== 'manager' && roleKey !== 'md_manager') return [];
+
+
+
+
+
+
+
+
 
 
 
@@ -2622,7 +4934,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         if (!myEmail) return [];
+
+
+
+
+
+
+
+
 
 
 
@@ -2634,7 +4958,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const raw = (t as any)?.assignedBy;
+
+
+
+
 
 
 
@@ -2642,7 +4974,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             if (raw && typeof raw === 'object') return normalizeEmailSafe((raw as any)?.email);
+
+
+
+
 
 
 
@@ -2650,7 +4990,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         };
+
+
+
+
+
+
+
+
 
 
 
@@ -2662,7 +5014,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const raw = (t as any)?.assignedTo;
+
+
+
+
 
 
 
@@ -2670,7 +5030,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             if (raw && typeof raw === 'object') return normalizeEmailSafe((raw as any)?.email);
+
+
+
+
 
 
 
@@ -2678,7 +5046,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         };
+
+
+
+
+
+
+
+
 
 
 
@@ -2690,11 +5070,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const role = (t as any)?.assignedToUser?.role;
 
 
 
+
+
+
+
             const key = normalizeRoleKey(role);
+
+
+
+
 
 
 
@@ -2706,7 +5098,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const email = getAssignedToEmail(t);
+
+
+
+
 
 
 
@@ -2714,7 +5118,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             return normalizeRoleKey((found as any)?.role);
+
+
+
+
 
 
 
@@ -2726,7 +5138,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const list = (tasks || [])
+
+
+
+
 
 
 
@@ -2734,7 +5158,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 if (!t) return false;
+
+
+
+
 
 
 
@@ -2742,7 +5174,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 if (status !== 'completed') return false;
+
+
+
+
 
 
 
@@ -2750,7 +5190,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const assignedByEmail = getAssignedByEmail(t);
+
+
+
+
 
 
 
@@ -2758,7 +5206,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const assigneeRoleKey = getAssigneeRoleKey(t);
+
+
+
+
 
 
 
@@ -2766,7 +5222,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 return true;
+
+
+
+
 
 
 
@@ -2774,7 +5238,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             .sort((a: any, b: any) => {
+
+
+
+
 
 
 
@@ -2782,7 +5254,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const bDate = new Date((b as any)?.statusUpdatedAt || (b as any)?.updatedAt || (b as any)?.createdAt || 0).getTime();
+
+
+
+
 
 
 
@@ -2790,7 +5270,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             });
+
+
+
+
+
+
+
+
 
 
 
@@ -2802,7 +5294,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
     }, [currentUser, tasks, users]);
+
+
+
+
+
+
+
+
 
 
 
@@ -2814,11 +5318,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         if (!reviewModalTaskId) return null;
 
 
 
+
+
+
+
         return (pendingManagerReviewTasks || []).find((t: any) => String((t as any)?.id || (t as any)?._id || '') === reviewModalTaskId) || null;
+
+
+
+
 
 
 
@@ -2830,7 +5346,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     useEffect(() => {
+
+
+
+
 
 
 
@@ -2838,7 +5366,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         if (next.length === 0) {
+
+
+
+
 
 
 
@@ -2846,11 +5382,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             return;
 
 
 
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -2862,7 +5414,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             if (prev && next.some((t: any) => String((t as any)?.id || (t as any)?._id || '') === prev)) return prev;
+
+
+
+
 
 
 
@@ -2870,13 +5430,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         });
+
+
+
+
 
 
 
     }, [pendingManagerReviewTasks]);
 
+
+
     useEffect(() => {
+
+
+
+
 
 
 
@@ -2884,7 +5458,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         setReviewModalStars(0);
+
+
+
+
 
 
 
@@ -2892,7 +5474,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
     }, [reviewModalTaskId]);
+
+
+
+
 
 
 
@@ -2900,7 +5490,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         const next = pendingManagerReviewTasks || [];
+
+
+
+
 
 
 
@@ -2912,7 +5510,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         next.forEach((t: any) => {
+
+
+
+
 
 
 
@@ -2920,11 +5530,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             if (!id) return;
 
 
 
+
+
+
+
             if (notifiedReviewTaskIdsRef.current.has(id)) return;
+
+
+
+
 
 
 
@@ -2936,7 +5558,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const assigneeName = String((t as any)?.assignedToUser?.name || '').trim();
+
+
+
+
 
 
 
@@ -2944,11 +5578,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             toast.success(`Task completed${assigneeName ? ` by ${assigneeName}` : ''}: ${title}. Review required.`);
 
 
 
+
+
+
+
         });
+
+
+
+
 
 
 
@@ -2960,11 +5606,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const submitReviewFromModal = useCallback(async () => {
 
 
 
+
+
+
+
         if (!reviewModalTaskId) return;
+
+
+
+
 
 
 
@@ -2976,7 +5638,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         setReviewModalSubmitting(true);
+
+
+
+
 
 
 
@@ -2984,7 +5658,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const res = await taskService.submitTaskReview(reviewModalTaskId, {
+
+
+
+
 
 
 
@@ -2992,7 +5674,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 reviewComment: reviewModalComment,
+
+
+
+
 
 
 
@@ -3004,7 +5694,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (res.success && res.data) {
+
+
+
+
 
 
 
@@ -3012,7 +5714,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 toast.success(res.message || 'Review saved successfully');
+
+
+
+
 
 
 
@@ -3020,7 +5730,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 toast.error(res.message || 'Failed to save review');
+
+
+
+
 
 
 
@@ -3028,7 +5746,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         } catch (e: any) {
+
+
+
+
 
 
 
@@ -3036,7 +5762,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         } finally {
+
+
+
+
 
 
 
@@ -3044,7 +5778,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -3064,6 +5806,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     useEffect(() => {
 
 
@@ -3072,7 +5830,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         usersRef.current = users;
+
+
+
+
+
+
+
+
 
 
 
@@ -3096,6 +5870,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     useEffect(() => {
 
 
@@ -3104,7 +5894,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         currentUserEmailRef.current = (currentUser?.email || '').toString();
+
+
+
+
+
+
+
+
 
 
 
@@ -3128,7 +5934,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     useEffect(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -3144,7 +5974,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!email) return;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -3168,7 +6022,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         hasFetchedTasksOnceRef.current = false;
+
+
+
+
+
+
+
+
 
 
 
@@ -3192,7 +6062,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         setLoading(true);
+
+
+
+
+
+
+
+
 
 
 
@@ -3208,7 +6102,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             .finally(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -3224,7 +6134,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             });
+
+
+
+
+
+
+
+
 
 
 
@@ -3248,7 +6174,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     useEffect(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -3264,7 +6214,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const email = (currentUser?.email || '').toString().trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -3280,7 +6246,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const userId = String((currentUser as any)?.id || (currentUser as any)?._id || '').trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -3296,7 +6278,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const companyName = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -3312,7 +6310,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!socketUrl) return;
+
+
+
+
+
+
+
+
 
 
 
@@ -3324,7 +6338,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         void fetchMyReminders();
+
+
+
+
+
+
+
+
 
 
 
@@ -3340,7 +6366,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             socketRef.current?.disconnect();
+
+
+
+
+
+
+
+
 
 
 
@@ -3356,7 +6398,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             // ignore
+
+
+
+
+
+
+
+
 
 
 
@@ -3372,11 +6430,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const socket = io(socketUrl, {
 
 
 
+
+
+
+
             auth: {
+
+
+
+
+
+
+
+
 
 
 
@@ -3392,7 +6470,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 role,
+
+
+
+
+
+
+
+
 
 
 
@@ -3408,6 +6502,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             },
 
 
@@ -3416,7 +6518,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         });
+
+
+
+
+
+
+
+
 
 
 
@@ -3432,7 +6550,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         socket.on('connect', () => {
+
+
+
+
 
 
 
@@ -3440,7 +6570,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 console.log('[socket] connected', { id: socket.id, socketUrl, userId, role, companyName });
+
+
+
+
 
 
 
@@ -3448,7 +6586,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 // ignore
+
+
+
+
 
 
 
@@ -3456,7 +6602,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         });
+
+
+
+
+
+
+
+
 
 
 
@@ -3468,7 +6626,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             try {
+
+
+
+
 
 
 
@@ -3476,7 +6642,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             } catch {
+
+
+
+
 
 
 
@@ -3484,11 +6658,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             }
 
 
 
+
+
+
+
         });
+
+
+
+
+
+
+
+
 
 
 
@@ -3500,7 +6690,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             try {
+
+
+
+
 
 
 
@@ -3508,7 +6706,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             } catch {
+
+
+
+
 
 
 
@@ -3516,11 +6722,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             }
 
 
 
+
+
+
+
         });
+
+
+
+
+
+
+
+
 
 
 
@@ -3536,7 +6758,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!task) return task;
+
+
+
+
+
+
+
+
 
 
 
@@ -3552,7 +6790,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return {
+
+
+
+
+
+
+
+
 
 
 
@@ -3568,7 +6822,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 id: id || task?.id,
+
+
+
+
+
+
+
+
 
 
 
@@ -3584,7 +6854,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 taskType: (task?.taskType || task?.type || '').toString(),
+
+
+
+
+
+
+
+
 
 
 
@@ -3600,7 +6886,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             };
+
+
+
+
+
+
+
+
 
 
 
@@ -3616,6 +6918,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const onUpserted = (payload: any) => {
 
 
@@ -3624,7 +6934,25 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             try {
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -3642,7 +6970,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (!task?.id) return;
+
+
+
+
+
+
+
+
 
 
 
@@ -3658,7 +7002,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 try {
+
+
+
+
 
 
 
@@ -3666,7 +7022,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 } catch {
+
+
+
+
 
 
 
@@ -3674,7 +7038,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 }
+
+
+
+
+
+
+
+
 
 
 
@@ -3690,7 +7066,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return;
+
+
+
+
+
+
+
+
 
 
 
@@ -3706,7 +7098,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         };
+
+
+
+
+
+
+
+
 
 
 
@@ -3722,7 +7130,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!brand) return brand;
+
+
+
+
+
+
+
+
 
 
 
@@ -3738,7 +7162,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return {
+
+
+
+
+
+
+
+
 
 
 
@@ -3754,7 +7194,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 id: id || brand?.id,
+
+
+
+
+
+
+
+
 
 
 
@@ -3770,6 +7226,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             };
 
 
@@ -3778,7 +7242,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         };
+
+
+
+
+
+
+
+
 
 
 
@@ -3794,7 +7274,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             try {
+
+
+
+
+
+
+
+
 
 
 
@@ -3810,7 +7306,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const nextId = String((next as any)?.id || (next as any)?._id || '').trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -3826,6 +7338,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 setApiBrands((prev) => {
 
 
@@ -3834,7 +7354,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const list = Array.isArray(prev) ? prev : [];
+
+
+
+
+
+
+
+
 
 
 
@@ -3850,7 +7386,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     if (idx >= 0) {
+
+
+
+
+
+
+
+
 
 
 
@@ -3866,7 +7418,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         clone[idx] = { ...(clone[idx] as any), ...(next as any) };
+
+
+
+
+
+
+
+
 
 
 
@@ -3882,7 +7450,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     }
+
+
+
+
+
+
+
+
 
 
 
@@ -3898,7 +7482,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 });
+
+
+
+
+
+
+
+
 
 
 
@@ -3914,7 +7514,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 try {
+
+
+
+
 
 
 
@@ -3922,7 +7534,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 } catch {
+
+
+
+
 
 
 
@@ -3930,7 +7550,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 }
+
+
+
+
+
+
+
+
 
 
 
@@ -3946,7 +7578,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return;
+
+
+
+
+
+
+
+
 
 
 
@@ -3962,7 +7610,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         };
+
+
+
+
+
+
+
+
 
 
 
@@ -3978,7 +7642,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             try {
+
+
+
+
+
+
+
+
 
 
 
@@ -3994,7 +7674,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (!brandId) return;
+
+
+
+
+
+
+
+
 
 
 
@@ -4010,7 +7706,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const list = Array.isArray(prev) ? prev : [];
+
+
+
+
+
+
+
+
 
 
 
@@ -4026,7 +7738,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 });
+
+
+
+
+
+
+
+
 
 
 
@@ -4042,7 +7770,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 try {
+
+
+
+
 
 
 
@@ -4050,7 +7790,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 } catch {
+
+
+
+
 
 
 
@@ -4058,7 +7806,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 }
+
+
+
+
+
+
+
+
 
 
 
@@ -4074,7 +7834,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return;
+
+
+
+
+
+
+
+
 
 
 
@@ -4090,7 +7866,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         };
+
+
+
+
+
+
+
+
 
 
 
@@ -4106,7 +7898,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!user) return user;
+
+
+
+
+
+
+
+
 
 
 
@@ -4122,7 +7930,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return {
+
+
+
+
+
+
+
+
 
 
 
@@ -4138,7 +7962,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 id: id || user?.id,
+
+
+
+
+
+
+
+
 
 
 
@@ -4154,6 +7994,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             };
 
 
@@ -4162,7 +8010,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         };
+
+
+
+
+
+
+
+
 
 
 
@@ -4178,7 +8042,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             try {
+
+
+
+
+
+
+
+
 
 
 
@@ -4194,7 +8074,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const nextId = String((next as any)?.id || (next as any)?._id || '').trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -4210,6 +8106,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 setUsers((prev) => {
 
 
@@ -4218,7 +8122,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const list = Array.isArray(prev) ? prev : [];
+
+
+
+
+
+
+
+
 
 
 
@@ -4234,7 +8154,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     if (idx >= 0) {
+
+
+
+
+
+
+
+
 
 
 
@@ -4250,7 +8186,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         clone[idx] = { ...(clone[idx] as any), ...(next as any) };
+
+
+
+
+
+
+
+
 
 
 
@@ -4266,7 +8218,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     }
+
+
+
+
+
+
+
+
 
 
 
@@ -4282,7 +8250,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 });
+
+
+
+
+
+
+
+
 
 
 
@@ -4298,7 +8282,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 try {
+
+
+
+
 
 
 
@@ -4306,7 +8302,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 } catch {
+
+
+
+
 
 
 
@@ -4314,7 +8318,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 }
+
+
+
+
+
+
+
+
 
 
 
@@ -4330,7 +8346,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return;
+
+
+
+
+
+
+
+
 
 
 
@@ -4346,7 +8378,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         };
+
+
+
+
+
+
+
+
 
 
 
@@ -4362,7 +8410,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             try {
+
+
+
+
+
+
+
+
 
 
 
@@ -4378,7 +8442,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (!userIdToDelete) return;
+
+
+
+
+
+
+
+
 
 
 
@@ -4394,7 +8474,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const list = Array.isArray(prev) ? prev : [];
+
+
+
+
+
+
+
+
 
 
 
@@ -4410,7 +8506,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 });
+
+
+
+
+
+
+
+
 
 
 
@@ -4426,7 +8538,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 try {
+
+
+
+
 
 
 
@@ -4434,7 +8558,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 } catch {
+
+
+
+
 
 
 
@@ -4442,7 +8574,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 }
+
+
+
+
+
+
+
+
 
 
 
@@ -4458,7 +8602,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return;
+
+
+
+
+
+
+
+
 
 
 
@@ -4474,7 +8634,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         };
+
+
+
+
+
+
+
+
 
 
 
@@ -4490,7 +8666,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             try {
+
+
+
+
+
+
+
+
 
 
 
@@ -4506,7 +8698,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const affectedUserId = String(payload?.userId || '').trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -4522,7 +8730,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 window.dispatchEvent(new CustomEvent('assignmentsApplied', {
+
+
+
+
 
 
 
@@ -4530,7 +8750,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                         companyName,
+
+
+
+
 
 
 
@@ -4538,7 +8766,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     }
+
+
+
+
 
 
 
@@ -4550,7 +8786,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             } catch {
+
+
+
+
+
+
+
+
 
 
 
@@ -4566,6 +8818,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
 
 
@@ -4574,7 +8834,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         };
+
+
+
+
+
+
+
+
 
 
 
@@ -4586,7 +8862,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         const readUnreadMap = (): Record<string, number> => {
+
+
+
+
 
 
 
@@ -4594,7 +8878,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const raw = localStorage.getItem(unreadKey);
+
+
+
+
 
 
 
@@ -4602,7 +8894,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 return parsed && typeof parsed === 'object' ? parsed : {};
+
+
+
+
 
 
 
@@ -4610,7 +8910,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 return {};
+
+
+
+
 
 
 
@@ -4618,7 +8926,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         };
+
+
+
+
+
+
+
+
 
 
 
@@ -4630,7 +8950,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             try {
+
+
+
+
 
 
 
@@ -4638,7 +8966,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const id = String(raw?.id || raw?._id || '').trim();
+
+
+
+
 
 
 
@@ -4650,7 +8986,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const next: TaskReminderClientItem = {
+
+
+
+
 
 
 
@@ -4658,7 +9006,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     taskId: String(raw?.taskId || '').trim(),
+
+
+
+
 
 
 
@@ -4666,7 +9022,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     message: String(raw?.message || '').trim(),
+
+
+
+
 
 
 
@@ -4674,7 +9038,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     task: raw?.task || raw?.taskSnapshot || {},
+
+
+
+
 
 
 
@@ -4686,7 +9058,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 setUnreadReminders((prev) => {
+
+
+
+
 
 
 
@@ -4694,7 +9078,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     const merged = [next, ...list.filter((x) => String(x?.id || '').trim() !== id)];
+
+
+
+
 
 
 
@@ -4702,7 +9094,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 });
+
+
+
+
 
 
 
@@ -4710,7 +9110,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             } catch {
+
+
+
+
 
 
 
@@ -4718,11 +9126,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             }
 
 
 
+
+
+
+
         };
+
+
+
+
 
 
 
@@ -4730,7 +9150,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             try {
+
+
+
+
 
 
 
@@ -4738,7 +9166,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             } catch {
+
+
+
+
 
 
 
@@ -4746,11 +9182,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             }
 
 
 
+
+
+
+
         };
+
+
+
+
+
+
+
+
 
 
 
@@ -4762,11 +9214,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             try {
 
 
 
+
+
+
+
                 const taskId = String(payload?.taskId || '').trim();
+
+
+
+
 
 
 
@@ -4778,7 +9242,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const comment = payload?.comment;
+
+
+
+
 
 
 
@@ -4786,7 +9262,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const actorEmail = String(comment?.userEmail || '').trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -4802,11 +9290,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const map = readUnreadMap();
 
 
 
+
+
+
+
                 map[taskId] = Date.now();
+
+
+
+
 
 
 
@@ -4818,7 +9322,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 try {
+
+
+
+
 
 
 
@@ -4826,7 +9342,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 } catch {
+
+
+
+
 
 
 
@@ -4834,7 +9358,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 }
+
+
+
+
 
 
 
@@ -4842,7 +9374,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 return;
+
+
+
+
 
 
 
@@ -4850,7 +9390,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         };
+
+
+
+
+
+
+
+
 
 
 
@@ -4866,7 +9418,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         socket.on('brand:upserted', onBrandUpserted);
+
+
+
+
 
 
 
@@ -4878,7 +9442,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         socket.on('user:upserted', onUserUpserted);
+
+
+
+
 
 
 
@@ -4890,11 +9466,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         socket.on('assignment:upserted', onAssignmentChanged);
 
 
 
+
+
+
+
         socket.on('assignment:bulk-upserted', onAssignmentChanged);
+
+
+
+
+
+
+
+
 
 
 
@@ -4910,7 +9506,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         socket.on('reminder:new', onReminderNew);
+
+
+
+
+
+
+
+
 
 
 
@@ -4926,7 +9538,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             try {
+
+
+
+
+
+
+
+
 
 
 
@@ -4942,7 +9570,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 socket.off('brand:upserted', onBrandUpserted);
+
+
+
+
 
 
 
@@ -4954,7 +9594,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 socket.off('user:upserted', onUserUpserted);
+
+
+
+
 
 
 
@@ -4966,11 +9618,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 socket.off('assignment:upserted', onAssignmentChanged);
 
 
 
+
+
+
+
                 socket.off('assignment:bulk-upserted', onAssignmentChanged);
+
+
+
+
+
+
+
+
 
 
 
@@ -4986,7 +9658,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 socket.off('reminder:new', onReminderNew);
+
+
+
+
+
+
+
+
 
 
 
@@ -5002,7 +9690,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             } catch {
+
+
+
+
+
+
+
+
 
 
 
@@ -5018,6 +9722,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
 
 
@@ -5026,7 +9738,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         };
+
+
+
+
+
+
+
+
 
 
 
@@ -5050,7 +9778,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const hasAccess = useCallback((moduleId: string) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -5066,7 +9818,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (moduleId === 'user_management') return role === 'super_admin' || role === 'admin';
+
+
+
+
+
+
+
+
 
 
 
@@ -5082,10 +9850,29 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (role === 'super_admin' || role === 'admin') return true;
+
         if (['sbm', 'rm', 'am', 'ar', 'troubleshoot_manager'].includes(role) && moduleId === 'create_task') return true;
+
         if (role === 'troubleshoot_manager' && moduleId === 'strike_page') return true;
+
         if (!isAuthReady) return true;
+
+
+
+
+
+
+
+
 
 
 
@@ -5101,7 +9888,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!perms || typeof perms !== 'object') return true;
+
+
+
+
+
+
+
+
 
 
 
@@ -5117,7 +9920,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (typeof (perms as any)[moduleId] === 'undefined') return true;
+
+
+
+
+
+
+
+
 
 
 
@@ -5133,7 +9952,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (['deny', 'no', 'false', '0', 'disabled'].includes(perm)) return false;
+
+
+
+
+
+
+
+
 
 
 
@@ -5149,7 +9984,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return perm !== 'deny';
+
+
+
+
+
+
+
+
 
 
 
@@ -5173,7 +10024,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const canViewAllTasks = useMemo(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -5189,7 +10064,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (role === 'ob_manager') return true;
+
+
+
+
+
+
+
+
 
 
 
@@ -5205,7 +10096,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, [currentUser, hasAccess]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -5225,7 +10140,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         const role = String((currentUser as any)?.role || '').trim().toLowerCase();
+
+
+
+
 
 
 
@@ -5233,11 +10156,35 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         return hasAccess('create_task');
 
 
 
+
+
+
+
     }, [currentUser, hasAccess]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -5261,6 +10208,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const canBulkAddCompanies = useMemo(() => hasAccess('company_bulk_add'), [hasAccess]);
 
 
@@ -5269,7 +10224,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const canBulkAddBrands = useMemo(() => hasAccess('brand_bulk_add'), [hasAccess]);
+
+
+
+
+
+
+
+
 
 
 
@@ -5293,7 +10264,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const isSbmRole = useMemo(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -5309,6 +10304,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return r === 'sbm';
 
 
@@ -5317,7 +10320,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, [currentUser]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -5341,6 +10368,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const role = String((currentUser as any)?.role || '').trim().toLowerCase();
 
 
@@ -5349,7 +10384,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return role === 'admin' || role === 'super_admin' || role === 'troubleshoot_manager';
+
+
+
+
+
+
+
+
 
 
 
@@ -5373,7 +10424,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const canSendReminderForTask = useCallback((task: Task): boolean => {
+
+
+
+
+
+
+
+
 
 
 
@@ -5389,7 +10464,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const myEmail = String((currentUser as any)?.email || '').trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -5405,7 +10496,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const assignedByRaw = (task as any)?.assignedBy;
+
+
+
+
 
 
 
@@ -5413,7 +10516,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             (typeof assignedByRaw === 'string'
+
+
+
+
 
 
 
@@ -5421,7 +10532,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 : assignedByRaw?.email || assignedByRaw?.userEmail || '') ||
+
+
+
+
 
 
 
@@ -5429,7 +10548,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             (task as any)?.createdBy?.email ||
+
+
+
+
 
 
 
@@ -5437,7 +10564,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             ''
+
+
+
+
 
 
 
@@ -5445,7 +10580,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             .trim()
+
+
+
+
 
 
 
@@ -5457,7 +10600,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return Boolean(creatorEmail && creatorEmail === myEmail);
+
+
+
+
+
+
+
+
 
 
 
@@ -5481,7 +10640,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleSendReminder = useCallback(async (task: Task) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -5497,7 +10680,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const taskId = String((task as any)?.id || (task as any)?._id || '').trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -5513,7 +10712,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (sendingReminderByTaskId[taskId]) return;
+
+
+
+
+
+
+
+
 
 
 
@@ -5525,7 +10740,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         setSendReminderOpen(true);
+
+
+
+
+
+
+
+
 
 
 
@@ -5549,7 +10776,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const closeSendReminderModal = useCallback(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -5565,6 +10816,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         setSendReminderTask(null);
 
 
@@ -5573,7 +10832,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, []);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -5597,7 +10880,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const taskId = String((sendReminderTask as any)?.id || (sendReminderTask as any)?._id || '').trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -5613,7 +10912,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (sendingReminderByTaskId[taskId]) return;
+
+
+
+
+
+
+
+
 
 
 
@@ -5629,7 +10944,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         try {
+
+
+
+
+
+
+
+
 
 
 
@@ -5645,7 +10976,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (res?.data?.success) {
+
+
+
+
+
+
+
+
 
 
 
@@ -5661,7 +11008,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             } else {
+
+
+
+
+
+
+
+
 
 
 
@@ -5677,7 +11040,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -5693,7 +11072,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             toast.error(e?.response?.data?.message || e?.message || 'Failed to send reminder');
+
+
+
+
+
+
+
+
 
 
 
@@ -5709,7 +11104,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             setSendingReminderByTaskId((prev) => ({ ...prev, [taskId]: false }));
+
+
+
+
+
+
+
+
 
 
 
@@ -5725,7 +11136,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -5749,7 +11176,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const [newTask, setNewTask] = useState<NewTaskForm>({
+
+
+
+
+
+
+
+
 
 
 
@@ -5765,7 +11216,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         assignedTo: '',
+
+
+
+
+
+
+
+
 
 
 
@@ -5781,7 +11248,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         priority: 'medium',
+
+
+
+
+
+
+
+
 
 
 
@@ -5797,7 +11280,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         companyName: '',
+
+
+
+
+
+
+
+
 
 
 
@@ -5813,7 +11312,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -5837,7 +11360,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const role = String((currentUser as any)?.role || '').trim().toLowerCase();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -5861,6 +11408,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return (value == null ? '' : String(value)).trim().toLowerCase();
 
 
@@ -5869,7 +11424,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -5893,6 +11472,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return (value == null ? '' : String(value)).trim().toLowerCase().replace(/[\s-]+/g, '_');
 
 
@@ -5901,7 +11488,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -5925,7 +11536,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const userCompanyKey = normalizeCompany((currentUser as any)?.companyName || (currentUser as any)?.company);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -5949,7 +11584,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (role === 'admin' || role === 'super_admin') {
+
+
+
+
+
+
+
+
 
 
 
@@ -5965,7 +11616,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return modalCompanyKey;
+
+
+
+
+
+
+
+
 
 
 
@@ -5981,6 +11648,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             // Non-admin: always stay within their own company; prefer selected company when present
 
 
@@ -5989,7 +11664,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return modalCompanyKey || userCompanyKey;
+
+
+
+
+
+
+
+
 
 
 
@@ -6013,7 +11704,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const filterByCompany = (list: UserType[] | undefined | null): UserType[] => {
+
+
+
+
+
+
+
+
 
 
 
@@ -6029,7 +11744,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!targetCompanyKey) {
+
+
+
+
+
+
+
+
 
 
 
@@ -6045,7 +11776,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (role === 'admin' || role === 'super_admin') return source;
+
+
+
+
+
+
+
+
 
 
 
@@ -6061,7 +11808,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -6077,7 +11840,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const cKey = normalizeCompany((u as any)?.companyName || (u as any)?.company);
+
+
+
+
+
+
+
+
 
 
 
@@ -6093,6 +11872,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             });
 
 
@@ -6101,7 +11888,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -6125,7 +11936,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return String(u?.id || u?._id || '').trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -6149,46 +11976,117 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const baseUsers = users || [];
 
+
+
         // Always allow super admins/admins to be assignable across companies
+
         // (sales roles also need to assign to / receive from super_admin)
+
         const adminUsersAnyCompany = baseUsers.filter((u: any) => {
+
             const r = normalizeRole((u as any)?.role);
+
             return r === 'admin' || r === 'super_admin';
+
         });
 
+
+
         const myEmailForAddTaskModal = String((currentUser as any)?.email || '').trim().toLowerCase();
+
         if (myEmailForAddTaskModal === 'nitishnilaya@gmail.com') {
+
             const allowedEmails = [
+
                 'drashtismartbiz@gmail.com',
+
                 'harshsmartbiz@gmail.com',
+
                 'krunalsmartbiz@gmail.com',
+
                 'nitishnilaya@gmail.com',
+
                 'meetsmartbiz@gmail.com'
+
             ].map((e) => String(e).trim().toLowerCase());
+
+
 
             const allowedSet = new Set(allowedEmails);
 
+
+
             const allowedUsers = allowedEmails.map((email) => {
+
                 const found = baseUsers.find((u: any) => String((u as any)?.email || '').trim().toLowerCase() === email);
+
                 if (found) return found;
+
                 return {
+
                     id: email,
+
                     name: email.split('@')[0] || 'User',
+
                     email,
+
                     role: 'user'
+
                 } as any;
+
             });
 
+
+
             return Array.from(
+
                 new Map(
+
                     allowedUsers
+
                         .filter((u: any) => allowedSet.has(String((u as any)?.email || '').trim().toLowerCase()))
+
                         .map((u: any) => [String((u as any)?.email || '').trim().toLowerCase(), u])
+
                 ).values()
+
             );
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -6212,8 +12110,25 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const isOtherWork = taskTypeKey === 'other work';
+
         // MD Manager: show Managers of same company
+
+
+
+
+
+
+
+
 
 
 
@@ -6229,7 +12144,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const requesterId = toId(currentUser);
+
+
+
+
+
+
+
+
 
 
 
@@ -6253,7 +12184,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             const selfUser = (baseUsers || []).find((u: any) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -6269,6 +12224,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const email = String((u as any)?.email || '').trim().toLowerCase();
 
 
@@ -6277,7 +12240,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return (requesterId && id === requesterId) || (myEmail && email === myEmail);
+
+
+
+
+
+
+
+
 
 
 
@@ -6301,7 +12280,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             const mdManagers = baseUsers.filter((u: any) => normalizeRole(u?.role) === 'md_manager');
+
+
+
+
+
+
+
+
 
 
 
@@ -6317,6 +12320,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const r = normalizeRole(u?.role);
 
 
@@ -6325,7 +12336,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return r === 'manager' || r === 'ob_manager' || r === 'assistant' || r === 'sub_assistance';
+
+
+
+
+
+
+
+
 
 
 
@@ -6349,7 +12376,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             const candidates = [...mdManagers, selfUser, ...managersAndObManagersAndAssistants];
+
+
+
+
+
+
+
+
 
 
 
@@ -6365,7 +12416,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -6389,7 +12464,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (role === 'manager') {
+
+
+
+
+
+
+
+
 
 
 
@@ -6405,7 +12496,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const r = normalizeRole(u?.role);
+
+
+
+
+
+
+
+
 
 
 
@@ -6421,45 +12528,99 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             });
+
             const scoped = filterByCompany(byRole);
+
             if (!isOtherWork) return scoped;
+
             const targetEmail = 'keyurismartbiz@gmail.com';
+
             const keyuri = baseUsers.find((u: any) => String((u as any)?.email || '').trim().toLowerCase() === targetEmail);
+
             const keyuriUser = keyuri || ({
+
                 id: targetEmail,
+
                 name: targetEmail.split('@')[0] || 'User',
+
                 email: targetEmail,
+
                 role: 'manager'
+
             } as any);
+
             const assistantsAnyCompany = baseUsers.filter((u: any) => {
+
                 const r = normalizeRole(u?.role);
+
                 return r === 'assistant' || r === 'sub_assistance'
+
             });
+
             const merged = [...(scoped || []), ...(assistantsAnyCompany || []), keyuriUser]
+
                 .filter((u: any) => Boolean(String((u as any)?.email || '').trim()));
+
             return Array.from(new Map(merged.map((u: any) => [String((u as any)?.email || '').trim().toLowerCase(), u])).values());
+
         }
+
         // OB Manager: show Managers + MD Managers + OB Managers + Assistants of same company
+
         if (role === 'ob_manager') {
+
+
+
+
 
 
 
             const byRole = baseUsers.filter((u: any) => {
 
+
+
                 const r = normalizeRole(u?.role);
 
+
+
                 return r === 'manager' || r === 'md_manager' || r === 'ob_manager' || r === 'assistant' || r === 'sub_assistance';
+
+
 
             });
 
 
 
+
+
+
+
             return filterByCompany(byRole);
+
         }
+
         // Speed E Com specific: SBM / RM / AM can assign to each other within same company
+
         if (role === 'sbm' || role === 'rm' || role === 'am' || role === 'ar') {
+
             const requesterId = toId(currentUser);
+
+
+
+
+
+
+
+
 
 
 
@@ -6483,7 +12644,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             const adminUsers = baseUsers.filter((u: any) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -6499,9 +12684,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return r === 'admin' || r === 'super_admin';
+
             });
+
             if (role === 'rm') {
+
+
+
+
+
+
+
+
 
 
 
@@ -6517,7 +12720,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const id = toId(u);
+
+
+
+
+
+
+
+
 
 
 
@@ -6533,7 +12752,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const myEmail = String((currentUser as any)?.email || '').trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -6549,7 +12784,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 }) || (currentUser as any);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -6573,7 +12832,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const r = normalizeRole(u?.role);
+
+
+
+
+
+
+
+
 
 
 
@@ -6589,6 +12864,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     return r === 'am' && requesterId && mid === requesterId;
 
 
@@ -6597,7 +12880,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -6621,7 +12928,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const r = normalizeRole(u?.role);
+
+
+
+
+
+
+
+
 
 
 
@@ -6637,7 +12960,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -6661,7 +13008,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const visible = candidates.filter((u: any) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -6677,7 +13040,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     if (r === 'admin' || r === 'super_admin') return true;
+
+
+
+
+
+
+
+
 
 
 
@@ -6693,6 +13072,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 });
 
 
@@ -6701,9 +13088,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return Array.from(new Map(visible.map((u: any) => [toId(u) || String(u?.email || ''), u])).values());
+
             }
+
             if (role === 'am') {
+
+
+
+
+
+
+
+
 
 
 
@@ -6719,7 +13124,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const id = toId(u);
+
+
+
+
+
+
+
+
 
 
 
@@ -6735,6 +13156,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const myEmail = String((currentUser as any)?.email || '').trim().toLowerCase();
 
 
@@ -6743,7 +13172,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     return (requesterId && id === requesterId) || (myEmail && email === myEmail);
+
+
+
+
+
+
+
+
 
 
 
@@ -6767,7 +13212,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                 const rmUser = baseUsers.filter((u: any) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -6783,6 +13252,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     return r === 'rm' && requesterManagerId && toId(u) === requesterManagerId;
 
 
@@ -6791,7 +13268,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -6815,7 +13316,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const sbmId = rm ? String((rm as any)?.managerId || '').trim() : '';
+
+
+
+
+
+
+
+
 
 
 
@@ -6831,7 +13348,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const r = normalizeRole(u?.role);
+
+
+
+
+
+
+
+
 
 
 
@@ -6847,7 +13380,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -6871,6 +13428,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const visible = candidates.filter((u: any) => {
 
 
@@ -6879,7 +13444,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const r = normalizeRole(u?.role);
+
+
+
+
+
+
+
+
 
 
 
@@ -6895,6 +13476,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     return filterByCompany([u]).length > 0;
 
 
@@ -6903,7 +13492,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 });
+
+
+
+
+
+
+
+
 
 
 
@@ -6912,32 +13517,66 @@ const DashboardPage = () => {
 
 
                 return Array.from(new Map(visible.map((u: any) => [toId(u) || String(u?.email || ''), u])).values());
+
             }
+
             // SBM: keep existing behavior (SBM/RM/AM within same company)
+
             if (role === 'sbm') {
+
                 const adminUsers = baseUsers.filter((u: any) => {
+
                     const r = normalizeRole(u?.role);
+
                     return r === 'admin' || r === 'super_admin';
+
                 });
+
+
 
                 const byRole = baseUsers.filter((u: any) => {
+
                     const r = normalizeRole(u?.role);
+
                     return r === 'sbm' || r === 'rm' || r === 'am' || r === 'sales_manager';
+
                 });
 
+
+
                 const scoped = filterByCompany(byRole);
+
                 const merged = [...adminUsers, ...scoped];
+
                 return Array.from(new Map(merged.map((u: any) => [toId(u) || String((u as any)?.email || ''), u])).values());
+
             }
 
+
+
             const byRole = baseUsers.filter((u: any) => {
+
                 const r = normalizeRole(u?.role);
+
                 return r === 'sbm' || r === 'rm' || r === 'am';
+
             });
 
+
+
             return filterByCompany(byRole);
+
         }
+
         // Admin / Super Admin: all users filtered by selected company when set
+
+
+
+
+
+
+
+
 
 
 
@@ -6953,6 +13592,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return filterByCompany(baseUsers);
 
 
@@ -6961,7 +13608,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -6978,10 +13649,22 @@ const DashboardPage = () => {
 
 
         // Default: all users within the same company (or selected company if any)
+
         // plus admins/super_admins (any company)
+
         const scoped = filterByCompany(baseUsers);
+
         const merged = [...adminUsersAnyCompany, ...scoped];
+
         return Array.from(new Map(merged.map((u: any) => [toId(u) || String((u as any)?.email || ''), u])).values());
+
+
+
+
+
+
+
+
 
 
 
@@ -7005,6 +13688,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleLogout = useCallback(() => {
 
 
@@ -7013,7 +13712,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         try {
+
+
+
+
+
+
+
+
 
 
 
@@ -7029,7 +13744,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const google = (window as any).google;
+
+
+
+
+
+
+
+
 
 
 
@@ -7045,7 +13776,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 google.accounts.oauth2.revoke(accessToken, () => { });
+
+
+
+
+
+
+
+
 
 
 
@@ -7061,7 +13808,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         } catch {
+
+
+
+
+
+
+
+
 
 
 
@@ -7077,7 +13840,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -7101,7 +13888,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             localStorage.removeItem('tms_google_calendar_connected');
+
+
+
+
+
+
+
+
 
 
 
@@ -7117,7 +13920,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         } catch {
+
+
+
+
+
+
+
+
 
 
 
@@ -7133,7 +13952,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -7157,6 +14000,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         localStorage.removeItem('currentUser');
 
 
@@ -7165,7 +14016,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         navigate('/login');
+
+
+
+
+
+
+
+
 
 
 
@@ -7189,7 +14056,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const [editFormData, setEditFormData] = useState<EditTaskForm>({
+
+
+
+
+
+
+
+
 
 
 
@@ -7205,7 +14096,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         title: '',
+
+
+
+
+
+
+
+
 
 
 
@@ -7221,7 +14128,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         dueDate: '',
+
+
+
+
+
+
+
+
 
 
 
@@ -7237,7 +14160,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         taskType: '',
+
+
+
+
+
+
+
+
 
 
 
@@ -7253,7 +14192,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         brand: '',
+
+
+
+
+
+
+
+
 
 
 
@@ -7269,7 +14224,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -7293,7 +14272,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const [editFormErrors, setEditFormErrors] = useState<Record<string, string>>({});
+
+
+
+
+
+
+
+
 
 
 
@@ -7309,7 +14304,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         company: string;
+
+
+
+
+
+
+
+
 
 
 
@@ -7325,7 +14336,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         groupNumber?: string;
+
+
+
+
+
+
+
+
 
 
 
@@ -7341,7 +14368,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         rmEmail?: string;
+
+
+
+
+
+
+
+
 
 
 
@@ -7357,7 +14400,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }>({ company: '', brandNames: '' });
+
+
+
+
+
+
+
+
 
 
 
@@ -7373,7 +14432,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const [showBulkCompanyModal, setShowBulkCompanyModal] = useState(false);
+
+
+
+
+
+
+
+
 
 
 
@@ -7389,7 +14464,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const [isCreatingBulkCompanies, setIsCreatingBulkCompanies] = useState(false);
+
+
+
+
+
+
+
+
 
 
 
@@ -7405,6 +14496,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const [bulkTaskTypeNames, setBulkTaskTypeNames] = useState('');
 
 
@@ -7413,7 +14512,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const [bulkTaskTypeCompany, setBulkTaskTypeCompany] = useState('');
+
+
+
+
+
+
+
+
 
 
 
@@ -7437,7 +14552,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const [companies, setCompanies] = useState<Company[]>([]);
+
+
+
+
+
+
+
+
 
 
 
@@ -7461,7 +14600,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const [companyUsers, setCompanyUsers] = useState<any[]>([]);
+
+
+
+
+
+
+
+
 
 
 
@@ -7477,7 +14640,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const company = (companyName || '').toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -7493,7 +14672,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             setCompanyUsers([]);
+
+
+
+
+
+
+
+
 
 
 
@@ -7509,7 +14704,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -7525,7 +14736,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const res = await assignService.getCompanyUsers({ companyName: company });
+
+
+
+
+
+
+
+
 
 
 
@@ -7541,7 +14768,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             else setCompanyUsers([]);
+
+
+
+
+
+
+
+
 
 
 
@@ -7557,7 +14800,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             setCompanyUsers([]);
+
+
+
+
+
+
+
+
 
 
 
@@ -7573,7 +14832,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, []);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -7597,7 +14880,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!showBulkBrandModal) return;
+
+
+
+
+
+
+
+
 
 
 
@@ -7613,7 +14912,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!company) return;
+
+
+
+
+
+
+
+
 
 
 
@@ -7629,7 +14944,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, [bulkBrandForm.company, loadUsersForCompany, showBulkBrandModal]);
+
+
+
+
+
+
+
+
 
 
 
@@ -7645,7 +14976,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         status: 'all',
+
+
+
+
+
+
+
+
 
 
 
@@ -7661,7 +15008,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         assigned: 'all',
+
+
+
+
+
+
+
+
 
 
 
@@ -7677,7 +15040,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         taskType: 'all',
+
+
+
+
+
+
+
+
 
 
 
@@ -7693,7 +15072,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         brand: 'all',
+
+
+
+
+
+
+
+
 
 
 
@@ -7705,7 +15100,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
     });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -7729,7 +15144,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const [taskTypeIdsByCompanyUserBrandKey, setTaskTypeIdsByCompanyUserBrandKey] = useState<Record<string, string[]>>({});
+
+
+
+
+
+
+
+
 
 
 
@@ -7753,7 +15184,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const mainContentClasses = useMemo(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -7769,7 +15224,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             flex-1 flex flex-col
+
+
+
+
+
+
+
+
 
 
 
@@ -7785,7 +15256,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             ${isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'}
+
+
+
+
+
+
+
+
 
 
 
@@ -7801,7 +15288,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         `;
+
+
+
+
+
+
+
+
 
 
 
@@ -7825,7 +15328,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const dashboardContainerClasses = useMemo(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -7841,7 +15368,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             w-full max-w-full mx-auto px-4 sm:px-6 md:px-8
+
+
+
+
+
+
+
+
 
 
 
@@ -7857,6 +15400,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         `;
 
 
@@ -7865,7 +15416,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, []);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -7889,7 +15464,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return [...apiBrands];
+
+
+
+
+
+
+
+
 
 
 
@@ -7901,9 +15492,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
     const normalizeText = useCallback((value: unknown): string => {
 
+
+
         return (value == null ? '' : String(value)).trim().toLowerCase();
+
+
+
+
 
 
 
@@ -7911,7 +15512,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
     const normalizeRoleKey = useCallback((value: unknown): string => {
+
+
+
+
+
+
+
+
 
 
 
@@ -7927,7 +15540,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             .trim()
+
+
+
+
+
+
+
+
 
 
 
@@ -7943,6 +15572,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             .replace(/[\s-]+/g, '_');
 
 
@@ -7951,7 +15588,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, []);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -7975,7 +15636,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return normalizeText(value).replace(/\s+/g, '');
+
+
+
+
+
+
+
+
 
 
 
@@ -7999,6 +15676,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const SPEED_E_COM_COMPANY_NAME = 'Speed E Com';
 
 
@@ -8007,7 +15700,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const SPEED_E_COM_COMPANY_KEY = 'speedecom';
+
+
+
+
+
+
+
+
 
 
 
@@ -8031,7 +15740,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const isSpeedEcomUser = useMemo(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -8047,6 +15780,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return key === SPEED_E_COM_COMPANY_KEY;
 
 
@@ -8055,7 +15796,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, [currentUser, normalizeCompanyKey]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -8079,6 +15844,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const companyKey = normalizeCompanyKey(task?.companyName || task?.company);
 
 
@@ -8087,7 +15860,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return companyKey === SPEED_E_COM_COMPANY_KEY;
+
+
+
+
+
+
+
+
 
 
 
@@ -8111,7 +15900,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const getTaskAssigneeEmail = useCallback((task: any): string => {
+
+
+
+
+
+
+
+
 
 
 
@@ -8127,7 +15940,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const assignedToUser = (task as any)?.assignedToUser;
+
+
+
+
+
+
+
+
 
 
 
@@ -8143,7 +15972,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             (typeof assignedTo === 'string' && assignedTo.includes('@') ? assignedTo : assignedTo?.email) ||
+
+
+
+
+
+
+
+
 
 
 
@@ -8159,7 +16004,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             (typeof assignedTo === 'string' ? assignedTo : '') ||
+
+
+
+
+
+
+
+
 
 
 
@@ -8175,7 +16036,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return stripDeletedEmailSuffix(email).trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -8199,7 +16076,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const restrictTaskTypesForCompany = useCallback((companyName: unknown, list: string[]): string[] => {
+
+
+
+
+
+
+
+
 
 
 
@@ -8215,7 +16116,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (companyKey === SPEED_E_COM_COMPANY_KEY) {
+
+
+
+
+
+
+
+
 
 
 
@@ -8231,6 +16148,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return safe.length > 0 ? safe : [...SPEED_E_COM_FIXED_TASK_TYPES];
 
 
@@ -8239,7 +16164,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -8263,7 +16212,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!companyKey && currentUserCompanyKey === SPEED_E_COM_COMPANY_KEY) {
+
+
+
+
+
+
+
+
 
 
 
@@ -8279,6 +16244,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return safe.length > 0 ? safe : [...SPEED_E_COM_FIXED_TASK_TYPES];
 
 
@@ -8287,7 +16260,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -8303,7 +16292,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const safe = Array.isArray(list) ? list.filter(Boolean) : [];
+
+
+
+
+
+
+
+
 
 
 
@@ -8319,7 +16324,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -8343,7 +16372,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, [currentUser, normalizeCompanyKey]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -8375,7 +16428,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const loadCompanyTaskTypeOverrides = useCallback(async () => {
+
+
+
+
+
+
+
+
 
 
 
@@ -8391,7 +16468,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const res = await companyTaskTypeService.getAllCompanyTaskTypes();
+
+
+
+
+
+
+
+
 
 
 
@@ -8407,7 +16500,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const next: Record<string, string[]> = {};
+
+
+
+
+
+
+
+
 
 
 
@@ -8423,7 +16532,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const key = normalizeText(row?.companyName);
+
+
+
+
+
+
+
+
 
 
 
@@ -8439,7 +16564,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const names = (row?.taskTypes || [])
+
+
+
+
+
+
+
+
 
 
 
@@ -8455,7 +16596,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         .filter(Boolean);
+
+
+
+
+
+
+
+
 
 
 
@@ -8471,7 +16628,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 });
+
+
+
+
+
+
+
+
 
 
 
@@ -8487,7 +16660,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             } else {
+
+
+
+
+
+
+
+
 
 
 
@@ -8503,7 +16692,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -8519,6 +16724,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             setTaskTypeCompanyOverrides({});
 
 
@@ -8527,7 +16740,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -8551,6 +16780,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     useEffect(() => {
 
 
@@ -8559,7 +16804,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         void loadCompanyTaskTypeOverrides();
+
+
+
+
+
+
+
+
 
 
 
@@ -8583,7 +16844,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const addTaskTypesToCompany = useCallback(async (companyName: string, typeNames: string[]) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -8599,6 +16884,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!companyKey) return;
 
 
@@ -8607,7 +16900,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const cleaned = (typeNames || []).map((t) => (t || '').toString().trim()).filter(Boolean);
+
+
+
+
+
+
+
+
 
 
 
@@ -8631,7 +16940,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         try {
+
+
+
+
+
+
+
+
 
 
 
@@ -8647,7 +16980,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 companyName,
+
+
+
+
+
+
+
+
 
 
 
@@ -8663,7 +17012,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -8687,7 +17060,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 setTaskTypeCompanyOverrides((prev) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -8703,7 +17092,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const next = { ...current };
+
+
+
+
+
+
+
+
 
 
 
@@ -8719,7 +17124,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const names = (res.data.taskTypes || [])
+
+
+
+
+
+
+
+
 
 
 
@@ -8735,7 +17156,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         .filter(Boolean);
+
+
+
+
+
+
+
+
 
 
 
@@ -8751,7 +17188,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     return next;
+
+
+
+
+
+
+
+
 
 
 
@@ -8767,6 +17220,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return;
 
 
@@ -8775,7 +17236,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -8799,7 +17284,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const current = prev || {};
+
+
+
+
+
+
+
+
 
 
 
@@ -8815,7 +17316,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const merged = Array.from(new Set([...existing, ...cleaned]));
+
+
+
+
+
+
+
+
 
 
 
@@ -8831,7 +17348,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             });
+
+
+
+
+
+
+
+
 
 
 
@@ -8847,6 +17380,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             toast.error('Failed to save task types for company');
 
 
@@ -8855,7 +17396,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -8879,7 +17436,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const availableCompanies = useMemo(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -8895,7 +17476,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const input = (raw || '').toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -8911,7 +17508,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const key = input.replace(/\s+/g, '').toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -8927,7 +17540,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const name = String(c?.name || '').trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -8943,7 +17572,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return name.replace(/\s+/g, '').toLowerCase() === key;
+
+
+
+
+
+
+
+
 
 
 
@@ -8959,7 +17604,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return (match?.name || input).toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -8983,7 +17644,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const role = (currentUser?.role || '').toString().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -8999,9 +17684,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (role === 'md_manager' || role === 'ob_manager') {
 
+
+
             const fromCompanies = (companies || []).map(c => (c?.name || '').toString().trim()).filter(Boolean);
+
+
+
+
+
+
+
+
 
 
 
@@ -9017,7 +17720,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -9033,7 +17752,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const onlyRaw = ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -9049,7 +17784,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (only) return [only];
+
+
+
+
+
+
+
+
 
 
 
@@ -9065,7 +17816,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -9081,7 +17848,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const fromCompanies = (companies || []).map(c => (c?.name || '').toString().trim()).filter(Boolean);
+
+
+
+
+
+
+
+
 
 
 
@@ -9097,7 +17880,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return [...new Set(fromCompanies)].filter(Boolean).sort();
+
+
+
+
+
+
+
+
 
 
 
@@ -9113,7 +17912,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const onlyRaw = ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -9129,6 +17944,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (only) return [only];
 
 
@@ -9137,10 +17960,29 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return [SPEED_E_COM_COMPANY_NAME];
+
         }
+
         if (role === 'rm' || role === 'am' || role === 'ar') {
+
             const onlyRaw = ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -9156,6 +17998,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (name) return [name];
 
 
@@ -9164,10 +18014,29 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return [SPEED_E_COM_COMPANY_NAME];
+
         }
+
         const needsCompanyList = role === 'admin' || role === 'super_admin' || role === 'sbm' || role === 'rm' || role === 'am' || role === 'ar';
+
         const fromCompanies = (companies || []).map(c => (c?.name || '').toString().trim()).filter(Boolean);
+
+
+
+
+
+
+
+
 
 
 
@@ -9183,6 +18052,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return [...new Set(fromCompanies)].sort();
 
 
@@ -9191,25 +18068,63 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
 
         if (!needsCompanyList) {
 
 
 
+
+
+
+
             const fromAllowedBrands = (brands || [])
+
+
 
                 .map(b => getBrandCompanyNameSafe(b))
 
 
 
+
+
+
+
                 .filter(Boolean);
+
+
 
             return [...new Set(fromAllowedBrands)].sort();
 
 
 
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -9229,7 +18144,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return uniqueCompanies.filter(Boolean).sort();
+
+
+
+
+
+
+
+
 
 
 
@@ -9245,7 +18176,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         MD_IMPEX_COMPANY_NAME,
+
+
+
+
+
+
+
+
 
 
 
@@ -9261,7 +18208,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         brands,
+
+
+
+
+
+
+
+
 
 
 
@@ -9277,7 +18240,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         currentUser?.role,
+
+
+
+
+
+
+
+
 
 
 
@@ -9293,7 +18272,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         (currentUser as any)?.companyName
+
+
+
+
+
+
+
+
 
 
 
@@ -9317,7 +18312,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const availableRmUsersForFilters = useMemo(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -9333,7 +18352,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (roleKey !== 'sbm') return [] as Array<{ id: string; name: string; email: string }>;
+
+
+
+
+
+
+
+
 
 
 
@@ -9349,7 +18384,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const fallbackCompanyKey = normalizeCompanyKey((currentUser as any)?.companyName || (currentUser as any)?.company);
+
+
+
+
+
+
+
+
 
 
 
@@ -9365,7 +18416,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const list: any[] = Array.isArray(usersRef.current) ? (usersRef.current as any[]) : (users as any[]);
+
+
+
+
+
+
+
+
 
 
 
@@ -9381,7 +18448,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const allRms = (list || [])
+
+
+
+
+
+
+
+
 
 
 
@@ -9397,7 +18480,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             .map((u: any) => ({
+
+
+
+
+
+
+
+
 
 
 
@@ -9413,7 +18512,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 name: String(u?.name || u?.fullName || u?.email || '').trim(),
+
+
+
+
+
+
+
+
 
 
 
@@ -9429,7 +18544,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 companyKey: normalizeCompanyKey(u?.companyName || u?.company),
+
+
+
+
+
+
+
+
 
 
 
@@ -9445,7 +18576,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             .filter((u: any) => Boolean(u?.email));
+
+
+
+
+
+
+
+
 
 
 
@@ -9461,7 +18608,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const companyMatched = companyKeyForRms
+
+
+
+
+
+
+
+
 
 
 
@@ -9477,7 +18640,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             : [];
+
+
+
+
+
+
+
+
 
 
 
@@ -9493,7 +18672,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return source
+
+
+
+
+
+
+
+
 
 
 
@@ -9509,7 +18704,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             .sort((a: any, b: any) => String(a?.name || a?.email || '').localeCompare(String(b?.name || b?.email || '')));
+
+
+
+
+
+
+
+
 
 
 
@@ -9533,16 +18744,57 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const availableCompaniesForSbm = useMemo(() => {
+
         const role = String((currentUser as any)?.role || '').trim().toLowerCase();
 
+
+
         if (role === 'troubleshoot_manager') {
+
             const match = (availableCompanies || []).find((c) => String(c || '').trim().toLowerCase() === 'md impex');
+
             if (match) return [match];
+
             return [MD_IMPEX_COMPANY_NAME];
+
         }
 
+
+
         if (!isSbmRole) return availableCompanies;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -9566,7 +18818,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const onlyKey = onlyRaw.replace(/\s+/g, '').toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -9582,7 +18850,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (match) return [match];
+
+
+
+
+
+
+
+
 
 
 
@@ -9598,7 +18882,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return (availableCompanies || []).slice(0, 1);
+
+
+
+
+
+
+
+
 
 
 
@@ -9622,6 +18922,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     useEffect(() => {
 
 
@@ -9630,7 +18946,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const role = (currentUser?.role || '').toString().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -9654,7 +18986,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         // For MD/OB managers, prefer the first allowed/assigned company from availableCompanies.
+
+
+
+
+
+
+
+
 
 
 
@@ -9670,7 +19026,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             ? ((availableCompanies[0] || '').toString().trim())
+
+
+
+
+
+
+
+
 
 
 
@@ -9694,7 +19066,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const resolvedCompany = fromList || ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -9718,7 +19114,39 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const allowedSet = new Set((availableCompanies || []).map((c) => (c || '').toString().trim()));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -9742,7 +19170,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const current = (prev?.companyName || '').toString().trim();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -9766,7 +19218,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             // or if nothing is set yet, switch to the resolved defaultCompany.
+
+
+
+
+
+
+
+
 
 
 
@@ -9782,7 +19250,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return prev;
+
+
+
+
+
+
+
+
 
 
 
@@ -9806,6 +19290,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             return { ...prev, companyName: defaultCompany };
 
 
@@ -9814,7 +19314,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         });
+
+
+
+
+
+
+
+
 
 
 
@@ -9838,6 +19354,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     useEffect(() => {
 
 
@@ -9846,9 +19378,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const role = (currentUser?.role || '').toString().toLowerCase();
+
         if (role !== 'rm' && role !== 'am' && role !== 'ar') return;
+
         const rawCompany = ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -9864,7 +19414,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const match = (companies || []).find((c: any) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -9880,7 +19446,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!name) return false;
+
+
+
+
+
+
+
+
 
 
 
@@ -9896,7 +19478,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         });
+
+
+
+
+
+
+
+
 
 
 
@@ -9912,7 +19510,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const defaultCompany = resolvedCompany || SPEED_E_COM_COMPANY_NAME;
+
+
+
+
+
+
+
+
 
 
 
@@ -9936,7 +19550,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         setNewTask((prev) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -9952,7 +19590,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (current && (allowedSet.size === 0 || allowedSet.has(current))) {
+
+
+
+
+
+
+
+
 
 
 
@@ -9968,7 +19622,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -9984,7 +19654,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         });
+
+
+
+
+
+
+
+
 
 
 
@@ -10008,7 +19694,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     useEffect(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -10024,7 +19734,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         setBulkBrandForm((prev) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -10040,7 +19766,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (current) return prev;
+
+
+
+
+
+
+
+
 
 
 
@@ -10056,7 +19798,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         });
+
+
+
+
+
+
+
+
 
 
 
@@ -10080,7 +19838,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     useEffect(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -10096,7 +19878,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         setBulkTaskTypeCompany((prev) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -10112,7 +19910,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (current) return prev;
+
+
+
+
+
+
+
+
 
 
 
@@ -10128,7 +19942,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         });
+
+
+
+
+
+
+
+
 
 
 
@@ -10152,6 +19982,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const allowedTaskTypeKeysForManager = useMemo(() => {
 
 
@@ -10160,7 +20006,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const role = (currentUser?.role || '').toString().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -10184,6 +20046,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const myEmail = (currentUser?.email || '').toString().trim().toLowerCase();
 
 
@@ -10192,7 +20070,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const myId = ((currentUser as any)?.id || (currentUser as any)?._id || '').toString().trim();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -10224,7 +20126,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const collectFrom = (value: any, out: string[]) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -10240,7 +20166,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (Array.isArray(value)) {
+
+
+
+
+
+
+
+
 
 
 
@@ -10256,7 +20198,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     if (!item) return;
+
+
+
+
+
+
+
+
 
 
 
@@ -10272,7 +20230,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         out.push(item);
+
+
+
+
+
+
+
+
 
 
 
@@ -10288,7 +20262,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     }
+
+
+
+
+
+
+
+
 
 
 
@@ -10304,7 +20294,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         const raw =
+
+
+
+
+
+
+
+
 
 
 
@@ -10320,7 +20326,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                             (item as any)?.label ??
+
+
+
+
+
+
+
+
 
 
 
@@ -10336,7 +20358,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                             (item as any)?.type ??
+
+
+
+
+
+
+
+
 
 
 
@@ -10352,7 +20390,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         const str = (raw || '').toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -10368,7 +20422,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     }
+
+
+
+
+
+
+
+
 
 
 
@@ -10384,6 +20454,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return;
 
 
@@ -10392,7 +20470,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -10408,7 +20502,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 value
+
+
+
+
+
+
+
+
 
 
 
@@ -10424,7 +20534,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     .map((s) => s.trim())
+
+
+
+
+
+
+
+
 
 
 
@@ -10440,7 +20566,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     .forEach((s) => out.push(s));
+
+
+
+
+
+
+
+
 
 
 
@@ -10456,7 +20598,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -10472,7 +20630,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 Object.values(value).forEach((v) => collectFrom(v, out));
+
+
+
+
+
+
+
+
 
 
 
@@ -10488,7 +20662,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -10512,7 +20710,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         [
+
+
+
+
+
+
+
+
 
 
 
@@ -10528,7 +20742,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             (currentUser as any)?.assignedTaskTypeNames,
+
+
+
+
+
+
+
+
 
 
 
@@ -10544,7 +20774,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             (currentUser as any)?.allowedTaskTypes,
+
+
+
+
+
+
+
+
 
 
 
@@ -10560,7 +20806,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             (currentUser as any)?.taskTypeKeys,
+
+
+
+
+
+
+
+
 
 
 
@@ -10576,7 +20838,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             (currentUser as any)?.taskTypeAccess,
+
+
+
+
+
+
+
+
 
 
 
@@ -10600,7 +20878,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const directKeys = new Set(directValues.map(normalizeKey).filter(Boolean));
+
+
+
+
+
+
+
+
 
 
 
@@ -10624,7 +20926,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const resolveUserRole = (candidate: any): string => {
+
+
+
+
+
+
+
+
 
 
 
@@ -10640,7 +20966,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!raw) return '';
+
+
+
+
+
+
+
+
 
 
 
@@ -10656,7 +20998,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const id = (u?.id || u?._id || '').toString();
+
+
+
+
+
+
+
+
 
 
 
@@ -10672,7 +21030,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return id === raw || email.toLowerCase() === raw.toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -10688,6 +21062,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return (found?.role || '').toString().trim().toLowerCase();
 
 
@@ -10696,7 +21078,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -10720,7 +21126,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const assignedByUser = t?.assignedByUser;
+
+
+
+
+
+
+
+
 
 
 
@@ -10736,7 +21158,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const direct = (assignedByUser?.role || assignedBy?.role || '').toString().trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -10752,7 +21190,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const rawIdOrEmail =
+
+
+
+
+
+
+
+
 
 
 
@@ -10768,7 +21222,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 (typeof assignedByUser === 'string' ? assignedByUser : assignedByUser?._id || assignedByUser?.id || assignedByUser?.email) ||
+
+
+
+
+
+
+
+
 
 
 
@@ -10784,6 +21254,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return resolveUserRole(rawIdOrEmail);
 
 
@@ -10792,7 +21270,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -10816,7 +21318,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const assignedTo = t?.assignedTo;
+
+
+
+
+
+
+
+
 
 
 
@@ -10832,7 +21350,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const assignedToId =
+
+
+
+
+
+
+
+
 
 
 
@@ -10848,6 +21382,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 (typeof assignedToUser === 'string' ? assignedToUser : assignedToUser?._id || assignedToUser?.id) ||
 
 
@@ -10856,7 +21398,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 '';
+
+
+
+
+
+
+
+
 
 
 
@@ -10872,7 +21430,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 (typeof assignedTo === 'string' && assignedTo.includes('@') ? assignedTo : assignedTo?.email) ||
+
+
+
+
+
+
+
+
 
 
 
@@ -10888,7 +21462,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 '';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -10912,7 +21510,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (myEmail && assignedToEmail && assignedToEmail.toString().trim().toLowerCase() === myEmail) return true;
+
+
+
+
+
+
+
+
 
 
 
@@ -10928,7 +21542,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -10952,7 +21590,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         (tasks || []).forEach((t: any) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -10968,7 +21622,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const assignerRole = getAssignerRole(t);
+
+
+
+
+
+
+
+
 
 
 
@@ -10984,7 +21654,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const key = normalizeKey(t?.taskType || t?.type || '');
+
+
+
+
+
+
+
+
 
 
 
@@ -11000,7 +21686,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         });
+
+
+
+
+
+
+
+
 
 
 
@@ -11016,7 +21718,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             // Keep 2 default task types visible in Manager filter even when no tasks/assignments exist yet
+
+
+
+
+
+
+
+
 
 
 
@@ -11032,6 +21750,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
 
 
@@ -11040,7 +21766,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return allowed;
+
+
+
+
+
+
+
+
 
 
 
@@ -11064,7 +21806,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const availableTaskTypes = useMemo(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -11080,7 +21846,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const normalizeKey = (v: unknown) => normalizeLabel(v).toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -11092,7 +21874,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const raw = normalizeLabel(v);
+
+
+
+
 
 
 
@@ -11100,7 +21890,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const key = raw.toLowerCase().replace(/[\s-]+/g, ' ').trim();
+
+
+
+
 
 
 
@@ -11108,11 +21906,35 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             return raw;
 
 
 
+
+
+
+
         };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -11136,7 +21958,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             .map(t => canonicalizeLabel(t?.name))
+
+
+
+
+
+
+
+
 
 
 
@@ -11160,7 +21998,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const apiLabelByKey = new Map<string, string>();
+
+
+
+
+
+
+
+
 
 
 
@@ -11176,7 +22038,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const key = normalizeKey(label);
+
+
+
+
+
+
+
+
 
 
 
@@ -11192,7 +22070,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!apiLabelByKey.has(key)) apiLabelByKey.set(key, label);
+
+
+
+
+
+
+
+
 
 
 
@@ -11216,7 +22110,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const role = (currentUser?.role || '').toString().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -11232,7 +22150,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const myEmail = (currentUser?.email || '').toString().trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -11256,7 +22190,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             const isMine = (t: any) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -11272,7 +22230,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const assignedTo = t?.assignedTo;
+
+
+
+
+
+
+
+
 
 
 
@@ -11288,7 +22262,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const assignedBy = t?.assignedBy;
+
+
+
+
+
+
+
+
 
 
 
@@ -11312,7 +22302,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                     const assignedToId =
+
+
+
+
+
+
+
+
 
 
 
@@ -11328,6 +22342,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         (typeof assignedToUser === 'string' ? assignedToUser : assignedToUser?._id || assignedToUser?.id) ||
 
 
@@ -11336,7 +22358,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         '';
+
+
+
+
+
+
+
+
 
 
 
@@ -11352,7 +22390,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         (typeof assignedTo === 'string' && assignedTo.includes('@') ? assignedTo : assignedTo?.email) ||
+
+
+
+
+
+
+
+
 
 
 
@@ -11368,7 +22422,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         '';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -11392,7 +22470,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         (typeof assignedBy === 'string' ? assignedBy : assignedBy?._id || assignedBy?.id) ||
+
+
+
+
+
+
+
+
 
 
 
@@ -11408,7 +22502,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         '';
+
+
+
+
+
+
+
+
 
 
 
@@ -11424,7 +22534,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         (typeof assignedBy === 'string' && assignedBy.includes('@') ? assignedBy : assignedBy?.email) ||
+
+
+
+
+
+
+
+
 
 
 
@@ -11440,7 +22566,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         '';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -11464,7 +22614,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     if (myEmail && assignedToEmail && assignedToEmail.toString().trim().toLowerCase() === myEmail) return true;
+
+
+
+
+
+
+
+
 
 
 
@@ -11480,6 +22646,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     if (myEmail && assignedByEmail && assignedByEmail.toString().trim().toLowerCase() === myEmail) return true;
 
 
@@ -11488,7 +22662,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     return false;
+
+
+
+
+
+
+
+
 
 
 
@@ -11512,7 +22702,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                 const assignedTo = t?.assignedTo;
+
+
+
+
+
+
+
+
 
 
 
@@ -11528,7 +22742,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const assignedToId =
+
+
+
+
+
+
+
+
 
 
 
@@ -11544,6 +22774,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     (typeof assignedToUser === 'string' ? assignedToUser : assignedToUser?._id || assignedToUser?.id) ||
 
 
@@ -11552,7 +22790,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     '';
+
+
+
+
+
+
+
+
 
 
 
@@ -11568,7 +22822,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     (typeof assignedTo === 'string' && assignedTo.includes('@') ? assignedTo : assignedTo?.email) ||
+
+
+
+
+
+
+
+
 
 
 
@@ -11584,7 +22854,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     '';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -11608,6 +22902,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (myEmail && assignedToEmail && assignedToEmail.toString().trim().toLowerCase() === myEmail) return true;
 
 
@@ -11616,7 +22918,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return false;
+
+
+
+
+
+
+
+
 
 
 
@@ -11640,7 +22958,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             const taskLabelByKey = new Map<string, string>();
+
+
+
+
+
+
+
+
 
 
 
@@ -11656,7 +22998,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (!isMine(t)) return;
+
+
+
+
+
+
+
+
 
 
 
@@ -11672,7 +23030,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const key = normalizeKey(label);
+
+
+
+
+
+
+
+
 
 
 
@@ -11688,6 +23062,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (!taskLabelByKey.has(key)) taskLabelByKey.set(key, label);
 
 
@@ -11696,7 +23078,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -11720,6 +23126,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             taskLabelByKey.forEach((label, key) => {
 
 
@@ -11728,7 +23142,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (!mergedLabelByKey.has(key)) mergedLabelByKey.set(key, label);
+
+
+
+
+
+
+
+
 
 
 
@@ -11752,7 +23182,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             const labels = Array.from(mergedLabelByKey.values()).filter(Boolean);
+
+
+
+
+
+
+
+
 
 
 
@@ -11768,7 +23222,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -11792,7 +23270,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const managerDefaultTypeLabels = ['Other Work', 'Troubleshoot'];
+
+
+
+
+
+
+
+
 
 
 
@@ -11808,7 +23302,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const mergedLabelByKey = new Map<string, string>();
+
+
+
+
+
+
+
+
 
 
 
@@ -11824,6 +23334,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (allowedKeys.has(key)) mergedLabelByKey.set(key, label);
 
 
@@ -11832,7 +23350,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             });
+
+
+
+
+
+
+
+
 
 
 
@@ -11848,7 +23382,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const label = normalizeLabel(t?.taskType || t?.type || '');
+
+
+
+
+
+
+
+
 
 
 
@@ -11864,7 +23414,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (!key) return;
+
+
+
+
+
+
+
+
 
 
 
@@ -11880,6 +23446,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (!mergedLabelByKey.has(key)) mergedLabelByKey.set(key, label);
 
 
@@ -11888,7 +23462,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -11912,6 +23510,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return [...new Set(labels)].sort((a, b) => a.localeCompare(b));
 
 
@@ -11920,7 +23526,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -11944,7 +23574,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, [allowedTaskTypeKeysForManager, currentUser, taskTypes, tasks]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -11968,7 +23622,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const map = new Map<string, Set<string>>();
+
+
+
+
+
+
+
+
 
 
 
@@ -11984,7 +23654,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const company = normalizeText(t?.companyName || t?.company);
+
+
+
+
+
+
+
+
 
 
 
@@ -12000,7 +23686,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!company || !type) return;
+
+
+
+
+
+
+
+
 
 
 
@@ -12016,7 +23718,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             map.get(company)!.add(type);
+
+
+
+
+
+
+
+
 
 
 
@@ -12032,7 +23750,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return map;
+
+
+
+
+
+
+
+
 
 
 
@@ -12056,7 +23790,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const getTaskTypesForCompany = useCallback((companyName: string): string[] => {
+
+
+
+
+
+
+
+
 
 
 
@@ -12072,7 +23830,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!companyKey) return [];
+
+
+
+
+
+
+
+
 
 
 
@@ -12088,7 +23862,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const fromOverrides = Array.isArray(taskTypeCompanyOverrides?.[companyKey]) ? taskTypeCompanyOverrides[companyKey] : [];
+
+
+
+
+
+
+
+
 
 
 
@@ -12104,7 +23894,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const selectedCompanyKey = normalizeCompanyKey(companyName);
+
+
+
+
+
+
+
+
 
 
 
@@ -12120,7 +23926,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const speedCompanyId = (companies || []).find((c: any) => {
+
+
+
+
 
 
 
@@ -12128,7 +23946,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 return normalizeCompanyKey(name) === SPEED_E_COM_COMPANY_KEY;
+
+
+
+
 
 
 
@@ -12136,11 +23962,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const name = String(c?.name || c?.companyName || c?.title || '').trim();
 
 
 
+
+
+
+
                 return normalizeCompanyKey(name) === SPEED_E_COM_COMPANY_KEY;
+
+
+
+
 
 
 
@@ -12152,7 +23990,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const fromApi = (taskTypes || [])
+
+
+
+
 
 
 
@@ -12160,7 +24010,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     const companyId = String(t?.companyId || '').trim();
+
+
+
+
 
 
 
@@ -12168,7 +24026,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     return companyId === String(speedCompanyId);
+
+
+
+
 
 
 
@@ -12176,7 +24042,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 .map((t: any) => (t?.name || '').toString().trim())
+
+
+
+
 
 
 
@@ -12188,7 +24062,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const combined = Array.from(new Set([...fromApi, ...merged]));
+
+
+
+
 
 
 
@@ -12200,7 +24086,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -12224,7 +24134,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (role === 'manager') {
+
+
+
+
+
+
+
+
 
 
 
@@ -12240,7 +24166,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return merged
+
+
+
+
+
+
+
+
 
 
 
@@ -12256,6 +24198,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 .sort((a, b) => a.localeCompare(b));
 
 
@@ -12264,7 +24214,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -12288,7 +24262,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, [allowedTaskTypeKeysForManager, companies, currentUser?.role, normalizeCompanyKey, normalizeText, restrictTaskTypesForCompany, taskTypeCompanyOverrides, taskTypes, taskTypesByCompanyFromTasks]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -12312,7 +24310,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const raw = (b?.company ?? (b as any)?.companyName) as any;
+
+
+
+
+
+
+
+
 
 
 
@@ -12328,7 +24342,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (raw && typeof raw === 'object') {
+
+
+
+
+
+
+
+
 
 
 
@@ -12344,7 +24374,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -12360,7 +24406,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -12384,7 +24454,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return String(b?.name || b?.brandName || b?.brand || '').trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -12408,7 +24494,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const getTaskTypesForCompanyBrand = useCallback((companyName: string, brandName: string): string[] => {
+
+
+
+
+
+
+
+
 
 
 
@@ -12424,7 +24534,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const brandKey = (brandName || '').toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -12448,7 +24574,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const brandDoc: any = (apiBrands || []).find((b: any) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -12464,7 +24614,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const bName = getBrandNameSafe(b);
+
+
+
+
+
+
+
+
 
 
 
@@ -12480,7 +24646,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -12504,7 +24694,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const mappedIds = brandId ? (taskTypeIdsByBrandId[brandId] || []) : [];
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -12528,7 +24742,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const labelById = new Map<string, string>();
+
+
+
+
+
+
+
+
 
 
 
@@ -12544,7 +24774,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const id = (t?.id || t?._id || '').toString();
+
+
+
+
+
+
+
+
 
 
 
@@ -12560,6 +24806,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (id && name && !labelById.has(id)) labelById.set(id, name);
 
 
@@ -12568,7 +24822,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -12592,7 +24870,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return [...new Set(labels)].sort((a, b) => a.localeCompare(b));
+
+
+
+
+
+
+
+
 
 
 
@@ -12616,7 +24910,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const getTaskTypesForCompanyUser = useCallback((companyName: string, assignedToEmail: string): string[] => {
+
+
+
+
+
+
+
+
 
 
 
@@ -12632,7 +24950,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const emailKey = stripDeletedEmailSuffix(assignedToEmail).trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -12656,7 +24990,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const userDoc: any = (usersRef.current || []).find((u: any) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -12672,7 +25030,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return email && email === emailKey;
+
+
+
+
+
+
+
+
 
 
 
@@ -12688,7 +25062,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         let userId = (userDoc?.id || userDoc?._id || '').toString();
+
+
+
+
+
+
+
+
 
 
 
@@ -12704,7 +25094,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const myEmailKey = stripDeletedEmailSuffix(currentUser?.email || '').trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -12720,7 +25126,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 userId = ((currentUser as any)?.id || (currentUser as any)?._id || '').toString();
+
+
+
+
+
+
+
+
 
 
 
@@ -12736,7 +25158,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -12760,7 +25198,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const wantedPrefix = `${companyKey}::${userId}::`;
+
+
+
+
+
+
+
+
 
 
 
@@ -12776,7 +25238,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         Object.entries(taskTypeIdsByCompanyUserBrandKey || {}).forEach(([key, value]) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -12792,7 +25270,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const arr = Array.isArray(value) ? value : [];
+
+
+
+
+
+
+
+
 
 
 
@@ -12808,7 +25302,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const s = (v || '').toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -12824,6 +25334,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             });
 
 
@@ -12832,7 +25350,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -12864,7 +25406,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const labelById = new Map<string, string>();
+
+
+
+
+
+
+
+
 
 
 
@@ -12880,7 +25446,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const id = (t?.id || t?._id || '').toString();
+
+
+
+
+
+
+
+
 
 
 
@@ -12896,6 +25478,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (id && name && !labelById.has(id)) labelById.set(id, name);
 
 
@@ -12904,7 +25494,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -12928,7 +25542,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return [...new Set(labels)].sort((a, b) => a.localeCompare(b));
+
+
+
+
+
+
+
+
 
 
 
@@ -12952,7 +25582,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const getTaskTypesForCompanyUserBrand = useCallback((companyName: string, brandName: string, assignedToEmail: string): string[] => {
+
+
+
+
+
+
+
+
 
 
 
@@ -12968,6 +25622,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const brandKey = (brandName || '').toString().trim();
 
 
@@ -12976,7 +25638,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const emailKey = stripDeletedEmailSuffix(assignedToEmail).trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -13000,7 +25678,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const userDoc: any = (usersRef.current || []).find((u: any) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -13016,7 +25718,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return email && email === emailKey;
+
+
+
+
+
+
+
+
 
 
 
@@ -13032,7 +25750,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         let userId = (userDoc?.id || userDoc?._id || '').toString();
+
+
+
+
+
+
+
+
 
 
 
@@ -13048,7 +25782,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const myEmailKey = stripDeletedEmailSuffix(currentUser?.email || '').trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -13064,7 +25814,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 userId = ((currentUser as any)?.id || (currentUser as any)?._id || '').toString();
+
+
+
+
+
+
+
+
 
 
 
@@ -13080,7 +25846,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -13104,7 +25886,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const brandDoc: any = (apiBrands || []).find((b: any) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -13120,7 +25926,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const bName = getBrandNameSafe(b);
+
+
+
+
+
+
+
+
 
 
 
@@ -13136,6 +25958,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         });
 
 
@@ -13144,7 +25974,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const brandId = (brandDoc?.id || brandDoc?._id || '').toString();
+
+
+
+
+
+
+
+
 
 
 
@@ -13168,7 +26014,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const key = `${companyKey}::${userId}::${brandId}`;
+
+
+
+
+
+
+
+
 
 
 
@@ -13192,7 +26062,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const labelById = new Map<string, string>();
+
+
+
+
+
+
+
+
 
 
 
@@ -13208,7 +26102,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const id = (t?.id || t?._id || '').toString();
+
+
+
+
+
+
+
+
 
 
 
@@ -13224,6 +26134,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (id && name && !labelById.has(id)) labelById.set(id, name);
 
 
@@ -13232,7 +26150,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -13256,7 +26198,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return [...new Set(labels)].sort((a, b) => a.localeCompare(b));
+
+
+
+
+
+
+
+
 
 
 
@@ -13280,7 +26238,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const assistantManagerEmail = useMemo(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -13296,7 +26278,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (role !== 'assistant') return '';
+
+
+
+
+
+
+
+
 
 
 
@@ -13312,7 +26310,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!managerId) return '';
+
+
+
+
+
+
+
+
 
 
 
@@ -13328,7 +26342,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const manager = (list || []).find((u: any) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -13344,7 +26374,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return id && id === managerId;
+
+
+
+
+
+
+
+
 
 
 
@@ -13360,7 +26406,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return stripDeletedEmailSuffix(manager?.email || '').trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -13384,6 +26446,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const assistantScopedTasks = useMemo(() => {
 
 
@@ -13392,7 +26470,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const role = (currentUser?.role || '').toString().trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -13416,7 +26510,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const myEmail = stripDeletedEmailSuffix(currentUser?.email || '').trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -13432,7 +26550,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const assignedBy = (t as any)?.assignedBy;
+
+
+
+
+
+
+
+
 
 
 
@@ -13448,7 +26582,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const email =
+
+
+
+
+
+
+
+
 
 
 
@@ -13464,7 +26614,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 (typeof assignedByUser === 'string' && assignedByUser.includes('@') ? assignedByUser : assignedByUser?.email) ||
+
+
+
+
+
+
+
+
 
 
 
@@ -13480,7 +26646,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 '';
+
+
+
+
+
+
+
+
 
 
 
@@ -13496,7 +26678,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -13520,7 +26726,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const assignedToEmail = stripDeletedEmailSuffix((t as any)?.assignedTo || '').trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -13536,7 +26758,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!assistantManagerEmail) return true;
+
+
+
+
+
+
+
+
 
 
 
@@ -13552,7 +26790,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         });
+
+
+
+
+
+
+
+
 
 
 
@@ -13576,7 +26830,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const availableBrands = useMemo(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -13592,7 +26870,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const raw = b?.company ?? b?.companyName;
+
+
+
+
+
+
+
+
 
 
 
@@ -13608,7 +26902,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (raw && typeof raw === 'object') {
+
+
+
+
+
+
+
+
 
 
 
@@ -13624,7 +26934,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -13640,7 +26966,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -13664,7 +27014,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return String(b?.name || b?.brandName || b?.brand || '').trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -13688,7 +27054,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const role = (currentUser?.role || '').toString().trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -13704,7 +27094,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const companyKey = normalizeCompanyKey(filters.company === 'all' ? '' : filters.company);
+
+
+
+
+
+
+
+
 
 
 
@@ -13720,7 +27126,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 .filter((t: any) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -13736,7 +27158,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const taskCompany = normalizeCompanyKey((t as any)?.companyName || (t as any)?.company);
+
+
+
+
+
+
+
+
 
 
 
@@ -13752,7 +27190,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 })
+
+
+
+
+
+
+
+
 
 
 
@@ -13768,7 +27222,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 .filter(Boolean);
+
+
+
+
+
+
+
+
 
 
 
@@ -13784,7 +27254,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -13808,7 +27302,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return brands
+
+
+
+
+
+
+
+
 
 
 
@@ -13824,7 +27334,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 .filter(Boolean)
+
+
+
+
+
+
+
+
 
 
 
@@ -13840,7 +27366,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -13864,7 +27414,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return brands
+
+
+
+
+
+
+
+
 
 
 
@@ -13880,7 +27446,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             .map((brand: any) => getBrandName(brand))
+
+
+
+
+
+
+
+
 
 
 
@@ -13896,7 +27478,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             .sort();
+
+
+
+
+
+
+
+
 
 
 
@@ -13920,6 +27518,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const getBrandLabelForFilter = useCallback((brandName: string): string => {
 
 
@@ -13928,7 +27542,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const plain = String(brandName || '').trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -13952,7 +27582,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const normalizedName = normalizeText(plain);
+
+
+
+
+
+
+
+
 
 
 
@@ -13976,6 +27630,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         let candidates = (brands || []).filter((b: any) =>
 
 
@@ -13984,7 +27654,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             normalizeText(getBrandNameSafe(b)) === normalizedName
+
+
+
+
+
+
+
+
 
 
 
@@ -14008,7 +27694,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         if (companyFilterKey && companyFilterKey !== 'all') {
+
+
+
+
+
+
+
+
 
 
 
@@ -14024,7 +27734,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 normalizeCompanyKey(getBrandCompanyNameSafe(b)) === companyFilterKey
+
+
+
+
+
+
+
+
 
 
 
@@ -14040,6 +27766,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (byCompany.length) candidates = byCompany;
 
 
@@ -14048,7 +27782,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -14080,6 +27838,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const brandDoc: any = candidates[0];
 
 
@@ -14088,7 +27862,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const companyKey = normalizeCompanyKey(getBrandCompanyNameSafe(brandDoc));
+
+
+
+
+
+
+
+
 
 
 
@@ -14112,7 +27902,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         if (companyKey === SPEED_E_COM_COMPANY_KEY && groupNumber) {
+
+
+
+
+
+
+
+
 
 
 
@@ -14128,7 +27942,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -14152,7 +27990,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, [brands, filters.company, normalizeCompanyKey, normalizeText]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -14176,7 +28038,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const brandAssignmentLabel = (taskTypes || []).find((t: any) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -14192,7 +28070,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return name === 'brand assignment';
+
+
+
+
+
+
+
+
 
 
 
@@ -14216,7 +28110,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const ensureBrandAssignment = (list: string[]) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -14232,7 +28150,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!label) return list;
+
+
+
+
+
+
+
+
 
 
 
@@ -14248,7 +28182,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (has) return list;
+
+
+
+
+
+
+
+
 
 
 
@@ -14264,7 +28214,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -14288,7 +28262,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const isPersonScoped = roleKey === 'assistant' || roleKey === 'sbm' || roleKey === 'rm' || roleKey === 'am' || roleKey === 'ar';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -14312,7 +28310,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const companyKey = normalizeText(filters.company === 'all' ? '' : filters.company);
+
+
+
+
+
+
+
+
 
 
 
@@ -14336,7 +28350,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             const filtered = (assistantScopedTasks || [])
+
+
+
+
+
+
+
+
 
 
 
@@ -14352,7 +28390,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     if (companyKey) {
+
+
+
+
+
+
+
+
 
 
 
@@ -14368,6 +28422,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         if (taskCompany !== companyKey) return false;
 
 
@@ -14376,7 +28438,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     }
+
+
+
+
+
+
+
+
 
 
 
@@ -14392,7 +28470,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         const taskBrand = normalizeText((t as any)?.brand || '');
+
+
+
+
+
+
+
+
 
 
 
@@ -14408,7 +28502,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     }
+
+
+
+
+
+
+
+
 
 
 
@@ -14424,7 +28534,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 })
+
+
+
+
+
+
+
+
 
 
 
@@ -14440,7 +28566,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 .filter(Boolean);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -14464,6 +28614,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return restrictTaskTypesForCompany(filters.company, merged.sort((a, b) => a.localeCompare(b)));
 
 
@@ -14472,7 +28630,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -14496,7 +28678,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (isPersonScoped) {
+
+
+
+
+
+
+
+
 
 
 
@@ -14512,7 +28710,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -14528,7 +28742,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -14544,7 +28774,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (isPersonScoped) {
+
+
+
+
+
+
+
+
 
 
 
@@ -14560,7 +28806,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -14576,7 +28838,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -14592,7 +28870,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const fromTasks = Array.from(taskTypesByCompanyFromTasks.values()).flatMap((set) => Array.from(set));
+
+
+
+
+
+
+
+
 
 
 
@@ -14608,7 +28902,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const canonicalizeTypeLabel = (value: unknown): string => {
+
+
+
+
 
 
 
@@ -14616,7 +28922,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             if (!raw) return '';
+
+
+
+
 
 
 
@@ -14624,7 +28938,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             if (key === 'troubleshoot' || key === 'trouble shoot' || key === 'trubbleshot' || key === 'trubble shoot') {
+
+
+
+
 
 
 
@@ -14632,7 +28954,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             }
+
+
+
+
 
 
 
@@ -14640,7 +28970,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         };
+
+
+
+
+
+
+
+
 
 
 
@@ -14652,7 +28994,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const map = new Map<string, string>();
+
+
+
+
 
 
 
@@ -14660,7 +29010,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const label = canonicalizeTypeLabel(x);
+
+
+
+
 
 
 
@@ -14668,7 +29026,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const key = label.toLowerCase();
+
+
+
+
 
 
 
@@ -14676,7 +29042,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             });
+
+
+
+
 
 
 
@@ -14684,7 +29058,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -14708,11 +29102,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const fixed = ['Other Work', 'Troubleshoot', 'Regular', 'goggle']
 
 
 
+
+
+
+
                 .map((x) => (x || '').toString().trim())
+
+
+
+
 
 
 
@@ -14724,7 +29134,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const uniqueByKey = new Map<string, string>();
+
+
+
+
 
 
 
@@ -14732,7 +29154,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const key = label.toLowerCase();
+
+
+
+
 
 
 
@@ -14740,7 +29170,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             });
+
+
+
+
+
+
+
+
 
 
 
@@ -14756,7 +29198,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -14780,7 +29246,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, [allowedTaskTypeKeysForManager, assistantScopedTasks, availableTaskTypes, currentUser?.email, currentUser?.role, filters.brand, filters.company, getTaskTypesForCompany, getTaskTypesForCompanyBrand, getTaskTypesForCompanyUser, getTaskTypesForCompanyUserBrand, normalizeRoleKey, normalizeText, restrictTaskTypesForCompany, taskTypeCompanyOverrides, taskTypes, taskTypesByCompanyFromTasks]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -14800,10 +29290,21 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         const role = String((currentUser as any)?.role || '').toString().trim().toLowerCase();
+
         if (role === 'troubleshoot_manager') {
+
             return ['Troubleshoot'];
+
         }
+
+
+
+
 
 
 
@@ -14815,7 +29316,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const company = newTask.companyName;
+
+
+
+
+
+
+
+
 
 
 
@@ -14839,7 +29356,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const ensureManagerOtherWork = (list: string[]) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -14855,7 +29396,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const normalized = (list || []).map((t) => (t || '').toString().trim().toLowerCase());
+
+
+
+
+
+
+
+
 
 
 
@@ -14871,9 +29428,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return [...(list || []), 'Other Work'];
+
         };
+
         if (role === 'admin' || role === 'super_admin' || normalizeCompanyKey(company) === SPEED_E_COM_COMPANY_KEY) {
+
+
+
+
 
 
 
@@ -14881,8 +29452,29 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         }
+
         const effectiveEmail = (currentUser?.email || newTask.assignedTo || '').toString();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -14906,7 +29498,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const specific = restrictTaskTypesForCompany(company, getTaskTypesForCompanyUserBrand(company, newTask.brand, effectiveEmail));
+
+
+
+
+
+
+
+
 
 
 
@@ -14922,7 +29530,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const brandLevel = restrictTaskTypesForCompany(company, getTaskTypesForCompanyBrand(company, newTask.brand));
+
+
+
+
+
+
+
+
 
 
 
@@ -14938,6 +29562,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return ensureManagerOtherWork(baseCompany());
 
 
@@ -14946,7 +29578,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -14970,7 +29626,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const userLevel = restrictTaskTypesForCompany(company, getTaskTypesForCompanyUser(company, effectiveEmail));
+
+
+
+
+
+
+
+
 
 
 
@@ -14986,6 +29658,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return ensureManagerOtherWork(baseCompany());
 
 
@@ -14994,7 +29674,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -15018,7 +29722,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const brandLevel = restrictTaskTypesForCompany(company, getTaskTypesForCompanyBrand(company, newTask.brand));
+
+
+
+
+
+
+
+
 
 
 
@@ -15034,6 +29754,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return ensureManagerOtherWork(baseCompany());
 
 
@@ -15042,7 +29770,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -15066,7 +29818,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, [currentUser, currentUser?.email, getTaskTypesForCompany, getTaskTypesForCompanyBrand, getTaskTypesForCompanyUser, getTaskTypesForCompanyUserBrand, newTask.brand, newTask.companyName, restrictTaskTypesForCompany]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -15090,7 +29866,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!editFormData.companyName) return availableTaskTypesForFilters;
+
+
+
+
+
+
+
+
 
 
 
@@ -15106,6 +29898,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const fromPerson = restrictTaskTypesForCompany(editFormData.companyName, getTaskTypesForCompanyUserBrand(editFormData.companyName, editFormData.brand, editFormData.assignedTo));
 
 
@@ -15114,7 +29914,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const current = (editFormData.taskType || '').toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -15130,7 +29946,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const exists = fromPerson.some((t) => (t || '').toString().trim().toLowerCase() === current.toLowerCase());
+
+
+
+
+
+
+
+
 
 
 
@@ -15146,6 +29978,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return [...fromPerson, current];
 
 
@@ -15154,7 +29994,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -15170,7 +30026,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const fromUser = restrictTaskTypesForCompany(editFormData.companyName, getTaskTypesForCompanyUser(editFormData.companyName, editFormData.assignedTo));
+
+
+
+
+
+
+
+
 
 
 
@@ -15186,7 +30058,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!current) return fromUser;
+
+
+
+
+
+
+
+
 
 
 
@@ -15202,7 +30090,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (exists) return fromUser;
+
+
+
+
+
+
+
+
 
 
 
@@ -15218,7 +30122,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -15234,7 +30154,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return restrictTaskTypesForCompany(editFormData.companyName, getTaskTypesForCompany(editFormData.companyName));
+
+
+
+
+
+
+
+
 
 
 
@@ -15258,7 +30194,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const fetchCompanyBrandTaskTypeMapping = useCallback(async (companyName: string, brandName: string) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -15274,6 +30234,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const company = (companyName || '').toString().trim();
 
 
@@ -15282,7 +30250,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const brand = (brandName || '').toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -15306,7 +30290,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             const brandDoc: any = (apiBrands || []).find((b: any) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -15322,7 +30330,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const bName = getBrandNameSafe(b);
+
+
+
+
+
+
+
+
 
 
 
@@ -15338,6 +30362,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             });
 
 
@@ -15346,7 +30378,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const brandId = (brandDoc?.id || brandDoc?._id || '').toString();
+
+
+
+
+
+
+
+
 
 
 
@@ -15370,7 +30418,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             const res = await companyBrandTaskTypeService.getMapping({ companyName: company, brandId, brandName: brand });
+
+
+
+
+
+
+
+
 
 
 
@@ -15386,7 +30458,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 .map((t: any) => (t?.id || t?._id || '').toString())
+
+
+
+
+
+
+
+
 
 
 
@@ -15410,7 +30498,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             setTaskTypeIdsByBrandId((prev) => ({ ...prev, [brandId]: ids }));
+
+
+
+
+
+
+
+
 
 
 
@@ -15426,6 +30538,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             // ignore
 
 
@@ -15434,7 +30554,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -15458,7 +30594,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const fetchUserBrandTaskTypeMappings = useCallback(async (companyName: string, assignedToEmail: string) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -15474,6 +30634,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const company = (companyName || '').toString().trim();
 
 
@@ -15482,7 +30650,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const email = stripDeletedEmailSuffix(assignedToEmail).trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -15506,7 +30690,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             const userDoc: any = (usersRef.current || []).find((u: any) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -15522,7 +30730,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return uEmail && uEmail === email;
+
+
+
+
+
+
+
+
 
 
 
@@ -15538,7 +30762,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             let userId = (userDoc?.id || userDoc?._id || '').toString();
+
+
+
+
+
+
+
+
 
 
 
@@ -15554,7 +30794,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const myEmailKey = stripDeletedEmailSuffix(currentUser?.email || '').trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -15570,7 +30826,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     userId = ((currentUser as any)?.id || (currentUser as any)?._id || '').toString();
+
+
+
+
+
+
+
+
 
 
 
@@ -15586,7 +30858,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -15610,7 +30898,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             const res = await assignService.getUserMappings({ companyName: company, userId });
+
+
+
+
+
+
+
+
 
 
 
@@ -15626,7 +30938,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const brandNames = new Set<string>();
+
+
+
+
+
+
+
+
 
 
 
@@ -15642,7 +30970,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             (res?.data || []).forEach((m: any) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -15658,7 +31002,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (!brandId) return;
+
+
+
+
+
+
+
+
 
 
 
@@ -15674,7 +31034,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const key = `${normalizeCompanyKey(m?.companyName || company)}::${userId}::${brandId}`;
+
+
+
+
+
+
+
+
 
 
 
@@ -15698,7 +31074,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                 const tts = Array.isArray(m?.taskTypes) ? m.taskTypes : [];
+
+
+
+
+
+
+
+
 
 
 
@@ -15714,7 +31114,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const id = (t?.id || t?._id || '').toString();
+
+
+
+
+
+
+
+
 
 
 
@@ -15730,6 +31146,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     if (id && name) extraTaskTypes.push({ id, name });
 
 
@@ -15738,7 +31162,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -15762,7 +31210,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const bName = (m?.brandName || '').toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -15778,6 +31242,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 }
 
 
@@ -15786,7 +31258,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -15810,7 +31306,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 setTaskTypes((prev) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -15826,7 +31338,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const byId = new Map<string, any>();
+
+
+
+
+
+
+
+
 
 
 
@@ -15842,7 +31370,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         const id = (t?.id || t?._id || '').toString();
+
+
+
+
+
+
+
+
 
 
 
@@ -15858,7 +31402,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -15882,7 +31450,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         const id = (t?.id || t?._id || '').toString();
+
+
+
+
+
+
+
+
 
 
 
@@ -15898,7 +31482,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         if (!byId.has(id)) {
+
+
+
+
+
+
+
+
 
 
 
@@ -15914,6 +31514,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                             return;
 
 
@@ -15922,7 +31530,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         }
+
+
+
+
+
+
+
+
 
 
 
@@ -15938,7 +31562,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         const existingName = (existing?.name || '').toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -15954,7 +31594,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         if (!existingName && nextName) {
+
+
+
+
+
+
+
+
 
 
 
@@ -15970,7 +31626,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         }
+
+
+
+
+
+
+
+
 
 
 
@@ -15994,7 +31666,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                     return Array.from(byId.values());
+
+
+
+
+
+
+
+
 
 
 
@@ -16010,7 +31706,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -16034,7 +31754,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             setBrandNamesByCompanyUserKey((prev) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -16050,7 +31786,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const sorted = Array.from(brandNames).filter(Boolean).sort((a, b) => a.localeCompare(b));
+
+
+
+
+
+
+
+
 
 
 
@@ -16066,7 +31818,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             });
+
+
+
+
+
+
+
+
 
 
 
@@ -16082,6 +31850,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             // ignore
 
 
@@ -16090,7 +31866,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -16114,7 +31906,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const fetchUserBrandTaskTypeMappingsCached = useCallback(async (companyName: string, assignedToEmail: string) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -16130,7 +31946,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const emailKey = stripDeletedEmailSuffix(assignedToEmail).trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -16154,7 +31986,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const cacheKey = `${companyKey}::${emailKey}`;
+
+
+
+
+
+
+
+
 
 
 
@@ -16170,7 +32026,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const lastAt = userMappingsFetchedAtRef.current.get(cacheKey) || 0;
+
+
+
+
+
+
+
+
 
 
 
@@ -16194,7 +32066,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const inFlight = userMappingsFetchInFlightRef.current.get(cacheKey);
+
+
+
+
+
+
+
+
 
 
 
@@ -16218,7 +32114,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const p = (async () => {
+
+
+
+
+
+
+
+
 
 
 
@@ -16234,7 +32154,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 await fetchUserBrandTaskTypeMappings(companyName, assignedToEmail);
+
+
+
+
+
+
+
+
 
 
 
@@ -16250,21 +32186,51 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             } finally {
+
+
 
                 userMappingsFetchInFlightRef.current.delete(cacheKey);
 
+
+
             }
+
+
 
         })();
 
+
+
         userMappingsFetchInFlightRef.current.set(cacheKey, p);
+
+
 
         return p;
 
+
+
     }, [fetchUserBrandTaskTypeMappings, normalizeCompanyKey]);
 
+
+
     useEffect(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -16280,7 +32246,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const isPersonScoped = role === 'assistant' || role === 'sbm' || role === 'rm' || role === 'am' || role === 'ar';
+
+
+
+
+
+
+
+
 
 
 
@@ -16304,7 +32286,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const company = (filters.company || '').toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -16328,6 +32334,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const email = stripDeletedEmailSuffix(currentUser?.email || '').trim().toLowerCase();
 
 
@@ -16336,7 +32358,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!email) return;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -16360,6 +32406,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, [currentUser?.email, currentUser?.role, fetchUserBrandTaskTypeMappingsCached, filters.company]);
 
 
@@ -16376,7 +32430,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     useEffect(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -16392,7 +32470,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const detail = e?.detail || {};
+
+
+
+
+
+
+
+
 
 
 
@@ -16408,7 +32502,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         };
+
+
+
+
+
+
+
+
 
 
 
@@ -16424,7 +32534,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return () => window.removeEventListener('companyBrandTaskTypesUpdated', handler as any);
+
+
+
+
+
+
+
+
 
 
 
@@ -16448,7 +32574,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     useEffect(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -16464,7 +32614,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         void fetchCompanyBrandTaskTypeMapping(newTask.companyName, newTask.brand);
+
+
+
+
+
+
+
+
 
 
 
@@ -16488,7 +32654,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     useEffect(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -16504,7 +32694,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const email = stripDeletedEmailSuffix(currentUser?.email || '').trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -16520,7 +32726,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         void fetchUserBrandTaskTypeMappingsCached(newTask.companyName, email);
+
+
+
+
+
+
+
+
 
 
 
@@ -16544,7 +32766,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     useEffect(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -16560,7 +32806,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!newTask.companyName) return;
+
+
+
+
+
+
+
+
 
 
 
@@ -16576,6 +32838,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!email) return;
 
 
@@ -16584,7 +32854,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         void fetchUserBrandTaskTypeMappingsCached(newTask.companyName, email);
+
+
+
+
+
+
+
+
 
 
 
@@ -16608,7 +32894,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     useEffect(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -16624,6 +32934,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!editFormData.companyName || !editFormData.assignedTo) return;
 
 
@@ -16632,7 +32950,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         void fetchUserBrandTaskTypeMappingsCached(editFormData.companyName, editFormData.assignedTo);
+
+
+
+
+
+
+
+
 
 
 
@@ -16664,33 +32998,99 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const formatDate = useCallback((dateString: string) => {
+
+
 
         try {
 
+
+
             if (!dateString) return '';
+
+
 
             const date = new Date(dateString);
 
+
+
             if (Number.isNaN(date.getTime())) return dateString;
+
+
 
             return date.toLocaleDateString('en-US', {
 
+
+
                 month: 'short',
+
+
 
                 day: 'numeric',
 
+
+
                 year: 'numeric'
+
+
 
             });
 
+
+
         } catch {
+
+
 
             return dateString;
 
+
+
         }
 
+
+
     }, []);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -16714,7 +33114,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (typeof value !== 'string') return false;
+
+
+
+
+
+
+
+
 
 
 
@@ -16730,7 +33146,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, []);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -16754,7 +33194,23 @@ const DashboardPage = () => {
 
 
 
-        const viewMap: Record<string, 'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'access' | 'company-brand-task-types' | 'assign' | 'speed-ecom-reassign' | 'reviews' | 'other-work' | 'manager-monthly-rankings' | 'md-impex-strike' | 'md-impex-access' | 'personal-tasks'> = {
+
+
+
+
+
+
+
+
+        const viewMap: Record<string, 'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'access' | 'company-brand-task-types' | 'assign' | 'speed-ecom-reassign' | 'reviews' | 'other-work' | 'manager-monthly-rankings' | 'md-impex-strike' | 'md-impex-access' | 'personal-tasks' | 'assigned-by-me' | 'assigned-to-me'> = {
+
+
+
+
+
+
+
+
 
 
 
@@ -16770,7 +33226,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             'tasks': 'all-tasks',
+
+
+
+
+
+
+
+
 
 
 
@@ -16786,7 +33258,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             'calendar': 'calendar',
+
+
+
+
+
+
+
+
 
 
 
@@ -16802,7 +33290,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             'team': 'team',
+
+
+
+
+
+
+
+
 
 
 
@@ -16818,7 +33322,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             'brands': 'brands',
+
+
+
+
+
+
+
+
 
 
 
@@ -16834,7 +33354,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             'access': 'access',
+
+
+
+
+
+
+
+
 
 
 
@@ -16850,7 +33386,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             'assign': 'assign',
+
+
+
+
+
+
+
+
 
 
 
@@ -16866,7 +33418,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             'reviews': 'reviews',
+
+
+
+
+
+
+
+
 
 
 
@@ -16882,7 +33450,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             'other-work': 'other-work',
+
+
+
+
+
+
+
+
 
 
 
@@ -16892,6 +33476,20 @@ const DashboardPage = () => {
 
             'md-impex-strike': 'md-impex-strike',
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             'md-impex-access': 'md-impex-access',
 
 
@@ -16900,7 +33498,15 @@ const DashboardPage = () => {
 
 
 
-            'personal-tasks': 'personal-tasks'
+            'personal-tasks': 'personal-tasks',
+
+
+
+
+
+            'assigned-by-me': 'assigned-by-me',
+
+            'assigned-to-me': 'assigned-to-me'
 
 
 
@@ -16909,6 +33515,22 @@ const DashboardPage = () => {
 
 
         };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -16932,7 +33554,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!targetView) return;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -16950,173 +33596,59 @@ const DashboardPage = () => {
 
         const viewToModule: Record<typeof targetView, string> = {
 
-
-
-
-
-
-
             'dashboard': '',
-
-
-
-
-
-
 
             'all-tasks': 'tasks_page',
 
-
-
-
-
-
-
             'calendar': 'calendar_page',
-
-
-
-
-
-
 
             'analyze': 'analyze_page',
 
-
-
-
-
-
-
             'team': 'team_page',
-
-
-
-
-
-
 
             'profile': 'profile_page',
 
-
-
-
-
-
-
             'brands': 'brands_page',
-
-
-
-
-
-
 
             'brand-detail': 'brands_page',
 
-
-
-
-
-
-
             'access': 'access_management',
-
-
-
-
-
-
 
             'company-brand-task-types': 'company_brand_task_type',
 
-
-
-
-
-
-
             'assign': 'assign_page',
-
-
-
-
-
-
 
             'speed-ecom-reassign': 'tasks_page',
 
-
-
-
-
-
-
             'reviews': 'reviews_page',
-
-
-
-
-
-
 
             'manager-monthly-rankings': 'tasks_page',
 
-
-
-
-
-
-
             'other-work': 'other_work_page',
-
-
-
-
-
-
 
             'md-impex-strike': '',
 
-
-
-
-
-
-
             'md-impex-access': '',
-
-
-
-
-
-
 
             'personal-tasks': '',
 
+            'assigned-by-me': '',
 
-
-
-
-
+            'assigned-to-me': ''
 
         };
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
         const moduleId = viewToModule[targetView];
+
+
+
+
+
+
+
+
 
 
 
@@ -17132,7 +33664,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             toast.error('Access denied');
+
+
+
+
+
+
+
+
 
 
 
@@ -17148,6 +33696,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return;
 
 
@@ -17156,7 +33712,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -17180,7 +33760,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             dashboard: routepath.dashboard,
+
+
+
+
+
+
+
+
 
 
 
@@ -17196,7 +33792,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             'all-tasks': routepath.tasks,
+
+
+
+
+
+
+
+
 
 
 
@@ -17212,7 +33824,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             analyze: routepath.analyze,
+
+
+
+
+
+
+
+
 
 
 
@@ -17228,7 +33856,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             access: routepath.access,
+
+
+
+
+
+
+
+
 
 
 
@@ -17244,7 +33888,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             brands: routepath.brands,
+
+
+
+
+
+
+
+
 
 
 
@@ -17260,7 +33920,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             assign: routepath.assign,
+
+
+
+
+
+
+
+
 
 
 
@@ -17276,7 +33952,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             reviews: routepath.reviews,
+
+
+
+
+
+
+
+
 
 
 
@@ -17292,7 +33984,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             'other-work': routepath.otherWork,
+
+
+
+
+
+
+
+
 
 
 
@@ -17302,7 +34010,17 @@ const DashboardPage = () => {
 
             'md-impex-strike': routepath.mdImpexStrike,
 
+
+
             'md-impex-access': routepath.mdImpexAccess,
+
+
+
+
+
+
+
+
 
 
 
@@ -17312,13 +34030,27 @@ const DashboardPage = () => {
 
             'personal-tasks': routepath.personalTasks,
 
+            'assigned-by-me': routepath.assignedByMe,
 
-
-
-
-
+            'assigned-to-me': routepath.assignedToMe
 
         };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -17342,7 +34074,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         setCurrentView(targetView);
+
+
+
+
+
+
+
+
 
 
 
@@ -17358,6 +34106,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             navigate(targetPath);
 
 
@@ -17366,7 +34122,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -17390,7 +34162,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     useEffect(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -17414,7 +34210,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const path = (location.pathname || '').toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -17430,7 +34250,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
+
+
+
+
 
 
 
@@ -17438,7 +34270,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 toast.error('Access denied');
+
+
+
+
 
 
 
@@ -17446,7 +34286,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 return;
+
+
+
+
 
 
 
@@ -17458,7 +34306,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             setCurrentView('manager-monthly-rankings');
+
+
+
+
 
 
 
@@ -17466,7 +34326,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -17482,7 +34354,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
+
+
+
+
 
 
 
@@ -17490,7 +34374,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 toast.error('Access denied');
+
+
+
+
 
 
 
@@ -17498,11 +34390,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 return;
 
 
 
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -17518,6 +34426,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return;
 
 
@@ -17526,7 +34442,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -17542,7 +34474,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -17558,7 +34506,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 toast.error('Access denied');
+
+
+
+
+
+
+
+
 
 
 
@@ -17574,7 +34538,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return;
+
+
+
+
+
+
+
+
 
 
 
@@ -17590,7 +34570,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             setCurrentView('md-impex-access');
+
+
+
+
+
+
+
+
 
 
 
@@ -17606,6 +34602,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
 
 
@@ -17614,7 +34618,43 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+        if (path === routepath.assignedByMe) {
+
+            setCurrentView('assigned-by-me');
+
+            return;
+
+        }
+
+
+
+        if (path === routepath.assignedToMe) {
+
+            setCurrentView('assigned-to-me');
+
+            return;
+
+        }
+
+
+
         if (path === routepath.personalTasks) {
+
+
+
+
+
+
+
+
 
 
 
@@ -17630,6 +34670,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return;
 
 
@@ -17638,7 +34686,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -17662,7 +34734,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!hasAccess('tasks_page')) {
+
+
+
+
+
+
+
+
 
 
 
@@ -17678,7 +34766,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 navigate(routepath.dashboard);
+
+
+
+
+
+
+
+
 
 
 
@@ -17694,7 +34798,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -17710,7 +34830,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const params = new URLSearchParams(location.search || '');
+
+
+
+
+
+
+
+
 
 
 
@@ -17726,7 +34862,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     params.has(k)
+
+
+
+
+
+
+
+
 
 
 
@@ -17750,7 +34902,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                 if (hasAny) {
+
+
+
+
+
+
+
+
 
 
 
@@ -17766,7 +34942,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         status: params.get('status') || 'all',
+
+
+
+
+
+
+
+
 
 
 
@@ -17782,7 +34974,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         assigned: params.get('assigned') || 'all',
+
+
+
+
+
+
+
+
 
 
 
@@ -17798,7 +35006,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         taskType: params.get('taskType') || 'all',
+
+
+
+
+
+
+
+
 
 
 
@@ -17814,6 +35038,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         brand: params.get('brand') || 'all',
 
 
@@ -17822,7 +35054,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         rm: params.get('rm') || 'all',
+
+
+
+
+
+
+
+
 
 
 
@@ -17846,7 +35094,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                     setFilters(nextFilters);
+
+
+
+
+
+
+
+
 
 
 
@@ -17862,7 +35134,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 } else {
+
+
+
+
+
+
+
+
 
 
 
@@ -17878,7 +35166,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         status: 'all',
+
+
+
+
+
+
+
+
 
 
 
@@ -17894,7 +35198,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         assigned: 'all',
+
+
+
+
+
+
+
+
 
 
 
@@ -17910,7 +35230,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         taskType: 'all',
+
+
+
+
+
+
+
+
 
 
 
@@ -17926,7 +35262,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         brand: 'all',
+
+
+
+
+
+
+
+
 
 
 
@@ -17942,7 +35294,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     });
+
+
+
+
+
+
+
+
 
 
 
@@ -17958,7 +35326,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 }
+
+
+
+
+
+
+
+
 
 
 
@@ -17974,6 +35358,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 // ignore
 
 
@@ -17982,7 +35374,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -17998,6 +35406,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return;
 
 
@@ -18006,7 +35422,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -18022,7 +35454,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!hasAccess('calendar_page')) {
+
+
+
+
+
+
+
+
 
 
 
@@ -18038,7 +35486,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 navigate(routepath.dashboard);
+
+
+
+
+
+
+
+
 
 
 
@@ -18054,7 +35518,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -18070,6 +35550,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return;
 
 
@@ -18078,7 +35566,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -18094,7 +35598,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             setCurrentView('analyze');
+
+
+
+
+
+
+
+
 
 
 
@@ -18110,7 +35630,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -18126,7 +35662,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!hasAccess('team_page')) {
+
+
+
+
+
+
+
+
 
 
 
@@ -18142,7 +35694,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 navigate(routepath.dashboard);
+
+
+
+
+
+
+
+
 
 
 
@@ -18158,7 +35726,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -18174,6 +35758,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return;
 
 
@@ -18182,7 +35774,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -18198,7 +35806,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!hasAccess('profile_page')) {
+
+
+
+
+
+
+
+
 
 
 
@@ -18214,7 +35838,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 navigate(routepath.dashboard);
+
+
+
+
+
+
+
+
 
 
 
@@ -18230,7 +35870,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -18246,6 +35902,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return;
 
 
@@ -18254,7 +35918,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -18278,7 +35966,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!hasAccess('company_brand_task_type')) {
+
+
+
+
+
+
+
+
 
 
 
@@ -18294,7 +35998,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 navigate(routepath.dashboard);
+
+
+
+
+
+
+
+
 
 
 
@@ -18310,7 +36030,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -18326,6 +36062,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return;
 
 
@@ -18334,7 +36078,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -18358,7 +36126,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!hasAccess('assign_page')) {
+
+
+
+
+
+
+
+
 
 
 
@@ -18374,7 +36158,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 navigate(routepath.dashboard);
+
+
+
+
+
+
+
+
 
 
 
@@ -18390,7 +36190,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -18406,6 +36222,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return;
 
 
@@ -18414,7 +36238,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -18430,7 +36270,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!hasAccess('tasks_page')) {
+
+
+
+
+
+
+
+
 
 
 
@@ -18446,7 +36302,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 navigate(routepath.dashboard);
+
+
+
+
+
+
+
+
 
 
 
@@ -18462,7 +36334,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -18478,7 +36366,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             try {
+
+
+
+
+
+
+
+
 
 
 
@@ -18494,7 +36398,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const taskId = params.get('taskId') || '';
+
+
+
+
+
+
+
+
 
 
 
@@ -18506,11 +36426,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     ? (tasks || []).find((t: any) => String(t?.id || '') === String(taskId))
 
 
 
+
+
+
+
                     : null;
+
+
+
+
+
+
+
+
 
 
 
@@ -18526,7 +36462,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             } catch {
+
+
+
+
+
+
+
+
 
 
 
@@ -18542,7 +36494,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -18558,7 +36526,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -18582,7 +36574,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!hasAccess('reviews_page')) {
+
+
+
+
+
+
+
+
 
 
 
@@ -18598,7 +36606,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 navigate(routepath.dashboard);
+
+
+
+
+
+
+
+
 
 
 
@@ -18614,7 +36638,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -18630,6 +36670,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return;
 
 
@@ -18638,7 +36686,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -18662,7 +36734,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!hasAccess('other_work_page')) {
+
+
+
+
+
+
+
+
 
 
 
@@ -18678,7 +36766,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 navigate(routepath.dashboard);
+
+
+
+
+
+
+
+
 
 
 
@@ -18694,7 +36798,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -18710,6 +36830,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return;
 
 
@@ -18718,7 +36846,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -18734,7 +36878,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!hasAccess('access_management')) {
+
+
+
+
+
+
+
+
 
 
 
@@ -18750,7 +36910,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 navigate(routepath.dashboard);
+
+
+
+
+
+
+
+
 
 
 
@@ -18766,7 +36942,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -18782,6 +36974,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return;
 
 
@@ -18790,7 +36990,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -18806,7 +37022,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!hasAccess('brands_page')) {
+
+
+
+
+
+
+
+
 
 
 
@@ -18822,7 +37054,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 navigate(routepath.dashboard);
+
+
+
+
+
+
+
+
 
 
 
@@ -18838,7 +37086,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -18854,6 +37118,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return;
 
 
@@ -18862,7 +37134,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -18878,7 +37166,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!hasAccess('brands_page')) {
+
+
+
+
+
+
+
+
 
 
 
@@ -18894,7 +37198,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 navigate(routepath.dashboard);
+
+
+
+
+
+
+
+
 
 
 
@@ -18910,7 +37230,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -18926,7 +37262,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             try {
+
+
+
+
+
+
+
+
 
 
 
@@ -18942,7 +37294,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const brandIdOnly = rawBrandId.split('/')[0] || '';
+
+
+
+
+
+
+
+
 
 
 
@@ -18958,7 +37326,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (decoded) {
+
+
+
+
+
+
+
+
 
 
 
@@ -18974,7 +37358,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 }
+
+
+
+
+
+
+
+
 
 
 
@@ -18990,7 +37390,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 // ignore
+
+
+
+
+
+
+
+
 
 
 
@@ -19006,6 +37422,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return;
 
 
@@ -19014,7 +37438,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -19030,6 +37470,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             setCurrentView('dashboard');
 
 
@@ -19038,7 +37486,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -19062,7 +37526,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleSpeedEcomReassignSubmit = useCallback(async (payload: { assignedTo: string; dueDate: string }) => {
+
+
+
+
 
 
 
@@ -19070,7 +37554,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             toast.error('Task not found');
+
+
+
+
 
 
 
@@ -19078,7 +37570,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -19086,7 +37586,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         try {
+
+
+
+
 
 
 
@@ -19094,7 +37602,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 assignedTo: payload.assignedTo,
+
+
+
+
 
 
 
@@ -19102,7 +37618,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             });
+
+
+
+
 
 
 
@@ -19110,7 +37634,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 dispatch(taskUpserted(response.data as Task));
+
+
+
+
 
 
 
@@ -19118,7 +37650,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             }
+
+
+
+
 
 
 
@@ -19126,7 +37666,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             return false;
+
+
+
+
 
 
 
@@ -19134,7 +37682,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             console.error('Speed E Com reassign failed:', e);
+
+
+
+
 
 
 
@@ -19142,7 +37698,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             toast.error(message);
+
+
+
+
 
 
 
@@ -19150,7 +37714,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         } finally {
+
+
+
+
 
 
 
@@ -19158,11 +37730,35 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         }
 
 
 
+
+
+
+
     }, [dispatch, speedEcomReassignTask?.id]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -19186,11 +37782,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const statusKey = String(status || '').trim().toLowerCase();
 
 
 
+
+
+
+
         if (statusKey === 'completed') return false;
+
+
+
+
+
+
+
+
 
 
 
@@ -19206,7 +37822,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const due = new Date(dueDate);
+
+
+
+
 
 
 
@@ -19218,7 +37846,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             // Not overdue on the due date itself; start overdue only after the due day ends.
+
+
+
+
 
 
 
@@ -19226,7 +37866,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 due.getFullYear(),
+
+
+
+
 
 
 
@@ -19234,7 +37882,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 due.getDate(),
+
+
+
+
 
 
 
@@ -19242,11 +37898,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 59,
 
 
 
+
+
+
+
                 59,
+
+
+
+
 
 
 
@@ -19254,7 +37922,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             );
+
+
+
+
+
+
+
+
 
 
 
@@ -19270,7 +37950,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         } catch {
+
+
+
+
+
+
+
+
 
 
 
@@ -19286,7 +37982,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -19310,7 +38022,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const getTaskBorderColor = useCallback((task: Task): string => {
+
+
+
+
+
+
+
+
 
 
 
@@ -19334,7 +38070,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         if (isCompleted) {
+
+
+
+
+
+
+
+
 
 
 
@@ -19350,7 +38110,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return 'border-l-4 border-l-blue-500';
+
+
+
+
+
+
+
+
 
 
 
@@ -19366,7 +38142,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return 'border-l-4 border-l-green-500';
+
+
+
+
+
+
+
+
 
 
 
@@ -19382,7 +38174,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return 'border-l-4 border-l-red-500';
+
+
+
+
+
+
+
+
 
 
 
@@ -19398,7 +38206,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return 'border-l-4 border-l-orange-500';
+
+
+
+
+
+
+
+
 
 
 
@@ -19414,7 +38238,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return 'border-l-4 border-l-yellow-500';
+
+
+
+
+
+
+
+
 
 
 
@@ -19430,7 +38270,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return 'border-l-4 border-l-blue-500';
+
+
+
+
+
+
+
+
 
 
 
@@ -19446,6 +38302,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return 'border-l-4 border-l-gray-300';
 
 
@@ -19454,7 +38318,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -19478,7 +38358,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const canEditDeleteTask = useCallback(
+
+
+
+
+
+
+
+
 
 
 
@@ -19494,7 +38398,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const normalizeEmailSafe = (v: any): string => {
+
+
+
+
+
+
+
+
 
 
 
@@ -19510,7 +38430,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (typeof v === 'string') return v.trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -19526,7 +38462,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const email = (v as any).email;
+
+
+
+
+
+
+
+
 
 
 
@@ -19542,6 +38494,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 }
 
 
@@ -19550,7 +38510,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return String(v).trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -19574,7 +38550,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             const myEmail = normalizeEmailSafe(currentUser?.email);
+
+
+
+
+
+
+
+
 
 
 
@@ -19590,7 +38590,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const role = String((currentUser as any)?.role || '').trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -19606,7 +38622,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (role === 'rm' || role === 'am') return false;
+
+
+
+
+
+
+
+
 
 
 
@@ -19622,7 +38654,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         },
+
+
+
+
+
+
+
+
 
 
 
@@ -19638,7 +38686,39 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     );
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -19670,7 +38750,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const normalizeEmailSafe = (v: any): string => {
+
+
+
+
+
+
+
+
 
 
 
@@ -19686,7 +38782,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (typeof v === 'string') return stripDeletedEmailSuffix(v).trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -19702,7 +38814,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const email = (v as any).email;
+
+
+
+
+
+
+
+
 
 
 
@@ -19718,6 +38846,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
 
 
@@ -19726,7 +38862,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return stripDeletedEmailSuffix(v).trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -19750,7 +38902,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const role = String((currentUser as any)?.role || '').trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -19766,7 +38942,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const normalizeCompanyKey = (v: unknown): string => String(v || '').trim().toLowerCase().replace(/\s+/g, '');
+
+
+
+
 
 
 
@@ -19774,7 +38962,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         if (isMdImpexTask && (role === 'md_manager' || role === 'ob_manager' || role === 'manager')) return true;
+
+
+
+
+
+
+
+
 
 
 
@@ -19798,6 +38998,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const myEmail = normalizeEmailSafe(currentUser?.email);
 
 
@@ -19806,7 +39022,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const assignedByEmail =
+
+
+
+
+
+
+
+
 
 
 
@@ -19830,7 +39062,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const isAssigner = Boolean(myEmail && assignedByEmail && myEmail === assignedByEmail);
+
+
+
+
+
+
+
+
 
 
 
@@ -19846,7 +39102,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         // Speed E Com: Allow assignee to edit (limited fields in modal)
+
+
+
+
 
 
 
@@ -19854,11 +39122,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         const assignedToEmail = normalizeEmailSafe((task as any)?.assignedTo) || normalizeEmailSafe((task as any)?.assignedToUser?.email);
 
 
 
+
+
+
+
         const isAssignee = Boolean(myEmail && assignedToEmail && myEmail === assignedToEmail);
+
+
+
+
+
+
+
+
 
 
 
@@ -19874,7 +39158,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return false;
+
+
+
+
+
+
+
+
 
 
 
@@ -19898,7 +39198,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const canMarkTaskDone = useCallback(
+
+
+
+
+
+
+
+
 
 
 
@@ -19914,7 +39238,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (task.completedApproval) return false;
+
+
+
+
+
+
+
+
 
 
 
@@ -19930,7 +39270,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (role === 'ob_manager') return false;
+
+
+
+
+
+
+
+
 
 
 
@@ -19946,7 +39302,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const assignedToEmail = stripDeletedEmailSuffix((task as any)?.assignedTo).trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -19962,6 +39334,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         },
 
 
@@ -19970,7 +39350,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         [currentUser],
+
+
+
+
+
+
+
+
 
 
 
@@ -19994,7 +39390,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleUpdateUser = useCallback(async (userId: string, updatedData: Partial<UserType>) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -20010,7 +39430,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const allowedByPerms = hasAccess('user_management');
+
+
+
+
+
+
+
+
 
 
 
@@ -20026,7 +39462,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const target = (usersRef.current || []).find((u: any) => (u?.id || u?._id || '').toString() === userId?.toString());
+
+
+
+
+
+
+
+
 
 
 
@@ -20042,7 +39494,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const toRoleKey = (v: unknown) => String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+
+
+
+
 
 
 
@@ -20050,7 +39514,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const targetRoleKey = toRoleKey(targetRole);
+
+
+
+
 
 
 
@@ -20058,7 +39530,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 || rk === 'assistance'
+
+
+
+
 
 
 
@@ -20066,7 +39546,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 || rk === 'assistece'
+
+
+
+
 
 
 
@@ -20074,7 +39562,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 || rk === 'sub_assistence'
+
+
+
+
 
 
 
@@ -20082,7 +39578,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 || rk === 'sub_assist'
+
+
+
+
 
 
 
@@ -20090,7 +39594,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 || rk.includes('assistant');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -20114,7 +39638,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (targetRoleKey !== 'manager' && !isAssistantLike(targetRoleKey)) throw new Error('Only administrators can edit users');
+
+
+
+
+
+
+
+
 
 
 
@@ -20130,7 +39670,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (!isAssistantLike(targetRoleKey)) throw new Error('Only administrators can edit users');
+
+
+
+
+
+
+
+
 
 
 
@@ -20146,6 +39702,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (!isAssistantLike(targetRoleKey)) throw new Error('Only administrators can edit users');
 
 
@@ -20154,9 +39718,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             } else if (requesterRoleKey === 'sbm') {
+
                 if (targetRoleKey !== 'rm' && targetRoleKey !== 'am') throw new Error('Only administrators can edit users');
+
             } else if (requesterRoleKey === 'rm') {
+
+
+
+
+
+
+
+
 
 
 
@@ -20172,7 +39754,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             } else {
+
+
+
+
+
+
+
+
 
 
 
@@ -20188,6 +39786,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
 
 
@@ -20196,7 +39802,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -20220,7 +39850,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (myId && userId?.toString() === myId) {
+
+
+
+
+
+
+
+
 
 
 
@@ -20236,6 +39882,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
 
 
@@ -20252,7 +39906,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         try {
+
+
+
+
+
+
+
+
 
 
 
@@ -20268,7 +39946,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (response.success) {
+
+
+
+
+
+
+
+
 
 
 
@@ -20284,7 +39978,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const uid = user.id || (user as any)._id;
+
+
+
+
+
+
+
+
 
 
 
@@ -20300,7 +40010,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 }));
+
+
+
+
+
+
+
+
 
 
 
@@ -20316,7 +40042,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             } else {
+
+
+
+
+
+
+
+
 
 
 
@@ -20332,7 +40074,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -20348,7 +40106,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             console.error('Error updating user:', error);
+
+
+
+
+
+
+
+
 
 
 
@@ -20364,7 +40138,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -20376,7 +40166,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
     const handleCreateUser = useCallback(async (newUser: Partial<UserType>) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -20392,7 +40194,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const allowedByPerms = hasAccess('user_management');
+
+
+
+
+
+
+
+
 
 
 
@@ -20402,7 +40220,13 @@ const DashboardPage = () => {
 
         if (!allowedByPerms) {
 
+
+
             const targetRole = (newUser?.role || '').toString().trim().toLowerCase();
+
+
+
+
 
 
 
@@ -20414,7 +40238,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 // allow
+
+
+
+
+
+
+
+
 
 
 
@@ -20430,7 +40270,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (targetRole !== 'assistant' && targetRole !== 'sub_assistance') throw new Error('You do not have permission to create users');
+
+
+
+
+
+
+
+
 
 
 
@@ -20446,6 +40302,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (targetRole !== 'assistant') throw new Error('You do not have permission to create users');
 
 
@@ -20454,9 +40318,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             } else if (requesterRole === 'sbm') {
+
                 if (targetRole !== 'rm' && targetRole !== 'am') throw new Error('You do not have permission to create users');
+
             } else if (requesterRole === 'rm') {
+
+
+
+
+
+
+
+
 
 
 
@@ -20472,7 +40354,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             } else if (requesterRole === 'admin' || requesterRole === 'super_admin') {
+
+
+
+
+
+
+
+
 
 
 
@@ -20488,7 +40386,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             } else {
+
+
+
+
+
+
+
+
 
 
 
@@ -20504,6 +40418,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
 
 
@@ -20512,7 +40434,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -20536,7 +40482,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const isManager = (currentUser?.role || '').toLowerCase() === 'manager';
+
+
+
+
+
+
+
+
 
 
 
@@ -20552,7 +40514,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const payload = {
+
+
+
+
+
+
+
+
 
 
 
@@ -20568,7 +40546,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 email: newUser.email || '',
+
+
+
+
+
+
+
+
 
 
 
@@ -20584,7 +40578,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 role: roleKey,
+
+
+
+
+
+
+
+
 
 
 
@@ -20600,7 +40610,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 companyName: (newUser as any).companyName || (currentUser as any)?.companyName || '',
+
+
+
+
+
+
+
+
 
 
 
@@ -20616,7 +40642,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 department: newUser.department,
+
+
+
+
+
+
+
+
 
 
 
@@ -20632,7 +40674,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -20664,7 +40730,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             if (response.success && response.data) {
+
+
+
+
+
+
+
+
 
 
 
@@ -20680,7 +40770,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             } else {
+
+
+
+
+
+
+
+
 
 
 
@@ -20696,7 +40802,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -20712,7 +40834,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             console.error('Error creating user:', error);
+
+
+
+
+
+
+
+
 
 
 
@@ -20728,6 +40866,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
 
 
@@ -20736,7 +40882,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, [currentUser, hasAccess]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -20760,7 +40930,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const requesterRole = (currentUser?.role || '').toString().trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -20776,6 +40962,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!allowedByPerms) {
 
 
@@ -20784,7 +40978,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const target = (usersRef.current || []).find((u: any) => (u?.id || u?._id || '').toString() === userId?.toString());
+
+
+
+
+
+
+
+
 
 
 
@@ -20808,7 +41018,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             if (requesterRole === 'md_manager') {
+
+
+
+
+
+
+
+
 
 
 
@@ -20824,6 +41058,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             } else if (requesterRole === 'ob_manager') {
 
 
@@ -20832,7 +41074,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (targetRole !== 'assistant' && targetRole !== 'sub_assistance') throw new Error('Only administrators can delete users');
+
+
+
+
+
+
+
+
 
 
 
@@ -20848,6 +41106,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (targetRole !== 'assistant' && targetRole !== 'sub_assistance') throw new Error('Only administrators can delete users');
 
 
@@ -20856,9 +41122,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             } else if (requesterRole === 'sbm') {
+
                 if (targetRole !== 'rm' && targetRole !== 'am') throw new Error('Only administrators can delete users');
+
             } else if (requesterRole === 'rm') {
+
+
+
+
+
+
+
+
 
 
 
@@ -20874,7 +41158,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             } else {
+
+
+
+
+
+
+
+
 
 
 
@@ -20890,6 +41190,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
 
 
@@ -20898,7 +41206,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -20922,7 +41254,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (myId && userId?.toString() === myId) {
+
+
+
+
+
+
+
+
 
 
 
@@ -20938,7 +41286,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -20962,6 +41334,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             throw new Error('You cannot delete your own account');
 
 
@@ -20970,7 +41350,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -20994,7 +41398,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const response = await authService.deleteUser(userId);
+
+
+
+
+
+
+
+
 
 
 
@@ -21018,7 +41438,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             if (isSuccess) {
+
+
+
+
+
+
+
+
 
 
 
@@ -21034,7 +41478,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             } else {
+
+
+
+
+
+
+
+
 
 
 
@@ -21050,7 +41510,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -21066,7 +41542,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             console.error('Error deleting user:', error);
+
+
+
+
+
+
+
+
 
 
 
@@ -21082,7 +41574,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -21106,7 +41614,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const getAssignedUserInfo = useCallback(
+
+
+
+
+
+
+
+
 
 
 
@@ -21122,7 +41654,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (task.assignedToUser?.email) {
+
+
+
+
+
+
+
+
 
 
 
@@ -21138,7 +41686,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return {
+
+
+
+
+
+
+
+
 
 
 
@@ -21154,7 +41718,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     email,
+
+
+
+
+
+
+
+
 
 
 
@@ -21170,7 +41750,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -21194,7 +41798,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (typeof task.assignedTo === 'string') {
+
+
+
+
+
+
+
+
 
 
 
@@ -21210,7 +41830,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     return {
+
+
+
+
+
+
+
+
 
 
 
@@ -21226,7 +41862,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         email,
+
+
+
+
+
+
+
+
 
 
 
@@ -21242,7 +41894,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -21266,7 +41942,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const email = stripDeletedEmailSuffix((task.assignedTo as any)?.email);
+
+
+
+
+
+
+
+
 
 
 
@@ -21282,7 +41974,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         name: task.assignedTo.name || 'User',
+
+
+
+
+
+
+
+
 
 
 
@@ -21298,6 +42006,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     };
 
 
@@ -21306,7 +42022,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -21330,7 +42070,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     name: 'Unknown User',
+
+
+
+
+
+
+
+
 
 
 
@@ -21346,6 +42102,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 };
 
 
@@ -21354,7 +42118,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -21378,7 +42166,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 name: 'Unknown User',
+
+
+
+
+
+
+
+
 
 
 
@@ -21394,7 +42198,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             };
+
+
+
+
+
+
+
+
 
 
 
@@ -21410,7 +42230,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         [users],
+
+
+
+
+
+
+
+
 
 
 
@@ -21426,7 +42262,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const getAvailableBrandOptions = useCallback((): Array<{ value: string; label: string }> => {
+
+
+
+
+
+
+
+
 
 
 
@@ -21442,7 +42294,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!company) return [];
+
+
+
+
+
+
+
+
 
 
 
@@ -21466,7 +42334,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const byNameKey = new Map<string, { value: string; label: string }>();
+
+
+
+
+
+
+
+
 
 
 
@@ -21482,7 +42374,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const name = (plainName || '').toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -21498,7 +42406,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const key = name.toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -21522,7 +42446,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             const brandDoc: any = (brands || []).find((b: any) => (
+
+
+
+
+
+
+
+
 
 
 
@@ -21538,7 +42486,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 normalizeText(getBrandNameSafe(b)) === normalizeText(name)
+
+
+
+
+
+
+
+
 
 
 
@@ -21554,7 +42518,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const groupNumber = String((brandDoc as any)?.groupNumber || '').trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -21570,6 +42550,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             byNameKey.set(key, { value: name, label });
 
 
@@ -21578,7 +42566,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -21602,7 +42614,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (email) {
+
+
+
+
+
+
+
+
 
 
 
@@ -21618,7 +42646,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const uEmail = stripDeletedEmailSuffix(u?.email).trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -21634,7 +42678,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             });
+
+
+
+
+
+
+
+
 
 
 
@@ -21650,7 +42710,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!userId) {
+
+
+
+
+
+
+
+
 
 
 
@@ -21666,7 +42742,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (myEmailKey && myEmailKey === email) {
+
+
+
+
+
+
+
+
 
 
 
@@ -21682,6 +42774,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 }
 
 
@@ -21690,7 +42790,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -21706,7 +42822,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const assigned = Array.isArray(brandNamesByCompanyUserKey[cuKey]) ? brandNamesByCompanyUserKey[cuKey] : [];
+
+
+
+
+
+
+
+
 
 
 
@@ -21722,11 +42854,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 assigned.forEach(addOption);
 
 
 
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -21750,7 +42902,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         (brands || [])
+
+
+
+
+
+
+
+
 
 
 
@@ -21766,6 +42942,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             .map(brand => (brand.name || '').toString().trim())
 
 
@@ -21774,7 +42958,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             .filter(Boolean)
+
+
+
+
+
+
+
+
 
 
 
@@ -21798,7 +42998,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         return Array.from(byNameKey.values()).sort((a, b) => a.label.localeCompare(b.label));
+
+
+
+
+
+
+
+
 
 
 
@@ -21822,7 +43046,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const getEditFormBrandOptions = useCallback((): Array<{ value: string; label: string }> => {
+
+
+
+
+
+
+
+
 
 
 
@@ -21838,7 +43086,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!company) return [];
+
+
+
+
+
+
+
+
 
 
 
@@ -21862,7 +43126,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const byNameKey = new Map<string, { value: string; label: string }>();
+
+
+
+
+
+
+
+
 
 
 
@@ -21878,7 +43166,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const name = (plainName || '').toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -21894,7 +43198,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const key = name.toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -21918,7 +43238,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             const brandDoc: any = (brands || []).find((b: any) => (
+
+
+
+
+
+
+
+
 
 
 
@@ -21934,7 +43278,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 normalizeText(getBrandNameSafe(b)) === normalizeText(name)
+
+
+
+
+
+
+
+
 
 
 
@@ -21950,7 +43310,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const groupNumber = String((brandDoc as any)?.groupNumber || '').trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -21966,7 +43342,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             byNameKey.set(key, { value: name, label });
+
+
+
+
+
+
+
+
 
 
 
@@ -21990,7 +43382,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const email = stripDeletedEmailSuffix(editFormData.assignedTo).trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -22006,7 +43422,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const userDoc: any = (usersRef.current || []).find((u: any) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -22022,7 +43454,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return uEmail && uEmail === email;
+
+
+
+
+
+
+
+
 
 
 
@@ -22038,7 +43486,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const userId = (userDoc?.id || userDoc?._id || '').toString();
+
+
+
+
+
+
+
+
 
 
 
@@ -22054,7 +43518,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const assigned = Array.isArray(brandNamesByCompanyUserKey[cuKey]) ? brandNamesByCompanyUserKey[cuKey] : [];
+
+
+
+
+
+
+
+
 
 
 
@@ -22070,11 +43550,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 assigned.forEach(addOption);
 
 
 
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -22098,7 +43598,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         (brands || [])
+
+
+
+
+
+
+
+
 
 
 
@@ -22114,6 +43638,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             .map(brand => (brand.name || '').toString().trim())
 
 
@@ -22122,7 +43654,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             .filter(Boolean)
+
+
+
+
+
+
+
+
 
 
 
@@ -22146,7 +43694,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         return Array.from(byNameKey.values()).sort((a, b) => a.label.localeCompare(b.label));
+
+
+
+
+
+
+
+
 
 
 
@@ -22170,7 +43742,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const formatBrandWithGroupNumber = useCallback((task: any): string => {
+
+
+
+
+
+
+
+
 
 
 
@@ -22186,7 +43782,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!plain) return '';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -22218,7 +43838,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const brandId = (task?.brandId || '').toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -22234,6 +43878,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             ? (brands || []).find((b: any) => String(b?.id || b?._id || '').toString() === brandId)
 
 
@@ -22242,7 +43894,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             : null;
+
+
+
+
+
+
+
+
 
 
 
@@ -22258,7 +43926,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             ? (brands || []).find((b: any) => (
+
+
+
+
+
+
+
+
 
 
 
@@ -22274,7 +43958,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 normalizeCompanyKey(getBrandCompanyNameSafe(b)) === normalizeCompanyKey(company)
+
+
+
+
+
+
+
+
 
 
 
@@ -22290,7 +43990,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             : null;
+
+
+
+
+
+
+
+
 
 
 
@@ -22306,6 +44022,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const groupNumber = String(brandDoc?.groupNumber || '').trim();
 
 
@@ -22314,7 +44038,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return groupNumber ? `${groupNumber} - ${plain}` : plain;
+
+
+
+
+
+
+
+
 
 
 
@@ -22338,6 +44078,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleSaveComment = useCallback(async (taskId: string, comment: string): Promise<CommentType> => {
 
 
@@ -22346,7 +44102,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         try {
+
+
+
+
+
+
+
+
 
 
 
@@ -22370,7 +44142,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             if (response.success && response.data) {
+
+
+
+
+
+
+
+
 
 
 
@@ -22394,7 +44190,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                 const formattedComment: CommentType = {
+
+
+
+
+
+
+
+
 
 
 
@@ -22410,7 +44230,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     taskId: commentData.taskId || taskId,
+
+
+
+
+
+
+
+
 
 
 
@@ -22426,7 +44262,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     userName: commentData.userName || currentUser.name,
+
+
+
+
+
+
+
+
 
 
 
@@ -22442,7 +44294,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     userRole: commentData.userRole || currentUser.role,
+
+
+
+
+
+
+
+
 
 
 
@@ -22458,6 +44326,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     createdAt: commentData.createdAt || new Date().toISOString(),
 
 
@@ -22466,7 +44342,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     updatedAt: commentData.updatedAt || commentData.createdAt || new Date().toISOString(),
+
+
+
+
+
+
+
+
 
 
 
@@ -22490,23 +44382,63 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                 toast.success('Comment saved successfully!');
 
 
+
+
+
                 // Update task in Redux store to reflect latest comment
+
                 const existingTask = tasks.find(t => t.id === taskId);
+
                 if (existingTask) {
+
                     const updatedTask = {
+
                         ...existingTask,
+
                         latestComment: {
+
                             content: formattedComment.content,
+
                             userName: formattedComment.userName,
+
                             userEmail: formattedComment.userEmail,
+
                             createdAt: formattedComment.createdAt
+
                         }
+
                     };
+
                     dispatch(taskUpserted(updatedTask as Task));
+
                 }
+
+
+
+
+
+
+
+
 
 
 
@@ -22522,7 +44454,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             } else {
+
+
+
+
+
+
+
+
 
 
 
@@ -22538,7 +44486,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 throw new Error(response.message || 'Failed to save comment');
+
+
+
+
+
+
+
+
 
 
 
@@ -22554,7 +44518,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         } catch (error: any) {
+
+
+
+
+
+
+
+
 
 
 
@@ -22566,11 +44546,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const mockComment: CommentType = {
 
 
 
+
+
+
+
                 id: `mock-${Date.now()}`,
+
+
+
+
+
+
+
+
 
 
 
@@ -22586,7 +44582,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 userId: currentUser.id,
+
+
+
+
+
+
+
+
 
 
 
@@ -22602,7 +44614,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 userEmail: currentUser.email,
+
+
+
+
+
+
+
+
 
 
 
@@ -22618,7 +44646,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 content: comment,
+
+
+
+
+
+
+
+
 
 
 
@@ -22634,7 +44678,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 updatedAt: new Date().toISOString(),
+
+
+
+
+
+
+
+
 
 
 
@@ -22658,7 +44718,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             toast.success('Comment saved locally (offline mode)');
+
+
+
+
+
+
+
+
 
 
 
@@ -22674,7 +44758,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -22698,7 +44798,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleDeleteComment = useCallback(async (taskId: string, commentId: string) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -22714,7 +44838,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!taskService.deleteComment) {
+
+
+
+
+
+
+
+
 
 
 
@@ -22730,6 +44870,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return;
 
 
@@ -22738,7 +44886,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -22770,7 +44942,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             if (response && response.success) {
+
+
+
+
+
+
+
+
 
 
 
@@ -22780,18 +44976,39 @@ const DashboardPage = () => {
 
                 toast.success('Comment deleted successfully');
 
+
+
                 // Update task in Redux store to reflect latest comment
+
                 const existingTask = tasks.find(t => t.id === taskId);
+
                 if (existingTask) {
+
                     // Note: We don't have the next latest comment here without a fetch,
+
                     // but we can clear it or the user will see it update on next refresh/fetch.
+
                     // For now, let's just clear it to be safe, or we could fetch the task history.
+
                     const updatedTask = {
+
                         ...existingTask,
+
                         latestComment: null // Clear it so it shows "No comments" or updates correctly
+
                     };
+
                     dispatch(taskUpserted(updatedTask as Task));
+
                 }
+
+
+
+
+
+
+
+
 
 
 
@@ -22807,7 +45024,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 toast.error(response?.message || 'Failed to delete comment');
+
+
+
+
+
+
+
+
 
 
 
@@ -22823,7 +45056,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         } catch (error: any) {
+
+
+
+
+
+
+
+
 
 
 
@@ -22839,6 +45088,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             toast.error('Failed to delete comment');
 
 
@@ -22847,7 +45104,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -22871,6 +45144,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleFetchTaskComments = useCallback(async (taskId: string): Promise<CommentType[]> => {
 
 
@@ -22879,7 +45168,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         try {
+
+
+
+
+
+
+
+
 
 
 
@@ -22903,7 +45208,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             if (!response) {
+
+
+
+
+
+
+
+
 
 
 
@@ -22919,7 +45248,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -22943,7 +45296,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return response.data.map((comment: any): CommentType => ({
+
+
+
+
+
+
+
+
 
 
 
@@ -22959,7 +45328,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     taskId: comment.taskId?.toString() || taskId,
+
+
+
+
+
+
+
+
 
 
 
@@ -22975,7 +45360,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     userName: comment.userName || 'User',
+
+
+
+
+
+
+
+
 
 
 
@@ -22991,7 +45392,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     userRole: comment.userRole || 'user',
+
+
+
+
+
+
+
+
 
 
 
@@ -23007,7 +45424,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     createdAt: comment.createdAt || new Date().toISOString(),
+
+
+
+
+
+
+
+
 
 
 
@@ -23023,7 +45456,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 }));
+
+
+
+
+
+
+
+
 
 
 
@@ -23039,7 +45488,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return [];
+
+
+
+
+
+
+
+
 
 
 
@@ -23055,7 +45520,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             console.error('Error fetching comments:', error);
+
+
+
+
+
+
+
+
 
 
 
@@ -23071,6 +45552,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
 
 
@@ -23079,7 +45568,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, []);
+
+
+
+
+
+
+
+
 
 
 
@@ -23095,7 +45600,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const roleKey = String((currentUser as any)?.role || '')
+
+
+
+
+
+
+
+
 
 
 
@@ -23111,7 +45632,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             .toLowerCase()
+
+
+
+
+
+
+
+
 
 
 
@@ -23127,7 +45664,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return roleKey === 'sbm';
+
+
+
+
+
+
+
+
 
 
 
@@ -23143,7 +45696,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const getCommentSidebarComments = useCallback((taskId: string): CommentType[] => {
+
+
+
+
 
 
 
@@ -23151,11 +45716,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         if (!key) return [];
 
 
 
+
+
+
+
         return Array.isArray(commentSidebarCommentsByTaskId[key]) ? commentSidebarCommentsByTaskId[key] : [];
+
+
+
+
 
 
 
@@ -23167,7 +45744,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const handleOpenTaskCommentSidebar = useCallback(async (task: Task) => {
+
+
+
+
 
 
 
@@ -23175,7 +45764,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         if (!isSbmUser) return;
+
+
+
+
+
+
+
+
 
 
 
@@ -23187,11 +45788,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         setShowTaskCommentSidebar(true);
 
 
 
+
+
+
+
         setCommentDraft('');
+
+
+
+
+
+
+
+
 
 
 
@@ -23203,7 +45820,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         try {
+
+
+
+
 
 
 
@@ -23211,7 +45836,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             setCommentSidebarCommentsByTaskId(prev => ({
+
+
+
+
 
 
 
@@ -23219,7 +45852,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 [String(task.id)]: comments
+
+
+
+
 
 
 
@@ -23227,7 +45868,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         } finally {
+
+
+
+
 
 
 
@@ -23235,7 +45884,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -23247,7 +45904,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const handleCloseTaskCommentSidebar = useCallback(() => {
+
+
+
+
 
 
 
@@ -23255,7 +45924,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         setCommentSidebarTask(null);
+
+
+
+
 
 
 
@@ -23263,11 +45940,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         setCommentSidebarLoading(false);
 
 
 
+
+
+
+
         setCommentSidebarLoadingComments(false);
+
+
+
+
 
 
 
@@ -23279,11 +45968,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     const handleSubmitTaskComment = useCallback(async () => {
 
 
 
+
+
+
+
         if (!commentSidebarTask?.id) return;
+
+
+
+
 
 
 
@@ -23295,7 +46000,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const content = (commentDraft || '').trim();
+
+
+
+
 
 
 
@@ -23307,7 +46024,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const taskId = String(commentSidebarTask.id);
+
+
+
+
 
 
 
@@ -23315,7 +46044,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         try {
+
+
+
+
 
 
 
@@ -23323,7 +46060,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             setCommentSidebarCommentsByTaskId(prev => {
+
+
+
+
 
 
 
@@ -23331,7 +46076,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const current = Array.isArray(next[taskId]) ? next[taskId] : [];
+
+
+
+
 
 
 
@@ -23339,7 +46092,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 return next;
+
+
+
+
 
 
 
@@ -23347,7 +46108,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             setCommentDraft('');
+
+
+
+
 
 
 
@@ -23355,7 +46124,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             setCommentSidebarLoading(false);
+
+
+
+
 
 
 
@@ -23363,7 +46140,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
     }, [commentDraft, commentSidebarTask, handleSaveComment, isSbmUser]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -23387,7 +46184,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         try {
+
+
+
+
+
+
+
+
 
 
 
@@ -23403,7 +46216,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!task) {
+
+
+
+
+
+
+
+
 
 
 
@@ -23419,7 +46248,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return;
+
+
+
+
+
+
+
+
 
 
 
@@ -23431,7 +46276,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const normalizeEmailSafe = (v: unknown): string => stripDeletedEmailSuffix(v).trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -23443,6 +46300,10 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const myId = String((currentUser as any)?.id || (currentUser as any)?._id || '').trim();
 
 
@@ -23451,7 +46312,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const KEYURI_EMAIL = 'keyurismartbiz@gmail.com';
+
+
+
+
+
+
+
+
 
 
 
@@ -23475,7 +46352,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             const normalizeRole = (v: unknown) => String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+
+
+
+
+
+
+
+
 
 
 
@@ -23491,7 +46392,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const r = normalizeRole(v);
+
+
+
+
+
+
+
+
 
 
 
@@ -23507,7 +46424,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             };
+
+
+
+
+
+
+
+
 
 
 
@@ -23519,7 +46452,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const isObManager = myRoleKey === 'ob_manager' || myRoleKey === 'obmanager';
+
+
+
+
+
+
+
+
 
 
 
@@ -23531,7 +46476,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const isSbmRole = myRoleKey === 'sbm';
+
+
+
+
 
 
 
@@ -23539,7 +46492,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const assignedByEmail = normalizeEmailSafe((task as any)?.assignedByUser?.email || (task as any)?.assignedBy);
+
+
+
+
 
 
 
@@ -23551,7 +46512,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const normalizeCompanyKey = (value: unknown): string => String(value || '').trim().toLowerCase().replace(/\s+/g, '');
+
+
+
+
 
 
 
@@ -23563,11 +46536,39 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const taskStatusKey = String((task as any)?.status || '').trim().toLowerCase();
 
 
 
+
+
+
+
             const isTaskCompleted = taskStatusKey === 'completed';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -23591,7 +46592,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const raw = (value == null ? '' : String(value)).trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -23607,7 +46624,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const lowered = raw.toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -23623,7 +46656,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const id = String(u?.id || u?._id || '').trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -23639,7 +46688,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     return (id && id === raw) || (email && email === lowered);
+
+
+
+
+
+
+
+
 
 
 
@@ -23655,7 +46720,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -23679,7 +46768,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const direct = normalizeRole(t?.assignedByUser?.role || t?.assignedBy?.role);
+
+
+
+
+
+
+
+
 
 
 
@@ -23703,7 +46808,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                 const candidate = t?.assignedByUser || t?.assignedBy;
+
+
+
+
+
+
+
+
 
 
 
@@ -23727,7 +46856,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                 const idOrEmail = typeof candidate === 'string'
+
+
+
+
+
+
+
+
 
 
 
@@ -23743,6 +46896,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     : (candidate?.id || candidate?._id || candidate?.email || '');
 
 
@@ -23751,7 +46912,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return normalizeRole(findUserByIdOrEmail(idOrEmail)?.role);
+
+
+
+
+
+
+
+
 
 
 
@@ -23775,7 +46952,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             const directEmail = newAssigneeId && newAssigneeId.includes('@') ? normalizeEmailSafe(newAssigneeId) : '';
+
+
+
+
+
+
+
+
 
 
 
@@ -23787,7 +46988,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const newAssignee = directEmail ? findUserByIdOrEmail(directEmail) : findUserByIdOrEmail(newAssigneeId);
+
+
+
+
+
+
+
+
 
 
 
@@ -23799,7 +47012,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const nextAssigneeRole = normalizeRole((newAssignee as any)?.role);
+
+
+
+
+
+
+
+
 
 
 
@@ -23811,7 +47036,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const isAssistantCandidate = Boolean(nextAssigneeEmail && (isAssistantRole(nextAssigneeRole) || isAssistantRole((newAssignee as any)?.role)));
+
+
+
+
 
 
 
@@ -23823,7 +47056,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const allowedPairUserIds = (() => {
+
+
+
+
 
 
 
@@ -23831,7 +47076,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 if (myId) ids.add(myId);
+
+
+
+
 
 
 
@@ -23839,7 +47092,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const myManagerIdKey = String((currentUser as any)?.managerId || '').trim();
+
+
+
+
 
 
 
@@ -23847,7 +47108,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     list.forEach((u: any) => {
+
+
+
+
 
 
 
@@ -23855,7 +47124,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                         const urole = normalizeRole(u?.role);
+
+
+
+
 
 
 
@@ -23863,7 +47140,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                         if (uid && urole === 'am' && mgr && mgr === myId) ids.add(uid);
+
+
+
+
 
 
 
@@ -23871,7 +47156,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 }
+
+
+
+
 
 
 
@@ -23879,11 +47172,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 return ids;
 
 
 
+
+
+
+
             })();
+
+
+
+
+
+
+
+
 
 
 
@@ -23895,7 +47204,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const assignedToId = typeof assignedToCandidate === 'object'
+
+
+
+
 
 
 
@@ -23903,7 +47220,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 : '';
+
+
+
+
 
 
 
@@ -23911,7 +47236,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 typeof assignedToCandidate === 'string'
+
+
+
+
 
 
 
@@ -23919,11 +47252,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     : (assignedToCandidate?.email || '')
 
 
 
+
+
+
+
             );
+
+
+
+
 
 
 
@@ -23931,7 +47276,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 (myEmail && assignedToEmail && myEmail === assignedToEmail) ||
+
+
+
+
 
 
 
@@ -23939,7 +47292,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             );
+
+
+
+
+
+
+
+
 
 
 
@@ -23951,7 +47316,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const assignedById = typeof assignedByCandidateResolved === 'object'
+
+
+
+
 
 
 
@@ -23959,7 +47332,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 : '';
+
+
+
+
 
 
 
@@ -23967,7 +47348,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 typeof assignedByCandidateResolved === 'string'
+
+
+
+
 
 
 
@@ -23975,7 +47364,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     : (assignedByCandidateResolved?.email || '')
+
+
+
+
 
 
 
@@ -23983,7 +47380,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const assignedByUser = (assignedById || assignedByEmailKey)
+
+
+
+
 
 
 
@@ -23991,7 +47396,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 : undefined;
+
+
+
+
 
 
 
@@ -24003,7 +47416,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const canReassignByPairEmailFallback = (() => {
+
+
+
+
 
 
 
@@ -24011,11 +47436,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const creatorEmailKey = normalizeEmailSafe(assignedByEmailKey || assignedByEmail);
 
 
 
+
+
+
+
                 if (!creatorEmailKey) return false;
+
+
+
+
+
+
+
+
 
 
 
@@ -24031,7 +47472,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (myRoleKey === 'rm' && myId) {
+
+
+
+
 
 
 
@@ -24039,7 +47492,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                         const urole = normalizeRole(u?.role);
+
+
+
+
 
 
 
@@ -24047,7 +47508,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                         const uemail = normalizeEmailSafe(u?.email);
+
+
+
+
 
 
 
@@ -24055,11 +47524,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     });
 
 
 
+
+
+
+
                 }
+
+
+
+
+
+
+
+
 
 
 
@@ -24071,7 +47556,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     const myManagerIdKey = String((currentUser as any)?.managerId || '').trim();
+
+
+
+
 
 
 
@@ -24079,11 +47572,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     const managerEmail = normalizeEmailSafe((myManager as any)?.email);
 
 
 
+
+
+
+
                     return Boolean(managerEmail && managerEmail === creatorEmailKey);
+
+
+
+
 
 
 
@@ -24095,7 +47600,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return false;
+
+
+
+
 
 
 
@@ -24107,7 +47624,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const canReassignByPair = Boolean(
+
+
+
+
 
 
 
@@ -24115,7 +47644,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 isTaskCompleted &&
+
+
+
+
 
 
 
@@ -24123,7 +47660,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     isTaskAssigner ||
+
+
+
+
 
 
 
@@ -24131,11 +47676,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     canReassignByPairEmailFallback
 
 
 
+
+
+
+
                 )
+
+
+
+
 
 
 
@@ -24147,7 +47704,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const isAllowedReassign = isSpeedEcomTask
+
+
+
+
 
 
 
@@ -24155,7 +47724,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     nextAssigneeEmail &&
+
+
+
+
 
 
 
@@ -24163,7 +47740,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     (
+
+
+
+
 
 
 
@@ -24171,7 +47756,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                         (isSbmRole && isTaskAssigner) ||
+
+
+
+
 
 
 
@@ -24179,7 +47772,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     )
+
+
+
+
 
 
 
@@ -24187,7 +47788,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 : Boolean(
+
+
+
+
 
 
 
@@ -24195,7 +47804,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     (myEmail && myEmail === KEYURI_EMAIL && nextAssigneeEmail && (isRutuDirect || isSubAssistance)) ||
+
+
+
+
 
 
 
@@ -24203,11 +47820,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     (nextAssigneeEmail && canReassignByPair)
 
 
 
+
+
+
+
                 );
+
+
+
+
+
+
+
+
 
 
 
@@ -24223,7 +47856,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 toast.error('You do not have permission to reassign tasks');
+
+
+
+
+
+
+
+
 
 
 
@@ -24239,7 +47888,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -24263,7 +47936,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             void resolveAssignerRole;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -24287,7 +47984,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 assignedTo: nextAssigneeEmail,
+
+
+
+
+
+
+
+
 
 
 
@@ -24303,7 +48016,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 assignedToUser: newAssignee ? {
+
+
+
+
+
+
+
+
 
 
 
@@ -24319,7 +48048,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     name: (newAssignee as any).name,
+
+
+
+
+
+
+
+
 
 
 
@@ -24335,6 +48080,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     role: (newAssignee as any).role
 
 
@@ -24343,7 +48096,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 } : undefined
+
+
+
+
+
+
+
+
 
 
 
@@ -24367,7 +48136,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             if (response.success && response.data) {
+
+
+
+
 
 
 
@@ -24375,11 +48164,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 toast.success(`Task reassigned to ${newAssignee ? (newAssignee as any).name : nextAssigneeEmail}`);
 
 
 
+
+
+
+
             } else {
+
+
+
+
+
+
+
+
 
 
 
@@ -24395,7 +48200,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -24411,7 +48232,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             console.error('Error reassigning task:', error);
+
+
+
+
+
+
+
+
 
 
 
@@ -24423,7 +48260,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const message = anyErr?.response?.data?.message || anyErr?.message || 'Failed to reassign task';
+
+
+
+
 
 
 
@@ -24435,7 +48280,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -24459,7 +48320,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleMdImpexReassignTask = useCallback(async (taskId: string, newAssigneeEmail: string) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -24475,7 +48360,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const response = await taskService.mdImpexReassignTask(taskId, newAssigneeEmail);
+
+
+
+
+
+
+
+
 
 
 
@@ -24491,7 +48392,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 dispatch(taskUpserted(response.data as Task));
+
+
+
+
+
+
+
+
 
 
 
@@ -24507,7 +48424,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -24523,7 +48456,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         } catch (error: any) {
+
+
+
+
+
+
+
+
 
 
 
@@ -24539,6 +48488,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             toast.error(error?.message || 'Failed to reassign task');
 
 
@@ -24547,7 +48504,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -24571,7 +48544,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleAddTaskHistory = useCallback(
+
+
+
+
+
+
+
+
 
 
 
@@ -24587,7 +48584,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             taskId: string,
+
+
+
+
+
+
+
+
 
 
 
@@ -24603,7 +48616,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             additionalData?: Record<string, any>
+
+
+
+
+
+
+
+
 
 
 
@@ -24619,7 +48648,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             try {
+
+
+
+
+
+
+
+
 
 
 
@@ -24635,7 +48680,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     ...history,
+
+
+
+
+
+
+
+
 
 
 
@@ -24651,7 +48712,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -24683,7 +48768,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                 if (!response.success) {
+
+
+
+
+
+
+
+
 
 
 
@@ -24699,6 +48808,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     return;
 
 
@@ -24707,7 +48824,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -24731,7 +48872,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const entry: any = response.data;
+
+
+
+
+
+
+
+
 
 
 
@@ -24747,7 +48904,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         ...history,
+
+
+
+
+
+
+
+
 
 
 
@@ -24763,6 +48936,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         timestamp: entry.timestamp || entry.createdAt || new Date().toISOString(),
 
 
@@ -24771,7 +48952,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         ...(entry || {}),
+
+
+
+
+
+
+
+
 
 
 
@@ -24795,7 +48992,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                     dispatch(taskUpserted({
+
+
+
+
+
+
+
+
 
 
 
@@ -24811,6 +49032,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         history: [...((tasks.find(t => t.id === taskId) as any)?.history || []), normalized]
 
 
@@ -24819,7 +49048,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     } as Task));
+
+
+
+
+
+
+
+
 
 
 
@@ -24843,7 +49088,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                 toast.success('History recorded');
+
+
+
+
+
+
+
+
 
 
 
@@ -24859,7 +49128,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 console.error('Error adding history:', error);
+
+
+
+
+
+
+
+
 
 
 
@@ -24875,7 +49160,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -24891,7 +49192,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         [dispatch, tasks]
+
+
+
+
+
+
+
+
 
 
 
@@ -24915,7 +49232,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleApproveTask = useCallback(async (taskId: string) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -24931,7 +49272,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const task = tasks.find(t => t.id === taskId);
+
+
+
+
+
+
+
+
 
 
 
@@ -24947,7 +49304,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 toast.error('Task not found');
+
+
+
+
+
+
+
+
 
 
 
@@ -24963,7 +49336,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -24987,7 +49384,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 toast.error('Only administrators can approve tasks');
+
+
+
+
+
+
+
+
 
 
 
@@ -25003,7 +49416,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -25027,6 +49464,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 ...task,
 
 
@@ -25035,7 +49480,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 completedApproval: !task.completedApproval
+
+
+
+
+
+
+
+
 
 
 
@@ -25059,6 +49520,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             const response = await taskService.updateTask(taskId, {
 
 
@@ -25067,7 +49544,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 completedApproval: !task.completedApproval
+
+
+
+
+
+
+
+
 
 
 
@@ -25091,7 +49584,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             if (response.success) {
+
+
+
+
+
+
+
+
 
 
 
@@ -25115,7 +49632,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                 toast.success(
+
+
+
+
+
+
+
+
 
 
 
@@ -25131,7 +49672,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         ? 'Approval removed'
+
+
+
+
+
+
+
+
 
 
 
@@ -25147,7 +49704,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 );
+
+
+
+
+
+
+
+
 
 
 
@@ -25163,7 +49736,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 toast.error(response.message || 'Failed to approve task');
+
+
+
+
+
+
+
+
 
 
 
@@ -25179,7 +49768,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         } catch (error) {
+
+
+
+
+
+
+
+
 
 
 
@@ -25195,7 +49800,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             toast.error('Failed to approve task');
+
+
+
+
+
+
+
+
 
 
 
@@ -25211,7 +49832,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, [tasks, currentUser, hasAccess, dispatch]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -25235,7 +49880,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         try {
+
+
+
+
+
+
+
+
 
 
 
@@ -25251,7 +49912,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!task) {
+
+
+
+
+
+
+
+
 
 
 
@@ -25267,6 +49944,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return;
 
 
@@ -25275,7 +49960,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -25299,7 +50008,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!isAssigner) {
+
+
+
+
+
+
+
+
 
 
 
@@ -25315,6 +50040,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return;
 
 
@@ -25323,7 +50056,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -25347,7 +50104,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 ...task,
+
+
+
+
+
+
+
+
 
 
 
@@ -25363,7 +50136,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -25387,6 +50184,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 completedApproval: completedApproval
 
 
@@ -25395,7 +50200,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -25419,7 +50248,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 dispatch(taskUpserted(updatedTask as Task));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -25443,7 +50296,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     completedApproval
+
+
+
+
+
+
+
+
 
 
 
@@ -25459,7 +50328,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         : 'Permanent approval removed'
+
+
+
+
+
+
+
+
 
 
 
@@ -25475,7 +50360,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             } else {
+
+
+
+
+
+
+
+
 
 
 
@@ -25491,7 +50392,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -25507,7 +50424,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             console.error('Error updating task approval:', error);
+
+
+
+
+
+
+
+
 
 
 
@@ -25523,7 +50456,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -25547,6 +50496,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleFetchTaskHistory = useCallback(async (taskId: string): Promise<TaskHistory[]> => {
 
 
@@ -25555,7 +50520,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         try {
+
+
+
+
+
+
+
+
 
 
 
@@ -25579,7 +50560,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             if (!response.success) {
+
+
+
+
+
+
+
+
 
 
 
@@ -25595,6 +50600,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return [];
 
 
@@ -25603,7 +50616,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -25627,7 +50664,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         } catch (error) {
+
+
+
+
+
+
+
+
 
 
 
@@ -25643,7 +50696,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             toast.error('Failed to load task history');
+
+
+
+
+
+
+
+
 
 
 
@@ -25659,7 +50728,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -25675,7 +50760,31 @@ const DashboardPage = () => {
 
 
 
+    const handleOpenTaskHistorySidebar = useCallback(async (task: Task) => {
 
+
+
+
+
+
+
+        if (!task?.id) return;
+
+
+
+
+
+
+
+        await handleFetchTaskHistory(String(task.id));
+
+
+
+
+
+
+
+    }, [handleFetchTaskHistory]);
 
 
 
@@ -25684,6 +50793,14 @@ const DashboardPage = () => {
 
 
     const getFilteredTasksByStat = useCallback(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -25707,7 +50824,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const role = String((currentUser as any)?.role || '').trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -25723,7 +50864,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const normalizeTaskTypeKey = (t: any) => String(t?.taskType || t?.type || '').trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -25745,7 +50902,25 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const normalizeRoleKey = (v: unknown) => String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+
+
+
+
 
 
 
@@ -25753,33 +50928,71 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const direct = normalizeRoleKey((t as any)?.assignedToUser?.role);
+
+
+
+
 
 
 
             if (direct) return direct;
 
+
+
             const candidate = (t as any)?.assignedToUser || (t as any)?.assignedTo;
+
+
 
             const idOrEmail = typeof candidate === 'string'
 
+
+
                 ? candidate
+
+
 
                 : (candidate?.id || candidate?._id || candidate?.email || '');
 
+
+
             const key = String(idOrEmail || '').trim().toLowerCase();
+
+
 
             if (!key) return '';
 
+
+
             const found = (usersRef.current || []).find((u: any) => {
+
+
 
                 const id = String(u?.id || u?._id || '').trim().toLowerCase();
 
+
+
                 const email = String(u?.email || '').trim().toLowerCase();
+
+
 
                 return (id && id === key) || (email && email === key);
 
+
+
             });
+
+
+
+
+
+
+
+
 
 
 
@@ -25791,7 +51004,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         };
+
+
+
+
+
+
+
+
 
 
 
@@ -25803,7 +51028,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const r = resolveAssigneeRoleKey(t);
+
+
+
+
 
 
 
@@ -25811,7 +51044,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         };
+
+
+
+
+
+
+
+
 
 
 
@@ -25823,7 +51068,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const email = String((t as any)?.assignedToUser?.email || (t as any)?.assignedTo || '').trim().toLowerCase();
+
+
+
+
 
 
 
@@ -25831,7 +51084,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         };
+
+
+
+
+
+
+
+
 
 
 
@@ -25847,17 +51112,43 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (role === 'ob_manager') {
+
+
+
+
 
 
 
                 const assignedByMe = String((task as any)?.assignedByUser?.email || (task as any)?.assignedBy || '').trim().toLowerCase() === myEmail;
 
+
+
                 return assignedByMe || isAssignedToMe(task) || isAssistantAssignee(task);
 
 
 
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -25873,7 +51164,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (isOtherWorkTask(task)) return false;
+
+
+
+
+
+
+
+
 
 
 
@@ -25889,7 +51196,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const assignedByMe = String(task.assignedBy || '').trim().toLowerCase() === myEmail;
+
+
+
+
+
+
+
+
 
 
 
@@ -25905,7 +51228,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (!assignedToMe) return false;
+
+
+
+
 
 
 
@@ -25913,7 +51248,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             }
+
+
+
+
 
 
 
@@ -25925,7 +51268,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return task.assignedTo === currentUser.email || task.assignedBy === currentUser.email;
+
+
+
+
+
+
+
+
 
 
 
@@ -25949,7 +51308,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         if (normalizeRoleKey(role) === 'sbm') {
+
+
+
+
+
+
+
+
 
 
 
@@ -25965,7 +51348,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (selectedRm && selectedRm !== 'all') {
+
+
+
+
+
+
+
+
 
 
 
@@ -25981,7 +51380,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const list: any[] = Array.isArray(usersRef.current) ? (usersRef.current as any[]) : (users as any[]);
+
+
+
+
+
+
+
+
 
 
 
@@ -25997,7 +51412,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const selectedRmId = String(selectedRmDoc?.id || selectedRmDoc?._id || '').trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -26013,7 +51444,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     ? rmTeamRaw
+
+
+
+
+
+
+
+
 
 
 
@@ -26029,7 +51476,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         .map((s) => String(s || '').trim().toLowerCase())
+
+
+
+
+
+
+
+
 
 
 
@@ -26045,7 +51508,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     : (selectedRmId
+
+
+
+
+
+
+
+
 
 
 
@@ -26057,7 +51536,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                             .filter((u: any) => String(u?.managerId || '').trim() === selectedRmId)
+
+
+
+
 
 
 
@@ -26065,7 +51552,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                 const r = normalizeRoleKey(u?.role);
+
+
+
+
 
 
 
@@ -26073,7 +51568,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                             })
+
+
+
+
+
+
+
+
 
 
 
@@ -26089,7 +51596,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                             .filter(Boolean)
+
+
+
+
+
+
+
+
 
 
 
@@ -26105,7 +51628,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const getAssignedToEmail = (t: any) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -26121,7 +51660,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const assignedToUser = (t as any)?.assignedToUser;
+
+
+
+
 
 
 
@@ -26133,7 +51684,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         (typeof assignedTo === 'string' && assignedTo.includes('@') ? assignedTo : assignedTo?.email) ||
+
+
+
+
 
 
 
@@ -26141,11 +51704,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                         (typeof assignedTo === 'string' ? assignedTo : '') ||
 
 
 
+
+
+
+
                         '';
+
+
+
+
+
+
+
+
 
 
 
@@ -26161,7 +51740,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 };
+
+
+
+
 
 
 
@@ -26169,7 +51760,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     const assignedToEmail = getAssignedToEmail(t);
+
+
+
+
 
 
 
@@ -26177,11 +51776,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                         selectedRm,
 
 
 
+
+
+
+
                         ...(teamEmails || []),
+
+
+
+
 
 
 
@@ -26193,11 +51804,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     return Boolean(assignedToEmail && allowed.includes(assignedToEmail));
 
 
 
+
+
+
+
                 });
+
+
+
+
+
+
+
+
 
 
 
@@ -26213,7 +51844,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -26237,7 +51892,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             filtered = filtered.filter((task) => task.status === 'completed');
+
+
+
+
+
+
+
+
 
 
 
@@ -26253,7 +51924,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             filtered = filtered.filter((task) => task.status === 'pending' || task.status === 'in-progress' || task.status === 'reassigned');
+
+
+
+
+
+
+
+
 
 
 
@@ -26269,6 +51956,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             filtered = filtered.filter((task) => task.status !== 'completed' && isOverdue(task.dueDate, task.status));
 
 
@@ -26277,7 +51972,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -26287,17 +51998,37 @@ const DashboardPage = () => {
 
         if (filters.status !== 'all') {
 
+
+
             if (filters.status === 'pending') {
+
+
 
                 filtered = filtered.filter((task) => task.status === 'pending' || task.status === 'in-progress' || task.status === 'reassigned');
 
+
+
             } else {
+
+
 
                 filtered = filtered.filter((task) => task.status === filters.status);
 
+
+
             }
 
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -26313,6 +52044,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             filtered = filtered.filter((task) => task.priority === filters.priority);
 
 
@@ -26321,7 +52060,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -26341,7 +52104,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         if (filters.taskType !== 'all') {
+
+
+
+
 
 
 
@@ -26349,7 +52120,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const raw = (value == null ? '' : String(value)).trim();
+
+
+
+
 
 
 
@@ -26357,7 +52136,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const key = raw.toLowerCase().replace(/[\s-]+/g, ' ').trim();
+
+
+
+
 
 
 
@@ -26365,11 +52152,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 return raw.toLowerCase();
 
 
 
+
+
+
+
             };
+
+
+
+
+
+
+
+
 
 
 
@@ -26385,7 +52188,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             filtered = filtered.filter((task) => {
+
+
+
+
 
 
 
@@ -26393,7 +52208,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 if (!filterTypeKey || !taskTypeKey) return false;
+
+
+
+
 
 
 
@@ -26401,11 +52224,35 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             });
 
 
 
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -26429,7 +52276,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const filterCompanyKey = normalizeCompanyKey(filters.company);
+
+
+
+
+
+
+
+
 
 
 
@@ -26445,7 +52308,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const taskCompany = (task.companyName || (task as any).company || '');
+
+
+
+
+
+
+
+
 
 
 
@@ -26461,6 +52340,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             });
 
 
@@ -26469,7 +52356,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -26493,7 +52404,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const filterBrand = filters.brand.toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -26509,7 +52436,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const taskBrand = (task.brand || '').toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -26525,6 +52468,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             });
 
 
@@ -26533,7 +52484,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -26557,7 +52532,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             filtered = filtered.filter((task) => new Date(task.dueDate).toDateString() === new Date().toDateString());
+
+
+
+
+
+
+
+
 
 
 
@@ -26573,7 +52564,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             filtered = filtered.filter((task) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -26589,7 +52596,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const today = new Date();
+
+
+
+
+
+
+
+
 
 
 
@@ -26605,7 +52628,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 nextWeek.setDate(today.getDate() + 7);
+
+
+
+
+
+
+
+
 
 
 
@@ -26621,7 +52660,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             });
+
+
+
+
+
+
+
+
 
 
 
@@ -26637,6 +52692,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             filtered = filtered.filter((task) => isOverdue(task.dueDate, task.status));
 
 
@@ -26645,7 +52708,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -26665,7 +52752,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const assignedFilterValue = filters.assigned;
+
+
+
+
 
 
 
@@ -26673,7 +52768,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 filtered = filtered.filter((task) => task.assignedTo === currentUser.email);
+
+
+
+
 
 
 
@@ -26681,7 +52784,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 filtered = filtered.filter((task) => task.assignedBy === currentUser.email);
+
+
+
+
 
 
 
@@ -26689,11 +52800,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const assignedToEmail = assignedFilterValue.split(':')[1];
 
 
 
+
+
+
+
                 filtered = filtered.filter((task) => task.assignedTo === assignedToEmail);
+
+
+
+
 
 
 
@@ -26703,7 +52826,29 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -26727,7 +52872,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const term = searchTerm.toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -26743,7 +52904,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const title = (task.title || '').toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -26759,7 +52936,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const brand = (task.brand || '').toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -26771,53 +52964,111 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const assignedToUser = (task as any).assignedToUser;
+
+
 
                 const assignedByUser = (task as any).assignedByUser;
 
 
 
+
+
+
+
                 const assignedToEmail = String(
+
+
 
                     assignedToUser?.email ||
 
+
+
                     (typeof (task as any).assignedTo === 'string' ? (task as any).assignedTo : (task as any).assignedTo?.email) ||
+
+
 
                     ''
 
+
+
                 ).toLowerCase();
+
+
+
+
 
 
 
                 const assignedToName = String(
 
+
+
                     assignedToUser?.name ||
+
+
 
                     ''
 
+
+
                 ).toLowerCase();
+
+
+
+
 
 
 
                 const assignedByEmail = String(
 
+
+
                     assignedByUser?.email ||
+
+
 
                     (typeof (task as any).assignedBy === 'string' ? (task as any).assignedBy : (task as any).assignedBy?.email) ||
 
+
+
                     ''
 
+
+
                 ).toLowerCase();
+
+
+
+
 
 
 
                 const assignedByName = String(
 
+
+
                     assignedByUser?.name ||
+
+
 
                     ''
 
+
+
                 ).toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -26833,7 +53084,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     title.includes(term) ||
+
+
+
+
+
+
+
+
 
 
 
@@ -26849,7 +53116,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     brand.includes(term) ||
+
+
+
+
+
+
+
+
 
 
 
@@ -26859,13 +53142,29 @@ const DashboardPage = () => {
 
                     typeVal.includes(term) ||
 
+
+
                     assignedToEmail.includes(term) ||
+
+
 
                     assignedToName.includes(term) ||
 
+
+
                     assignedByEmail.includes(term) ||
 
+
+
                     assignedByName.includes(term)
+
+
+
+
+
+
+
+
 
 
 
@@ -26881,7 +53180,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             });
+
+
+
+
+
+
+
+
 
 
 
@@ -26905,6 +53220,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         return filtered;
 
 
@@ -26913,7 +53244,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, [canViewAllTasks, currentUser, filters, isOverdue, normalizeCompanyKey, searchTerm, selectedStatFilter, tasks]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -26945,11 +53300,39 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const PAGE_SIZE_OPTIONS = [10, 25, 50, 75, 100, 125, 150, 175, 200];
 
 
 
+
+
+
+
     const [tasksPerPage, setTasksPerPage] = useState<number>(10);
+
+
+
+
+
+
+
+
 
 
 
@@ -26965,7 +53348,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return Math.max(1, Math.ceil(displayTasks.length / tasksPerPage));
+
+
+
+
+
+
+
+
 
 
 
@@ -26989,7 +53388,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     useEffect(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -27005,7 +53428,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, [
+
+
+
+
+
+
+
+
 
 
 
@@ -27021,7 +53460,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         selectedStatFilter,
+
+
+
+
+
+
+
+
 
 
 
@@ -27037,7 +53492,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         filters.priority,
+
+
+
+
+
+
+
+
 
 
 
@@ -27053,7 +53524,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         filters.date,
+
+
+
+
+
+
+
+
 
 
 
@@ -27069,7 +53556,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         filters.company,
+
+
+
+
+
+
+
+
 
 
 
@@ -27085,7 +53588,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         tasksPerPage,
+
+
+
+
+
+
+
+
 
 
 
@@ -27109,7 +53628,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     useEffect(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -27125,7 +53668,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (prev < 1) return 1;
+
+
+
+
+
+
+
+
 
 
 
@@ -27141,6 +53700,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return prev;
 
 
@@ -27149,7 +53716,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         });
+
+
+
+
+
+
+
+
 
 
 
@@ -27173,7 +53756,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const paginatedTasks = useMemo(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -27189,7 +53796,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return displayTasks.slice(start, start + tasksPerPage);
+
+
+
+
+
+
+
+
 
 
 
@@ -27213,7 +53836,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const taskPageNumbers = useMemo(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -27229,7 +53876,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (totalTaskPages <= 7) {
+
+
+
+
+
+
+
+
 
 
 
@@ -27245,7 +53908,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return pages;
+
+
+
+
+
+
+
+
 
 
 
@@ -27261,7 +53940,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const start = Math.max(2, taskPage - 1);
+
+
+
+
+
+
+
+
 
 
 
@@ -27277,7 +53972,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         pages.push(1);
+
+
+
+
+
+
+
+
 
 
 
@@ -27293,6 +54004,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         pages.push(totalTaskPages);
 
 
@@ -27301,7 +54020,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return Array.from(new Set(pages));
+
+
+
+
+
+
+
+
 
 
 
@@ -27325,6 +54060,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const showListActionsColumn = useMemo(() => {
 
 
@@ -27333,7 +54084,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return displayTasks.some((t: Task) => canEditTask(t) || canEditDeleteTask(t));
+
+
+
+
+
+
+
+
 
 
 
@@ -27357,7 +54124,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     useMemo(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -27381,7 +54172,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const role = String((currentUser as any)?.role || '').trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -27397,7 +54212,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const normalizeTaskTypeKey = (t: any) => String(t?.taskType || t?.type || '').trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -27413,7 +54244,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const resolveAssignerRole = (t: any) => String((t as any)?.assignedByUser?.role || (t as any)?.assilgnedBy?.role || '').trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -27425,11 +54272,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         const resolveAssigneeRoleKey = (t: any): string => {
 
 
 
+
+
+
+
             const direct = normalizeRoleKey((t as any)?.assignedToUser?.role);
+
+
+
+
 
 
 
@@ -27441,7 +54300,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const candidate = (t as any)?.assignedToUser || (t as any)?.assignedTo;
+
+
+
+
 
 
 
@@ -27449,7 +54320,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 ? candidate
+
+
+
+
 
 
 
@@ -27457,7 +54336,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const key = String(idOrEmail || '').trim().toLowerCase();
+
+
+
+
 
 
 
@@ -27469,7 +54356,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const found = (usersRef.current || []).find((u: any) => {
+
+
+
+
 
 
 
@@ -27477,11 +54376,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const email = String(u?.email || '').trim().toLowerCase();
 
 
 
+
+
+
+
                 return (id && id === key) || (email && email === key);
+
+
+
+
 
 
 
@@ -27493,11 +54404,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return normalizeRoleKey((found as any)?.role);
 
 
 
+
+
+
+
         };
+
+
+
+
 
 
 
@@ -27505,7 +54432,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const r = resolveAssigneeRoleKey(t);
+
+
+
+
 
 
 
@@ -27513,7 +54448,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -27537,7 +54492,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (role === 'ob_manager') {
+
+
+
+
 
 
 
@@ -27545,7 +54512,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -27561,7 +54540,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (isOtherWorkTask(task)) return false;
+
+
+
+
+
+
+
+
 
 
 
@@ -27577,7 +54572,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const assignedByMe = String(task.assignedBy || '').trim().toLowerCase() === myEmail;
+
+
+
+
+
+
+
+
 
 
 
@@ -27593,7 +54604,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (!assignedToMe) return false;
+
+
+
+
+
+
+
+
 
 
 
@@ -27609,7 +54636,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -27633,7 +54684,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return task.assignedTo === currentUser.email || task.assignedBy === currentUser.email;
+
+
+
+
+
+
+
+
 
 
 
@@ -27657,7 +54724,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         if (filters.status !== 'all') {
+
+
+
+
+
+
+
+
 
 
 
@@ -27673,7 +54764,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -27697,6 +54812,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             filtered = filtered.filter((task) => task.priority === filters.priority);
 
 
@@ -27705,7 +54828,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -27725,7 +54872,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         if (filters.taskType !== 'all') {
+
+
+
+
 
 
 
@@ -27733,7 +54888,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const raw = (value == null ? '' : String(value)).trim();
+
+
+
+
 
 
 
@@ -27741,7 +54904,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const key = raw.toLowerCase().replace(/[\s-]+/g, ' ').trim();
+
+
+
+
 
 
 
@@ -27749,11 +54920,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 return raw.toLowerCase();
 
 
 
+
+
+
+
             };
+
+
+
+
+
+
+
+
 
 
 
@@ -27769,7 +54956,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             filtered = filtered.filter((task) => {
+
+
+
+
 
 
 
@@ -27777,7 +54976,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 if (!filterTypeKey || !taskTypeKey) return false;
+
+
+
+
 
 
 
@@ -27785,11 +54992,35 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             });
 
 
 
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -27813,7 +55044,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const filterCompanyKey = normalizeCompanyKey(filters.company);
+
+
+
+
+
+
+
+
 
 
 
@@ -27829,7 +55076,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const taskCompany = (task.companyName || (task as any).company || '');
+
+
+
+
+
+
+
+
 
 
 
@@ -27845,6 +55108,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             });
 
 
@@ -27853,7 +55124,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -27877,7 +55172,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const filterBrand = filters.brand.toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -27893,7 +55204,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const taskBrand = (task.brand || '').toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -27909,6 +55236,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             });
 
 
@@ -27917,7 +55252,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -27941,7 +55300,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             filtered = filtered.filter((task) => new Date(task.dueDate).toDateString() === new Date().toDateString());
+
+
+
+
+
+
+
+
 
 
 
@@ -27957,7 +55332,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             filtered = filtered.filter((task) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -27973,7 +55364,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const today = new Date();
+
+
+
+
+
+
+
+
 
 
 
@@ -27989,7 +55396,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 nextWeek.setDate(today.getDate() + 7);
+
+
+
+
+
+
+
+
 
 
 
@@ -28005,7 +55428,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             });
+
+
+
+
+
+
+
+
 
 
 
@@ -28021,6 +55460,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             filtered = filtered.filter((task) => isOverdue(task.dueDate, task.status));
 
 
@@ -28029,7 +55476,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -28053,7 +55524,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             filtered = filtered.filter((task) => task.assignedTo === currentUser.email);
+
+
+
+
+
+
+
+
 
 
 
@@ -28069,6 +55556,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             filtered = filtered.filter((task) => task.assignedBy === currentUser.email);
 
 
@@ -28077,7 +55572,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -28101,7 +55620,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const term = searchTerm.toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -28117,7 +55652,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const title = (task.title || '').toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -28133,7 +55684,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const brand = (task.brand || '').toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -28149,7 +55716,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return title.includes(term) || company.includes(term) || brand.includes(term) || typeVal.includes(term);
+
+
+
+
+
+
+
+
 
 
 
@@ -28165,7 +55748,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -28189,7 +55796,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, [canViewAllTasks, currentUser, filters, isOverdue, normalizeCompanyKey, normalizeRoleKey, searchTerm, tasks, usersRef]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -28213,7 +55844,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         // Use baseFilteredTasks without selectedStatFilter for stats
+
+
+
+
 
 
 
@@ -28221,7 +55864,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         const myEmail = (currentUser.email || '').toString().trim().toLowerCase();
+
+
+
+
 
 
 
@@ -28233,7 +55884,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         let filtered = tasks.filter((task) => {
+
+
+
+
 
 
 
@@ -28241,7 +55904,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const assignedByMe = String((task as any)?.assignedByUser?.email || (task as any)?.assignedBy || '').trim().toLowerCase() === myEmail;
+
+
+
+
 
 
 
@@ -28249,7 +55920,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const normalizeTaskTypeKey = (t: any) => String(t?.taskType || t?.type || '').trim().toLowerCase();
+
+
+
+
 
 
 
@@ -28257,7 +55936,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const resolveAssigneeRoleKey = (t: any): string => {
+
+
+
+
 
 
 
@@ -28265,7 +55952,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     if (direct) return direct;
+
+
+
+
 
 
 
@@ -28273,7 +55968,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     const idOrEmail = typeof candidate === 'string' ? candidate : (candidate?.id || candidate?._id || candidate?.email || '');
+
+
+
+
 
 
 
@@ -28281,7 +55984,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     if (!key) return '';
+
+
+
+
 
 
 
@@ -28289,7 +56000,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                         const id = String(u?.id || u?._id || '').trim().toLowerCase();
+
+
+
+
 
 
 
@@ -28297,7 +56016,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                         return (id && id === key) || (email && email === key);
+
+
+
+
 
 
 
@@ -28305,11 +56032,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     return normalizeRoleKey((found as any)?.role);
 
 
 
+
+
+
+
                 };
+
+
+
+
 
 
 
@@ -28317,7 +56056,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     const r = resolveAssigneeRoleKey(t);
+
+
+
+
 
 
 
@@ -28325,7 +56072,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 };
+
+
+
+
 
 
 
@@ -28333,7 +56088,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -28345,7 +56112,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const normalizeTaskTypeKey = (t: any) => String(t?.taskType || t?.type || '').trim().toLowerCase();
+
+
+
+
 
 
 
@@ -28353,7 +56128,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 if (isOtherWorkTask(task)) return false;
+
+
+
+
 
 
 
@@ -28361,7 +56144,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const assignedByMe = String(task.assignedBy || '').trim().toLowerCase() === myEmail;
+
+
+
+
 
 
 
@@ -28369,7 +56160,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 if (!assignedToMe) return false;
+
+
+
+
 
 
 
@@ -28377,11 +56176,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 return resolveAssignerRole(task) === 'md_manager';
 
 
 
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -28393,7 +56208,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             return task.assignedTo === currentUser.email || task.assignedBy === currentUser.email;
+
+
+
+
 
 
 
@@ -28405,9 +56228,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         // Apply SBM RM filter for stats
 
+
+
         if (normalizeRoleKey(role) === 'sbm') {
+
+
+
+
 
 
 
@@ -28415,9 +56252,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             if (selectedRm && selectedRm !== 'all') {
 
+
+
                 const list: any[] = Array.isArray(usersRef.current) ? (usersRef.current as any[]) : (users as any[]);
+
+
+
+
 
 
 
@@ -28425,43 +56272,87 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const selectedRmId = String(selectedRmDoc?.id || selectedRmDoc?._id || '').trim();
+
+
 
                 const teamEmails = selectedRmId
 
+
+
                     ? (list || [])
+
+
 
                         .filter((u: any) => String(u?.managerId || '').trim() === selectedRmId)
 
+
+
                         .filter((u: any) => {
+
+
 
                             const r = normalizeRoleKey(u?.role);
 
+
+
                             return r === 'am' || r === 'ar';
+
+
 
                         })
 
+
+
                         .map((u: any) => String(u?.email || '').trim().toLowerCase())
+
+
 
                         .filter(Boolean)
 
+
+
                     : [];
+
+
 
                 const getAssignedByEmail = (t: any) => {
 
+
+
                     const assignedBy = (t as any)?.assignedBy;
+
+
 
                     const assignedByUser = (t as any)?.assignedByUser;
 
+
+
                     const email =
+
+
 
                         (typeof assignedBy === 'string' && assignedBy.includes('@') ? assignedBy : assignedBy?.email) ||
 
+
+
                         (typeof assignedByUser === 'string' && assignedByUser.includes('@') ? assignedByUser : assignedByUser?.email) ||
+
+
 
                         (typeof assignedBy === 'string' ? assignedBy : '') ||
 
+
+
                         '';
+
+
+
+
 
 
 
@@ -28469,23 +56360,47 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 };
+
+
 
                 const getAssignedToEmail = (t: any) => {
 
+
+
                     const assignedTo = (t as any)?.assignedTo;
+
+
 
                     const assignedToUser = (t as any)?.assignedToUser;
 
+
+
                     const email =
+
+
 
                         (typeof assignedTo === 'string' && assignedTo.includes('@') ? assignedTo : assignedTo?.email) ||
 
+
+
                         (typeof assignedToUser === 'string' && assignedToUser.includes('@') ? assignedToUser : assignedToUser?.email) ||
+
+
 
                         (typeof assignedTo === 'string' ? assignedTo : '') ||
 
+
+
                         '';
+
+
+
+
 
 
 
@@ -28493,23 +56408,47 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 };
+
+
 
                 filtered = filtered.filter((t: any) => {
 
+
+
                     const assignedByEmail = getAssignedByEmail(t);
+
+
 
                     if (!assignedByEmail || assignedByEmail !== selectedRm) return false;
 
+
+
                     const assignedToEmail = getAssignedToEmail(t);
+
+
 
                     const isToMe = Boolean(myEmail && assignedToEmail && assignedToEmail === myEmail);
 
+
+
                     const isToTeam = Boolean(assignedToEmail && teamEmails.includes(assignedToEmail));
+
+
 
                     return isToMe || isToTeam;
 
+
+
                 });
+
+
+
+
 
 
 
@@ -28517,7 +56456,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -28529,19 +56480,39 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         if (filters.status !== 'all') {
+
+
 
             if (filters.status === 'pending') {
 
+
+
                 filtered = filtered.filter((task) => task.status === 'pending' || task.status === 'in-progress' || task.status === 'reassigned');
+
+
 
             } else {
 
+
+
                 filtered = filtered.filter((task) => task.status === filters.status);
+
+
 
             }
 
+
+
         }
+
+
+
+
 
 
 
@@ -28549,11 +56520,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             filtered = filtered.filter((task) => task.priority === filters.priority);
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -28561,7 +56544,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const canonicalizeTypeKey = (value: unknown): string => {
+
+
+
+
 
 
 
@@ -28569,7 +56560,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 if (!raw) return '';
+
+
+
+
 
 
 
@@ -28577,7 +56576,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 if (key === 'troubleshoot' || key === 'trouble shoot' || key === 'trubbleshot' || key === 'trubble shoot') return 'troubleshoot';
+
+
+
+
 
 
 
@@ -28585,7 +56592,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             };
+
+
+
+
 
 
 
@@ -28593,7 +56608,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             filtered = filtered.filter((task) => {
+
+
+
+
 
 
 
@@ -28601,7 +56624,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 if (!filterTypeKey || !taskTypeKey) return false;
+
+
+
+
 
 
 
@@ -28609,11 +56640,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             });
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -28621,11 +56664,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const filterCompanyKey = normalizeCompanyKey(filters.company);
 
 
 
+
+
+
+
             filtered = filtered.filter((task) => {
+
+
+
+
 
 
 
@@ -28633,7 +56688,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 return normalizeCompanyKey(taskCompany) === filterCompanyKey;
+
+
+
+
 
 
 
@@ -28641,7 +56704,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -28649,11 +56720,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const filterBrand = filters.brand.toLowerCase();
 
 
 
+
+
+
+
             filtered = filtered.filter((task) => {
+
+
+
+
 
 
 
@@ -28661,7 +56744,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 return taskBrand === filterBrand;
+
+
+
+
 
 
 
@@ -28669,7 +56760,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -28677,7 +56776,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             filtered = filtered.filter((task) => new Date(task.dueDate).toDateString() === new Date().toDateString());
+
+
+
+
 
 
 
@@ -28685,7 +56792,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             filtered = filtered.filter((task) => {
+
+
+
+
 
 
 
@@ -28693,7 +56808,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const today = new Date();
+
+
+
+
 
 
 
@@ -28701,7 +56824,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 nextWeek.setDate(today.getDate() + 7);
+
+
+
+
 
 
 
@@ -28709,7 +56840,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             });
+
+
+
+
 
 
 
@@ -28717,11 +56856,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             filtered = filtered.filter((task) => isOverdue(task.dueDate, task.status));
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -28729,7 +56880,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             filtered = filtered.filter((task) => task.assignedTo === currentUser.email);
+
+
+
+
 
 
 
@@ -28737,11 +56896,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             filtered = filtered.filter((task) => task.assignedBy === currentUser.email);
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -28749,7 +56920,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const term = searchTerm.toLowerCase();
+
+
+
+
 
 
 
@@ -28757,7 +56936,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const title = (task.title || '').toLowerCase();
+
+
+
+
 
 
 
@@ -28765,7 +56952,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const brand = (task.brand || '').toLowerCase();
+
+
+
+
 
 
 
@@ -28773,75 +56968,151 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const assignedToUser = (task as any).assignedToUser;
+
+
 
                 const assignedByUser = (task as any).assignedByUser;
 
 
 
+
+
+
+
                 const assignedToEmail = String(
+
+
 
                     assignedToUser?.email ||
 
+
+
                     (typeof (task as any).assignedTo === 'string' ? (task as any).assignedTo : (task as any).assignedTo?.email) ||
+
+
 
                     ''
 
+
+
                 ).toLowerCase();
+
+
+
+
 
 
 
                 const assignedToName = String(
 
+
+
                     assignedToUser?.name ||
+
+
 
                     ''
 
+
+
                 ).toLowerCase();
+
+
+
+
 
 
 
                 const assignedByEmail = String(
 
+
+
                     assignedByUser?.email ||
+
+
 
                     (typeof (task as any).assignedBy === 'string' ? (task as any).assignedBy : (task as any).assignedBy?.email) ||
 
+
+
                     ''
 
+
+
                 ).toLowerCase();
+
+
+
+
 
 
 
                 const assignedByName = String(
 
+
+
                     assignedByUser?.name ||
 
+
+
                     ''
+
+
 
                 ).toLowerCase();
 
 
 
+
+
+
+
                 return (
+
+
 
                     title.includes(term) ||
 
+
+
                     company.includes(term) ||
+
+
 
                     brand.includes(term) ||
 
+
+
                     typeVal.includes(term) ||
+
+
 
                     assignedToEmail.includes(term) ||
 
+
+
                     assignedToName.includes(term) ||
+
+
 
                     assignedByEmail.includes(term) ||
 
+
+
                     assignedByName.includes(term)
 
+
+
                 );
+
+
+
+
 
 
 
@@ -28849,7 +57120,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -28861,7 +57144,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         const pendingTasks = filtered.filter((t) => t.status !== 'completed');
+
+
+
+
 
 
 
@@ -28873,11 +57164,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return [
 
 
 
+
+
+
+
             {
+
+
+
+
 
 
 
@@ -28885,7 +57192,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 value: filtered.length,
+
+
+
+
 
 
 
@@ -28893,7 +57208,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 changeType: 'positive',
+
+
+
+
 
 
 
@@ -28901,7 +57224,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 id: 'total',
+
+
+
+
 
 
 
@@ -28909,7 +57240,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 bgColor: 'bg-blue-50',
+
+
+
+
 
 
 
@@ -28917,7 +57256,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             {
+
+
+
+
 
 
 
@@ -28925,7 +57272,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 value: completedTasks.length,
+
+
+
+
 
 
 
@@ -28933,7 +57288,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 changeType: 'positive',
+
+
+
+
 
 
 
@@ -28941,7 +57304,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 id: 'completed',
+
+
+
+
 
 
 
@@ -28949,7 +57320,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 bgColor: 'bg-emerald-50',
+
+
+
+
 
 
 
@@ -28957,7 +57336,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             {
+
+
+
+
 
 
 
@@ -28965,7 +57352,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 value: pendingTasks.length,
+
+
+
+
 
 
 
@@ -28973,7 +57368,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 changeType: 'negative',
+
+
+
+
 
 
 
@@ -28981,7 +57384,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 id: 'pending',
+
+
+
+
 
 
 
@@ -28989,7 +57400,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 bgColor: 'bg-amber-50',
+
+
+
+
 
 
 
@@ -28997,7 +57416,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             {
+
+
+
+
 
 
 
@@ -29005,7 +57432,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 value: overdueTasks.length,
+
+
+
+
 
 
 
@@ -29013,7 +57448,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 changeType: 'negative',
+
+
+
+
 
 
 
@@ -29021,7 +57464,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 id: 'overdue',
+
+
+
+
 
 
 
@@ -29029,7 +57480,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 bgColor: 'bg-rose-50',
+
+
+
+
 
 
 
@@ -29037,7 +57496,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         ];
+
+
+
+
+
+
+
+
 
 
 
@@ -29061,7 +57532,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const getPriorityColor = useCallback((priority?: TaskPriority) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -29077,7 +57572,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             case 'high': return 'border-red-300 bg-red-50 text-red-700';
+
+
+
+
+
+
+
+
 
 
 
@@ -29093,7 +57604,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             case 'low': return 'border-blue-300 bg-blue-50 text-blue-700';
+
+
+
+
+
+
+
+
 
 
 
@@ -29109,6 +57636,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
 
 
@@ -29117,7 +57652,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, []);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -29141,7 +57700,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         switch (status) {
+
+
+
+
+
+
+
+
 
 
 
@@ -29157,7 +57732,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             case 'in-progress': return 'border-blue-300 bg-blue-50 text-blue-700';
+
+
+
+
+
+
+
+
 
 
 
@@ -29173,7 +57764,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             default: return 'border-gray-300 bg-gray-50 text-gray-700';
+
+
+
+
+
+
+
+
 
 
 
@@ -29189,7 +57796,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, []);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -29213,7 +57844,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const value = (companyName || '').toLowerCase().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -29237,7 +57884,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const palette = [
+
+
+
+
+
+
+
+
 
 
 
@@ -29253,7 +57924,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             'border-indigo-300 bg-indigo-50 text-indigo-700',
+
+
+
+
+
+
+
+
 
 
 
@@ -29269,7 +57956,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             'border-emerald-300 bg-emerald-50 text-emerald-700',
+
+
+
+
+
+
+
+
 
 
 
@@ -29285,7 +57988,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             'border-rose-300 bg-rose-50 text-rose-700',
+
+
+
+
+
+
+
+
 
 
 
@@ -29309,7 +58028,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const hash = value.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+
+
+
+
+
+
+
+
 
 
 
@@ -29325,7 +58068,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, []);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -29349,7 +58116,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const value = (brand || '').toLowerCase().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -29373,7 +58156,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const palette = [
+
+
+
+
+
+
+
+
 
 
 
@@ -29389,7 +58196,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             'border-indigo-300 bg-indigo-50 text-indigo-700',
+
+
+
+
+
+
+
+
 
 
 
@@ -29405,7 +58228,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             'border-emerald-300 bg-emerald-50 text-emerald-700',
+
+
+
+
+
+
+
+
 
 
 
@@ -29421,7 +58260,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             'border-rose-300 bg-rose-50 text-rose-700',
+
+
+
+
+
+
+
+
 
 
 
@@ -29445,7 +58300,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const hash = value.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+
+
+
+
+
+
+
+
 
 
 
@@ -29461,7 +58340,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, []);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -29485,7 +58388,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         let count = 0;
+
+
+
+
+
+
+
+
 
 
 
@@ -29501,7 +58420,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         Object.entries(filters).forEach(([key, value]) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -29517,7 +58452,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (key === 'company' && isCompanyForced) return;
+
+
+
+
+
+
+
+
 
 
 
@@ -29533,6 +58484,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         });
 
 
@@ -29541,7 +58500,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return count;
+
+
+
+
+
+
+
+
 
 
 
@@ -29565,7 +58540,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleStatClick = useCallback((statId: string) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -29581,7 +58580,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         // behave like a radio group: selecting a card selects it (no toggle-off)
+
+
+
+
 
 
 
@@ -29593,7 +58604,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, []);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -29617,7 +58652,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         setTaskPage(1);
+
+
+
+
+
+
+
+
 
 
 
@@ -29633,6 +58684,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             ...prev,
 
 
@@ -29641,7 +58700,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             [filterType]: value,
+
+
+
+
+
+
+
+
 
 
 
@@ -29665,7 +58740,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         // If company changes, reset brand
+
+
+
+
+
+
+
+
 
 
 
@@ -29681,7 +58780,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             setFilters(prev => ({
+
+
+
+
+
+
+
+
 
 
 
@@ -29697,7 +58812,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 brand: 'all',
+
+
+
+
+
+
+
+
 
 
 
@@ -29713,7 +58844,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }));
+
+
+
+
+
+
+
+
 
 
 
@@ -29729,7 +58876,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, []);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -29753,7 +58924,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         setTaskPage(1);
+
+
+
+
+
+
+
+
 
 
 
@@ -29769,6 +58956,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             ...prev,
 
 
@@ -29777,7 +58972,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             [filterType]: value,
+
+
+
+
+
+
+
+
 
 
 
@@ -29801,7 +59012,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         // If company changes, reset brand
+
+
+
+
+
+
+
+
 
 
 
@@ -29817,7 +59052,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             setFilters(prev => ({
+
+
+
+
+
+
+
+
 
 
 
@@ -29833,7 +59084,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 brand: 'all',
+
+
+
+
+
+
+
+
 
 
 
@@ -29849,7 +59116,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }));
+
+
+
+
+
+
+
+
 
 
 
@@ -29865,7 +59148,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, []);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -29889,7 +59196,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         setTaskPage(1);
+
+
+
+
+
+
+
+
 
 
 
@@ -29905,7 +59228,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             status: 'all',
+
+
+
+
+
+
+
+
 
 
 
@@ -29921,7 +59260,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             assigned: 'all',
+
+
+
+
+
+
+
+
 
 
 
@@ -29937,7 +59292,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             taskType: 'all',
+
+
+
+
+
+
+
+
 
 
 
@@ -29953,7 +59324,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             brand: 'all',
+
+
+
+
+
+
+
+
 
 
 
@@ -29965,7 +59352,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         });
+
+
+
+
+
+
+
+
 
 
 
@@ -29981,7 +59380,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         setSearchTerm('');
+
+
+
+
+
+
+
+
 
 
 
@@ -30005,7 +59420,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleInputChange = useCallback((field: keyof NewTaskForm, value: string) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -30017,7 +59456,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const next: any = {
+
+
+
+
 
 
 
@@ -30025,7 +59472,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 [field]: value,
+
+
+
+
 
 
 
@@ -30037,7 +59492,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (field === 'assignedTo') {
+
+
+
+
 
 
 
@@ -30045,7 +59512,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const userDoc: any = (usersRef.current || []).find((u: any) => {
+
+
+
+
 
 
 
@@ -30053,7 +59528,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     return uEmail && uEmail === emailKey;
+
+
+
+
 
 
 
@@ -30065,7 +59548,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const userCompany = (userDoc?.companyName || userDoc?.company || '').toString().trim();
+
+
+
+
 
 
 
@@ -30073,7 +59568,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     next.companyName = userCompany;
+
+
+
+
 
 
 
@@ -30081,7 +59584,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     next.taskType = '';
+
+
+
+
 
 
 
@@ -30089,7 +59600,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -30101,11 +59624,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 next.brand = '';
 
 
 
+
+
+
+
                 next.taskType = '';
+
+
+
+
 
 
 
@@ -30117,11 +59652,39 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return next as NewTaskForm;
 
 
 
+
+
+
+
         });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -30145,7 +59708,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             setFormErrors(prev => {
+
+
+
+
+
+
+
+
 
 
 
@@ -30161,7 +59740,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 delete newErrors[field];
+
+
+
+
+
+
+
+
 
 
 
@@ -30177,6 +59772,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             });
 
 
@@ -30185,7 +59788,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -30217,6 +59844,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     useEffect(() => {
 
 
@@ -30225,7 +59868,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const company = (newTask.companyName || '').toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -30249,7 +59908,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const options = Array.isArray(availableTaskTypesForNewTask) ? availableTaskTypesForNewTask : [];
+
+
+
+
+
+
+
+
 
 
 
@@ -30273,6 +59956,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const current = (newTask.taskType || '').toString().trim().toLowerCase();
 
 
@@ -30281,7 +59980,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const normalizedOptions = options.map((x) => (x || '').toString().trim().toLowerCase()).filter(Boolean);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -30313,7 +60036,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         setNewTask((prev) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -30329,7 +60076,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (curr && normalizedOptions.includes(curr)) return prev;
+
+
+
+
+
+
+
+
 
 
 
@@ -30345,7 +60108,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         });
+
+
+
+
+
+
+
+
 
 
 
@@ -30369,7 +60148,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleAddTaskTypeClick = useCallback(async () => {
+
+
+
+
+
+
+
+
 
 
 
@@ -30385,7 +60188,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!bulkTaskTypeCompany) {
+
+
+
+
+
+
+
+
 
 
 
@@ -30401,7 +60220,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -30417,6 +60252,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return;
 
 
@@ -30425,7 +60268,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -30449,7 +60316,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             toast.error('Please select a company first');
+
+
+
+
+
+
+
+
 
 
 
@@ -30465,7 +60348,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -30489,7 +60396,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const name = (raw || '').toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -30513,7 +60436,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         try {
+
+
+
+
+
+
+
+
 
 
 
@@ -30529,7 +60476,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (res.success && res.data) {
+
+
+
+
+
+
+
+
 
 
 
@@ -30545,7 +60508,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const list = Array.isArray(prev) ? prev : [];
+
+
+
+
+
+
+
+
 
 
 
@@ -30561,7 +60540,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     if (exists) return list;
+
+
+
+
+
+
+
+
 
 
 
@@ -30577,7 +60572,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 });
+
+
+
+
+
+
+
+
 
 
 
@@ -30593,7 +60604,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 handleInputChange('taskType', res.data.name.toLowerCase());
+
+
+
+
+
+
+
+
 
 
 
@@ -30609,7 +60636,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         } catch (error) {
+
+
+
+
+
+
+
+
 
 
 
@@ -30625,7 +60668,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -30649,7 +60708,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleAddCompanyClick = useCallback(async () => {
+
+
+
+
+
+
+
+
 
 
 
@@ -30665,7 +60748,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             setShowBulkCompanyModal(true);
+
+
+
+
+
+
+
+
 
 
 
@@ -30681,7 +60780,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -30705,7 +60828,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const name = (raw || '').toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -30729,7 +60868,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         try {
+
+
+
+
+
+
+
+
 
 
 
@@ -30745,7 +60908,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (res.success && res.data) {
+
+
+
+
+
+
+
+
 
 
 
@@ -30761,7 +60940,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const list = Array.isArray(prev) ? prev : [];
+
+
+
+
+
+
+
+
 
 
 
@@ -30777,7 +60972,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     if (exists) return list;
+
+
+
+
+
+
+
+
 
 
 
@@ -30793,7 +61004,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 });
+
+
+
+
+
+
+
+
 
 
 
@@ -30809,7 +61036,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 handleInputChange('companyName', res.data.name);
+
+
+
+
+
+
+
+
 
 
 
@@ -30825,7 +61068,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         } catch (error) {
+
+
+
+
+
+
+
+
 
 
 
@@ -30841,7 +61100,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -30865,7 +61140,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleAddBrandClick = useCallback(async () => {
+
+
+
+
+
+
+
+
 
 
 
@@ -30881,7 +61180,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             setShowBulkBrandModal(true);
+
+
+
+
+
+
+
+
 
 
 
@@ -30897,7 +61212,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -30921,7 +61260,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             toast.error('Access denied');
+
+
+
+
+
+
+
+
 
 
 
@@ -30937,7 +61292,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -30961,7 +61340,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             toast.error('Please select a company first');
+
+
+
+
+
+
+
+
 
 
 
@@ -30977,7 +61372,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -31001,7 +61420,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         setShowManagerAddBrandModal(true);
+
+
+
+
+
+
+
+
 
 
 
@@ -31025,7 +61460,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleSubmitBulkBrands = useCallback(async () => {
+
+
+
+
+
+
+
+
 
 
 
@@ -31041,7 +61500,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             toast.error('Access denied');
+
+
+
+
+
+
+
+
 
 
 
@@ -31057,7 +61532,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -31073,7 +61564,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             toast.error('Please select a company');
+
+
+
+
+
+
+
+
 
 
 
@@ -31089,7 +61596,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -31113,7 +61644,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const companyKey = companyName.toLowerCase().replace(/\s+/g, '');
+
+
+
+
+
+
+
+
 
 
 
@@ -31129,7 +61676,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const splitLines = (text: string) => (text || '').split(/\r?\n/).map((l) => l.trim());
+
+
+
+
+
+
+
+
 
 
 
@@ -31145,7 +61708,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             let end = list.length;
+
+
+
+
+
+
+
+
 
 
 
@@ -31161,6 +61740,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return list.slice(0, end);
 
 
@@ -31169,53 +61756,108 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         };
+
         const requestedBrands = isSpeedEcomCompany
+
             ? (() => {
+
                 const groupNumbers = trimEndEmpty(splitLines((bulkBrandForm.groupNumber || '') as string));
+
                 const brandNames = trimEndEmpty(splitLines((bulkBrandForm.groupName || '') as string));
+
                 if (groupNumbers.length === 0 || brandNames.length === 0) {
+
                     toast.error('Please paste group numbers and brand names');
+
                     return [] as Array<{ brandName: string; groupNumber: string }>;
+
                 }
+
                 if (groupNumbers.length !== brandNames.length) {
 
+
+
                     toast.error('Group Numbers and Brand Names rows count must match');
+
                     return [] as Array<{ brandName: string; groupNumber: string }>;
+
                 }
+
                 const rows: Array<{ brandName: string; groupNumber: string }> = [];
+
                 for (let i = 0; i < brandNames.length; i += 1) {
+
                     const groupNumber = groupNumbers[i] || '';
+
                     const brandName = brandNames[i] || '';
+
                     if (!groupNumber && !brandName) continue;
+
                     if (!groupNumber || !brandName) {
+
                         toast.error(`Row ${i + 1}: Group Number and Brand Name are required`);
+
                         return [];
+
                     }
+
                     rows.push({ brandName, groupNumber });
+
                 }
+
                 return rows;
+
             })()
+
             : (() => {
+
                 const raw = (bulkBrandForm.brandNames || '').trim();
+
                 if (!raw) {
+
                     toast.error('Please enter brand names');
+
                     return [] as Array<{ brandName: string; groupNumber: string }>;
+
                 }
+
                 return raw
+
                     .split(/\r?\n|,/)
+
                     .map((s) => s.trim())
+
                     .filter(Boolean)
+
                     .map((name) => ({ brandName: name, groupNumber: '' }));
+
             })();
 
+
+
         if (requestedBrands.length === 0) return;
+
         setIsCreatingBulkBrands(true);
+
         try {
+
             const chunkSize = 50;
+
             const chunk = <T,>(list: T[], size: number): T[][] => {
+
                 const out: T[][] = [];
+
                 for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));
+
                 return out;
 
 
@@ -31224,7 +61866,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             };
+
+
+
+
+
+
+
+
 
 
 
@@ -31240,7 +61898,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 name: row.brandName,
+
+
+
+
+
+
+
+
 
 
 
@@ -31256,7 +61930,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 status: 'active',
+
+
+
+
+
+
+
+
 
 
 
@@ -31272,7 +61962,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     ? {
+
+
+
+
+
+
+
+
 
 
 
@@ -31288,7 +61994,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         groupName: row.brandName,
+
+
+
+
+
+
+
+
 
 
 
@@ -31304,7 +62026,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         amEmail: bulkBrandForm.amEmail,
+
+
+
+
+
+
+
+
 
 
 
@@ -31320,7 +62058,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     : {}),
+
+
+
+
+
+
+
+
 
 
 
@@ -31336,7 +62090,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const batches = chunk(brandPayload, chunkSize);
+
+
+
+
+
+
+
+
 
 
 
@@ -31352,7 +62122,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const assignmentMetaAgg = {
+
+
+
+
 
 
 
@@ -31360,7 +62142,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 rmAmUsersFound: 0,
+
+
+
+
 
 
 
@@ -31368,11 +62158,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 mappingOps: 0,
 
 
 
+
+
+
+
             };
+
+
+
+
+
+
+
+
 
 
 
@@ -31388,7 +62194,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const res = await brandService.bulkUpsertBrands(
+
+
+
+
+
+
+
+
 
 
 
@@ -31404,7 +62226,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     { timeout: 300000 }
+
+
+
+
+
+
+
+
 
 
 
@@ -31420,7 +62258,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (!res?.success) {
+
+
+
+
+
+
+
+
 
 
 
@@ -31436,7 +62290,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 }
+
+
+
+
+
+
+
+
 
 
 
@@ -31452,6 +62322,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     createdBrandsAll.push(...((res as any).data || []));
 
 
@@ -31460,7 +62338,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 }
+
+
+
+
+
+
+
+
 
 
 
@@ -31472,7 +62366,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 if (meta) {
+
+
+
+
 
 
 
@@ -31480,7 +62382,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     assignmentMetaAgg.rmAmUsersFound = Math.max(assignmentMetaAgg.rmAmUsersFound, Number(meta.rmAmUsersFound || 0));
+
+
+
+
 
 
 
@@ -31488,7 +62398,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     assignmentMetaAgg.mappingOps += Number(meta.mappingOps || 0);
+
+
+
+
 
 
 
@@ -31500,7 +62418,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -31524,7 +62458,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+
+
+
+
+
+
+
+
 
 
 
@@ -31540,7 +62498,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const backendDidAssignment = Boolean((res as any)?.meta?.assignment?.mappingOps);
+
+
+
+
 
 
 
@@ -31548,7 +62518,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                         try {
+
+
+
+
 
 
 
@@ -31556,7 +62534,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                 detail: {
+
+
+
+
 
 
 
@@ -31564,7 +62550,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                     userId: '',
+
+
+
+
 
 
 
@@ -31572,7 +62566,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                     taskTypeIds: [],
+
+
+
+
 
 
 
@@ -31580,7 +62582,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                             });
+
+
+
+
 
 
 
@@ -31588,11 +62598,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                         } catch {
 
 
 
+
+
+
+
                             // ignore
+
+
+
+
 
 
 
@@ -31604,11 +62626,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         toast.success('Assigned to selected RM/AM');
 
 
 
+
+
+
+
                     }
+
+
+
+
+
+
+
+
 
 
 
@@ -31624,6 +62666,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         toast.success('Brands added. Assignment is processing on server.');
 
 
@@ -31632,7 +62682,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     }
+
+
+
+
+
+
+
+
 
 
 
@@ -31656,7 +62722,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                 setApiBrands(prev => [...prev, ...(res.data as any)]);
+
+
+
+
+
+
+
+
 
 
 
@@ -31672,7 +62762,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 setShowBulkBrandModal(false);
+
+
+
+
+
+
+
+
 
 
 
@@ -31688,7 +62794,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 window.dispatchEvent(event);
+
+
+
+
+
+
+
+
 
 
 
@@ -31704,7 +62826,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             } else {
+
+
+
+
+
+
+
+
 
 
 
@@ -31720,7 +62858,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -31736,7 +62890,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             console.error('Error bulk creating brands:', err);
+
+
+
+
+
+
+
+
 
 
 
@@ -31752,7 +62922,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         } finally {
+
+
+
+
+
+
+
+
 
 
 
@@ -31768,7 +62954,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -31792,7 +62994,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleSubmitBulkCompanies = useCallback(async () => {
+
+
+
+
+
+
+
+
 
 
 
@@ -31808,7 +63034,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             toast.error('Access denied');
+
+
+
+
+
+
+
+
 
 
 
@@ -31824,7 +63066,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -31840,7 +63098,17 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             toast.error('Please enter company names');
+
+
 
             return;
 
@@ -31850,7 +63118,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -31874,6 +63166,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             .split(/\r?\n|,/)
 
 
@@ -31882,7 +63182,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             .map(s => s.trim())
+
+
+
+
+
+
+
+
 
 
 
@@ -31906,7 +63222,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         if (requested.length === 0) {
+
+
+
+
+
+
+
+
 
 
 
@@ -31922,6 +63262,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return;
 
 
@@ -31930,7 +63278,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -31954,7 +63326,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         try {
+
+
+
+
+
+
+
+
 
 
 
@@ -31970,7 +63358,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 companies: requested.map(name => ({ name }))
+
+
+
+
+
+
+
+
 
 
 
@@ -31994,7 +63398,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             if (res.success && res.data) {
+
+
+
+
+
+
+
+
 
 
 
@@ -32010,7 +63438,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 companiesFetchedAtRef.current = Date.now();
+
+
+
+
+
+
+
+
 
 
 
@@ -32026,7 +63470,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 setShowBulkCompanyModal(false);
+
+
+
+
+
+
+
+
 
 
 
@@ -32042,7 +63502,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             } else {
+
+
+
+
+
+
+
+
 
 
 
@@ -32058,7 +63534,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -32074,7 +63566,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             console.error('Error bulk creating companies:', err);
+
+
+
+
+
+
+
+
 
 
 
@@ -32090,7 +63598,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         } finally {
+
+
+
+
+
+
+
+
 
 
 
@@ -32106,7 +63630,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -32130,7 +63670,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleSubmitBulkTaskTypes = useCallback(async () => {
+
+
+
+
+
+
+
+
 
 
 
@@ -32146,7 +63710,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             toast.error('Access denied');
+
+
+
+
+
+
+
+
 
 
 
@@ -32162,7 +63742,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -32178,7 +63774,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             toast.error('Please select a company');
+
+
+
+
+
+
+
+
 
 
 
@@ -32194,7 +63806,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -32210,7 +63838,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             toast.error('Please enter task types');
+
+
+
+
+
+
+
+
 
 
 
@@ -32226,7 +63870,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -32250,6 +63918,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             .split(/\r?\n|,/)
 
 
@@ -32258,7 +63934,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             .map(s => s.trim())
+
+
+
+
+
+
+
+
 
 
 
@@ -32282,7 +63974,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         if (requested.length === 0) {
+
+
+
+
+
+
+
+
 
 
 
@@ -32298,6 +64014,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return;
 
 
@@ -32306,7 +64030,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -32330,7 +64078,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         try {
+
+
+
+
+
+
+
+
 
 
 
@@ -32346,7 +64110,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 types: requested.map(name => ({ name })),
+
+
+
+
+
+
+
+
 
 
 
@@ -32362,7 +64142,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -32386,7 +64190,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 await addTaskTypesToCompany(bulkTaskTypeCompany, requested);
+
+
+
+
+
+
+
+
 
 
 
@@ -32402,7 +64222,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 setBulkTaskTypeNames('');
+
+
+
+
+
+
+
+
 
 
 
@@ -32418,7 +64254,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 setBulkTaskTypeCompany('');
+
+
+
+
+
+
+
+
 
 
 
@@ -32434,7 +64286,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             } else {
+
+
+
+
+
+
+
+
 
 
 
@@ -32450,7 +64318,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -32466,7 +64350,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             console.error('Error bulk creating task types:', err);
+
+
+
+
+
+
+
+
 
 
 
@@ -32482,7 +64382,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         } finally {
+
+
+
+
+
+
+
+
 
 
 
@@ -32498,7 +64414,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -32522,7 +64454,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleEditInputChange = useCallback((field: keyof EditTaskForm, value: string) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -32538,6 +64494,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             ...prev,
 
 
@@ -32546,7 +64510,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             [field]: value,
+
+
+
+
+
+
+
+
 
 
 
@@ -32570,7 +64550,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         if (editFormErrors[field]) {
+
+
+
+
+
+
+
+
 
 
 
@@ -32586,7 +64590,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const newErrors = { ...prev };
+
+
+
+
+
+
+
+
 
 
 
@@ -32602,7 +64622,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return newErrors;
+
+
+
+
+
+
+
+
 
 
 
@@ -32618,7 +64654,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -32642,7 +64702,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             setEditFormData(prev => ({
+
+
+
+
+
+
+
+
 
 
 
@@ -32658,7 +64734,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 brand: '',
+
+
+
+
+
+
+
+
 
 
 
@@ -32674,6 +64766,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }));
 
 
@@ -32682,7 +64782,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -32706,6 +64822,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const validateForm = useCallback(() => {
 
 
@@ -32714,7 +64846,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const errors: Record<string, string> = {};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -32738,6 +64894,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             errors.title = 'Title is required';
 
 
@@ -32746,7 +64910,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -32762,7 +64942,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             errors.assignedTo = 'Please assign the task to a user';
+
+
+
+
+
+
+
+
 
 
 
@@ -32778,7 +64974,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!newTask.dueDate) {
+
+
+
+
+
+
+
+
 
 
 
@@ -32794,6 +65006,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         } else {
 
 
@@ -32802,7 +65022,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const selectedDate = new Date(newTask.dueDate);
+
+
+
+
+
+
+
+
 
 
 
@@ -32826,6 +65062,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             selectedDate.setHours(0, 0, 0, 0);
 
 
@@ -32834,7 +65086,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             today.setHours(0, 0, 0, 0);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -32858,7 +65134,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             yesterday.setDate(yesterday.getDate() - 1);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -32882,7 +65182,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 errors.dueDate = 'Due date cannot be in the past';
+
+
+
+
+
+
+
+
 
 
 
@@ -32898,7 +65214,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -32922,7 +65262,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!newTask.companyName || newTask.companyName.trim() === '') {
+
+
+
+
+
+
+
+
 
 
 
@@ -32938,7 +65294,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -32962,7 +65342,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!newTask.brand || newTask.brand.trim() === '') {
+
+
+
+
+
+
+
+
 
 
 
@@ -32978,7 +65374,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -33002,7 +65422,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return Object.keys(errors).length === 0;
+
+
+
+
+
+
+
+
 
 
 
@@ -33026,7 +65462,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const validateEditForm = useCallback(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -33050,7 +65510,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         if (!editFormData.title.trim()) {
+
+
+
+
+
+
+
+
 
 
 
@@ -33066,7 +65550,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -33082,7 +65582,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             errors.assignedTo = 'Please assign the task to a user';
+
+
+
+
+
+
+
+
 
 
 
@@ -33098,7 +65614,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!editFormData.dueDate) {
+
+
+
+
+
+
+
+
 
 
 
@@ -33114,6 +65646,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         } else {
 
 
@@ -33122,7 +65662,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const selectedDate = new Date(editFormData.dueDate);
+
+
+
+
+
+
+
+
 
 
 
@@ -33146,7 +65702,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             selectedDate.setHours(0, 0, 0, 0);
+
+
+
+
+
+
+
+
 
 
 
@@ -33170,7 +65750,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             const oneYearAgo = new Date(today);
+
+
+
+
+
+
+
+
 
 
 
@@ -33194,7 +65798,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             if (selectedDate < oneYearAgo) {
+
+
+
+
+
+
+
+
 
 
 
@@ -33210,7 +65838,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -33234,6 +65878,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         setEditFormErrors(errors);
 
 
@@ -33242,7 +65902,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return Object.keys(errors).length === 0;
+
+
+
+
+
+
+
+
 
 
 
@@ -33266,7 +65942,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const fetchTasks = useCallback(async (options?: { force?: boolean }) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -33282,7 +65982,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const isInitialFetch = !hasFetchedTasksOnceRef.current && tasks.length === 0;
+
+
+
+
+
+
+
+
 
 
 
@@ -33306,7 +66022,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             const action = await dispatch(
+
+
+
+
+
+
+
+
 
 
 
@@ -33322,7 +66062,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             );
+
+
+
+
+
+
+
+
 
 
 
@@ -33338,7 +66094,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 ? action.payload
+
+
+
+
+
+
+
+
 
 
 
@@ -33354,6 +66126,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     ? tasks
 
 
@@ -33362,7 +66142,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     : null;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -33394,7 +66198,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                 const getTaskId = (t: any): string => {
+
+
+
+
+
+
+
+
 
 
 
@@ -33410,7 +66238,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -33434,7 +66286,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     if (!v) return '';
+
+
+
+
+
+
+
+
 
 
 
@@ -33450,7 +66318,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     if (typeof v === 'object' && v !== null) return v.email || v.name || '';
+
+
+
+
+
+
+
+
 
 
 
@@ -33466,7 +66350,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -33498,7 +66406,39 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                 const getSeenStorageKey = (email: string) => `seenTaskIds:${email}`;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -33522,7 +66462,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     try {
+
+
+
+
+
+
+
+
 
 
 
@@ -33538,7 +66494,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         if (!raw) return new Set();
+
+
+
+
+
+
+
+
 
 
 
@@ -33554,7 +66526,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         if (!Array.isArray(parsed)) return new Set();
+
+
+
+
+
+
+
+
 
 
 
@@ -33570,7 +66558,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     } catch {
+
+
+
+
+
+
+
+
 
 
 
@@ -33586,6 +66590,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     }
 
 
@@ -33594,7 +66606,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -33618,7 +66654,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     try {
+
+
+
+
+
+
+
+
 
 
 
@@ -33634,7 +66686,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     } catch {
+
+
+
+
+
+
+
+
 
 
 
@@ -33650,6 +66718,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     }
 
 
@@ -33658,7 +66734,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -33690,7 +66790,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                 const canDetectNewTasks = Boolean(myEmail) && previousSeenIds.size > 0;
+
+
+
+
+
+
+
+
 
 
 
@@ -33706,6 +66830,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const getAssignerName = (task: Task): string => {
 
 
@@ -33714,7 +66846,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         const direct = (task as any)?.assignedByName;
+
+
+
+
+
+
+
+
 
 
 
@@ -33738,7 +66886,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                         const assignedByUser: any = (task as any)?.assignedByUser;
+
+
+
+
+
+
+
+
 
 
 
@@ -33754,6 +66926,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                             return assignedByUser.name || assignedByUser.email || 'User';
 
 
@@ -33762,7 +66942,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -33786,7 +66990,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         if (assignedBy && typeof assignedBy === 'object') {
+
+
+
+
+
+
+
+
 
 
 
@@ -33802,7 +67022,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -33826,6 +67070,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                             const match = (usersRef.current || []).find(u => (u?.email || '').toLowerCase() === assignedBy.toLowerCase());
 
 
@@ -33834,7 +67086,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                             return match?.name || assignedBy.split('@')[0] || assignedBy;
+
+
+
+
+
+
+
+
 
 
 
@@ -33858,7 +67126,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                         return 'User';
+
+
+
+
+
+
+
+
 
 
 
@@ -33882,6 +67174,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                     const newAssignedTasks = incoming.filter(t => {
 
 
@@ -33890,7 +67198,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         const id = getTaskId(t);
+
+
+
+
+
+
+
+
 
 
 
@@ -33914,7 +67238,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                         const assignedToEmail = (
+
+
+
+
+
+
+
+
 
 
 
@@ -33930,7 +67278,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                             normalizeEmail((t as any)?.assignedToUser?.email) ||
+
+
+
+
+
+
+
+
 
 
 
@@ -33946,7 +67310,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         ).toLowerCase();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -33970,7 +67358,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                             normalizeEmail((t as any)?.assignedBy) ||
+
+
+
+
+
+
+
+
 
 
 
@@ -33986,7 +67390,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                             normalizeEmail((t as any)?.assignedByUser)
+
+
+
+
+
+
+
+
 
 
 
@@ -34010,7 +67430,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                         if (assignedByEmail && assignedByEmail === myEmail) return false;
+
+
+
+
+
+
+
+
 
 
 
@@ -34026,7 +67470,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -34050,7 +67518,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         toast.success(`New task assigned by ${getAssignerName(t)}`);
+
+
+
+
+
+
+
+
 
 
 
@@ -34066,7 +67550,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -34090,7 +67598,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const nextIds = new Set<string>();
+
+
+
+
+
+
+
+
 
 
 
@@ -34106,7 +67630,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         const id = getTaskId(t);
+
+
+
+
+
+
+
+
 
 
 
@@ -34122,7 +67662,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     });
+
+
+
+
+
+
+
+
 
 
 
@@ -34138,7 +67694,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     hasFetchedTasksOnceRef.current = true;
+
+
+
+
+
+
+
+
 
 
 
@@ -34154,7 +67726,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 }
+
+
+
+
+
+
+
+
 
 
 
@@ -34170,7 +67758,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 toast.error('Failed to fetch tasks');
+
+
+
+
+
+
+
+
 
 
 
@@ -34186,7 +67790,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         } catch (error) {
+
+
+
+
+
+
+
+
 
 
 
@@ -34202,7 +67822,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             toast.error('Failed to load tasks');
+
+
+
+
+
+
+
+
 
 
 
@@ -34218,6 +67854,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             setLoading(false);
 
 
@@ -34226,7 +67870,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -34250,7 +67910,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const fetchUsers = useCallback(async () => {
+
+
+
+
+
+
+
+
 
 
 
@@ -34266,6 +67950,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const response = await authService.getAllUsers();
 
 
@@ -34274,7 +67966,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!response) return;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -34306,7 +68022,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             if (Array.isArray(response)) {
+
+
+
+
+
+
+
+
 
 
 
@@ -34322,6 +68062,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             } else if (Array.isArray((response as any).data)) {
 
 
@@ -34330,7 +68078,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 rawUsers = (response as any).data;
+
+
+
+
+
+
+
+
 
 
 
@@ -34346,7 +68110,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 rawUsers = (response as any).result;
+
+
+
+
+
+
+
+
 
 
 
@@ -34362,6 +68142,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 rawUsers = (response as any).data;
 
 
@@ -34370,7 +68158,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -34402,7 +68214,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             const normalizedUsers = rawUsers.map((user: any) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -34418,7 +68254,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return {
+
+
+
+
+
+
+
+
 
 
 
@@ -34434,7 +68286,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     id,
+
+
+
+
+
+
+
+
 
 
 
@@ -34450,7 +68318,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             });
+
+
+
+
+
+
+
+
 
 
 
@@ -34462,7 +68346,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const currentUserCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase();
+
+
+
+
 
 
 
@@ -34474,7 +68366,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (isMdImpexUser) {
+
+
+
+
 
 
 
@@ -34482,11 +68386,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 setAllMdImpexUsers(normalizedUsers);
 
 
 
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -34502,7 +68422,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             usersFetchedAtRef.current = Date.now();
+
+
+
+
+
+
+
+
 
 
 
@@ -34518,7 +68454,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             console.error('Failed to fetch users:', error);
+
+
+
+
+
+
+
+
 
 
 
@@ -34534,7 +68486,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, []);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -34558,7 +68534,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         try {
+
+
+
+
+
+
+
+
 
 
 
@@ -34574,7 +68566,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const isAdminLike = role === 'admin' || role === 'super_admin' || role === 'troubleshoot_manager';
+
+
+
+
+
+
+
+
 
 
 
@@ -34590,7 +68598,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 ? await brandService.getBrands({ includeDeleted: true })
+
+
+
+
+
+
+
+
 
 
 
@@ -34606,7 +68630,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (response && response.success && Array.isArray(response.data)) {
+
+
+
+
+
+
+
+
 
 
 
@@ -34622,7 +68662,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 brandsFetchedAtRef.current = Date.now();
+
+
+
+
+
+
+
+
 
 
 
@@ -34638,7 +68694,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         } catch (error) {
+
+
+
+
+
+
+
+
 
 
 
@@ -34654,6 +68726,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
 
 
@@ -34662,7 +68742,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, [currentUser?.role]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -34686,7 +68790,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         try {
+
+
+
+
+
+
+
+
 
 
 
@@ -34702,7 +68822,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const needsAllowedCompanies =
+
+
+
+
+
+
+
+
 
 
 
@@ -34718,7 +68854,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 role === 'manager' ||
+
+
+
+
+
+
+
+
 
 
 
@@ -34734,7 +68886,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 role === 'ob_manager' ||
+
+
+
+
+
+
+
+
 
 
 
@@ -34750,7 +68918,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const response = needsAllowedCompanies
+
+
+
+
+
+
+
+
 
 
 
@@ -34766,7 +68950,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 : await companyService.getCompanies();
+
+
+
+
+
+
+
+
 
 
 
@@ -34782,7 +68982,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 setCompanies(response.data as Company[]);
+
+
+
+
+
+
+
+
 
 
 
@@ -34798,7 +69014,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -34814,6 +69046,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             console.error('Failed to fetch companies:', error);
 
 
@@ -34822,7 +69062,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -34846,7 +69102,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const fetchTaskTypes = useCallback(async () => {
+
+
+
+
+
+
+
+
 
 
 
@@ -34862,7 +69142,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const response = await taskTypeService.getTaskTypes();
+
+
+
+
+
+
+
+
 
 
 
@@ -34878,7 +69174,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 setTaskTypes(response.data as TaskTypeItem[]);
+
+
+
+
+
+
+
+
 
 
 
@@ -34894,7 +69206,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -34910,6 +69238,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             console.error('Failed to fetch task types:', error);
 
 
@@ -34918,7 +69254,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -34942,7 +69294,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const ensureUsersLoaded = useCallback(async (opts?: { force?: boolean }) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -34958,7 +69334,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const isFresh = usersFetchedAtRef.current && Date.now() - usersFetchedAtRef.current < SUPPORTING_FETCH_TTL_MS;
+
+
+
+
+
+
+
+
 
 
 
@@ -34974,7 +69366,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (usersFetchInFlightRef.current) return usersFetchInFlightRef.current;
+
+
+
+
+
+
+
+
 
 
 
@@ -34990,7 +69398,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             usersFetchInFlightRef.current = null;
+
+
+
+
+
+
+
+
 
 
 
@@ -35006,7 +69430,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return usersFetchInFlightRef.current;
+
+
+
+
+
+
+
+
 
 
 
@@ -35030,7 +69470,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const ensureBrandsLoaded = useCallback(async (opts?: { force?: boolean }) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -35046,7 +69510,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const isFresh = brandsFetchedAtRef.current && Date.now() - brandsFetchedAtRef.current < SUPPORTING_FETCH_TTL_MS;
+
+
+
+
+
+
+
+
 
 
 
@@ -35062,7 +69542,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (brandsFetchInFlightRef.current) return brandsFetchInFlightRef.current;
+
+
+
+
+
+
+
+
 
 
 
@@ -35078,7 +69574,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             brandsFetchInFlightRef.current = null;
+
+
+
+
+
+
+
+
 
 
 
@@ -35094,7 +69606,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return brandsFetchInFlightRef.current;
+
+
+
+
+
+
+
+
 
 
 
@@ -35118,7 +69646,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const ensureCompaniesLoaded = useCallback(async (opts?: { force?: boolean }) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -35134,7 +69686,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const isFresh = companiesFetchedAtRef.current && Date.now() - companiesFetchedAtRef.current < SUPPORTING_FETCH_TTL_MS;
+
+
+
+
+
+
+
+
 
 
 
@@ -35150,7 +69718,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (companiesFetchInFlightRef.current) return companiesFetchInFlightRef.current;
+
+
+
+
+
+
+
+
 
 
 
@@ -35166,7 +69750,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             companiesFetchInFlightRef.current = null;
+
+
+
+
+
+
+
+
 
 
 
@@ -35182,7 +69782,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return companiesFetchInFlightRef.current;
+
+
+
+
+
+
+
+
 
 
 
@@ -35206,7 +69822,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const ensureTaskTypesLoaded = useCallback(async (opts?: { force?: boolean }) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -35222,7 +69862,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const isFresh = taskTypesFetchedAtRef.current && Date.now() - taskTypesFetchedAtRef.current < SUPPORTING_FETCH_TTL_MS;
+
+
+
+
+
+
+
+
 
 
 
@@ -35238,7 +69894,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (taskTypesFetchInFlightRef.current) return taskTypesFetchInFlightRef.current;
+
+
+
+
+
+
+
+
 
 
 
@@ -35254,7 +69926,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             taskTypesFetchInFlightRef.current = null;
+
+
+
+
+
+
+
+
 
 
 
@@ -35270,7 +69958,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return taskTypesFetchInFlightRef.current;
+
+
+
+
+
+
+
+
 
 
 
@@ -35294,7 +69998,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     useEffect(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -35310,7 +70038,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const detail = e?.detail || {};
+
+
+
+
+
+
+
+
 
 
 
@@ -35326,6 +70070,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 await ensureUsersLoaded({ force: true });
 
 
@@ -35334,7 +70086,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 await ensureBrandsLoaded({ force: true });
+
+
+
+
+
+
+
+
 
 
 
@@ -35358,6 +70126,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                 const companyName = (detail?.companyName || '').toString().trim();
 
 
@@ -35366,7 +70150,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const userId = (detail?.userId || '').toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -35390,7 +70190,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                 const userDoc: any = (usersRef.current || []).find((u: any) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -35406,7 +70230,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     return id && id === userId;
+
+
+
+
+
+
+
+
 
 
 
@@ -35422,7 +70262,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const email = stripDeletedEmailSuffix(userDoc?.email).trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -35438,7 +70294,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             })();
+
+
+
+
+
+
+
+
 
 
 
@@ -35454,6 +70326,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         window.addEventListener('assignmentsApplied', handler as any);
 
 
@@ -35462,7 +70342,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return () => window.removeEventListener('assignmentsApplied', handler as any);
+
+
+
+
+
+
+
+
 
 
 
@@ -35486,6 +70382,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const fetchCurrentUser = useCallback(async () => {
 
 
@@ -35494,7 +70406,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         try {
+
+
+
+
+
+
+
+
 
 
 
@@ -35518,7 +70446,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             if (response && response.success && response.data) {
+
+
+
+
+
+
+
+
 
 
 
@@ -35542,7 +70494,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                 const nextUser = {
+
+
+
+
+
+
+
+
 
 
 
@@ -35558,7 +70534,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     id: userData.id || userData._id || userData.userId || '',
+
+
+
+
+
+
+
+
 
 
 
@@ -35574,6 +70566,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     role: userData.role || 'user',
 
 
@@ -35582,7 +70582,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     email: userData.email || '',
+
+
+
+
+
+
+
+
 
 
 
@@ -35606,7 +70622,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                 setCurrentUser(prev => ({
+
+
+
+
+
+
+
+
 
 
 
@@ -35622,7 +70662,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     ...nextUser,
+
+
+
+
+
+
+
+
 
 
 
@@ -35646,7 +70702,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                 try {
+
+
+
+
+
+
+
+
 
 
 
@@ -35662,7 +70742,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 } catch {
+
+
+
+
+
+
+
+
 
 
 
@@ -35678,6 +70774,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 }
 
 
@@ -35686,7 +70790,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return;
+
+
+
+
+
+
+
+
 
 
 
@@ -35710,7 +70830,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             localStorage.removeItem('token');
+
+
+
+
+
+
+
+
 
 
 
@@ -35726,7 +70870,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             navigate('/login');
+
+
+
+
+
+
+
+
 
 
 
@@ -35742,7 +70902,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             console.error('Failed to fetch current user:', error);
+
+
+
+
+
+
+
+
 
 
 
@@ -35758,7 +70934,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             localStorage.removeItem('currentUser');
+
+
+
+
+
+
+
+
 
 
 
@@ -35774,7 +70966,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         } finally {
+
+
+
+
+
+
+
+
 
 
 
@@ -35790,7 +70998,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -35814,7 +71038,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     useEffect(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -35838,7 +71086,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const savedSidebarState = localStorage.getItem('sidebarCollapsed');
+
+
+
+
+
+
+
+
 
 
 
@@ -35854,6 +71126,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             setIsSidebarCollapsed(JSON.parse(savedSidebarState));
 
 
@@ -35862,7 +71142,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -35886,7 +71182,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     useEffect(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -35902,7 +71222,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (role !== 'md_manager' && role !== 'ob_manager') return;
+
+
+
+
+
+
+
+
 
 
 
@@ -35918,6 +71254,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (fromCompanies.length !== 1) return;
 
 
@@ -35926,7 +71270,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const only = fromCompanies[0];
+
+
+
+
+
+
+
+
 
 
 
@@ -35942,7 +71302,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const current = (prev?.companyName || '').toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -35958,6 +71334,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return { ...prev, companyName: only };
 
 
@@ -35966,7 +71350,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         });
+
+
+
+
+
+
+
+
 
 
 
@@ -35990,7 +71390,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     useEffect(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -36006,7 +71430,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (role !== 'md_manager' && role !== 'ob_manager') return;
+
+
+
+
+
+
+
+
 
 
 
@@ -36022,7 +71462,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (fromCompanies.length !== 1) return;
+
+
+
+
+
+
+
+
 
 
 
@@ -36038,7 +71494,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         setFilters(prev => {
+
+
+
+
+
+
+
+
 
 
 
@@ -36054,7 +71526,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (current && current !== 'all') return prev;
+
+
+
+
+
+
+
+
 
 
 
@@ -36070,7 +71558,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         });
+
+
+
+
+
+
+
+
 
 
 
@@ -36094,7 +71598,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     useEffect(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -36110,7 +71638,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const isAdminLike = role === 'admin' || role === 'super_admin';
+
+
+
+
+
+
+
+
 
 
 
@@ -36126,7 +71670,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!showAddTaskModal && !showEditTaskModal) return;
+
+
+
+
+
+
+
+
 
 
 
@@ -36142,7 +71702,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             void ensureBrandsLoaded({ force: true });
+
+
+
+
+
+
+
+
 
 
 
@@ -36158,7 +71734,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return () => {
+
+
+
+
+
+
+
+
 
 
 
@@ -36174,7 +71766,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         };
+
+
+
+
+
+
+
+
 
 
 
@@ -36198,7 +71806,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     useEffect(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -36214,6 +71846,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (role === 'sbm') {
 
 
@@ -36222,7 +71862,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const defaultCompany = (availableCompaniesForSbm[0] || SPEED_E_COM_COMPANY_NAME || '').toString().trim() || SPEED_E_COM_COMPANY_NAME;
+
+
+
+
+
+
+
+
 
 
 
@@ -36238,7 +71894,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const current = (prev?.companyName || '').toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -36254,7 +71926,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return { ...prev, companyName: defaultCompany };
+
+
+
+
+
+
+
+
 
 
 
@@ -36270,7 +71958,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return;
+
+
+
+
+
+
+
+
 
 
 
@@ -36294,7 +71998,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         if (role !== 'rm' && role !== 'am') return;
+
+
+
+
+
+
+
+
 
 
 
@@ -36310,7 +72038,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const current = (prev?.companyName || '').toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -36326,6 +72070,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return { ...prev, companyName: SPEED_E_COM_COMPANY_NAME };
 
 
@@ -36334,7 +72086,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         });
+
+
+
+
+
+
+
+
 
 
 
@@ -36358,7 +72126,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     useEffect(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -36374,7 +72166,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (role === 'sbm') {
+
+
+
+
+
+
+
+
 
 
 
@@ -36390,7 +72198,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             setFilters(prev => {
+
+
+
+
+
+
+
+
 
 
 
@@ -36406,7 +72230,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 if (current && current !== 'all') return prev;
+
+
+
+
+
+
+
+
 
 
 
@@ -36422,6 +72262,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             });
 
 
@@ -36430,7 +72278,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return;
+
+
+
+
+
+
+
+
 
 
 
@@ -36454,7 +72318,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         if (role !== 'rm' && role !== 'am') return;
+
+
+
+
+
+
+
+
 
 
 
@@ -36470,7 +72358,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const current = (prev?.company || '').toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -36486,6 +72390,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return { ...prev, company: SPEED_E_COM_COMPANY_NAME };
 
 
@@ -36494,7 +72406,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         });
+
+
+
+
+
+
+
+
 
 
 
@@ -36518,7 +72446,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     useEffect(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -36534,7 +72486,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const needsUsers =
+
+
+
+
+
+
+
+
 
 
 
@@ -36550,7 +72518,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             currentView === 'reviews' ||
+
+
+
+
+
+
+
+
 
 
 
@@ -36566,7 +72550,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             currentView === 'all-tasks' ||
+
+
+
+
+
+
+
+
 
 
 
@@ -36582,6 +72582,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             role === 'ob_manager' ||
 
 
@@ -36590,7 +72598,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             showAddTaskModal ||
+
+
+
+
+
+
+
+
 
 
 
@@ -36614,7 +72638,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const needsBrands =
+
+
+
+
+
+
+
+
 
 
 
@@ -36630,7 +72678,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             currentView === 'brand-detail' ||
+
+
+
+
+
+
+
+
 
 
 
@@ -36646,7 +72710,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             showAddTaskModal ||
+
+
+
+
+
+
+
+
 
 
 
@@ -36662,7 +72742,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             showBulkBrandModal ||
+
+
+
+
+
+
+
+
 
 
 
@@ -36678,7 +72774,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             showAdvancedFilters;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -36702,7 +72822,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             showAddTaskModal ||
+
+
+
+
+
+
+
+
 
 
 
@@ -36718,7 +72854,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             showBulkTaskTypeModal ||
+
+
+
+
+
+
+
+
 
 
 
@@ -36742,7 +72894,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const needsCompaniesForRole =
+
+
+
+
+
+
+
+
 
 
 
@@ -36758,7 +72934,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             role === 'super_admin' ||
+
+
+
+
+
+
+
+
 
 
 
@@ -36774,7 +72966,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             role === 'ob_manager' ||
+
+
+
+
+
+
+
+
 
 
 
@@ -36790,6 +72998,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             role === 'rm' ||
 
 
@@ -36798,7 +73014,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             role === 'am';
+
+
+
+
+
+
+
+
 
 
 
@@ -36822,7 +73054,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         if (needsUsers) {
+
+
+
+
+
+
+
+
 
 
 
@@ -36838,7 +73094,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -36862,6 +73142,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             void ensureBrandsLoaded();
 
 
@@ -36870,7 +73158,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -36894,6 +73206,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             void ensureCompaniesLoaded();
 
 
@@ -36902,7 +73222,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -36926,7 +73270,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             void ensureTaskTypesLoaded();
+
+
+
+
+
+
+
+
 
 
 
@@ -36942,7 +73302,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, [
+
+
+
+
+
+
+
+
 
 
 
@@ -36958,7 +73334,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         currentView,
+
+
+
+
+
+
+
+
 
 
 
@@ -36974,7 +73366,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         ensureCompaniesLoaded,
+
+
+
+
+
+
+
+
 
 
 
@@ -36990,7 +73398,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         ensureUsersLoaded,
+
+
+
+
+
+
+
+
 
 
 
@@ -37006,7 +73430,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         showAdvancedFilters,
+
+
+
+
+
+
+
+
 
 
 
@@ -37022,7 +73462,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         showBulkTaskTypeModal,
+
+
+
+
+
+
+
+
 
 
 
@@ -37038,7 +73494,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         showManagerAddBrandModal,
+
+
+
+
+
+
+
+
 
 
 
@@ -37062,6 +73534,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const getAssignedToValue = useCallback((assignedTo: any): string => {
 
 
@@ -37070,7 +73558,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!assignedTo) return '';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -37102,7 +73614,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         if (typeof assignedTo === 'object' && assignedTo !== null) {
+
+
+
+
+
+
+
+
 
 
 
@@ -37118,7 +73654,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -37142,7 +73702,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, []);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -37166,7 +73750,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         dispatch(taskUpserted(updatedTask));
+
+
+
+
+
+
+
+
 
 
 
@@ -37190,7 +73790,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const openAddTaskModal = useCallback(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -37214,7 +73838,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const resolvedCompany = ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -37230,7 +73878,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             ? MD_IMPEX_COMPANY_NAME
+
+
+
+
+
+
+
+
 
 
 
@@ -37254,7 +73918,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         if (role === 'md_manager' || role === 'ob_manager' || role === 'manager' || role === 'assistant' || role === 'troubleshoot_manager') {
+
+
+
+
+
+
+
+
 
 
 
@@ -37270,7 +73958,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 const current = (prev?.companyName || '').toString().trim();
+
+
+
+
+
+
+
+
 
 
 
@@ -37286,7 +73990,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return { ...prev, companyName: defaultCompanyForRole };
+
+
+
+
+
+
+
+
 
 
 
@@ -37302,7 +74022,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -37326,7 +74070,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         void ensureBrandsLoaded({ force: true });
+
+
+
+
+
+
+
+
 
 
 
@@ -37342,7 +74102,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (role === 'admin' || role === 'super_admin') {
+
+
+
+
+
+
+
+
 
 
 
@@ -37358,7 +74134,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -37382,7 +74182,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     }, [
+
+
+
+
+
+
+
+
 
 
 
@@ -37398,7 +74214,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         currentUser?.role,
+
+
+
+
+
+
+
+
 
 
 
@@ -37414,7 +74246,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         (currentUser as any)?.companyName,
+
+
+
+
+
+
+
+
 
 
 
@@ -37430,7 +74278,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         ensureCompaniesLoaded,
+
+
+
+
+
+
+
+
 
 
 
@@ -37446,7 +74310,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         ensureUsersLoaded,
+
+
+
+
+
+
+
+
 
 
 
@@ -37470,7 +74350,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleOpenEditModal = useCallback((task: Task) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -37486,6 +74390,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         void ensureBrandsLoaded({ force: true });
 
 
@@ -37494,7 +74406,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         void ensureCompaniesLoaded();
+
+
+
+
+
+
+
+
 
 
 
@@ -37518,7 +74446,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         if (!canEditTask(task)) {
+
+
+
+
+
+
+
+
 
 
 
@@ -37534,7 +74486,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             setOpenMenuId(null);
+
+
+
+
+
+
+
+
 
 
 
@@ -37550,7 +74518,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -37574,7 +74566,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             toast.error('Editing not allowed for permanently approved tasks');
+
+
+
+
+
+
+
+
 
 
 
@@ -37590,6 +74598,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return;
 
 
@@ -37598,7 +74614,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -37630,7 +74670,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const resolvedTaskId = ((task as any)?.id || (task as any)?._id || '').toString();
+
+
+
+
+
+
+
+
 
 
 
@@ -37642,17 +74706,35 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         const isMdImpexTask = (task.companyName || '').toLowerCase().replace(/\s+/g, '') === 'mdimpex';
+
         const currentUserCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase();
+
         const currentUserRole = String((currentUser as any)?.role || '').trim().toLowerCase();
+
         const isMdImpexUser = currentUserCompany.includes('mdimpex') || 
+
                             currentUserCompany.includes('md_impex') || 
+
                             currentUserCompany.includes('md impex') ||
+
                             currentUserRole === 'md_manager';
+
+
 
         if (isMdImpexTask || isMdImpexUser) {
 
+
+
             // Use MD Impex specific modal
+
+
+
+
 
 
 
@@ -37664,7 +74746,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             setEditFormData({
+
+
+
+
 
 
 
@@ -37672,7 +74766,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 title: task.title || '',
+
+
+
+
 
 
 
@@ -37680,7 +74782,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 dueDate: dueDate,
+
+
+
+
 
 
 
@@ -37688,7 +74798,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 taskType: (task.taskType || '').toString().trim().toLowerCase(),
+
+
+
+
 
 
 
@@ -37696,11 +74814,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 brand: task.brand || '',
 
 
 
+
+
+
+
                 status: task.status || 'pending'
+
+
+
+
 
 
 
@@ -37712,7 +74842,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             setEditFormErrors({});
+
+
+
+
 
 
 
@@ -37720,7 +74862,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         } else {
+
+
+
+
 
 
 
@@ -37728,7 +74878,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             const dueDate = task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -37752,7 +74922,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 id: resolvedTaskId,
+
+
+
+
+
+
+
+
 
 
 
@@ -37768,7 +74954,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 assignedTo: getAssignedToValue(task.assignedTo),
+
+
+
+
+
+
+
+
 
 
 
@@ -37784,7 +74986,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 priority: task.priority || 'medium',
+
+
+
+
+
+
+
+
 
 
 
@@ -37800,7 +75018,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 companyName: task.companyName || '',
+
+
+
+
+
+
+
+
 
 
 
@@ -37816,7 +75050,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 status: task.status || 'pending'
+
+
+
+
+
+
+
+
 
 
 
@@ -37840,7 +75090,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             setEditFormErrors({});
+
+
+
+
+
+
+
+
 
 
 
@@ -37852,6 +75126,10 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         }
 
 
@@ -37860,7 +75138,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         setOpenMenuId(null);
+
+
+
+
+
+
+
+
 
 
 
@@ -37884,7 +75178,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleSaveTaskFromModal = useCallback(async () => {
+
+
+
+
+
+
+
+
 
 
 
@@ -37908,7 +75226,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         setIsCreatingTask(true);
+
+
+
+
+
+
+
+
 
 
 
@@ -37924,7 +75266,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const selectedBrandObj = brands.find(b =>
+
+
+
+
+
+
+
+
 
 
 
@@ -37940,7 +75298,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 normalizeText((b as any).company || (b as any).companyName) === normalizeText(newTask.companyName)
+
+
+
+
+
+
+
+
 
 
 
@@ -37964,7 +75338,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             const resolvedBrandId = (() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -37980,7 +75378,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return isMongoObjectId(candidate) ? candidate : null;
+
+
+
+
+
+
+
+
 
 
 
@@ -38004,7 +75418,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             const taskData = {
+
+
+
+
+
+
+
+
 
 
 
@@ -38020,7 +75458,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 assignedTo: newTask.assignedTo,
+
+
+
+
+
+
+
+
 
 
 
@@ -38036,7 +75490,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 priority: newTask.priority === 'urgent' ? 'high' : newTask.priority,
+
+
+
+
+
+
+
+
 
 
 
@@ -38052,7 +75522,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 companyName: newTask.companyName,
+
+
+
+
+
+
+
+
 
 
 
@@ -38068,7 +75554,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 brandId: resolvedBrandId,
+
+
+
+
+
+
+
+
 
 
 
@@ -38084,6 +75586,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 assignedBy: currentUser.email,
 
 
@@ -38092,7 +75602,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 assignedToUser: users.find(u => u.email === newTask.assignedTo),
+
+
+
+
+
+
+
+
 
 
 
@@ -38116,7 +75642,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             const response = await taskService.createTask(taskData);
+
+
+
+
+
+
+
+
 
 
 
@@ -38132,7 +75682,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 dispatch(taskAdded(response.data as Task));
+
+
+
+
+
+
+
+
 
 
 
@@ -38148,7 +75714,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 setNewTask({
+
+
+
+
+
+
+
+
 
 
 
@@ -38164,7 +75746,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     assignedTo: '',
+
+
+
+
+
+
+
+
 
 
 
@@ -38180,7 +75778,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     priority: 'medium',
+
+
+
+
+
+
+
+
 
 
 
@@ -38196,7 +75810,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     companyName: '',
+
+
+
+
+
+
+
+
 
 
 
@@ -38212,7 +75842,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 });
+
+
+
+
+
+
+
+
 
 
 
@@ -38228,7 +75874,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             } else {
+
+
+
+
+
+
+
+
 
 
 
@@ -38244,7 +75906,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -38260,7 +75938,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             console.error('Failed to create task:', error);
+
+
+
+
+
+
+
+
 
 
 
@@ -38276,7 +75970,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         } finally {
+
+
+
+
+
+
+
+
 
 
 
@@ -38292,7 +76002,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -38316,7 +76042,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleBulkCreateTasks = useCallback(
+
+
+
+
+
+
+
+
 
 
 
@@ -38332,7 +76082,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const created: Task[] = [];
+
+
+
+
+
+
+
+
 
 
 
@@ -38356,7 +76122,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             for (let index = 0; index < payloads.length; index++) {
+
+
+
+
+
+
+
+
 
 
 
@@ -38380,7 +76170,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                 try {
+
+
+
+
+
+
+
+
 
 
 
@@ -38396,6 +76210,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         normalizeText(b.name) === normalizeText(payload.brand) &&
 
 
@@ -38404,7 +76226,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         normalizeText((b as any).company || (b as any).companyName) === normalizeText(payload.companyName)
+
+
+
+
+
+
+
+
 
 
 
@@ -38428,7 +76266,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                     const resolvedBrandId = (() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -38444,7 +76306,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         return isMongoObjectId(candidate) ? candidate : null;
+
+
+
+
+
+
+
+
 
 
 
@@ -38468,7 +76346,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                     const taskData = {
+
+
+
+
+
+
+
+
 
 
 
@@ -38484,7 +76386,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         assignedTo: payload.assignedTo,
+
+
+
+
+
+
+
+
 
 
 
@@ -38500,7 +76418,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         priority: payload.priority === 'urgent' ? 'high' : payload.priority,
+
+
+
+
+
+
+
+
 
 
 
@@ -38516,7 +76450,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         companyName: payload.companyName || '',
+
+
+
+
+
+
+
+
 
 
 
@@ -38532,7 +76482,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         brandId: resolvedBrandId,
+
+
+
+
+
+
+
+
 
 
 
@@ -38548,7 +76514,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         assignedBy: currentUser.email,
+
+
+
+
+
+
+
+
 
 
 
@@ -38564,7 +76546,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -38596,7 +76602,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                     if (response.success && response.data) {
+
+
+
+
+
+
+
+
 
 
 
@@ -38612,7 +76642,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     } else {
+
+
+
+
+
+
+
+
 
 
 
@@ -38628,7 +76674,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                             index,
+
+
+
+
+
+
+
+
 
 
 
@@ -38644,7 +76706,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                             title: payload.title || 'Untitled Task',
+
+
+
+
+
+
+
+
 
 
 
@@ -38660,7 +76738,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         });
+
+
+
+
+
+
+
+
 
 
 
@@ -38676,7 +76770,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 } catch (error: any) {
+
+
+
+
+
+
+
+
 
 
 
@@ -38692,7 +76802,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     failures.push({
+
+
+
+
+
+
+
+
 
 
 
@@ -38708,7 +76834,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         rowNumber: payload.rowNumber ?? index + 1,
+
+
+
+
+
+
+
+
 
 
 
@@ -38724,7 +76866,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         reason: error?.message || 'Unexpected error while creating task',
+
+
+
+
+
+
+
+
 
 
 
@@ -38740,6 +76898,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 }
 
 
@@ -38748,7 +76914,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -38772,6 +76962,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 dispatch(tasksAddedMany(created));
 
 
@@ -38780,7 +76978,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -38804,6 +77026,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         },
 
 
@@ -38812,7 +77042,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         [brands, currentUser, users, isMongoObjectId, dispatch]
+
+
+
+
+
+
+
+
 
 
 
@@ -38836,7 +77082,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleSaveEditedTask = useCallback(async () => {
+
+
+
+
+
+
+
+
 
 
 
@@ -38852,7 +77122,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const resolvedTaskId = ((editFormData as any)?.id || (editingTask as any)?.id || (editingTask as any)?._id || '').toString();
+
+
+
+
 
 
 
@@ -38860,7 +77142,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             toast.error('Task id is missing. Please refresh and try again.');
+
+
+
+
 
 
 
@@ -38868,7 +77158,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -38892,6 +77202,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             toast.error('You do not have permission to edit this task');
 
 
@@ -38900,7 +77218,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return;
+
+
+
+
+
+
+
+
 
 
 
@@ -38924,7 +77258,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         setIsUpdatingTask(true);
+
+
+
+
+
+
+
+
 
 
 
@@ -38940,7 +77298,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const myEmail = stripDeletedEmailSuffix(currentUser?.email || '').trim().toLowerCase();
+
+
+
+
+
+
+
+
 
 
 
@@ -38956,7 +77330,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const dueDateChanged = Boolean(previousDueDate && editFormData.dueDate && previousDueDate !== editFormData.dueDate);
+
+
+
+
+
+
+
+
 
 
 
@@ -38972,7 +77362,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const isMdImpexTask = ((editingTask as any)?.companyName || (editingTask as any)?.company || '').toString().toLowerCase().replace(/\s+/g, '') === 'mdimpex';
+
+
+
+
+
+
+
+
 
 
 
@@ -38988,7 +77394,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const canEditDueDateForSpeedEcom = !speedEcomTask || (myEmail && assigneeEmail && myEmail === assigneeEmail);
+
+
+
+
+
+
+
+
 
 
 
@@ -39004,6 +77426,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 normalizeText(b.name) === normalizeText(editFormData.brand) &&
 
 
@@ -39012,7 +77442,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 normalizeText((b as any).company || (b as any).companyName) === normalizeText(editFormData.companyName)
+
+
+
+
+
+
+
+
 
 
 
@@ -39036,7 +77482,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             const resolvedBrandId = (() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -39052,7 +77522,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return isMongoObjectId(candidate) ? candidate : null;
+
+
+
+
+
+
+
+
 
 
 
@@ -39076,7 +77562,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             const updateData: any = {
+
+
+
+
 
 
 
@@ -39084,7 +77590,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 assignedTo: editFormData.assignedTo,
+
+
+
+
 
 
 
@@ -39092,7 +77606,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 taskType: (editFormData.taskType || '').toString().trim().toLowerCase(),
+
+
+
+
 
 
 
@@ -39100,11 +77622,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 brand: editFormData.brand,
 
 
 
+
+
+
+
                 status: editFormData.status,
+
+
+
+
 
 
 
@@ -39116,7 +77650,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (resolvedBrandId) {
+
+
+
+
 
 
 
@@ -39124,7 +77670,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -39136,7 +77694,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             if (isMdImpexTask) {
+
+
+
+
 
 
 
@@ -39144,7 +77710,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             } else if (dueDateChanged) {
+
+
+
+
 
 
 
@@ -39152,7 +77726,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -39164,7 +77750,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 if (dueDateChanged) {
+
+
+
+
 
 
 
@@ -39172,7 +77766,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     delete updateData.dueDate;
+
+
+
+
 
 
 
@@ -39180,7 +77782,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -39212,7 +77834,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             if (response.success && response.data) {
+
+
+
+
+
+
+
+
 
 
 
@@ -39228,7 +77874,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 try {
+
+
+
+
 
 
 
@@ -39236,7 +77894,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     const nextStatus = String((editFormData as any)?.status || '').trim();
+
+
+
+
 
 
 
@@ -39244,7 +77910,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                         const historyPayload: any = {
+
+
+
+
 
 
 
@@ -39252,7 +77926,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                             action: 'status_changed',
+
+
+
+
 
 
 
@@ -39260,7 +77942,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                             userId: currentUser.id,
+
+
+
+
 
 
 
@@ -39268,7 +77958,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                             userEmail: currentUser.email,
+
+
+
+
 
 
 
@@ -39276,7 +77974,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                             additionalData: {
+
+
+
+
 
 
 
@@ -39284,7 +77990,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                 toStatus: nextStatus,
+
+
+
+
 
 
 
@@ -39292,7 +78006,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                         };
+
+
+
+
 
 
 
@@ -39300,7 +78022,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     }
+
+
+
+
 
 
 
@@ -39308,7 +78038,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     // ignore history failure
+
+
+
+
 
 
 
@@ -39320,11 +78058,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 setShowEditTaskModal(false);
 
 
 
+
+
+
+
                 setShowMdImpexEditModal(false);
+
+
+
+
+
+
+
+
 
 
 
@@ -39340,7 +78098,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 toast.success('Task updated successfully!');
+
+
+
+
+
+
+
+
 
 
 
@@ -39356,7 +78130,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 toast.error(response.message || 'Failed to update task');
+
+
+
+
+
+
+
+
 
 
 
@@ -39372,7 +78162,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         } catch (error) {
+
+
+
+
+
+
+
+
 
 
 
@@ -39388,7 +78194,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             toast.error('Failed to update task');
+
+
+
+
+
+
+
+
 
 
 
@@ -39404,6 +78226,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             setIsUpdatingTask(false);
 
 
@@ -39412,7 +78242,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -39436,7 +78282,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleToggleTaskStatus = useCallback(async (taskId: string, currentStatus: TaskStatus, doneByAdmin: boolean = false) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -39452,7 +78322,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!task) {
+
+
+
+
+
+
+
+
 
 
 
@@ -39468,6 +78354,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return;
 
 
@@ -39476,7 +78370,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -39500,7 +78418,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             toast.error('This task has been permanently approved and cannot be changed');
+
+
+
+
+
+
+
+
 
 
 
@@ -39516,7 +78450,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -39540,7 +78498,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             toast.error('You can only mark tasks assigned to you as done');
+
+
+
+
+
+
+
+
 
 
 
@@ -39556,7 +78530,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -39588,7 +78586,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         try {
+
+
+
+
+
+
+
+
 
 
 
@@ -39604,7 +78626,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 status: newStatus,
+
+
+
+
+
+
+
+
 
 
 
@@ -39620,7 +78658,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     ? { completedApproval: false }
+
+
+
+
+
+
+
+
 
 
 
@@ -39636,6 +78690,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         ? { completedApproval: true }
 
 
@@ -39644,7 +78706,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         : {}),
+
+
+
+
+
+
+
+
 
 
 
@@ -39668,7 +78746,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             if (!response.success || !response.data) {
+
+
+
+
+
+
+
+
 
 
 
@@ -39684,6 +78786,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return;
 
 
@@ -39692,7 +78802,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -39724,7 +78858,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             toast.success(`Task marked as ${newStatus}`);
+
+
+
+
+
+
+
+
 
 
 
@@ -39736,7 +78894,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 const historyPayload: any = {
+
+
+
+
 
 
 
@@ -39744,7 +78910,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     action: 'status_changed',
+
+
+
+
 
 
 
@@ -39752,7 +78926,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     userId: currentUser.id,
+
+
+
+
 
 
 
@@ -39760,7 +78942,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     userEmail: currentUser.email,
+
+
+
+
 
 
 
@@ -39768,7 +78958,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     additionalData: {
+
+
+
+
 
 
 
@@ -39776,7 +78974,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                         toStatus: newStatus,
+
+
+
+
 
 
 
@@ -39784,7 +78990,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 };
+
+
+
+
 
 
 
@@ -39792,7 +79006,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             } catch {
+
+
+
+
 
 
 
@@ -39800,7 +79022,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             }
+
+
+
+
+
+
+
+
 
 
 
@@ -39816,7 +79050,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             console.error('Failed to update task status:', error);
+
+
+
+
+
+
+
+
 
 
 
@@ -39832,7 +79082,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -39856,6 +79122,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleDeleteTask = useCallback(async (taskId: string) => {
 
 
@@ -39864,7 +79146,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const task = tasks.find(t => t.id === taskId);
+
+
+
+
+
+
+
+
 
 
 
@@ -39888,7 +79186,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         if (!canEditDeleteTask(task)) {
+
+
+
+
+
+
+
+
 
 
 
@@ -39904,6 +79226,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return;
 
 
@@ -39912,7 +79242,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -39944,7 +79298,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         try {
+
+
+
+
+
+
+
+
 
 
 
@@ -39960,7 +79338,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!response.success) {
+
+
+
+
+
+
+
+
 
 
 
@@ -39976,7 +79370,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return;
+
+
+
+
+
+
+
+
 
 
 
@@ -40000,7 +79410,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             dispatch(taskRemoved(taskId));
+
+
+
+
+
+
+
+
 
 
 
@@ -40016,7 +79450,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         } catch (error) {
+
+
+
+
+
+
+
+
 
 
 
@@ -40032,6 +79482,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             toast.error('Failed to delete task');
 
 
@@ -40040,7 +79498,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -40064,7 +79538,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleUpdateTask = useCallback(async (taskId: string, updatedData: Partial<Task>): Promise<Task | null> => {
+
+
+
+
+
+
+
+
 
 
 
@@ -40080,7 +79578,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!task) {
+
+
+
+
+
+
+
+
 
 
 
@@ -40096,6 +79610,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return null;
 
 
@@ -40104,7 +79626,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -40128,6 +79674,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             toast.error('You do not have permission to edit this task');
 
 
@@ -40136,7 +79690,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return null;
+
+
+
+
+
+
+
+
 
 
 
@@ -40160,7 +79730,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         try {
+
+
+
+
+
+
+
+
 
 
 
@@ -40176,7 +79770,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 ...updatedData,
+
+
+
+
+
+
+
+
 
 
 
@@ -40192,7 +79802,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -40224,7 +79858,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             if (!response.success) {
+
+
+
+
+
+
+
+
 
 
 
@@ -40240,6 +79898,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 return null;
 
 
@@ -40248,7 +79914,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -40272,7 +79962,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 toast.error('No data received from server');
+
+
+
+
+
+
+
+
 
 
 
@@ -40288,7 +79994,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -40320,6 +80050,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             updateTaskInState(updatedTask);
 
 
@@ -40328,7 +80074,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             toast.success('Task updated successfully');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -40360,7 +80130,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         } catch (error: any) {
+
+
+
+
+
+
+
+
 
 
 
@@ -40384,7 +80178,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             let errorMessage = 'Failed to update task';
+
+
+
+
+
+
+
+
 
 
 
@@ -40400,7 +80218,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 errorMessage = 'Session expired. Please login again.';
+
+
+
+
+
+
+
+
 
 
 
@@ -40416,7 +80250,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 errorMessage = 'You do not have permission to edit this task';
+
+
+
+
+
+
+
+
 
 
 
@@ -40432,6 +80282,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 errorMessage = 'Task not found on server';
 
 
@@ -40440,7 +80298,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -40464,6 +80346,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return null;
 
 
@@ -40472,7 +80362,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -40496,7 +80402,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleManagerCreateBrand = useCallback(async () => {
+
+
+
+
+
+
+
+
 
 
 
@@ -40512,7 +80442,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             toast.error('Please select a company first');
+
+
+
+
+
+
+
+
 
 
 
@@ -40528,7 +80474,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -40552,7 +80522,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         if (!name) {
+
+
+
+
+
+
+
+
 
 
 
@@ -40568,6 +80554,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return;
 
 
@@ -40576,7 +80570,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -40600,7 +80618,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         const normalizedCompany = normalizeText(company);
+
+
+
+
+
+
+
+
 
 
 
@@ -40624,7 +80658,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         const existingBrands = Array.isArray(apiBrands) ? apiBrands : [];
+
+
+
+
+
+
+
+
 
 
 
@@ -40640,7 +80698,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             const bCompany = normalizeText((b?.company || b?.companyName || '') as string);
+
+
+
+
+
+
+
+
 
 
 
@@ -40664,6 +80738,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             const bName = normalizeText((b?.name || b?.brandName || b?.brand || '') as string);
 
 
@@ -40672,7 +80762,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             return bName === normalizedName;
+
+
+
+
+
+
+
+
 
 
 
@@ -40696,7 +80802,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         if (hasDuplicate) {
+
+
+
+
+
+
+
+
 
 
 
@@ -40712,7 +80842,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             if (!confirmed) {
+
+
+
+
+
+
+
+
 
 
 
@@ -40728,6 +80874,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             }
 
 
@@ -40736,7 +80890,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -40760,7 +80938,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         try {
+
+
+
+
+
+
+
+
 
 
 
@@ -40776,7 +80970,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 name,
+
+
+
+
+
+
+
+
 
 
 
@@ -40792,7 +81002,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 status: 'active',
+
+
+
+
+
+
+
+
 
 
 
@@ -40816,7 +81042,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             if (res.success && res.data) {
+
+
+
+
+
+
+
+
 
 
 
@@ -40832,7 +81082,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     const list = Array.isArray(prev) ? prev : [];
+
+
+
+
+
+
+
+
 
 
 
@@ -40848,7 +81114,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         (b?.name || '').toString().trim().toLowerCase() === (res.data.name || '').toString().trim().toLowerCase() &&
+
+
+
+
+
+
+
+
 
 
 
@@ -40864,7 +81146,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     ));
+
+
+
+
+
+
+
+
 
 
 
@@ -40880,7 +81178,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     return [...list, res.data];
+
+
+
+
+
+
+
+
 
 
 
@@ -40896,7 +81210,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 handleInputChange('brand', res.data.name);
+
+
+
+
+
+
+
+
 
 
 
@@ -40912,7 +81242,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 setManagerBrandName('');
+
+
+
+
+
+
+
+
 
 
 
@@ -40928,7 +81274,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 toast.error('Failed to create brand');
+
+
+
+
+
+
+
+
 
 
 
@@ -40944,7 +81306,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         } catch (error) {
+
+
+
+
+
+
+
+
 
 
 
@@ -40960,7 +81338,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             toast.error('Failed to create brand');
+
+
+
+
+
+
+
+
 
 
 
@@ -40976,6 +81370,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             setIsCreatingManagerBrand(false);
 
 
@@ -40984,7 +81386,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -41008,6 +81426,22 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     if (loading) {
 
 
@@ -41016,7 +81450,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
         return <DashboardPageSkeleton />;
+
+
+
+
+
+
+
+
 
 
 
@@ -41040,7 +81490,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     return (
+
+
+
+
+
+
+
+
 
 
 
@@ -41056,7 +81530,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             <SendReminderModal
+
+
+
+
 
 
 
@@ -41064,7 +81550,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 task={sendReminderTask}
+
+
+
+
 
 
 
@@ -41072,7 +81566,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 onSend={submitSendReminder}
+
+
+
+
 
 
 
@@ -41080,7 +81582,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
             />
+
+
+
+
+
+
+
+
 
 
 
@@ -41096,7 +81610,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+
+
+
+
+
+
+
+
 
 
 
@@ -41112,7 +81642,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     <div className="relative w-[92vw] max-w-md">
+
+
+
+
+
+
+
+
 
 
 
@@ -41124,7 +81670,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                             reminder={activeReminder as any}
+
+
+
+
 
 
 
@@ -41132,7 +81686,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                         />
+
+
+
+
+
+
+
+
 
 
 
@@ -41148,7 +81714,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -41164,7 +81746,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             <Sidebar
+
+
+
+
+
+
+
+
 
 
 
@@ -41180,7 +81778,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 setSidebarOpen={setSidebarOpen}
+
+
+
+
+
+
+
+
 
 
 
@@ -41196,7 +81810,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 handleLogout={handleLogout}
+
+
+
+
+
+
+
+
 
 
 
@@ -41212,7 +81842,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 setIsCollapsed={setIsSidebarCollapsed}
+
+
+
+
+
+
+
+
 
 
 
@@ -41222,13 +81868,19 @@ const DashboardPage = () => {
 
                 navigateTo={navigateTo}
 
+                assignedByMePendingCount={assignedByMePendingCount}
 
-
-
-
-
+                assignedToMePendingCount={assignedToMePendingCount}
 
                 currentView={currentView}
+
+
+
+
+
+
+
+
 
 
 
@@ -41244,7 +81896,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             {reviewModalTaskId && reviewModalTask ? (
+
+
+
+
 
 
 
@@ -41252,7 +81916,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                     <div className="w-full max-w-xl rounded-2xl bg-white shadow-xl border border-gray-200 overflow-hidden">
+
+
+
+
 
 
 
@@ -41260,7 +81932,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                             <div className="text-sm font-semibold text-gray-900">Task Completed</div>
+
+
+
+
 
 
 
@@ -41268,7 +81948,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                         </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -41280,7 +81972,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                             <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+
+
+
+
 
 
 
@@ -41288,7 +81988,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                 <div className="mt-1 text-xs text-gray-600">
+
+
+
+
 
 
 
@@ -41296,7 +82004,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                         ? `Completed by ${(reviewModalTask as any)?.assignedToUser?.name || (reviewModalTask as any)?.assignedToUser?.email || (reviewModalTask as any)?.assignedTo}`
+
+
+
+
 
 
 
@@ -41304,7 +82020,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                 </div>
+
+
+
+
 
 
 
@@ -41316,7 +82040,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                             <div>
+
+
+
+
 
 
 
@@ -41324,7 +82060,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                 <div className="mt-2 flex items-center gap-1">
+
+
+
+
 
 
 
@@ -41332,7 +82076,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                         <button
+
+
+
+
 
 
 
@@ -41340,7 +82092,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                             type="button"
+
+
+
+
 
 
 
@@ -41348,7 +82108,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                             disabled={reviewModalSubmitting}
+
+
+
+
 
 
 
@@ -41356,7 +82124,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                             aria-label={`Rate ${n} stars`}
+
+
+
+
 
 
 
@@ -41364,7 +82140,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                             <Star
+
+
+
+
 
 
 
@@ -41372,7 +82156,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                 fill={n <= reviewModalStars ? 'currentColor' : 'none'}
+
+
+
+
 
 
 
@@ -41380,7 +82172,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                         </button>
+
+
+
+
 
 
 
@@ -41388,11 +82188,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                 </div>
 
 
 
+
+
+
+
                             </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -41404,7 +82220,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                 <div className="text-sm font-medium text-gray-900">Comment (optional)</div>
+
+
+
+
 
 
 
@@ -41412,7 +82236,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                     value={reviewModalComment}
+
+
+
+
 
 
 
@@ -41420,7 +82252,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                     disabled={reviewModalSubmitting}
+
+
+
+
 
 
 
@@ -41428,7 +82268,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                     placeholder="Add feedback..."
+
+
+
+
 
 
 
@@ -41436,11 +82284,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                             </div>
 
 
 
+
+
+
+
                         </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -41452,7 +82316,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                             <button
+
+
+
+
 
 
 
@@ -41460,7 +82332,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                 onClick={submitReviewFromModal}
+
+
+
+
 
 
 
@@ -41468,7 +82348,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                 className="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-60"
+
+
+
+
 
 
 
@@ -41476,7 +82364,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                 {reviewModalSubmitting ? 'Saving...' : 'Submit Review'}
+
+
+
+
 
 
 
@@ -41484,7 +82380,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                         </div>
+
+
+
+
 
 
 
@@ -41492,11 +82396,35 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 </div>
 
 
 
+
+
+
+
             ) : null}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -41520,7 +82448,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 <Navbar
+
+
+
+
+
+
+
+
 
 
 
@@ -41536,7 +82480,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     searchTerm={searchTerm}
+
+
+
+
+
+
+
+
 
 
 
@@ -41552,7 +82512,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     currentUser={currentUser}
+
+
+
+
+
+
+
+
 
 
 
@@ -41568,7 +82544,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     setShowLogout={setShowLogout}
+
+
+
+
+
+
+
+
 
 
 
@@ -41584,7 +82576,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     isSidebarCollapsed={isSidebarCollapsed}
+
+
+
+
+
+
+
+
 
 
 
@@ -41608,7 +82616,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                 <main className="flex-1 overflow-auto">
+
+
+
+
+
+
+
+
 
 
 
@@ -41624,7 +82656,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         <div className={dashboardContainerClasses}>
+
+
+
+
+
+
+
+
 
 
 
@@ -41640,7 +82688,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                 <>
+
+
+
+
+
+
+
+
 
 
 
@@ -41656,7 +82720,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+
+
+
+
+
+
+
+
 
 
 
@@ -41672,20 +82752,29 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                 <div className="flex items-center gap-3 mb-2">
-
-
-
-
-
-
-
-                                                    <div className="p-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl">
-                                                        <LayoutDashboard className="h-6 w-6 text-white" />
-                                                    </div>
+                                                    
                                                     <h1 className="text-3xl font-bold text-gray-900">
+
                                                         Dashboard
+
                                                     </h1>
+
+
+
+
+
+
+
+
 
 
 
@@ -41701,7 +82790,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                 <p className="text-gray-600">
+
+
+
+
+
+
+
+
 
 
 
@@ -41717,7 +82822,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         ? `Welcome ${currentUser.name}. Manage all tasks.`
+
+
+
+
+
+
+
+
 
 
 
@@ -41733,7 +82854,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     }
+
+
+
+
+
+
+
+
 
 
 
@@ -41749,7 +82886,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                             </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -41773,7 +82934,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                 <button
+
+
+
+
+
+
+
+
 
 
 
@@ -41789,6 +82966,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     className="inline-flex items-center px-4 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
 
 
@@ -41797,7 +82982,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                 >
+
+
+
+
+
+
+
+
 
 
 
@@ -41813,7 +83014,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     Advanced Filters
+
+
+
+
+
+
+
+
 
 
 
@@ -41829,7 +83046,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         <span className="ml-2 bg-blue-100 text-blue-600 text-xs font-semibold px-2 py-0.5 rounded-full">
+
+
+
+
+
+
+
+
 
 
 
@@ -41845,7 +83078,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         </span>
+
+
+
+
+
+
+
+
 
 
 
@@ -41861,7 +83110,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                 </button>
+
+
+
+
+
+
+
+
 
 
 
@@ -41877,7 +83142,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     onClick={() => setCurrentView('all-tasks')}
+
+
+
+
+
+
+
+
 
 
 
@@ -41893,7 +83174,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                 >
+
+
+
+
+
+
+
+
 
 
 
@@ -41909,7 +83206,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     View All Tasks
+
+
+
+
+
+
+
+
 
 
 
@@ -41925,7 +83238,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                 {canCreateTasks && (
+
+
+
+
+
+
+
+
 
 
 
@@ -41941,7 +83270,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         onClick={() => openAddTaskModal()}
+
+
+
+
+
+
+
+
 
 
 
@@ -41957,7 +83302,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     >
+
+
+
+
+
+
+
+
 
 
 
@@ -41973,7 +83334,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         Add Task
+
+
+
+
+
+
+
+
 
 
 
@@ -41989,7 +83366,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                 )}
+
+
+
+
+
+
+
+
 
 
 
@@ -42005,6 +83398,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         </div>
 
 
@@ -42013,7 +83414,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -42037,7 +83462,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         filters={filters}
+
+
+
+
+
+
+
+
 
 
 
@@ -42053,7 +83494,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         availableTaskTypes={availableTaskTypesForFilters}
+
+
+
+
+
+
+
+
 
 
 
@@ -42069,7 +83526,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         availableRms={availableRmUsersForFilters}
+
+
+
+
+
+
+
+
 
 
 
@@ -42085,7 +83558,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         users={users}
+
+
+
+
+
+
+
+
 
 
 
@@ -42101,7 +83590,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         onFilterChange={handleAdvancedFilterChange}
+
+
+
+
+
+
+
+
 
 
 
@@ -42117,7 +83622,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         showFilters={showAdvancedFilters}
+
+
+
+
+
+
+
+
 
 
 
@@ -42133,7 +83654,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     />
+
+
+
+
+
+
+
+
 
 
 
@@ -42145,7 +83682,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                         <div className="fixed inset-0 z-50">
+
+
+
+
 
 
 
@@ -42153,7 +83698,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                 className="absolute inset-0 bg-black/20 backdrop-blur-sm"
+
+
+
+
 
 
 
@@ -42161,7 +83714,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                             />
+
+
+
+
 
 
 
@@ -42169,7 +83730,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                 <div className="h-full bg-white shadow-xl overflow-y-auto w-full md:w-[500px]">
+
+
+
+
 
 
 
@@ -42177,7 +83746,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                         <div className="px-4 py-4">
+
+
+
+
 
 
 
@@ -42185,7 +83762,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                 <div>
+
+
+
+
 
 
 
@@ -42193,7 +83778,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                     <p className="text-gray-600 text-sm mt-1">{commentSidebarTask.title}</p>
+
+
+
+
 
 
 
@@ -42201,7 +83794,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                 <button
+
+
+
+
 
 
 
@@ -42209,7 +83810,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                     onClick={handleCloseTaskCommentSidebar}
+
+
+
+
 
 
 
@@ -42217,7 +83826,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                 >
+
+
+
+
 
 
 
@@ -42225,7 +83842,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                 </button>
+
+
+
+
 
 
 
@@ -42233,11 +83858,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                         </div>
 
 
 
+
+
+
+
                                                     </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -42249,7 +83890,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                         <div className="mb-4">
+
+
+
+
 
 
 
@@ -42257,7 +83906,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                             <textarea
+
+
+
+
 
 
 
@@ -42265,7 +83922,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                 onChange={(e) => setCommentDraft(e.target.value)}
+
+
+
+
 
 
 
@@ -42273,7 +83938,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[90px] resize-none"
+
+
+
+
 
 
 
@@ -42281,7 +83954,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                             />
+
+
+
+
 
 
 
@@ -42289,7 +83970,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                 <button
+
+
+
+
 
 
 
@@ -42297,7 +83986,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                     onClick={handleSubmitTaskComment}
+
+
+
+
 
 
 
@@ -42305,7 +84002,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2 transition-colors"
+
+
+
+
 
 
 
@@ -42313,11 +84018,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                     {commentSidebarLoading ? (
 
 
 
+
+
+
+
                                                                         <>
+
+
+
+
 
 
 
@@ -42325,11 +84042,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                             Sending...
 
 
 
+
+
+
+
                                                                         </>
+
+
+
+
 
 
 
@@ -42337,7 +84066,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                         <>
+
+
+
+
 
 
 
@@ -42345,7 +84082,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                             Add Comment
+
+
+
+
 
 
 
@@ -42353,7 +84098,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                     )}
+
+
+
+
 
 
 
@@ -42361,11 +84114,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                             </div>
 
 
 
+
+
+
+
                                                         </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -42377,7 +84146,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                             <div className="flex items-center justify-between mb-3">
+
+
+
+
 
 
 
@@ -42385,7 +84162,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                 <span className="text-xs text-gray-500">
+
+
+
+
 
 
 
@@ -42393,7 +84178,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                 </span>
+
+
+
+
 
 
 
@@ -42405,11 +84198,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             {commentSidebarLoadingComments ? (
 
 
 
+
+
+
+
                                                                 <div className="text-center py-8">
+
+
+
+
 
 
 
@@ -42417,11 +84226,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                     <p className="mt-2 text-gray-500">Loading comments...</p>
 
 
 
+
+
+
+
                                                                 </div>
+
+
+
+
 
 
 
@@ -42429,7 +84250,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                 <div className="text-center py-8">
+
+
+
+
 
 
 
@@ -42437,11 +84266,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                     <p className="mt-2 text-gray-500">No comments yet</p>
 
 
 
+
+
+
+
                                                                 </div>
+
+
+
+
 
 
 
@@ -42449,7 +84290,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                 <div className="space-y-3">
+
+
+
+
 
 
 
@@ -42457,7 +84306,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                         <div key={c.id} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+
+
+
+
 
 
 
@@ -42465,7 +84322,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                                 <div className="text-xs font-semibold text-gray-700 truncate" title={c.userEmail}>
+
+
+
+
 
 
 
@@ -42473,7 +84338,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                                 </div>
+
+
+
+
 
 
 
@@ -42481,7 +84354,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                                     {c.createdAt ? formatDate(c.createdAt) : ''}
+
+
+
+
 
 
 
@@ -42489,7 +84370,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                             </div>
+
+
+
+
 
 
 
@@ -42497,7 +84386,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                                 {(c.content || '').trim()}
+
+
+
+
 
 
 
@@ -42505,7 +84402,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                         </div>
+
+
+
+
 
 
 
@@ -42513,7 +84418,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                 </div>
+
+
+
+
 
 
 
@@ -42521,7 +84434,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                         </div>
+
+
+
+
 
 
 
@@ -42529,7 +84450,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                 </div>
+
+
+
+
 
 
 
@@ -42537,11 +84466,35 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                         </div>
 
 
 
+
+
+
+
                                     ) : null}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -42565,7 +84518,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+
+
+
+
+
+
+
+
 
 
 
@@ -42581,7 +84550,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                 <button
+
+
+
+
+
+
+
+
 
 
 
@@ -42597,7 +84582,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     onClick={() => handleStatClick(stat.id)}
+
+
+
+
+
+
+
+
 
 
 
@@ -42613,7 +84614,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     role="radio"
+
+
+
+
+
+
+
+
 
 
 
@@ -42629,7 +84646,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     className={`bg-white p-6 rounded-2xl shadow-sm border-2 cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-1 relative ${selectedStatFilter === stat.id
+
+
+
+
+
+
+
+
 
 
 
@@ -42645,7 +84678,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         : 'border-transparent hover:border-gray-200'
+
+
+
+
+
+
+
+
 
 
 
@@ -42661,7 +84710,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                 >
+
+
+
+
+
+
+
+
 
 
 
@@ -42677,7 +84742,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         className={`absolute top-4 right-4 h-5 w-5 rounded-full border-2 transition-colors ${selectedStatFilter === stat.id
+
+
+
+
+
+
+
+
 
 
 
@@ -42693,7 +84774,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             : 'border-gray-300'
+
+
+
+
+
+
+
+
 
 
 
@@ -42709,7 +84806,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     >
+
+
+
+
+
+
+
+
 
 
 
@@ -42725,7 +84838,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             <div className="h-full w-full flex items-center justify-center">
+
+
+
+
+
+
+
+
 
 
 
@@ -42741,7 +84870,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -42757,7 +84902,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -42773,7 +84934,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         <div className="flex-1">
+
+
+
+
+
+
+
+
 
 
 
@@ -42789,7 +84966,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 <div className={`p-3 rounded-xl ${stat.bgColor}`}>
+
+
+
+
+
+
+
+
 
 
 
@@ -42805,7 +84998,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -42821,7 +85030,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                     <p className="text-sm font-medium text-gray-600">{stat.name}</p>
+
+
+
+
+
+
+
+
 
 
 
@@ -42837,7 +85062,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                         <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
+
+
+
+
+
+
+
+
 
 
 
@@ -42853,7 +85094,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                             ? 'bg-emerald-50 text-emerald-700'
+
+
+
+
+
+
+
+
 
 
 
@@ -42869,7 +85126,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                                 ? 'bg-rose-50 text-rose-700'
+
+
+
+
+
+
+
+
 
 
 
@@ -42885,7 +85158,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                             }`}>
+
+
+
+
+
+
+
+
 
 
 
@@ -42901,7 +85190,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                                 <TrendingUp className="h-3 w-3 mr-1" />
+
+
+
+
+
+
+
+
 
 
 
@@ -42917,7 +85222,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                                 <TrendingDown className="h-3 w-3 mr-1" />
+
+
+
+
+
+
+
+
 
 
 
@@ -42933,7 +85254,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                             {stat.change}
+
+
+
+
+
+
+
+
 
 
 
@@ -42949,7 +85286,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                     </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -42965,7 +85318,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -42981,7 +85350,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 <span className="text-xs text-gray-500">
+
+
+
+
+
+
+
+
 
 
 
@@ -42997,7 +85382,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                         stat.id === 'overdue' ? 'Needs attention' :
+
+
+
+
+
+
+
+
 
 
 
@@ -43013,7 +85414,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 </span>
+
+
+
+
+
+
+
+
 
 
 
@@ -43029,7 +85446,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                     ? 'bg-blue-100 text-blue-600'
+
+
+
+
+
+
+
+
 
 
 
@@ -43045,7 +85478,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                     }`}>
+
+
+
+
+
+
+
+
 
 
 
@@ -43061,7 +85510,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 </span>
+
+
+
+
+
+
+
+
 
 
 
@@ -43077,7 +85542,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -43093,7 +85574,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                 </button>
+
+
+
+
+
+
+
+
 
 
 
@@ -43109,6 +85606,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         </div>
 
 
@@ -43117,7 +85622,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -43141,7 +85670,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         String((currentUser as any)?.role || '').trim().toLowerCase() !== 'troubleshoot_manager' ? (
+
+
+
+
+
+
+
+
 
 
 
@@ -43157,7 +85702,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
+
+
+
+
+
+
+
+
 
 
 
@@ -43169,7 +85730,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                         const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
+
+
+
+
 
 
 
@@ -43177,7 +85746,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                         if (!canSee) return null;
+
+
+
+
 
 
 
@@ -43185,7 +85762,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                             <button
+
+
+
+
+
+
+
+
 
 
 
@@ -43201,7 +85790,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 onClick={() => setDashboardSpotlight('employee-of-month')}
+
+
+
+
+
+
+
+
 
 
 
@@ -43217,7 +85822,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                     ? 'border-blue-500 shadow-lg shadow-blue-50'
+
+
+
+
+
+
+
+
 
 
 
@@ -43233,11 +85854,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                     }`}
 
 
 
+
+
+
+
                                                             >
+
+
+
+
+
+
+
+
 
 
 
@@ -43253,7 +85894,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                     <div>
+
+
+
+
+
+
+
+
 
 
 
@@ -43269,7 +85926,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                             <span className="inline-flex items-center gap-2">
+
+
+
+
+
+
+
+
 
 
 
@@ -43285,6 +85958,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                                     <Crown className="h-4 w-4" />
 
 
@@ -43293,7 +85974,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                                 </span>
+
+
+
+
+
+
+
+
 
 
 
@@ -43309,7 +86006,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                             </span>
+
+
+
+
+
+
+
+
 
 
 
@@ -43325,6 +86038,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                         <p className="text-xs text-gray-500 mt-1 ">Based on manager reviews (month wise)</p>
 
 
@@ -43333,7 +86054,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                     </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -43349,7 +86086,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                         ? 'bg-blue-100 text-blue-600'
+
+
+
+
+
+
+
+
 
 
 
@@ -43365,7 +86118,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                         }`}>
+
+
+
+
+
+
+
+
 
 
 
@@ -43381,7 +86150,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                     </span>
+
+
+
+
+
+
+
+
 
 
 
@@ -43397,7 +86182,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             </button>
+
+
+
+
 
 
 
@@ -43405,7 +86202,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                     })()}
+
+
+
+
+
+
+
+
 
 
 
@@ -43417,23 +86226,47 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                         const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
+
+
+
+
 
 
 
                                                         const canSee =
 
+
+
                                                             roleKey === 'manager' ||
+
+
 
                                                             roleKey === 'md_manager' ||
 
+
+
                                                             roleKey === 'ob_manager' ||
+
+
 
                                                             roleKey === 'all_manager' ||
 
+
+
                                                             roleKey === 'admin' ||
 
+
+
                                                             roleKey === 'super_admin';
+
+
+
+
 
 
 
@@ -43441,7 +86274,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                         return (
+
+
+
+
 
 
 
@@ -43449,11 +86290,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                 <button
 
 
 
+
+
+
+
                                                                     type="button"
+
+
+
+
 
 
 
@@ -43461,7 +86314,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                     className={`bg-white p-6 rounded-2xl shadow-sm border-2 transition-all duration-200 hover:shadow-md ${dashboardSpotlight === 'manager-monthly-ranking'
+
+
+
+
 
 
 
@@ -43469,7 +86330,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                         : 'border-transparent hover:border-gray-200'
+
+
+
+
 
 
 
@@ -43477,7 +86346,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                 >
+
+
+
+
 
 
 
@@ -43485,7 +86362,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                         <div>
+
+
+
+
 
 
 
@@ -43493,7 +86378,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                                 <span className="inline-flex items-center gap-2">
+
+
+
+
 
 
 
@@ -43501,7 +86394,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                                         <Trophy className="h-4 w-4" />
+
+
+
+
 
 
 
@@ -43509,7 +86410,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                                     <span>Employee of the Month Marketer</span>
+
+
+
+
 
 
 
@@ -43517,7 +86426,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                             </h2>
+
+
+
+
 
 
 
@@ -43525,7 +86442,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                         </div>
+
+
+
+
 
 
 
@@ -43533,7 +86458,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                             ? 'bg-blue-100 text-blue-600'
+
+
+
+
 
 
 
@@ -43541,7 +86474,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                             }`}>
+
+
+
+
 
 
 
@@ -43549,7 +86490,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                         </span>
+
+
+
+
 
 
 
@@ -43557,7 +86506,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                 </button>
+
+
+
+
+
+
+
+
 
 
 
@@ -43569,7 +86530,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                     type="button"
+
+
+
+
 
 
 
@@ -43577,7 +86546,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                     className={`bg-white p-6 rounded-2xl shadow-sm border-2 transition-all duration-200 hover:shadow-md ${dashboardSpotlight === 'power-star-of-month'
+
+
+
+
 
 
 
@@ -43585,7 +86562,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                         : 'border-transparent hover:border-gray-200'
+
+
+
+
 
 
 
@@ -43593,7 +86578,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                 >
+
+
+
+
 
 
 
@@ -43601,7 +86594,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                         <div>
+
+
+
+
 
 
 
@@ -43609,7 +86610,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                                 <span className="inline-flex items-center gap-2">
+
+
+
+
 
 
 
@@ -43617,7 +86626,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                                         <Star className="h-4 w-4" />
+
+
+
+
 
 
 
@@ -43625,7 +86642,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                                     <span>Power Star of the Month</span>
+
+
+
+
 
 
 
@@ -43633,7 +86658,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                             </h2>
+
+
+
+
 
 
 
@@ -43641,7 +86674,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                         </div>
+
+
+
+
 
 
 
@@ -43649,7 +86690,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                             ? 'bg-blue-100 text-blue-600'
+
+
+
+
 
 
 
@@ -43657,7 +86706,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                             }`}>
+
+
+
+
 
 
 
@@ -43665,7 +86722,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                         </span>
+
+
+
+
 
 
 
@@ -43673,7 +86738,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                 </button>
+
+
+
+
 
 
 
@@ -43681,11 +86754,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                         );
 
 
 
+
+
+
+
                                                     })()}
+
+
+
+
+
+
+
+
 
 
 
@@ -43701,7 +86790,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                 {dashboardSpotlight === 'employee-of-month' ? (
+
+
+
+
 
 
 
@@ -43709,7 +86810,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                         <EmployeeOfTheMonthCard
+
+
+
+
 
 
 
@@ -43717,7 +86826,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                             rating={employeeOfTheMonth?.rating || 0}
+
+
+
+
 
 
 
@@ -43725,7 +86842,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                             avg={employeeOfTheMonth?.avg || 'Not any yet'}
+
+
+
+
 
 
 
@@ -43733,11 +86858,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                             totalReviews={employeeOfTheMonth?.totalReviews}
+
+
 
                                                             totalTasksReceived={employeeOfTheMonth?.totalTasksReceived}
 
+
+
                                                             summaryRows={employeeOfTheMonth?.summaryRows}
+
+
+
+
 
 
 
@@ -43745,7 +86882,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                             onMonthChange={setReviewsMonth}
+
+
+
+
 
 
 
@@ -43753,7 +86898,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                     </>
+
+
+
+
 
 
 
@@ -43761,7 +86914,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                     <ManagerMonthlyRankingPage currentUser={currentUser} />
+
+
+
+
 
 
 
@@ -43769,11 +86930,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                     <PowerStarOfTheMonthPage currentUser={currentUser} />
 
 
 
+
+
+
+
                                                 )}
+
+
+
+
+
+
+
+
 
 
 
@@ -43789,6 +86966,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         ) : null
 
 
@@ -43797,7 +86982,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     ) : null}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -43821,7 +87030,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+
+
+
+
+
+
+
+
 
 
 
@@ -43837,7 +87062,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                 <div className="flex items-center gap-3 mb-2">
+
+
+
+
+
+
+
+
 
 
 
@@ -43853,7 +87094,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     <h2 className="text-xl font-semibold text-gray-900">
+
+
+
+
+
+
+
+
 
 
 
@@ -43869,7 +87126,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     </h2>
+
+
+
+
+
+
+
+
 
 
 
@@ -43885,7 +87158,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         • {selectedStatFilter !== 'all' ? `${getActiveFilterCount()} active filter(s)` : 'All tasks'}
+
+
+
+
+
+
+
+
 
 
 
@@ -43901,7 +87190,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                 </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -43917,7 +87222,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     {selectedStatFilter === 'overdue'
+
+
+
+
+
+
+
+
 
 
 
@@ -43933,7 +87254,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         : selectedStatFilter === 'high-priority'
+
+
+
+
+
+
+
+
 
 
 
@@ -43949,7 +87286,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             : 'Your current tasks at a glance'}
+
+
+
+
+
+
+
+
 
 
 
@@ -43965,7 +87318,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                             </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -43989,6 +87366,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                 <div className="flex items-center bg-gray-100 rounded-xl p-1">
 
 
@@ -43997,7 +87382,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     <button
+
+
+
+
+
+
+
+
 
 
 
@@ -44013,7 +87414,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         className={`px-3 py-2 rounded-lg transition-colors ${viewMode === 'grid'
+
+
+
+
+
+
+
+
 
 
 
@@ -44029,7 +87446,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             : 'text-gray-600 hover:text-gray-900'
+
+
+
+
+
+
+
+
 
 
 
@@ -44045,7 +87478,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     >
+
+
+
+
+
+
+
+
 
 
 
@@ -44061,7 +87510,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     </button>
+
+
+
+
+
+
+
+
 
 
 
@@ -44077,7 +87542,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         onClick={() => setViewMode('list')}
+
+
+
+
+
+
+
+
 
 
 
@@ -44093,7 +87574,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             ? 'bg-white text-blue-600 shadow-sm'
+
+
+
+
+
+
+
+
 
 
 
@@ -44109,7 +87606,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             }`}
+
+
+
+
+
+
+
+
 
 
 
@@ -44125,7 +87638,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         <List className="h-4 w-4" />
+
+
+
+
+
+
+
+
 
 
 
@@ -44141,7 +87670,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                 </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -44165,7 +87718,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     {getActiveFilterCount() > 0 && (
+
+
+
+
+
+
+
+
 
 
 
@@ -44181,7 +87750,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             onClick={resetFilters}
+
+
+
+
+
+
+
+
 
 
 
@@ -44197,7 +87782,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         >
+
+
+
+
+
+
+
+
 
 
 
@@ -44213,7 +87814,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         </button>
+
+
+
+
+
+
+
+
 
 
 
@@ -44229,7 +87846,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                 </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -44245,7 +87878,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -44269,7 +87918,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                                     {displayTasks.length === 0 ? (
+
+
+
+
+
+
+
+
 
 
 
@@ -44285,7 +87958,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                             <div className="max-w-md mx-auto">
+
+
+
+
+
+
+
+
 
 
 
@@ -44301,7 +87990,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     <ListTodo className="h-12 w-12 text-blue-600" />
+
+
+
+
+
+
+
+
 
 
 
@@ -44317,7 +88022,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                 <h3 className="text-xl font-semibold text-gray-900 mb-2">
+
+
+
+
+
+
+
+
 
 
 
@@ -44333,7 +88054,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                 </h3>
+
+
+
+
+
+
+
+
 
 
 
@@ -44349,7 +88086,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     {searchTerm
+
+
+
+
+
+
+
+
 
 
 
@@ -44365,7 +88118,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         : getActiveFilterCount() > 0
+
+
+
+
+
+
+
+
 
 
 
@@ -44381,7 +88150,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             : 'Get started by creating your first task'}
+
+
+
+
+
+
+
+
 
 
 
@@ -44397,7 +88182,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                 {canCreateTasks && (
+
+
+
+
+
+
+
+
 
 
 
@@ -44413,7 +88214,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         onClick={openAddTaskModal}
+
+
+
+
+
+
+
+
 
 
 
@@ -44429,7 +88246,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     >
+
+
+
+
+
+
+
+
 
 
 
@@ -44445,7 +88278,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         Create New Task
+
+
+
+
+
+
+
+
 
 
 
@@ -44461,7 +88310,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                 )}
+
+
+
+
+
+
+
+
 
 
 
@@ -44477,7 +88342,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -44493,7 +88374,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+
+
+
+
+
+
+
 
 
 
@@ -44509,7 +88406,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                 <div
+
+
+
+
+
+
+
+
 
 
 
@@ -44525,7 +88438,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     className="group bg-white rounded-2xl shadow-sm border border-gray-200 p-5 hover:shadow-lg transition-all duration-200 hover:-translate-y-1 relative"
+
+
+
+
+
+
+
+
 
 
 
@@ -44541,7 +88470,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     <div className="flex justify-between items-start mb-4">
+
+
+
+
+
+
+
+
 
 
 
@@ -44557,7 +88502,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             <div className="flex items-center gap-2 mb-3">
+
+
+
+
+
+
+
+
 
 
 
@@ -44573,7 +88534,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                     <span className="flex items-center gap-1">
+
+
+
+
+
+
+
+
 
 
 
@@ -44589,7 +88566,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                         {task.priority}
+
+
+
+
+
+
+
+
 
 
 
@@ -44605,7 +88598,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 </span>
+
+
+
+
+
+
+
+
 
 
 
@@ -44621,7 +88630,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                     {task.status}
+
+
+
+
+
+
+
+
 
 
 
@@ -44637,7 +88662,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                         <span className="ml-1 text-blue-500">By Admin</span>
+
+
+
+
+
+
+
+
 
 
 
@@ -44653,7 +88694,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 </span>
+
+
+
+
+
+
+
+
 
 
 
@@ -44669,7 +88726,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors whitespace-normal break-words [overflow-wrap:anywhere]">
+
+
+
+
+
+
+
+
 
 
 
@@ -44685,7 +88758,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 {task.completedApproval && (
+
+
+
+
+
+
+
+
 
 
 
@@ -44701,7 +88790,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                         Approved
+
+
+
+
+
+
+
+
 
 
 
@@ -44717,7 +88822,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 )}
+
+
+
+
+
+
+
+
 
 
 
@@ -44733,7 +88854,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             <p className="text-sm text-gray-500 line-clamp-2 mb-3">
+
+
+
+
+
+
+
+
 
 
 
@@ -44749,6 +88886,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         </div>
 
 
@@ -44757,7 +88902,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -44781,6 +88950,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         <div className="flex items-start justify-between text-sm gap-4">
 
 
@@ -44789,7 +88966,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             <span className="text-gray-500 flex items-center gap-2 shrink-0">
+
+
+
+
+
+
+
+
 
 
 
@@ -44805,7 +88998,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 Assign To
+
+
+
+
+
+
+
+
 
 
 
@@ -44821,6 +89030,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             <span className="font-medium text-gray-900 text-right break-words">
 
 
@@ -44829,7 +89046,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 {(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -44845,7 +89078,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                     const email = (info as any)?.email ? stripDeletedEmailSuffix(String((info as any).email)) : '';
+
+
+
+
+
+
+
+
 
 
 
@@ -44861,7 +89110,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 })()}
+
+
+
+
+
+
+
+
 
 
 
@@ -44877,7 +89142,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -44893,7 +89174,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             <span className="text-gray-500 flex items-center gap-2 shrink-0">
+
+
+
+
+
+
+
+
 
 
 
@@ -44909,6 +89206,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 Assign By
 
 
@@ -44917,7 +89222,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             </span>
+
+
+
+
+
+
+
+
 
 
 
@@ -44933,7 +89254,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 {(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -44949,7 +89286,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                     const assignedBy: any = (task as any)?.assignedBy;
+
+
+
+
+
+
+
+
 
 
 
@@ -44965,7 +89318,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                     const name = (assignedByUser?.name || (typeof assignedBy === 'object' ? assignedBy?.name : '') || '').toString();
+
+
+
+
+
+
+
+
 
 
 
@@ -44981,7 +89350,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                         ? (users || []).find((u: any) => (u?.email || '').toLowerCase() === email.toLowerCase())
+
+
+
+
+
+
+
+
 
 
 
@@ -44997,7 +89382,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                     const displayName = (name || match?.name || (email ? email.split('@')[0] : '') || email || '—').toString();
+
+
+
+
+
+
+
+
 
 
 
@@ -45013,7 +89414,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                         <span className="block truncate" title={email}>
+
+
+
+
+
+
+
+
 
 
 
@@ -45029,7 +89446,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                         </span>
+
+
+
+
+
+
+
+
 
 
 
@@ -45045,7 +89478,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 })()}
+
+
+
+
+
+
+
+
 
 
 
@@ -45061,7 +89510,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -45077,7 +89542,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             <span className="text-gray-500 flex items-center gap-2">
+
+
+
+
+
+
+
+
 
 
 
@@ -45093,6 +89574,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 Due Date
 
 
@@ -45101,7 +89590,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             </span>
+
+
+
+
+
+
+
+
 
 
 
@@ -45117,7 +89622,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 ? 'text-rose-600'
+
+
+
+
+
+
+
+
 
 
 
@@ -45133,7 +89654,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 }`}>
+
+
+
+
+
+
+
+
 
 
 
@@ -45149,6 +89686,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             </span>
 
 
@@ -45157,7 +89702,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -45173,7 +89734,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             <span className="text-gray-500 flex items-center gap-2">
+
+
+
+
+
+
+
+
 
 
 
@@ -45189,6 +89766,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 Company
 
 
@@ -45197,7 +89782,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             </span>
+
+
+
+
+
+
+
+
 
 
 
@@ -45213,7 +89814,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 {task.companyName}
+
+
+
+
+
+
+
+
 
 
 
@@ -45229,7 +89846,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -45245,7 +89878,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             <div className="flex items-center justify-between text-sm">
+
+
+
+
+
+
+
+
 
 
 
@@ -45261,7 +89910,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                     <Tag className="h-4 w-4" />
+
+
+
+
+
+
+
+
 
 
 
@@ -45277,7 +89942,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 </span>
+
+
+
+
+
+
+
+
 
 
 
@@ -45293,7 +89974,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                     {formatBrandWithGroupNumber(task)}
+
+
+
+
+
+
+
+
 
 
 
@@ -45309,7 +90006,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -45325,7 +90038,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -45349,7 +90086,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         <button
+
+
+
+
+
+
+
+
 
 
 
@@ -45365,7 +90118,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             disabled={!canMarkTaskDone(task)}
+
+
+
+
+
+
+
+
 
 
 
@@ -45381,7 +90150,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 ? task.status === 'completed'
+
+
+
+
+
+
+
+
 
 
 
@@ -45397,7 +90182,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                     : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+
+
+
+
+
+
+
+
 
 
 
@@ -45413,7 +90214,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 }`}
+
+
+
+
+
+
+
+
 
 
 
@@ -45429,7 +90246,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             {task.status === 'completed' ? 'Mark Pending' : 'Complete'}
+
+
+
+
+
+
+
+
 
 
 
@@ -45445,6 +90278,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         {canEditDeleteTask(task) && (
 
 
@@ -45453,7 +90294,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             <button
+
+
+
+
+
+
+
+
 
 
 
@@ -45469,6 +90326,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 className="px-3 py-2 text-sm font-medium bg-rose-50 text-rose-700 rounded-lg hover:bg-rose-100 transition-colors"
 
 
@@ -45477,7 +90342,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             >
+
+
+
+
+
+
+
+
 
 
 
@@ -45493,6 +90374,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             </button>
 
 
@@ -45501,7 +90390,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         )}
+
+
+
+
+
+
+
+
 
 
 
@@ -45517,6 +90422,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             <button
 
 
@@ -45525,7 +90438,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 type="button"
+
+
+
+
+
+
+
+
 
 
 
@@ -45541,7 +90470,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 disabled={Boolean(sendingReminderByTaskId[String(task.id || '')])}
+
+
+
+
+
+
+
+
 
 
 
@@ -45557,7 +90502,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 className={`px-3 py-2 rounded-lg border transition-colors ${sendingReminderByTaskId[String(task.id || '')]
+
+
+
+
+
+
+
+
 
 
 
@@ -45573,7 +90534,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                     : 'bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100'
+
+
+
+
+
+
+
+
 
 
 
@@ -45589,7 +90566,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             >
+
+
+
+
+
+
+
+
 
 
 
@@ -45605,7 +90598,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             </button>
+
+
+
+
+
+
+
+
 
 
 
@@ -45621,7 +90630,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         {isSbmUser ? (
+
+
+
+
 
 
 
@@ -45629,7 +90650,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                 type="button"
+
+
+
+
 
 
 
@@ -45637,7 +90666,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                 title="Comments"
+
+
+
+
 
 
 
@@ -45645,7 +90682,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                             >
+
+
+
+
 
 
 
@@ -45653,7 +90698,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                             </button>
+
+
+
+
 
 
 
@@ -45665,7 +90718,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -45689,7 +90766,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         <span className="text-xs text-gray-400 flex items-center gap-1">
+
+
+
+
+
+
+
+
 
 
 
@@ -45705,6 +90798,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             {task.taskType}
 
 
@@ -45713,7 +90814,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         </span>
+
+
+
+
+
+
+
+
 
 
 
@@ -45737,7 +90854,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                                                 </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -45753,7 +90894,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -45769,7 +90926,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+
+
+
+
+
+
+
+
 
 
 
@@ -45785,7 +90958,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                 <table className="min-w-full">
+
+
+
+
+
+
+
+
 
 
 
@@ -45801,7 +90990,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         <tr className="text-left text-sm font-semibold text-gray-700">
+
+
+
+
+
+
+
+
 
 
 
@@ -45817,7 +91022,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             <th className="px-6 py-4">Status</th>
+
+
+
+
+
+
+
+
 
 
 
@@ -45833,7 +91054,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             <th className="px-6 py-4">Due Date</th>
+
+
+
+
+
+
+
+
 
 
 
@@ -45849,7 +91086,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             <th className="px-6 py-4">Assign By</th>
+
+
+
+
+
+
+
+
 
 
 
@@ -45865,7 +91118,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 <th className="px-6 py-4 text-right">Actions</th>
+
+
+
+
+
+
+
+
 
 
 
@@ -45881,7 +91150,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         </tr>
+
+
+
+
+
+
+
+
 
 
 
@@ -45897,7 +91182,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     <tbody className="divide-y divide-gray-100">
+
+
+
+
+
+
+
+
 
 
 
@@ -45913,6 +91214,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             <tr key={task.id} className="hover:bg-gray-50">
 
 
@@ -45921,7 +91230,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 <td className="px-6 py-5">
+
+
+
+
+
+
+
+
 
 
 
@@ -45937,6 +91262,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 </td>
 
 
@@ -45945,7 +91278,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 <td className="px-6 py-5">
+
+
+
+
+
+
+
+
 
 
 
@@ -45961,7 +91310,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                         {task.status}
+
+
+
+
+
+
+
+
 
 
 
@@ -45977,6 +91342,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 </td>
 
 
@@ -45985,7 +91358,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 <td className="px-6 py-5">
+
+
+
+
+
+
+
+
 
 
 
@@ -46001,7 +91390,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                         {task.priority || 'medium'}
+
+
+
+
+
+
+
+
 
 
 
@@ -46017,7 +91422,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 </td>
+
+
+
+
+
+
+
+
 
 
 
@@ -46033,7 +91454,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                     {formatDate(task.dueDate)}
+
+
+
+
+
+
+
+
 
 
 
@@ -46049,7 +91486,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 <td className="px-6 py-5">
+
+
+
+
+
+
+
+
 
 
 
@@ -46065,7 +91518,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                         {(() => {
+
+
+
+
+
+
+
+
 
 
 
@@ -46081,7 +91550,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                             const email = (info as any)?.email ? stripDeletedEmailSuffix(String((info as any).email)) : '';
+
+
+
+
+
+
+
+
 
 
 
@@ -46097,7 +91582,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                             const displayName = (name || (email ? email.split('@')[0] : '') || email || '—').toString();
+
+
+
+
+
+
+
+
 
 
 
@@ -46113,7 +91614,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                                 <span className="block truncate" title={email}>
+
+
+
+
+
+
+
+
 
 
 
@@ -46129,7 +91646,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                                 </span>
+
+
+
+
+
+
+
+
 
 
 
@@ -46145,7 +91678,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                         })()}
+
+
+
+
+
+
+
+
 
 
 
@@ -46161,7 +91710,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 </td>
+
+
+
+
+
+
+
+
 
 
 
@@ -46177,7 +91742,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                     <div className="font-semibold text-gray-900">
+
+
+
+
+
+
+
+
 
 
 
@@ -46193,7 +91774,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                             const assignedByUser: any = (task as any)?.assignedByUser;
+
+
+
+
+
+
+
+
 
 
 
@@ -46209,7 +91806,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                             const email = stripDeletedEmailSuffix(assignedByUser?.email || (typeof assignedBy === 'string' ? assignedBy : assignedBy?.email) || '').toString();
+
+
+
+
+
+
+
+
 
 
 
@@ -46225,7 +91838,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                             const match = !name && email
+
+
+
+
+
+
+
+
 
 
 
@@ -46241,7 +91870,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                                 : null;
+
+
+
+
+
+
+
+
 
 
 
@@ -46257,7 +91902,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                             return (
+
+
+
+
+
+
+
+
 
 
 
@@ -46273,7 +91934,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                                     {displayName}
+
+
+
+
+
+
+
+
 
 
 
@@ -46289,7 +91966,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                             );
+
+
+
+
+
+
+
+
 
 
 
@@ -46305,7 +91998,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                     </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -46321,7 +92030,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 {showListActionsColumn ? (
+
+
+
+
+
+
+
+
 
 
 
@@ -46337,7 +92062,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                         {canEditTask(task) && (
+
+
+
+
+
+
+
+
 
 
 
@@ -46353,7 +92094,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                                 type="button"
+
+
+
+
+
+
+
+
 
 
 
@@ -46369,7 +92126,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                                 disabled={Boolean(task?.completedApproval)}
+
+
+
+
+
+
+
+
 
 
 
@@ -46385,7 +92158,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                                     ? 'text-gray-300 cursor-not-allowed'
+
+
+
+
+
+
+
+
 
 
 
@@ -46401,7 +92190,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                                     }`}
+
+
+
+
+
+
+
+
 
 
 
@@ -46417,7 +92222,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                             >
+
+
+
+
+
+
+
+
 
 
 
@@ -46433,6 +92254,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                             </button>
 
 
@@ -46441,7 +92270,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                         )}
+
+
+
+
+
+
+
+
 
 
 
@@ -46457,6 +92302,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                             <button
 
 
@@ -46465,7 +92318,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                                 type="button"
+
+
+
+
+
+
+
+
 
 
 
@@ -46481,8 +92350,18 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                                 className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-gray-500 hover:text-rose-700 hover:bg-rose-50"
+
                                                                                 title="Delete" >
+
                                                                                 <Trash2 className="h-4 w-4" />
 
 
@@ -46491,7 +92370,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                             </button>
+
+
+
+
+
+
+
+
 
 
 
@@ -46507,7 +92402,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                         {isSbmUser ? (
+
+
+
+
 
 
 
@@ -46515,7 +92422,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                                 type="button"
+
+
+
+
 
 
 
@@ -46523,7 +92438,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                                 className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-gray-500 hover:text-blue-700 hover:bg-blue-50"
+
+
+
+
 
 
 
@@ -46531,7 +92454,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                             >
+
+
+
+
 
 
 
@@ -46539,11 +92470,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                                             </button>
 
 
 
+
+
+
+
                                                                         ) : null}
+
+
+
+
+
+
+
+
 
 
 
@@ -46559,7 +92506,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 ) : null}
+
+
+
+
+
+
+
+
 
 
 
@@ -46575,7 +92538,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         ))}
+
+
+
+
+
+
+
+
 
 
 
@@ -46591,7 +92570,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                 </table>
+
+
+
+
+
+
+
+
 
 
 
@@ -46607,7 +92602,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -46631,7 +92642,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                                     {displayTasks.length > 0 && totalTaskPages > 1 && (
+
+
+
+
+
+
+
+
 
 
 
@@ -46647,7 +92682,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                             <div className="text-sm text-gray-600">
+
+
+
+
+
+
+
+
 
 
 
@@ -46663,7 +92714,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     <span>Page {taskPage} of {totalTaskPages}</span>
+
+
+
+
+
+
+
+
 
 
 
@@ -46679,7 +92746,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         value={String(tasksPerPage)}
+
+
+
+
+
+
+
+
 
 
 
@@ -46695,7 +92778,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             const next = Number(e.target.value);
+
+
+
+
+
+
+
+
 
 
 
@@ -46711,7 +92810,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             setTasksPerPage(next);
+
+
+
+
+
+
+
+
 
 
 
@@ -46727,7 +92842,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                         }}
+
+
+
+
+
+
+
+
 
 
 
@@ -46743,7 +92874,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     >
+
+
+
+
+
+
+
+
 
 
 
@@ -46759,7 +92906,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             <option key={n} value={String(n)}>
+
+
+
+
+
+
+
+
 
 
 
@@ -46775,7 +92938,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             </option>
+
+
+
+
+
+
+
+
 
 
 
@@ -46791,7 +92970,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     </select>
+
+
+
+
+
+
+
+
 
 
 
@@ -46807,7 +93002,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                             </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -46823,7 +93034,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                 <button
+
+
+
+
+
+
+
+
 
 
 
@@ -46839,7 +93066,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     onClick={() => setTaskPage((p) => Math.max(1, p - 1))}
+
+
+
+
+
+
+
+
 
 
 
@@ -46855,7 +93098,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     className="px-3 py-2 text-sm font-medium bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+
+
+
+
+
+
+
+
 
 
 
@@ -46871,6 +93130,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     Previous
 
 
@@ -46879,7 +93146,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                 </button>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -46903,7 +93194,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     {taskPageNumbers.map((p) => (
+
+
+
+
+
+
+
+
 
 
 
@@ -46919,7 +93226,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             key={p}
+
+
+
+
+
+
+
+
 
 
 
@@ -46935,7 +93258,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             onClick={() => setTaskPage(p)}
+
+
+
+
+
+
+
+
 
 
 
@@ -46951,7 +93290,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 ? 'bg-blue-600 text-white border-blue-600'
+
+
+
+
+
+
+
+
 
 
 
@@ -46967,7 +93322,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                                 }`}
+
+
+
+
+
+
+
+
 
 
 
@@ -46983,7 +93354,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                             {p}
+
+
+
+
+
+
+
+
 
 
 
@@ -46999,7 +93386,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     ))}
+
+
+
+
+
+
+
+
 
 
 
@@ -47023,7 +93426,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                                                 <button
+
+
+
+
+
+
+
+
 
 
 
@@ -47039,7 +93466,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     onClick={() => setTaskPage((p) => Math.min(totalTaskPages, p + 1))}
+
+
+
+
+
+
+
+
 
 
 
@@ -47055,7 +93498,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     className="px-3 py-2 text-sm font-medium bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+
+
+
+
+
+
+
+
 
 
 
@@ -47071,7 +93530,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                                     Next
+
+
+
+
+
+
+
+
 
 
 
@@ -47087,7 +93562,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                             </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -47103,7 +93594,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     )}
+
+
+
+
+
+
+
+
 
 
 
@@ -47119,6 +93626,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                             ) : currentView === 'md-impex-strike' ? (
 
 
@@ -47127,12 +93642,33 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                 <MdImpexStrikePage
+
                                     currentUser={currentUser as any}
+
                                     users={users}
+
                                     tasks={tasks}
+
                                     isOverdue={isOverdue}
+
                                 />
+
+
+
+
+
+
+
+
 
 
 
@@ -47148,7 +93684,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                 <MdImpexAccessPage />
+
+
+
+
+
+
+
+
 
 
 
@@ -47164,6 +93716,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                 <AllTasksPage
 
 
@@ -47172,7 +93732,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     tasks={tasks}
+
+
+
+
+
+
+
+
 
 
 
@@ -47188,7 +93764,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     setFilter={(value) => handleFilterChange('status', value)}
+
+
+
+
+
+
+
+
 
 
 
@@ -47204,7 +93796,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     setDateFilter={(value) => handleFilterChange('date', value)}
+
+
+
+
+
+
+
+
 
 
 
@@ -47220,7 +93828,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     setAssignedFilter={(value) => handleFilterChange('assigned', value)}
+
+
+
+
+
+
+
+
 
 
 
@@ -47236,7 +93860,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     onAdvancedFilterChange={(filterType: string, value: string) =>
+
+
+
+
+
+
+
+
 
 
 
@@ -47252,7 +93892,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     }
+
+
+
+
+
+
+
+
 
 
 
@@ -47268,7 +93924,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     searchTerm={searchTerm}
+
+
+
+
+
+
+
+
 
 
 
@@ -47284,6 +93956,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     currentUser={currentUser}
 
 
@@ -47292,7 +93972,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     users={users}
+
+
+
+
+
+
+
+
 
 
 
@@ -47308,6 +94004,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         return await handleUpdateTask(taskId, updatedTask);
 
 
@@ -47316,7 +94020,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     }}
+
+
+
+
+
+
+
+
 
 
 
@@ -47332,6 +94052,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     formatDate={formatDate}
 
 
@@ -47340,7 +94068,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     isOverdue={isOverdue}
+
+
+
+
+
+
+
+
 
 
 
@@ -47356,7 +94100,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     openMenuId={openMenuId}
+
+
+
+
+
+
+
+
 
 
 
@@ -47372,7 +94132,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     onToggleTaskStatus={handleToggleTaskStatus}
+
+
+
+
+
+
+
+
 
 
 
@@ -47388,7 +94164,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         if (!canCreateTasks) {
+
+
+
+
+
+
+
+
 
 
 
@@ -47404,6 +94196,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                             return undefined;
 
 
@@ -47412,7 +94212,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         }
+
+
+
+
+
+
+
+
 
 
 
@@ -47428,6 +94244,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         return undefined;
 
 
@@ -47436,7 +94260,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     }}
+
+
+
+
+
+
+
+
 
 
 
@@ -47452,7 +94292,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     onDeleteComment={handleDeleteComment}
+
+
+
+
+
+
+
+
 
 
 
@@ -47468,7 +94324,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     onReassignTask={handleReassignTask}
+
+
+
+
+
+
+
+
 
 
 
@@ -47484,7 +94356,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     onAddTaskHistory={handleAddTaskHistory}
+
+
+
+
+
+
+
+
 
 
 
@@ -47500,6 +94388,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     onUpdateTaskApproval={handleUpdateTaskApproval}
 
 
@@ -47508,7 +94404,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     onFetchTaskHistory={handleFetchTaskHistory}
+
+
+
+
+
+
+
+
 
 
 
@@ -47524,7 +94436,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     isSidebarCollapsed={isSidebarCollapsed}
+
+
+
+
+
+
+
+
 
 
 
@@ -47540,7 +94468,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     showEditModal={showEditTaskModal}
+
+
+
+
+
+
+
+
 
 
 
@@ -47556,7 +94500,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     onOpenEditModal={handleOpenEditModal}
+
+
+
+
+
+
+
+
 
 
 
@@ -47572,7 +94532,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     onSaveEditedTask={handleSaveEditedTask}
+
+
+
+
+
+
+
+
 
 
 
@@ -47588,7 +94564,115 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+                            ) : currentView === 'assigned-by-me' ? (
+
+                                <AssignedByMe
+
+                                    currentUser={currentUser as any}
+
+                                    users={users as any}
+
+                                    brands={brands as any}
+
+                                    getTaskBorderColor={getTaskBorderColor}
+
+                                    formatDate={formatDate}
+
+                                    isOverdue={isOverdue}
+
+                                    onApproveTask={handleApproveTask}
+
+                                    onUpdateTaskApproval={handleUpdateTaskApproval}
+
+                                    advancedFilters={filters}
+
+                                    onAdvancedFilterChange={(filterType: string, value: string) =>
+
+                                        handleFilterChange(filterType as keyof FilterState, value)
+
+                                    }
+
+                                    onEditTask={handleOpenEditModal}
+
+                                    onViewHistory={handleOpenTaskHistorySidebar}
+
+                                    onOpenComments={handleOpenTaskCommentSidebar}
+
+                                    onSaveComment={handleSaveComment}
+
+                                    onDeleteComment={handleDeleteComment}
+
+                                    onFetchTaskComments={handleFetchTaskComments}
+
+                                    onFetchTaskHistory={handleFetchTaskHistory}
+
+                                    onToggleTaskStatus={handleToggleTaskStatus}
+
+                                />
+
+                            ) : currentView === 'assigned-to-me' ? (
+
+                                <AssignedToMe
+
+                                    currentUser={currentUser as any}
+
+                                    users={users as any}
+
+                                    brands={brands as any}
+
+                                    getTaskBorderColor={getTaskBorderColor}
+
+                                    formatDate={formatDate}
+
+                                    isOverdue={isOverdue}
+
+                                    onApproveTask={handleApproveTask}
+
+                                    onUpdateTaskApproval={handleUpdateTaskApproval}
+
+                                    advancedFilters={filters}
+
+                                    onAdvancedFilterChange={(filterType: string, value: string) =>
+
+                                        handleFilterChange(filterType as keyof FilterState, value)
+
+                                    }
+
+                                    onEditTask={handleOpenEditModal}
+
+                                    onViewHistory={handleOpenTaskHistorySidebar}
+
+                                    onOpenComments={handleOpenTaskCommentSidebar}
+
+                                    onSaveComment={handleSaveComment}
+
+                                    onDeleteComment={handleDeleteComment}
+
+                                    onFetchTaskComments={handleFetchTaskComments}
+
+                                    onFetchTaskHistory={handleFetchTaskHistory}
+
+                                    onToggleTaskStatus={handleToggleTaskStatus}
+
+                                />
+
                             ) : currentView === 'personal-tasks' ? (
+
+
+
+
+
+
+
+
 
 
 
@@ -47604,7 +94688,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                             ) : currentView === 'calendar' ? (
+
+
+
+
+
+
+
+
 
 
 
@@ -47620,7 +94720,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     tasks={tasks}
+
+
+
+
+
+
+
+
 
 
 
@@ -47636,7 +94752,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         id: currentUser.id || '',
+
+
+
+
+
+
+
+
 
 
 
@@ -47652,7 +94784,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         email: currentUser.email || '',
+
+
+
+
+
+
+
+
 
 
 
@@ -47668,6 +94816,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         avatar: currentUser.avatar || 'U'
 
 
@@ -47676,7 +94832,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     }}
+
+
+
+
+
+
+
+
 
 
 
@@ -47692,7 +94864,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         try {
+
+
+
+
+
+
+
+
 
 
 
@@ -47708,7 +94896,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         } catch (error) {
+
+
+
+
+
+
+
+
 
 
 
@@ -47724,7 +94928,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                             toast.error('Failed to update task status');
+
+
+
+
+
+
+
+
 
 
 
@@ -47740,7 +94960,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     }}
+
+
+
+
+
+
+
+
 
 
 
@@ -47756,7 +94992,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         try {
+
+
+
+
+
+
+
+
 
 
 
@@ -47772,7 +95024,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         } catch (error) {
+
+
+
+
+
+
+
+
 
 
 
@@ -47788,7 +95056,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                             toast.error('Failed to delete task');
+
+
+
+
+
+
+
+
 
 
 
@@ -47804,7 +95088,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     }}
+
+
+
+
+
+
+
+
 
 
 
@@ -47820,7 +95120,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         try {
+
+
+
+
+
+
+
+
 
 
 
@@ -47836,7 +95152,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         } catch (error) {
+
+
+
+
+
+
+
+
 
 
 
@@ -47852,7 +95184,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                             toast.error('Failed to update task');
+
+
+
+
+
+
+
+
 
 
 
@@ -47868,7 +95216,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     }}
+
+
+
+
+
+
+
+
 
 
 
@@ -47884,7 +95248,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     canDeleteTaskForTask={canEditDeleteTask}
+
+
+
+
+
+
+
+
 
 
 
@@ -47900,7 +95280,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     getAssignedUserInfo={getAssignedUserInfo}
+
+
+
+
+
+
+
+
 
 
 
@@ -47916,7 +95312,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     isOverdue={isOverdue}
+
+
+
+
+
+
+
+
 
 
 
@@ -47928,11 +95340,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                         const role = String((currentUser as any)?.role || '').trim().toLowerCase();
 
 
 
+
+
+
+
                                         return role !== 'rm' && role !== 'am';
+
+
+
+
 
 
 
@@ -47948,7 +95372,27 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
                                 />
+
+
+
+
+
+
+
+
 
 
 
@@ -47964,6 +95408,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                 <AnalyzePage
 
 
@@ -47972,7 +95424,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     tasks={tasks}
+
+
+
+
+
+
+
+
 
 
 
@@ -47988,6 +95456,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     currentUserRole={currentUser?.role}
 
 
@@ -47996,7 +95472,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                 />
+
+
+
+
+
+
+
+
 
 
 
@@ -48012,7 +95504,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                 <TeamPage
+
+
+
+
+
+
+
+
 
 
 
@@ -48028,7 +95536,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     tasks={tasks}
+
+
+
+
+
+
+
+
 
 
 
@@ -48044,6 +95568,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     onDeleteUser={handleDeleteUser}
 
 
@@ -48052,7 +95584,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     onAddUser={handleCreateUser}
+
+
+
+
+
+
+
+
 
 
 
@@ -48068,7 +95616,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     currentUser={currentUser}
+
+
+
+
+
+
+
+
 
 
 
@@ -48084,7 +95648,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                 />
+
+
+
+
+
+
+
+
 
 
 
@@ -48100,7 +95680,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                 <UserProfilePage
+
+
+
+
+
+
+
+
 
 
 
@@ -48116,7 +95712,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     formatDate={formatDate}
+
+
+
+
+
+
+
+
 
 
 
@@ -48132,7 +95744,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         try {
+
+
+
+
+
+
+
+
 
 
 
@@ -48148,7 +95776,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         } catch {
+
+
+
+
+
+
+
+
 
 
 
@@ -48164,6 +95808,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         }
 
 
@@ -48172,7 +95824,19 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         try {
+
+
+
+
 
 
 
@@ -48180,7 +95844,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                             const nextEmail = String((next as any)?.email || '').trim().toLowerCase();
+
+
+
+
 
 
 
@@ -48188,7 +95860,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                 const list = Array.isArray(prev) ? prev : [];
+
+
+
+
 
 
 
@@ -48196,7 +95876,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                     const uid = (u?.id || u?._id || '').toString();
+
+
+
+
 
 
 
@@ -48204,7 +95892,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                     const matchById = nextId && uid && uid === String(nextId);
+
+
+
+
 
 
 
@@ -48212,7 +95908,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                     if (!matchById && !matchByEmail) return u;
+
+
+
+
 
 
 
@@ -48220,7 +95924,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                                 });
+
+
+
+
 
 
 
@@ -48228,11 +95940,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                                         } catch {
 
 
 
+
+
+
+
                                             // ignore
+
+
+
+
 
 
 
@@ -48244,7 +95968,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         try {
+
+
+
+
+
+
+
+
 
 
 
@@ -48260,7 +96000,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         } catch {
+
+
+
+
+
+
+
+
 
 
 
@@ -48276,7 +96032,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         }
+
+
+
+
+
+
+
+
 
 
 
@@ -48292,11 +96064,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                 />
 
 
 
+
+
+
+
                             ) : currentView === 'access' ? (
+
+
+
+
+
+
+
+
 
 
 
@@ -48312,6 +96104,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     currentUser={currentUser}
 
 
@@ -48320,7 +96120,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     users={users}
+
+
+
+
+
+
+
+
 
 
 
@@ -48336,6 +96152,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     onRefreshCurrentUser={fetchCurrentUser}
 
 
@@ -48344,7 +96168,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                 />
+
+
+
+
+
+
+
+
 
 
 
@@ -48360,7 +96200,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                 <CompanyBrandTaskTypePage
+
+
+
+
+
+
+
+
 
 
 
@@ -48376,7 +96232,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                 />
+
+
+
+
+
+
+
+
 
 
 
@@ -48392,7 +96264,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                 <AssignPage
+
+
+
+
+
+
+
+
 
 
 
@@ -48408,7 +96296,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                 />
+
+
+
+
+
+
+
+
 
 
 
@@ -48424,7 +96328,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                 <SpeedEcomReassignPage
+
+
+
+
+
+
+
+
 
 
 
@@ -48440,6 +96360,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     currentUser={currentUser}
 
 
@@ -48448,7 +96376,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     users={users}
+
+
+
+
+
+
+
+
 
 
 
@@ -48464,6 +96408,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     isSubmitting={isSpeedEcomReassignSubmitting}
 
 
@@ -48472,7 +96424,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                 />
+
+
+
+
+
+
+
+
 
 
 
@@ -48488,6 +96456,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                 <ReviewsPage
 
 
@@ -48496,7 +96472,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     currentUser={currentUser}
+
+
+
+
+
+
+
+
 
 
 
@@ -48512,7 +96504,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                 />
+
+
+
+
+
+
+
+
 
 
 
@@ -48528,7 +96536,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                 <OtherWorkPage
+
+
+
+
+
+
+
+
 
 
 
@@ -48544,7 +96568,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     tasks={tasks}
+
+
+
+
+
+
+
+
 
 
 
@@ -48560,7 +96600,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                 />
+
+
+
+
+
+
+
+
 
 
 
@@ -48576,7 +96632,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                 <BrandsListPage
+
+
+
+
+
+
+
+
 
 
 
@@ -48592,7 +96664,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     currentUser={currentUser}
+
+
+
+
+
+
+
+
 
 
 
@@ -48608,7 +96696,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     onSelectBrand={(brandId) => {
+
+
+
+
+
+
+
+
 
 
 
@@ -48624,7 +96728,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         if (!nextId) return;
+
+
+
+
+
+
+
+
 
 
 
@@ -48640,6 +96760,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         setCurrentView('brand-detail');
 
 
@@ -48648,7 +96776,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         try {
+
+
+
+
+
+
+
+
 
 
 
@@ -48664,7 +96808,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         } catch {
+
+
+
+
+
+
+
+
 
 
 
@@ -48680,7 +96840,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         }
+
+
+
+
+
+
+
+
 
 
 
@@ -48696,7 +96872,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                 />
+
+
+
+
+
+
+
+
 
 
 
@@ -48712,7 +96904,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                 <BrandDetailPage
+
+
+
+
+
+
+
+
 
 
 
@@ -48728,7 +96936,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     brands={apiBrands}
+
+
+
+
+
+
+
+
 
 
 
@@ -48744,7 +96968,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     isSidebarCollapsed={isSidebarCollapsed}
+
+
+
+
+
+
+
+
 
 
 
@@ -48760,7 +97000,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         setCurrentView('brands');
+
+
+
+
+
+
+
+
 
 
 
@@ -48776,7 +97032,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         try {
+
+
+
+
+
+
+
+
 
 
 
@@ -48792,7 +97064,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         } catch {
+
+
+
+
+
+
+
+
 
 
 
@@ -48808,7 +97096,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                         }
+
+
+
+
+
+
+
+
 
 
 
@@ -48824,7 +97128,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                     tasks={tasks}
+
+
+
+
+
+
+
+
 
 
 
@@ -48840,7 +97160,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                 />
+
+
+
+
+
+
+
+
 
 
 
@@ -48856,7 +97192,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                 <ManagerMonthlyRankingPage currentUser={currentUser} />
+
+
+
+
+
+
+
+
 
 
 
@@ -48872,23 +97224,55 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                 <BrandsListPage
+
+
 
                                     isSidebarCollapsed={isSidebarCollapsed}
 
+
+
                                     currentUser={currentUser}
+
+
 
                                     tasks={tasks}
 
+
+
                                     onSelectBrand={(brandId) => {
+
+
 
                                         setSelectedBrandId(brandId);
 
+
+
                                         setCurrentView('brand-detail');
+
+
 
                                     }}
 
+
+
                                 />
+
+
+
+
+
+
+
+
 
 
 
@@ -48904,21 +97288,51 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                                 <BrandDetailPage
+
+
 
                                     brandId={selectedBrandId || ''}
 
+
+
                                     brands={apiBrands}
+
+
 
                                     currentUser={currentUser}
 
+
+
                                     isSidebarCollapsed={isSidebarCollapsed}
+
+
 
                                     onBack={() => setCurrentView('brands')}
 
+
+
                                     tasks={tasks}
 
+
+
                                 />
+
+
+
+
+
+
+
+
 
 
 
@@ -48934,7 +97348,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                         </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -48950,7 +97380,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 </main>
+
+
+
+
+
+
+
+
 
 
 
@@ -48974,104 +97420,225 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             {(() => {
 
+
+
                 const currentUserCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase();
+
                 const currentUserRole = String((currentUser as any)?.role || '').trim().toLowerCase();
+
                 const isMdImpexUser = currentUserCompany.includes('mdimpex') || 
+
                                     currentUserCompany.includes('md_impex') || 
+
                                     currentUserCompany.includes('md impex') ||
+
                                     currentUserRole === 'md_manager';
+
+
 
                 if (isMdImpexUser) {
 
+
+
                     return (
+
+
 
                         <MdImpexAddTaskModal
 
+
+
                             open={showAddTaskModal}
+
+
 
                             onClose={() => setShowAddTaskModal(false)}
 
+
+
                             newTask={newTask}
+
+
 
                             formErrors={formErrors}
 
+
+
                             onChange={handleInputChange}
+
+
 
                             availableCompanies={availableCompaniesForSbm}
 
+
+
                             getAvailableBrandOptions={getAvailableBrandOptions}
+
+
 
                             availableTaskTypesForNewTask={availableTaskTypesForNewTask}
 
+
+
                             onSubmit={handleSaveTaskFromModal}
+
+
 
                             isSubmitting={isCreatingTask}
 
+
+
                             currentUserEmail={String(currentUser?.email || '')}
+
+
 
                             currentUserRole={String(currentUser?.role || '')}
 
+
+
                             canBulkAddTaskTypes={canBulkAddTaskTypes}
+
+
 
                             onBulkAddTaskTypes={handleAddTaskTypeClick}
 
+
+
                         />
+
+
 
                     );
 
+
+
                 }
+
+
 
                 return (
 
+
+
                     <AddTaskModal
+
+
 
                         open={showAddTaskModal}
 
+
+
                         onClose={() => setShowAddTaskModal(false)}
+
+
 
                         newTask={newTask}
 
+
+
                         formErrors={formErrors}
+
+
 
                         onFieldChange={handleInputChange}
 
+
+
                         users={usersForAddTaskModal}
+
+
 
                         availableCompanies={availableCompaniesForSbm}
 
+
+
                         canBulkAddCompanies={canBulkAddCompanies}
+
+
 
                         onBulkAddCompanies={handleAddCompanyClick}
 
+
+
                         canCreateBrand={canCreateBrand}
+
+
 
                         canBulkAddBrands={canBulkAddBrands}
 
+
+
                         onAddBrand={handleAddBrandClick}
+
+
 
                         availableBrandOptions={getAvailableBrandOptions()}
 
+
+
                         canBulkAddTaskTypes={canBulkAddTaskTypes}
+
+
 
                         onBulkAddTaskTypes={handleAddTaskTypeClick}
 
+
+
                         availableTaskTypesForNewTask={availableTaskTypesForNewTask}
+
+
 
                         onSubmit={handleSaveTaskFromModal}
 
+
+
                         isSubmitting={isCreatingTask}
+
+
 
                         isSbmUser={isSbmUser}
 
+
+
                         showCompanyDropdownIcon={true}
+
+
 
                     />
 
+
+
                 );
 
+
+
             })()}
+
+
+
+
+
+
+
+
 
 
 
@@ -49087,6 +97654,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 open={showEditTaskModal}
 
 
@@ -49095,7 +97670,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 editingTask={editingTask}
+
+
+
+
+
+
+
+
 
 
 
@@ -49111,7 +97702,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 editFormData={editFormData}
+
+
+
+
+
+
+
+
 
 
 
@@ -49127,7 +97734,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 onChange={handleEditInputChange}
+
+
+
+
+
+
+
+
 
 
 
@@ -49143,7 +97766,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 availableTaskTypesForEditTask={availableTaskTypesForEditTask}
+
+
+
+
+
+
+
+
 
 
 
@@ -49159,7 +97798,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 getEditFormBrandOptions={getEditFormBrandOptions}
+
+
+
+
+
+
+
+
 
 
 
@@ -49175,7 +97830,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 isSubmitting={isUpdatingTask}
+
+
+
+
+
+
+
+
 
 
 
@@ -49191,7 +97862,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 currentUserEmail={(currentUser as any)?.email || ''}
+
+
+
+
+
+
+
+
 
 
 
@@ -49207,7 +97894,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             />
+
+
+
+
+
+
+
+
 
 
 
@@ -49219,7 +97922,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 open={showMdImpexEditModal}
+
+
+
+
 
 
 
@@ -49227,7 +97938,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 currentUser={currentUser as any}
+
+
+
+
 
 
 
@@ -49235,7 +97954,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 onClose={() => setShowMdImpexEditModal(false)}
+
+
+
+
 
 
 
@@ -49243,7 +97970,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 users={users}
+
+
+
+
 
 
 
@@ -49251,7 +97986,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 editFormErrors={editFormErrors}
+
+
+
+
 
 
 
@@ -49259,7 +98002,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 availableTaskTypesForEditTask={availableTaskTypesForEditTask}
+
+
+
+
 
 
 
@@ -49267,7 +98018,15 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 getEditFormBrandOptions={getEditFormBrandOptions}
+
+
+
+
 
 
 
@@ -49275,11 +98034,35 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
                 disableDueDate={false}
 
 
 
+
+
+
+
             />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -49303,7 +98086,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 open={canBulkAddBrands && showBulkBrandModal}
+
+
+
+
+
+
+
+
 
 
 
@@ -49319,7 +98118,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 bulkBrandForm={bulkBrandForm}
+
+
+
+
+
+
+
+
 
 
 
@@ -49335,7 +98150,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 availableCompanies={availableCompaniesForSbm}
+
+
+
+
+
+
+
+
 
 
 
@@ -49351,7 +98182,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 currentUserRole={(currentUser as any)?.role}
+
+
+
+
+
+
+
+
 
 
 
@@ -49367,6 +98214,14 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 isSubmitting={isCreatingBulkBrands}
 
 
@@ -49375,7 +98230,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -49399,7 +98278,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 open={canBulkAddCompanies && showBulkCompanyModal}
+
+
+
+
+
+
+
+
 
 
 
@@ -49415,7 +98310,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 bulkCompanyNames={bulkCompanyNames}
+
+
+
+
+
+
+
+
 
 
 
@@ -49431,7 +98342,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 onSubmit={handleSubmitBulkCompanies}
+
+
+
+
+
+
+
+
 
 
 
@@ -49447,7 +98374,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -49471,7 +98422,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 open={canBulkAddTaskTypes && showBulkTaskTypeModal}
+
+
+
+
+
+
+
+
 
 
 
@@ -49487,7 +98454,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                     setShowBulkTaskTypeModal(false);
+
+
+
+
+
+
+
+
 
 
 
@@ -49503,7 +98486,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 }}
+
+
+
+
+
+
+
+
 
 
 
@@ -49519,7 +98518,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 setBulkTaskTypeCompany={(next) => setBulkTaskTypeCompany(next)}
+
+
+
+
+
+
+
+
 
 
 
@@ -49535,7 +98550,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 setBulkTaskTypeNames={(next) => setBulkTaskTypeNames(next)}
+
+
+
+
+
+
+
+
 
 
 
@@ -49551,7 +98582,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 onSubmit={handleSubmitBulkTaskTypes}
+
+
+
+
+
+
+
+
 
 
 
@@ -49567,7 +98614,31 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -49591,7 +98662,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 open={showManagerAddBrandModal}
+
+
+
+
+
+
+
+
 
 
 
@@ -49607,7 +98694,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 setManagerBrandName={(next) => setManagerBrandName(next)}
+
+
+
+
+
+
+
+
 
 
 
@@ -49623,7 +98726,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
                 onSubmit={() => handleManagerCreateBrand()}
+
+
+
+
+
+
+
+
 
 
 
@@ -49639,7 +98758,23 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
             />
+
+
+
+
+
+
+
+
 
 
 
@@ -49655,6 +98790,16 @@ const DashboardPage = () => {
 
 
 
+
+
+
+
+
+
+
+
     );
+
 };
+
 export default DashboardPage;

@@ -397,6 +397,26 @@ class TaskService {
         }
     }
 
+    async getAssignedByMeTasks() {
+        try {
+            const res = await apiClient.get(`${this.baseUrl}assigned-by-me`);
+            const tasks = (res.data.data || []).map((task: any) => normalizeTask(task));
+            return { success: true, data: tasks };
+        } catch (error: any) {
+            return { success: false, message: error?.response?.data?.message || 'Failed to fetch tasks' };
+        }
+    }
+
+    async getAssignedToMeTasks() {
+        try {
+            const res = await apiClient.get(`${this.baseUrl}assigned-to-me`);
+            const tasks = (res.data.data || []).map((task: any) => normalizeTask(task));
+            return { success: true, data: tasks };
+        } catch (error: any) {
+            return { success: false, message: error?.response?.data?.message || 'Failed to fetch tasks' };
+        }
+    }
+
     async submitTaskReview(taskId: string, payload: { reviewStars: number; reviewComment?: string }) {
         try {
             const res = await apiClient.post(`${this.baseUrl}${taskId}/review`, payload);

@@ -170,6 +170,7 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
                 monthKey,
                 rows: rowsNormalized.map((r) => ({
                     userId: String(r.userId),
+                    email: String(r.email || ''),
                     churn: normalizeWeekArray(r.churn),
                     liveAssign: normalizeWeekArray(r.liveAssign),
                     hits: normalizeWeekArray(r.hits),

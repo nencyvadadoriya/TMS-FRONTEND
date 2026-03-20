@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   X, LogOut, ListTodo, ChevronLeft, ChevronRight, Menu, Sun, Moon,
-  Users, Home, Calendar, CheckSquare, User, Building, BarChart3, Shield, Star, Briefcase, AlertTriangle
+  Users, Home, Calendar, CheckSquare, User, Building, BarChart3, Shield, Star, Briefcase, AlertTriangle, UserCheck
 } from 'lucide-react';
 
 import type { UserType } from '../Types/Types';
@@ -16,7 +16,9 @@ interface SidebarProps {
   isCollapsed: boolean;
   setIsCollapsed: (collapsed: boolean) => void;
   navigateTo: (page: string) => void;
-  currentView?: 'dashboard' | 'all-tasks' | 'calendar' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'analyze' | 'access' | 'assign' | 'speed-ecom-reassign' | 'company-brand-task-types' | 'reviews' | 'manager-monthly-rankings' | 'other-work' | 'md-impex-strike' | 'md-impex-access' | 'personal-tasks';
+  assignedByMePendingCount?: number;
+  assignedToMePendingCount?: number;
+  currentView?: 'dashboard' | 'all-tasks' | 'calendar' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'analyze' | 'access' | 'assign' | 'speed-ecom-reassign' | 'company-brand-task-types' | 'reviews' | 'manager-monthly-rankings' | 'other-work' | 'md-impex-strike' | 'md-impex-access' | 'personal-tasks' | 'assigned-by-me' | 'assigned-to-me';
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -27,6 +29,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   isCollapsed,
   setIsCollapsed,
   navigateTo,
+  assignedByMePendingCount = 0,
+  assignedToMePendingCount = 0,
   currentView = 'dashboard'
 }) => {
   const [darkMode, setDarkMode] = useState(false);
@@ -106,6 +110,20 @@ const Sidebar: React.FC<SidebarProps> = ({
           }
         ]
         : []),
+      {
+        name: 'Assigned By Me',
+        icon: UserCheck,
+        current: currentView === 'assigned-by-me',
+        onClick: () => navigateTo('assigned-by-me'),
+        badge: assignedByMePendingCount
+      },
+      {
+        name: 'Assigned To Me',
+        icon: ListTodo,
+        current: currentView === 'assigned-to-me',
+        onClick: () => navigateTo('assigned-to-me'),
+        badge: assignedToMePendingCount
+      },
       ...(canSeeCalendar
         ? [
           {

@@ -82,6 +82,11 @@ interface AllTasksPageProps {
   isSidebarCollapsed?: boolean;
   brands: Brand[];
 
+  embedded?: boolean;
+  showFiltersInEmbedded?: boolean;
+  hideCreateAndBulkActions?: boolean;
+  hideAssignBy?: boolean;
+
   // NEW PROPS FOR INTEGRATION
   advancedFilters?: AdvancedFilters;
   onAdvancedFilterChange?: (filterType: string, value: string) => void;
@@ -238,6 +243,8 @@ interface DesktopTaskItemProps {
   disableStatusToggle?: boolean;
   showDeleteButton?: boolean;
   hasUnreadComments?: (taskId: string) => boolean;
+  hideAssignBy?: boolean;
+  assignedFilter?: string;
 }
 
 interface BulkActionsProps {
@@ -617,6 +624,8 @@ const BulkImporter = memo(({
   submitting?: boolean;
   summary?: BulkCreateResult | null;
   getBrandsByCompany?: (companyName: string) => string[];
+  show?: boolean;
+  setShow?: React.Dispatch<React.SetStateAction<boolean>>;
 }) => {
   const [bulkTaskInput, setBulkTaskInput] = useState<string>('');
 
@@ -1715,7 +1724,9 @@ const DesktopTaskItem = memo(({
   onPermanentApproval,
   isUpdatingApproval,
   disableStatusToggle,
-  hasUnreadComments
+  hasUnreadComments,
+  hideAssignBy,
+  assignedFilter
 }: DesktopTaskItemProps) => {
 
   const userInfo = getUserInfoForDisplay(task);
@@ -1847,7 +1858,7 @@ const DesktopTaskItem = memo(({
         </div>
 
         {/* Task Title Column - INCREASED WIDTH */}
-        <div className="col-span-2 min-w-0 pr-2">
+        <div className={hideAssignBy ? "col-span-3 min-w-0 pr-2" : "col-span-2 min-w-0 pr-2"}>
           <div className="flex flex-col gap-1">
             <h3 className="font-semibold text-gray-900 text-sm whitespace-normal break-words leading-tight" title={task.title}>
               {task.title}
@@ -1868,18 +1879,21 @@ const DesktopTaskItem = memo(({
         </div>
 
         {/* Assign To Column - REDUCED WIDTH */}
-        <div className="col-span-1 min-w-0 flex items-center"> {/* Changed: col-span-1 */}
-          <div className="font-medium text-gray-900 text-sm truncate w-full text-center" title={userInfo.email}>
-            {userInfo.name || '—'}
+        {assignedFilter !== 'assigned-to-me' && (
+          <div className="col-span-1 min-w-0 flex items-center"> {/* Changed: col-span-1 */}
+            <div className="font-medium text-gray-900 text-sm truncate w-full text-center" title={userInfo.email}>
+              {userInfo.name || '—'}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Assign By Column - REDUCED WIDTH */}
-        <div className="col-span-1 min-w-0 flex items-center"> {/* Changed: col-span-1 */}
-          <div className="font-medium text-gray-900 text-sm truncate w-full text-center" title={assignerInfo.email}>
-            {assignerInfo.name || '—'}
+        {!hideAssignBy && (
+          <div className="col-span-1 min-w-0 flex items-center"> {/* Changed: col-span-1 */}
+            <div className="font-medium text-gray-900 text-sm truncate w-full text-center" title={assignerInfo.email}>
+              {assignerInfo.name || '—'}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Created At Column - REDUCED */}
         <div className="col-span-1 min-w-0 flex items-center justify-center">
@@ -3134,6 +3148,11 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   onFetchTaskHistory,
   onBulkCreateTasks,
   brands = [],
+
+  embedded = false,
+  showFiltersInEmbedded = false,
+  hideCreateAndBulkActions = false,
+  hideAssignBy = false,
 
   // NEW PROPS
   advancedFilters,
@@ -5479,6 +5498,10 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
           if (s === 'pending') return !isCompleted && ['pending', 'in-progress', 'reassigned'].includes(taskStatus);
           if (s === 'in-progress') return taskStatus === 'in-progress';
           if (s === 'reassigned') return taskStatus === 'reassigned';
+          if (s === 'pending-approval') {
+            // Only show tasks that are completed but pending approval (completedApproval is false)
+            return isCompleted && !Boolean((task as any).completedApproval);
+          }
           return taskStatus === s;
         });
 
@@ -5487,6 +5510,11 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         const f = filter.toLowerCase();
         if (f === 'completed' && !isCompleted) statusPass = false;
         else if (f === 'pending' && (isCompleted || !['pending', 'in-progress', 'reassigned'].includes(String(task.status || '').toLowerCase()))) statusPass = false;
+        else if (f === 'pending-approval') {
+          // Only show tasks that are completed but pending approval (completedApproval is false)
+          if (!isCompleted) statusPass = false;
+          else if (Boolean((task as any).completedApproval)) statusPass = false;
+        }
       }
       if (!statusPass) return false;
 
@@ -5731,108 +5759,10 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   })();
 
   const canShowCreateTaskButton = canAccessCreateTask && !isCreateTaskDisabled;
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
-      {/* Header Section */}
-      <div className="bg-white shadow-lg border-b">
-        <div className="px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                {assignedFilter === 'assigned-by-me'
-                  ? 'Tasks Assigned By Me'
-                  : assignedFilter === 'assigned-to-me'
-                    ? 'My Tasks'
-                    : 'All Tasks'}
-              </h1>
-              <p className="text-gray-600 mt-1">
-                {assignedFilter === 'assigned-by-me'
-                  ? 'Tasks you have assigned to others'
-                  : assignedFilter === 'assigned-to-me'
-                    ? 'Tasks assigned to you'
-                    : 'Manage and track all tasks in one place'}
-              </p>
-            </div>
-
-            {!isAssistantViewOnly && (
-              <div className="flex items-center gap-3">
-                {isSpeedEcomUser ? (
-                  <div className="hidden sm:block">
-                    <input
-                      type="text"
-                      value={groupNumberSearch}
-                      onChange={(e) => setGroupNumberSearch(e.target.value)}
-                      placeholder="Search Group #"
-                      className="w-44 px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                ) : null}
-                <button
-                  onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                  className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  <Filter className="h-4 w-4 mr-2" />
-                  {showAdvancedFilters ? 'Hide Filters' : 'Show Filters'}
-                </button>
-
-                {!isBulkImportDisabled && (
-                  <button
-                    onClick={handleOpenBulkImporter}
-                    className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Bulk Import
-                  </button>
-                )}
-
-                {canShowCreateTaskButton && (
-                  <button
-                    onClick={handleCreateTaskWithHistory}
-                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Task
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-
-          {!isAssistantViewOnly && (
-            <>
-              {/* Advanced Filters */}
-              <AdvancedFiltersPanel
-                filters={effectiveAdvancedFilters}
-                availableCompanies={Object.keys(COMPANY_BRAND_MAP).sort((a, b) => a.localeCompare(b))}
-                availableTaskTypes={availableTaskTypesForFilters}
-                availableBrands={availableBrands}
-                getBrandLabel={getBrandLabelForFilter}
-                availableRms={availableRmUsersForFilters}
-                users={users}
-                currentUser={currentUser}
-                onFilterChange={handleFilterChange}
-                onResetFilters={resetFilters}
-                onApplyFilters={applyAdvancedFilters}
-                showFilters={showAdvancedFilters}
-                onToggleFilters={() => setShowAdvancedFilters(false)}
-              />
-
-              {/* Bulk Actions */}
-              <BulkActions
-                selectedTasks={selectedTasks}
-                bulkDeleting={bulkDeleting}
-                onBulkComplete={() => handleBulkStatusChange('completed')}
-                onBulkPending={() => handleBulkStatusChange('pending')}
-                onBulkDelete={handleBulkDelete}
-                onClearSelection={() => setSelectedTasks([])}
-              />
-            </>
-          )}
-        </div>
-      </div>
-
+  const body = (
+    <>
       {/* Main Content */}
-      <div className="px-4 py-8 sm:px-6 lg:px-8">
+      <div className={embedded ? '' : 'px-4 py-8 sm:px-6 lg:px-8'}>
         {isLoading ? (
           <div className="text-center py-16">
             <Loader2 className="h-12 w-12 animate-spin mx-auto text-blue-600 mb-4" />
@@ -5849,7 +5779,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                 ? 'Try changing your filters or search term to find what you\'re looking for'
                 : 'Get started by creating your first task or importing tasks in bulk'}
             </p>
-            {!isAssistantViewOnly && (
+            {!isAssistantViewOnly && !hideCreateAndBulkActions && (
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 {!isBulkImportDisabled && (
                   <button
@@ -5879,9 +5809,9 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
               <div className="col-span-1 text-center">#</div>
               <div className="col-span-1 text-center">Status</div>
               <div className="col-span-1 text-center">Brand</div>
-              <div className="col-span-2">Task Title</div>
-              <div className="col-span-1 text-center">Assign To</div>
-              <div className="col-span-1 text-center">Assign By</div>
+              <div className={hideAssignBy ? "col-span-3" : "col-span-2"}>Task Title</div>
+              {assignedFilter !== 'assigned-to-me' && <div className="col-span-1 text-center">Assign To</div>}
+              {!hideAssignBy && <div className="col-span-1 text-center">Assign By</div>}
               <div className="col-span-1 text-center">Created</div>
               <div className="col-span-1 text-center">Due Date</div>
               <div className="col-span-2 pl-4">Last Comment</div>
@@ -6046,6 +5976,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                       index={(currentPageSafe - 1) * tasksPerPage + idx + 1}
                       task={task}
                       isToggling={isToggling}
+                      assignedFilter={assignedFilter}
                       currentUser={currentUser}
                       formatDate={formatDate}
                       isOverdue={isOverdue}
@@ -6070,6 +6001,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                       onAssignClick={handleOpenReassignModal}
                       disableStatusToggle={isObManagerRole || !isTaskAssignee(task)}
                       hasUnreadComments={(taskId: string) => Boolean(unreadCommentsMap && (unreadCommentsMap as any)[taskId])}
+                      hideAssignBy={hideAssignBy}
                     />
                   </div>
                 </div>
@@ -6125,12 +6057,12 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       </div>
 
       {/* Bulk Import Modal */}
-      {showBulkImporter && !isBulkImportDisabled && (
+      {showBulkImporter && !isBulkImportDisabled && !hideCreateAndBulkActions && (
         <BulkImporter
           draftTasks={bulkDraftTasks}
           defaults={bulkImportDefaults}
-          currentUser={currentUser}
-          users={users}
+          show={showBulkImporter}
+          setShow={setShowBulkImporter}
           companyBrandMap={COMPANY_BRAND_MAP}
           availableTaskTypes={availableTaskTypesForBulk}
           onDefaultsChange={handleBulkDefaultsChange}
@@ -6219,6 +6151,114 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         getEmailByIdInternal={getEmailByIdInternal}
         getAssignerEmail={getAssignerEmail}
       />
+    </>
+  );
+
+  if (embedded && !showFiltersInEmbedded) {
+    return <div>{body}</div>;
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
+      {/* Header Section */}
+      <div className="bg-white shadow-lg border-b">
+        <div className="px-4 py-6 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {assignedFilter === 'assigned-by-me'
+                  ? 'Tasks Assigned By Me'
+                  : assignedFilter === 'assigned-to-me'
+                    ? 'My Tasks'
+                    : 'All Tasks'}
+              </h1>
+              <p className="text-gray-600 mt-1">
+                {assignedFilter === 'assigned-by-me'
+                  ? 'Tasks you have assigned to others'
+                  : assignedFilter === 'assigned-to-me'
+                    ? 'Tasks assigned to you'
+                    : 'Manage and track all tasks in one place'}
+              </p>
+            </div>
+
+            {!isAssistantViewOnly && (
+              <div className="flex items-center gap-3">
+                {isSpeedEcomUser ? (
+                  <div className="hidden sm:block">
+                    <input
+                      type="text"
+                      value={groupNumberSearch}
+                      onChange={(e) => setGroupNumberSearch(e.target.value)}
+                      placeholder="Search Group #"
+                      className="w-44 px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                ) : null}
+                <button
+                  onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                  className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  <Filter className="h-4 w-4 mr-2" />
+                  {showAdvancedFilters ? 'Hide Filters' : 'Show Filters'}
+                </button>
+
+                {!hideCreateAndBulkActions && !isBulkImportDisabled && (
+                  <button
+                    onClick={handleOpenBulkImporter}
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Bulk Import
+                  </button>
+                )}
+
+                {!hideCreateAndBulkActions && canShowCreateTaskButton && (
+                  <button
+                    onClick={handleCreateTaskWithHistory}
+                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Task
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {!isAssistantViewOnly && (
+            <>
+              {/* Advanced Filters */}
+              <AdvancedFiltersPanel
+                filters={effectiveAdvancedFilters}
+                availableCompanies={Object.keys(COMPANY_BRAND_MAP).sort((a, b) => a.localeCompare(b))}
+                availableTaskTypes={availableTaskTypesForFilters}
+                availableBrands={availableBrands}
+                getBrandLabel={getBrandLabelForFilter}
+                availableRms={availableRmUsersForFilters}
+                users={users}
+                currentUser={currentUser}
+                onFilterChange={handleFilterChange}
+                onResetFilters={resetFilters}
+                onApplyFilters={applyAdvancedFilters}
+                showFilters={showAdvancedFilters}
+                onToggleFilters={() => setShowAdvancedFilters(false)}
+              />
+
+              {/* Bulk Actions */}
+              <BulkActions
+                selectedTasks={selectedTasks}
+                bulkDeleting={bulkDeleting}
+                onBulkComplete={() => handleBulkStatusChange('completed')}
+                onBulkPending={() => handleBulkStatusChange('pending')}
+                onBulkDelete={handleBulkDelete}
+                onClearSelection={() => setSelectedTasks([])}
+              />
+            </>
+          )}
+        </div>
+      </div>
+
+      {body}
     </div>
   );
 });

@@ -35,7 +35,9 @@ export const routepath = {
     otherWork: '/other-work',
     mdImpexStrike: '/md-impex-strike',
     mdImpexAccess: '/md-impex-access',
-    personalTasks: '/personal-tasks'
+    personalTasks: '/personal-tasks',
+    assignedByMe: '/assigned-by-me',
+    assignedToMe: '/assigned-to-me'
 };
 
 export const route = createHashRouter([
@@ -142,6 +144,14 @@ export const route = createHashRouter([
             ,
             {
                 path: routepath.personalTasks,
+                lazy: lazyComponent(() => import("../Pages/DashboardPage"))
+            },
+            {
+                path: routepath.assignedByMe,
+                lazy: lazyComponent(() => import("../Pages/DashboardPage"))
+            },
+            {
+                path: routepath.assignedToMe,
                 lazy: lazyComponent(() => import("../Pages/DashboardPage"))
             }
         ]

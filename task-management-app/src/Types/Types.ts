@@ -135,6 +135,7 @@ export interface Task {
     brandId?: string | number;
     project?: string;       // Project name
     assignedToUser?: UserType;
+    assignedByUser?: UserType;
 
     // Extended fields used in multiple UI components
     taskType?: string;      // e.g. 'regular', 'bug', etc.
