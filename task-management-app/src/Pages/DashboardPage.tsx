@@ -130,9 +130,7 @@ import BulkAddCompaniesModal from './DashboardModals/BulkAddCompaniesModal';
 import BulkAddTaskTypesModal from './DashboardModals/BulkAddTaskTypesModal';
 
 import ManagerAddBrandModal from './DashboardModals/ManagerAddBrandModal';
-
-
-
+import AdminHeadlineManager from '../Components/AdminHeadlineManager';
 import type {
 
     Brand,
@@ -2490,25 +2488,29 @@ const DashboardPage = () => {
 
 
 
-
-
-
-
-
-
-
-
-
-    const [currentView, setCurrentView] = useState<'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'access' | 'company-brand-task-types' | 'assign' | 'reviews' | 'other-work' | 'speed-ecom-reassign' | 'manager-monthly-rankings' | 'md-impex-strike' | 'md-impex-access' | 'personal-tasks' | 'assigned-by-me' | 'assigned-to-me'>('dashboard');
-
-
-
-
-
-
-
-
-
+    const [currentView, setCurrentView] = useState<
+        | 'dashboard'
+        | 'all-tasks'
+        | 'calendar'
+        | 'analyze'
+        | 'team'
+        | 'profile'
+        | 'brands'
+        | 'brand-detail'
+        | 'access'
+        | 'company-brand-task-types'
+        | 'assign'
+        | 'reviews'
+        | 'other-work'
+        | 'speed-ecom-reassign'
+        | 'manager-monthly-rankings'
+        | 'md-impex-strike'
+        | 'md-impex-access'
+        | 'personal-tasks'
+        | 'assigned-by-me'
+        | 'assigned-to-me'
+        | 'headline'
+    >('dashboard');
 
 
 
@@ -16123,87 +16125,11 @@ const DashboardPage = () => {
 
 
 
-
         if (companyKey === SPEED_E_COM_COMPANY_KEY) {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             const safe = Array.isArray(list) ? list.filter(Boolean) : [];
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            return safe.length > 0 ? safe : [...SPEED_E_COM_FIXED_TASK_TYPES];
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+            // Always ensure fixed task types are included and no duplicates
+            return Array.from(new Set([...safe, ...SPEED_E_COM_FIXED_TASK_TYPES]));
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         const currentUserCompanyKey = normalizeCompanyKey((currentUser as any)?.companyName || (currentUser as any)?.company);
 
 
@@ -18026,8 +17952,18 @@ const DashboardPage = () => {
 
         }
 
-        const needsCompanyList = role === 'admin' || role === 'super_admin' || role === 'sbm' || role === 'rm' || role === 'am' || role === 'ar';
+        const allowedRoles = [
+            'admin',
+            'super_admin',
+            'sbm',
+            'rm',
+            'am',
+            'ar',
+            'sales_manager',
+            'sales_man'
+        ];
 
+        const needsCompanyList = allowedRoles.includes(role);
         const fromCompanies = (companies || []).map(c => (c?.name || '').toString().trim()).filter(Boolean);
 
 
@@ -18776,9 +18712,7 @@ const DashboardPage = () => {
 
         }
 
-
-
-        if (!isSbmRole) return availableCompanies;
+        if (!isSbmRole && role !== 'sales_manager' && role !== 'sales_man') return availableCompanies;
 
 
 
@@ -21551,53 +21485,7 @@ const DashboardPage = () => {
 
 
         };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         const allowed = new Set<string>();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         (tasks || []).forEach((t: any) => {
 
 
@@ -23775,501 +23663,59 @@ const DashboardPage = () => {
 
 
     }, [tasks, normalizeText]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     const getTaskTypesForCompany = useCallback((companyName: string): string[] => {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         const companyKey = normalizeText(companyName);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         if (!companyKey) return [];
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         const fromTasks = Array.from(taskTypesByCompanyFromTasks.get(companyKey) || []);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        const fromOverrides = Array.isArray(taskTypeCompanyOverrides?.[companyKey]) ? taskTypeCompanyOverrides[companyKey] : [];
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        const fromOverrides = Array.isArray(taskTypeCompanyOverrides?.[companyKey])
+            ? taskTypeCompanyOverrides[companyKey]
+            : [];
 
         const merged = Array.from(new Set([...fromOverrides, ...fromTasks]));
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         const selectedCompanyKey = normalizeCompanyKey(companyName);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        if (selectedCompanyKey === SPEED_E_COM_COMPANY_KEY) {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            const speedCompanyId = (companies || []).find((c: any) => {
-
-
-
-
-
-
-
+        // Get matching company ID
+        const matchingCompanyId =
+            (companies || []).find((c: any) => {
                 const name = String(c?.name || c?.companyName || c?.title || '').trim();
-
-
-
-
-
-
-
-                return normalizeCompanyKey(name) === SPEED_E_COM_COMPANY_KEY;
-
-
-
-
-
-
-
-            })?._id || (companies || []).find((c: any) => {
-
-
-
-
-
-
-
+                return normalizeCompanyKey(name) === selectedCompanyKey;
+            })?._id ||
+            (companies || []).find((c: any) => {
                 const name = String(c?.name || c?.companyName || c?.title || '').trim();
-
-
-
-
-
-
-
-                return normalizeCompanyKey(name) === SPEED_E_COM_COMPANY_KEY;
-
-
-
-
-
-
-
+                return normalizeCompanyKey(name) === selectedCompanyKey;
             })?.id;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            const fromApi = (taskTypes || [])
-
-
-
-
-
-
-
-                .filter((t: any) => {
-
-
-
-
-
-
-
-                    const companyId = String(t?.companyId || '').trim();
-
-
-
-
-
-
-
-                    if (!companyId || !speedCompanyId) return false;
-
-
-
-
-
-
-
-                    return companyId === String(speedCompanyId);
-
-
-
-
-
-
-
-                })
-
-
-
-
-
-
-
-                .map((t: any) => (t?.name || '').toString().trim())
-
-
-
-
-
-
-
-                .filter(Boolean);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            const combined = Array.from(new Set([...fromApi, ...merged]));
-
-
-
-
-
-
-
-            return restrictTaskTypesForCompany(companyName, combined).sort((a, b) => a.localeCompare(b));
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        // Get task types from API (including global ones)
+        const fromApi = (taskTypes || [])
+            .filter((t: any) => {
+                const typeCompanyId = String(t?.companyId || '').trim();
+                return !typeCompanyId || (matchingCompanyId && typeCompanyId === String(matchingCompanyId));
+            })
+            .map((t: any) => (t?.name || '').toString().trim())
+            .filter(Boolean);
+
+        const combined = Array.from(new Set([...fromApi, ...merged]));
+
+        // 🔥 Special handling for Speed Ecom
+        if (selectedCompanyKey === SPEED_E_COM_COMPANY_KEY) {
+            return restrictTaskTypesForCompany(companyName, combined)
+                .sort((a, b) => a.localeCompare(b));
         }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        // Default return for other companies
+        return restrictTaskTypesForCompany(companyName, combined)
+            .sort((a, b) => a.localeCompare(b));
 
         const role = (currentUser?.role || '').toString().toLowerCase();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         if (role === 'manager') {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             const allowedKeys = allowedTaskTypeKeysForManager;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             return merged
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 .filter((t) => allowedKeys.has((t || '').toString().trim().toLowerCase()))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 .sort((a, b) => a.localeCompare(b));
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         return merged.sort((a, b) => a.localeCompare(b));
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     }, [allowedTaskTypeKeysForManager, companies, currentUser?.role, normalizeCompanyKey, normalizeText, restrictTaskTypesForCompany, taskTypeCompanyOverrides, taskTypes, taskTypesByCompanyFromTasks]);
 
 
@@ -33194,24 +32640,30 @@ const DashboardPage = () => {
 
 
 
-
-
-
-
-
-
-
-
-        const viewMap: Record<string, 'dashboard' | 'all-tasks' | 'calendar' | 'analyze' | 'team' | 'profile' | 'brands' | 'brand-detail' | 'access' | 'company-brand-task-types' | 'assign' | 'speed-ecom-reassign' | 'reviews' | 'other-work' | 'manager-monthly-rankings' | 'md-impex-strike' | 'md-impex-access' | 'personal-tasks' | 'assigned-by-me' | 'assigned-to-me'> = {
-
-
-
-
-
-
-
-
-
+        const viewMap: Record<
+            string,
+            | 'dashboard'
+            | 'all-tasks'
+            | 'calendar'
+            | 'analyze'
+            | 'team'
+            | 'profile'
+            | 'brands'
+            | 'brand-detail'
+            | 'access'
+            | 'company-brand-task-types'
+            | 'assign'
+            | 'speed-ecom-reassign'
+            | 'reviews'
+            | 'other-work'
+            | 'manager-monthly-rankings'
+            | 'md-impex-strike'
+            | 'md-impex-access'
+            | 'personal-tasks'
+            | 'assigned-by-me'
+            | 'assigned-to-me'
+            | 'headline'
+        > = {
 
 
 
@@ -33363,157 +32815,18 @@ const DashboardPage = () => {
 
 
             'access': 'access',
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             'company-brand-task-types': 'company-brand-task-types',
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             'assign': 'assign',
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             'speed-ecom-reassign': 'speed-ecom-reassign',
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             'reviews': 'reviews',
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             'manager-monthly-rankings': 'manager-monthly-rankings',
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             'other-work': 'other-work',
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             'md-impex-strike': 'md-impex-strike',
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             'md-impex-access': 'md-impex-access',
-
-
-
-
-
-
-
             'personal-tasks': 'personal-tasks',
-
-
-
-
-
             'assigned-by-me': 'assigned-by-me',
-
-            'assigned-to-me': 'assigned-to-me'
-
-
-
-
-
-
-
+            'assigned-to-me': 'assigned-to-me',
+            'headline': 'headline'
         };
 
 
@@ -33631,6 +32944,7 @@ const DashboardPage = () => {
             'md-impex-access': '',
 
             'personal-tasks': '',
+            'headline': '',
 
             'assigned-by-me': '',
 
@@ -34013,23 +33327,8 @@ const DashboardPage = () => {
 
 
             'md-impex-access': routepath.mdImpexAccess,
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             'personal-tasks': routepath.personalTasks,
-
+            'headline': routepath.headline,
             'assigned-by-me': routepath.assignedByMe,
 
             'assigned-to-me': routepath.assignedToMe
@@ -71998,54 +71297,8 @@ const DashboardPage = () => {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        if (role !== 'rm' && role !== 'am') return;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        if (role !== 'rm' && role !== 'am' && role !== 'sales_manager' && role !== 'sales_man') return;
         setNewTask(prev => {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             const current = (prev?.companyName || '').toString().trim();
 
 
@@ -72287,869 +71540,52 @@ const DashboardPage = () => {
 
 
             return;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        if (role !== 'rm' && role !== 'am') return;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        if (role !== 'rm' && role !== 'am' && role !== 'sales_manager' && role !== 'sales_man') return;
         setFilters(prev => {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             const current = (prev?.company || '').toString().trim();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             if (current && current !== 'all') return prev;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             return { ...prev, company: SPEED_E_COM_COMPANY_NAME };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     }, [SPEED_E_COM_COMPANY_NAME, availableCompaniesForSbm, currentUser?.role]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     useEffect(() => {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         const role = (currentUser?.role || '').toString().trim().toLowerCase();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         const needsUsers =
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             currentView === 'dashboard' ||
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             currentView === 'reviews' ||
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             currentView === 'team' ||
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             currentView === 'all-tasks' ||
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             currentView === 'access' ||
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             role === 'ob_manager' ||
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             showAddTaskModal ||
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             showEditTaskModal;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         const needsBrands =
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             currentView === 'brands' ||
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             currentView === 'brand-detail' ||
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             currentView === 'all-tasks' ||
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             showAddTaskModal ||
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             showEditTaskModal ||
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             showBulkBrandModal ||
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             showManagerAddBrandModal ||
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             showAdvancedFilters;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         const needsTaskTypes =
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             showAddTaskModal ||
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             showEditTaskModal ||
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             showBulkTaskTypeModal ||
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             showAdvancedFilters;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         const needsCompaniesForRole =
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             role === 'admin' ||
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             role === 'super_admin' ||
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             role === 'md_manager' ||
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             role === 'ob_manager' ||
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             role === 'sbm' ||
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             role === 'rm' ||
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             role === 'am';
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         const needsCompanies = needsCompaniesForRole && (showAddTaskModal || showEditTaskModal || showBulkTaskTypeModal || showAdvancedFilters);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         if (needsUsers) {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             void ensureUsersLoaded();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         if (needsBrands) {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             void ensureBrandsLoaded();
 
 
@@ -73918,70 +72354,9 @@ const DashboardPage = () => {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        if (role === 'md_manager' || role === 'ob_manager' || role === 'manager' || role === 'assistant' || role === 'troubleshoot_manager') {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        if (role === 'md_manager' || role === 'ob_manager' || role === 'manager' || role === 'assistant' || role === 'troubleshoot_manager' || role === 'sales_manager' || role === 'sales_man') {
             setNewTask(prev => {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 const current = (prev?.companyName || '').toString().trim();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 if (current) return prev;
 
 
@@ -74715,45 +73090,12 @@ const DashboardPage = () => {
         const currentUserCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase();
 
         const currentUserRole = String((currentUser as any)?.role || '').trim().toLowerCase();
-
-        const isMdImpexUser = currentUserCompany.includes('mdimpex') || 
-
-                            currentUserCompany.includes('md_impex') || 
-
-                            currentUserCompany.includes('md impex') ||
-
-                            currentUserRole === 'md_manager';
-
-
-
+        const isMdImpexUser = currentUserCompany.includes('mdimpex') ||
+            currentUserCompany.includes('md_impex') ||
+            currentUserCompany.includes('md impex') ||
+            currentUserRole === 'md_manager';
         if (isMdImpexTask || isMdImpexUser) {
-
-
-
-            // Use MD Impex specific modal
-
-
-
-
-
-
-
             const dueDate = task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '';
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             setEditFormData({
 
 
@@ -74947,101 +73289,11 @@ const DashboardPage = () => {
 
 
                 title: task.title || '',
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 assignedTo: getAssignedToValue(task.assignedTo),
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 dueDate: dueDate,
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 priority: task.priority || 'medium',
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 taskType: task.taskType || '',
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 companyName: task.companyName || '',
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 brand: task.brand || '',
 
 
@@ -82761,7 +81013,7 @@ const DashboardPage = () => {
 
 
                                                 <div className="flex items-center gap-3 mb-2">
-                                                    
+
                                                     <h1 className="text-3xl font-bold text-gray-900">
 
                                                         Dashboard
@@ -97176,134 +95428,23 @@ const DashboardPage = () => {
 
 
 
-
-
-
-
-
-
-
-
+                            ) : currentView === 'headline' ? (
+                                <AdminHeadlineManager />
                             ) : currentView === 'manager-monthly-rankings' ? (
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                                 <ManagerMonthlyRankingPage currentUser={currentUser} />
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                             ) : currentView === 'brands' ? (
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                                 <BrandsListPage
-
-
-
                                     isSidebarCollapsed={isSidebarCollapsed}
-
-
-
                                     currentUser={currentUser}
-
-
-
                                     tasks={tasks}
-
-
-
                                     onSelectBrand={(brandId) => {
-
-
-
                                         setSelectedBrandId(brandId);
-
-
-
                                         setCurrentView('brand-detail');
-
-
-
                                     }}
-
-
-
                                 />
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                             ) : currentView === 'brand-detail' ? (
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                                 <BrandDetailPage
-
-
-
                                     brandId={selectedBrandId || ''}
-
-
-
                                     brands={apiBrands}
 
 
@@ -97443,17 +95584,10 @@ const DashboardPage = () => {
                 const currentUserCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase();
 
                 const currentUserRole = String((currentUser as any)?.role || '').trim().toLowerCase();
-
-                const isMdImpexUser = currentUserCompany.includes('mdimpex') || 
-
-                                    currentUserCompany.includes('md_impex') || 
-
-                                    currentUserCompany.includes('md impex') ||
-
-                                    currentUserRole === 'md_manager';
-
-
-
+                const isMdImpexUser = currentUserCompany.includes('mdimpex') ||
+                    currentUserCompany.includes('md_impex') ||
+                    currentUserCompany.includes('md impex') ||
+                    currentUserRole === 'md_manager';
                 if (isMdImpexUser) {
 
 
@@ -98127,679 +96261,46 @@ const DashboardPage = () => {
 
 
                 bulkBrandForm={bulkBrandForm}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 setBulkBrandForm={(next) => setBulkBrandForm(next)}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 availableCompanies={availableCompaniesForSbm}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 companyUsers={companyUsers}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 currentUserRole={(currentUser as any)?.role}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 onSubmit={handleSubmitBulkBrands}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 isSubmitting={isCreatingBulkBrands}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             />
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             <BulkAddCompaniesModal
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 open={canBulkAddCompanies && showBulkCompanyModal}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 onClose={() => setShowBulkCompanyModal(false)}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 bulkCompanyNames={bulkCompanyNames}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 setBulkCompanyNames={(next) => setBulkCompanyNames(next)}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 onSubmit={handleSubmitBulkCompanies}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 isSubmitting={isCreatingBulkCompanies}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             />
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             <BulkAddTaskTypesModal
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 open={canBulkAddTaskTypes && showBulkTaskTypeModal}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 onClose={() => {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                     setShowBulkTaskTypeModal(false);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                     setBulkTaskTypeCompany('');
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 }}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 bulkTaskTypeCompany={bulkTaskTypeCompany}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 setBulkTaskTypeCompany={(next) => setBulkTaskTypeCompany(next)}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 bulkTaskTypeNames={bulkTaskTypeNames}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 setBulkTaskTypeNames={(next) => setBulkTaskTypeNames(next)}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 availableCompanies={availableCompaniesForSbm}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 onSubmit={handleSubmitBulkTaskTypes}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 isSubmitting={isCreatingBulkTaskTypes}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             />
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             <ManagerAddBrandModal
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 open={showManagerAddBrandModal}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 managerBrandName={managerBrandName}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 setManagerBrandName={(next) => setManagerBrandName(next)}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 isSubmitting={isCreatingManagerBrand}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 onSubmit={() => handleManagerCreateBrand()}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 onClose={() => setShowManagerAddBrandModal(false)}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             />
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     );
 
 };
-
 export default DashboardPage;
+

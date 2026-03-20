@@ -354,25 +354,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
     const navigate = useNavigate();
 
 
-
-
-
-
-
     const accessDeniedRef = useRef(false);
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
     const {
