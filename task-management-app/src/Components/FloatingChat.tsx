@@ -46,30 +46,30 @@ const FloatingChat: React.FC<FloatingChatProps> = ({
   const getPositionClasses = () => {
     switch (position) {
       case 'bottom-right':
-        return 'bottom-6 right-6';
+        return 'bottom-20 lg:bottom-6 right-6';
       case 'bottom-left':
-        return 'bottom-6 left-6';
+        return 'bottom-20 lg:bottom-6 left-6';
       case 'top-right':
         return 'top-6 right-6';
       case 'top-left':
         return 'top-6 left-6';
       default:
-        return 'bottom-6 right-6';
+        return 'bottom-20 lg:bottom-6 right-6';
     }
   };
 
   const getChatPositionClasses = () => {
     switch (position) {
       case 'bottom-right':
-        return 'bottom-20 right-0';
+        return 'bottom-36 lg:bottom-20 right-0';
       case 'bottom-left':
-        return 'bottom-20 left-0';
+        return 'bottom-36 lg:bottom-20 left-0';
       case 'top-right':
         return 'top-20 right-0';
       case 'top-left':
         return 'top-20 left-0';
       default:
-        return 'bottom-20 right-0';
+        return 'bottom-36 lg:bottom-20 right-0';
     }
   };
 

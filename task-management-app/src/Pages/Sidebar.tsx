@@ -317,7 +317,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     <>
       {/* Mobile Sidebar */}
       <div className={`fixed inset-0 flex z-40 lg:hidden ${sidebarOpen ? '' : 'hidden'}`}>
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)}></div>
+        <div className="fixed inset-0 bg-gray-600/40 backdrop-blur-sm" onClick={() => setSidebarOpen(false)}></div>
 
         <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white dark:bg-gray-900">
           <div className="absolute top-0 right-0 -mr-12 pt-2">
@@ -350,7 +350,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                 )}
               </button>
             </div>
-            <nav className="mt-8 px-2 space-y-1">
+            <nav className="mt-8 px-3 space-y-1.5">
+              <button
+                onClick={handleLogout}
+                className="group flex items-center w-full px-4 py-3 text-base font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition-all duration-200 border border-rose-100/50 mb-4"
+              >
+                <LogOut className="mr-4 h-5 w-5" />
+                Sign Out
+              </button>
               {getNavigationItems().map((item) => (
                 <button
                   key={item.name}

@@ -103,14 +103,14 @@ const AssignedToMe: React.FC<AssignedToMeProps> = ({
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Assigned To Me</h1>
+    <div className="p-0 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 sm:bg-transparent min-h-screen">
+      {/* Header - added padding on mobile only */}
+      <div className="flex items-center justify-between px-4 sm:px-0 pt-4 sm:pt-0">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Assigned To Me</h1>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-4 px-4 sm:px-0">
         <div
           onClick={() => {
             if (onAdvancedFilterChange) {
@@ -119,14 +119,14 @@ const AssignedToMe: React.FC<AssignedToMeProps> = ({
               setStatusFilter('completed');
             }
           }}
-          className={`bg-white p-4 rounded-xl shadow-sm border cursor-pointer transition-all hover:shadow-md ${effectiveStatusFilter === 'completed' ? 'border-green-500 ring-1 ring-green-500' : 'border-gray-100'} flex items-center gap-4`}
+          className={`bg-white p-3 sm:p-4 rounded-xl shadow-sm border cursor-pointer transition-all hover:shadow-md ${effectiveStatusFilter === 'completed' ? 'border-green-500 ring-1 ring-green-500' : 'border-gray-100'} flex items-center gap-3 sm:gap-4`}
         >
-          <div className="bg-green-100 p-3 rounded-lg">
-            <CheckCircle className="h-6 w-6 text-green-600" />
+          <div className="bg-green-100 p-2 sm:p-3 rounded-lg flex-shrink-0">
+            <CheckCircle className="h-5 w-5 sm:h-6 sm:h-6 text-green-600" />
           </div>
           <div>
-            <p className="text-sm text-gray-500 font-medium">Total Completed</p>
-            <h3 className="text-2xl font-bold text-gray-900">{stats.completed}</h3>
+            <p className="text-xs sm:text-sm text-gray-500 font-medium">Total Completed</p>
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-900">{stats.completed}</h3>
           </div>
         </div>
         <div
@@ -137,14 +137,14 @@ const AssignedToMe: React.FC<AssignedToMeProps> = ({
               setStatusFilter('pending');
             }
           }}
-          className={`bg-white p-4 rounded-xl shadow-sm border cursor-pointer transition-all hover:shadow-md ${effectiveStatusFilter === 'pending' ? 'border-yellow-500 ring-1 ring-yellow-500' : 'border-gray-100'} flex items-center gap-4`}
+          className={`bg-white p-3 sm:p-4 rounded-xl shadow-sm border cursor-pointer transition-all hover:shadow-md ${effectiveStatusFilter === 'pending' ? 'border-yellow-500 ring-1 ring-yellow-500' : 'border-gray-100'} flex items-center gap-3 sm:gap-4`}
         >
-          <div className="bg-yellow-100 p-3 rounded-lg">
-            <Clock className="h-6 w-6 text-yellow-600" />
+          <div className="bg-yellow-100 p-2 sm:p-3 rounded-lg flex-shrink-0">
+            <Clock className="h-5 w-5 sm:h-6 sm:h-6 text-yellow-600" />
           </div>
           <div>
-            <p className="text-sm text-gray-500 font-medium">Total Pending</p>
-            <h3 className="text-2xl font-bold text-gray-900">{stats.pending}</h3>
+            <p className="text-xs sm:text-sm text-gray-500 font-medium">Total Pending</p>
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-900">{stats.pending}</h3>
           </div>
         </div>
         <div
@@ -155,21 +155,21 @@ const AssignedToMe: React.FC<AssignedToMeProps> = ({
               setStatusFilter('pending-approval');
             }
           }}
-          className={`bg-white p-4 rounded-xl shadow-sm border cursor-pointer transition-all hover:shadow-md ${effectiveStatusFilter === 'pending-approval' ? 'border-blue-500 ring-1 ring-blue-500' : 'border-gray-100'} flex items-center gap-4`}
+          className={`bg-white p-3 sm:p-4 rounded-xl shadow-sm border cursor-pointer transition-all hover:shadow-md ${effectiveStatusFilter === 'pending-approval' ? 'border-blue-500 ring-1 ring-blue-500' : 'border-gray-100'} flex items-center gap-3 sm:gap-4`}
         >
-          <div className="bg-blue-100 p-3 rounded-lg">
-            <AlertCircle className="h-6 w-6 text-blue-600" />
+          <div className="bg-blue-100 p-2 sm:p-3 rounded-lg flex-shrink-0">
+            <AlertCircle className="h-5 w-5 sm:h-6 sm:h-6 text-blue-600" />
           </div>
           <div>
-            <p className="text-sm text-gray-500 font-medium">Pending Approval</p>
-            <h3 className="text-2xl font-bold text-gray-900">{stats.approvedPending}</h3>
+            <p className="text-xs sm:text-sm text-gray-500 font-medium">Pending Approval</p>
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-900">{stats.approvedPending}</h3>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-4">
+      <div className="bg-white sm:rounded-xl shadow-sm border-y sm:border border-gray-100 overflow-hidden mb-6">
+        <div className="p-4 sm:p-4">
           <AllTasksPage
             embedded
             showFiltersInEmbedded

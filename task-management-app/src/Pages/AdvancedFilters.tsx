@@ -12,6 +12,7 @@ interface AdvancedFiltersProps {
         brand: string;
         rm?: string;
         rmTeam?: string;
+        sort?: string;
     };
     availableCompanies: string[];
     availableTaskTypes: string[];
@@ -345,7 +346,6 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                         label: formatBrandOptionLabel(brand),
                     }))}
                 />
-
                 {roleKey === 'sbm' ? (
                     <MultiSelectFilter
                         label="RM"
@@ -358,6 +358,21 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                         }))}
                     />
                 ) : null}
+
+                {/* Sort Filter */}
+                <div className="relative">
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">
+                        Sort By (Created Date)
+                    </label>
+                    <select
+                        value={filters.sort || 'desc'}
+                        onChange={(e) => onFilterChange('sort', e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                        <option value="desc">Newest First</option>
+                        <option value="asc">Oldest First</option>
+                    </select>
+                </div>
             </div>
 
             <div className="mt-6 flex justify-end gap-3">

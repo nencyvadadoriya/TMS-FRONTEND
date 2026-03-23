@@ -2930,9 +2930,9 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
                     <p className="text-gray-600">Task analytics overview</p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <div className="text-sm font-medium text-gray-500 mr-2">Charts per row:</div>
-                    <div className="flex bg-gray-100 p-1 rounded-xl items-center">
+                <div className="hidden sm:flex items-center gap-3 w-full sm:w-auto overflow-x-auto pb-2 scrollbar-none">
+                    <div className="text-sm font-medium text-gray-500 whitespace-nowrap">Charts per row:</div>
+                    <div className="flex bg-gray-100 p-1 rounded-xl items-center flex-nowrap">
                         {[1, 2, 3, 4].map((n) => (
                             <button
                                 key={n}

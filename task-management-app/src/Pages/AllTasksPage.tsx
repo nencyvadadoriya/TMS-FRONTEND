@@ -155,6 +155,7 @@ interface AdvancedFilters {
   brand: string;
   rm: string;
   rmTeam?: string;
+  sort?: string;
 }
 
 function parseMultiValue(value: string): string[] {
@@ -3232,7 +3233,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   const [togglingStatusTasks, setTogglingStatusTasks] = useState<string[]>([]);
   const [approvingTasks, setApprovingTasks] = useState<string[]>([]);
   const [updatingApproval, setUpdatingApproval] = useState<string[]>([]);
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(true);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [isLoading,] = useState(false);
   const [groupNumberSearch, setGroupNumberSearch] = useState('');
@@ -5663,11 +5664,12 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       return true;
     });
 
-    // Sorting - Show newest tasks first by creation date
+    // Sorting - Show tasks by creation date
+    const sortOrder = effectiveAdvancedFilters.sort || 'desc';
     filtered.sort((a, b) => {
       const aValue = new Date(a.createdAt || a.id).getTime();
       const bValue = new Date(b.createdAt || b.id).getTime();
-      return bValue - aValue; // Descending order (newest first)
+      return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
     });
 
     return filtered;
@@ -6163,27 +6165,29 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
+    <div className={embedded ? "" : "min-h-screen bg-gradient-to-b from-gray-50 to-gray-100"}>
       {/* Header Section */}
-      <div className="bg-white shadow-lg border-b">
-        <div className="px-4 py-6 sm:px-6 lg:px-8">
+      <div className={embedded ? "bg-transparent" : "bg-white shadow-lg border-b"}>
+        <div className={embedded ? "px-0 py-2" : "px-4 py-6 sm:px-6 lg:px-8"}>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                {assignedFilter === 'assigned-by-me'
-                  ? 'Tasks Assigned By Me'
-                  : assignedFilter === 'assigned-to-me'
-                    ? 'My Tasks'
-                    : 'All Tasks'}
-              </h1>
-              <p className="text-gray-600 mt-1">
-                {assignedFilter === 'assigned-by-me'
-                  ? 'Tasks you have assigned to others'
-                  : assignedFilter === 'assigned-to-me'
-                    ? 'Tasks assigned to you'
-                    : 'Manage and track all tasks in one place'}
-              </p>
-            </div>
+            {!embedded && (
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {assignedFilter === 'assigned-by-me'
+                    ? 'Tasks Assigned By Me'
+                    : assignedFilter === 'assigned-to-me'
+                      ? 'My Tasks'
+                      : 'All Tasks'}
+                </h1>
+                <p className="text-gray-600 mt-1">
+                  {assignedFilter === 'assigned-by-me'
+                    ? 'Tasks you have assigned to others'
+                    : assignedFilter === 'assigned-to-me'
+                      ? 'Tasks assigned to you'
+                      : 'Manage and track all tasks in one place'}
+                </p>
+              </div>
+            )}
 
             {!isAssistantViewOnly && (
               <div className="flex items-center gap-3">
