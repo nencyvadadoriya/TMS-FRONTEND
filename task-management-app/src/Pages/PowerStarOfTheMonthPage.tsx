@@ -51,7 +51,9 @@ const sum = (arr: number[]) => (arr || []).reduce((a, b) => a + toNumberSafe(b),
 const avg = (arr: number[]) => {
     const a = Array.isArray(arr) ? arr.map((x) => toNumberSafe(x)) : [];
     if (a.length === 0) return 0;
-    return sum(a) / a.length;
+    const presentWeeks = a.filter((n) => Number.isFinite(n) && n !== 0);
+    if (presentWeeks.length === 0) return 0;
+    return sum(presentWeeks) / presentWeeks.length;
 };
 
 const metricTotal = (metric: MetricKey, weeks: number[]) => {
