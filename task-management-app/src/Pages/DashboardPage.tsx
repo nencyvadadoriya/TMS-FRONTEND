@@ -63797,7 +63797,7 @@ const DashboardPage = () => {
 
 
 
-    const validateForm = useCallback(() => {
+    const validateForm = useCallback((formToValidate: NewTaskForm = newTask) => {
 
 
 
@@ -63845,7 +63845,7 @@ const DashboardPage = () => {
 
 
 
-        if (!newTask.title.trim()) {
+        if (!formToValidate.title.trim()) {
 
 
 
@@ -63893,7 +63893,7 @@ const DashboardPage = () => {
 
 
 
-        if (!newTask.assignedTo) {
+        if (!formToValidate.assignedTo) {
 
 
 
@@ -63941,7 +63941,7 @@ const DashboardPage = () => {
 
 
 
-        if (!newTask.dueDate) {
+        if (!formToValidate.dueDate) {
 
 
 
@@ -63989,7 +63989,7 @@ const DashboardPage = () => {
 
 
 
-            const selectedDate = new Date(newTask.dueDate);
+            const selectedDate = new Date(formToValidate.dueDate);
 
 
 
@@ -73106,7 +73106,7 @@ const DashboardPage = () => {
 
 
 
-    const handleSaveTaskFromModal = useCallback(async () => {
+    const handleSaveTaskFromModal = useCallback(async (taskDataFromModal?: NewTaskForm) => {
 
 
 
@@ -73122,7 +73122,8 @@ const DashboardPage = () => {
 
 
 
-        if (!validateForm()) return;
+        const dataToValidate = taskDataFromModal || newTask;
+        if (!validateForm(dataToValidate)) return;
 
 
 
@@ -73202,7 +73203,7 @@ const DashboardPage = () => {
 
 
 
-                normalizeText(b.name) === normalizeText(newTask.brand) &&
+                normalizeText(b.name) === normalizeText(dataToValidate.brand) &&
 
 
 
@@ -73218,7 +73219,7 @@ const DashboardPage = () => {
 
 
 
-                normalizeText((b as any).company || (b as any).companyName) === normalizeText(newTask.companyName)
+                normalizeText((b as any).company || (b as any).companyName) === normalizeText(dataToValidate.companyName)
 
 
 
@@ -73362,7 +73363,7 @@ const DashboardPage = () => {
 
 
 
-                title: newTask.title,
+                title: dataToValidate.title,
 
 
 
@@ -73378,7 +73379,7 @@ const DashboardPage = () => {
 
 
 
-                assignedTo: newTask.assignedTo,
+                assignedTo: dataToValidate.assignedTo,
 
 
 
@@ -73394,7 +73395,7 @@ const DashboardPage = () => {
 
 
 
-                dueDate: newTask.dueDate,
+                dueDate: dataToValidate.dueDate,
 
 
 
@@ -73410,7 +73411,7 @@ const DashboardPage = () => {
 
 
 
-                priority: newTask.priority === 'urgent' ? 'high' : newTask.priority,
+                priority: dataToValidate.priority === 'urgent' ? 'high' : dataToValidate.priority,
 
 
 
@@ -73426,7 +73427,7 @@ const DashboardPage = () => {
 
 
 
-                taskType: newTask.taskType,
+                taskType: dataToValidate.taskType,
 
 
 
@@ -73442,7 +73443,7 @@ const DashboardPage = () => {
 
 
 
-                companyName: newTask.companyName,
+                companyName: dataToValidate.companyName,
 
 
 
@@ -73458,7 +73459,7 @@ const DashboardPage = () => {
 
 
 
-                brand: newTask.brand,
+                brand: dataToValidate.brand,
 
 
 
@@ -73522,7 +73523,7 @@ const DashboardPage = () => {
 
 
 
-                assignedToUser: users.find(u => u.email === newTask.assignedTo),
+                assignedToUser: users.find(u => u.email === dataToValidate.assignedTo),
 
 
 
