@@ -322,9 +322,17 @@ const ManagerMonthlyRankingPage = ({ currentUser }: { currentUser: UserType }) =
 
                             {/* Name & Performance */}
                             <div>
-                                <h1 className="text-4xl lg:text-5xl font-extrabold text-slate-800 mb-1 drop-shadow-sm">
-                                    {computedRows.length > 0 ? topRow?.name : 'No data available for this month'}
-                                </h1>
+                                <div className="mb-1">
+                                    <span className="text-lg uppercase tracking-wide text-emerald-600 font-semibold block">
+                                        Welcome!
+                                    </span>
+                                    <h1 className="text-4xl lg:text-5xl font-extrabold drop-shadow-sm">
+                                        <span className="text-slate-700">Congratulations </span>
+                                        <span className="text-amber-600 px-2 rounded-lg inline-block">
+                                            {computedRows.length > 0 ? topRow?.name : 'No data available for this month'}
+                                        </span>
+                                    </h1>
+                                </div>
                                 <p className="text-sm font-medium text-slate-500 mb-3">{topRow?.email || ''}</p>
                                 <div className="flex items-center gap-4 flex-wrap">
                                     <div className="flex items-center gap-2">
