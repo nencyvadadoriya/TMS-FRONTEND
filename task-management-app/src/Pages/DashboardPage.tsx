@@ -5995,7 +5995,21 @@ const DashboardPage = () => {
                                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6 px-4 sm:px-0">
                                                     {(() => {
                                                         const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
-                                                        const canSee = roleKey === 'admin' || roleKey === 'super_admin' || roleKey === 'manager' || roleKey === 'md_manager' || roleKey === 'ob_manager' || roleKey === 'all_manager';
+
+
+
+
+
+
+
+                                                        const canSee = roleKey === 'admin' || roleKey === 'super_admin' || roleKey === 'manager' || roleKey === 'md_manager' || roleKey === 'ob_manager' || roleKey === 'all_manager' || roleKey === 'marketer_manager';
+
+
+
+
+
+
+
                                                         if (!canSee) return null;
                                                         return (
                                                             <button
