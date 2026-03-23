@@ -146,6 +146,7 @@ const AddTaskModal = ({
 
 
 
+  // Initialize localTask only when the modal opens
   useEffect(() => {
     if (open) {
       setLocalTask(newTask);
@@ -155,6 +156,20 @@ const AddTaskModal = ({
       setBrandSearch('');
     }
   }, [open]);
+
+  // Synchronize parent-managed fields back to local state
+  useEffect(() => {
+    if (open) {
+      setLocalTask((prev) => ({
+        ...prev,
+        assignedTo: newTask.assignedTo,
+        companyName: newTask.companyName,
+        brand: newTask.brand,
+        taskType: newTask.taskType,
+        priority: newTask.priority,
+      }));
+    }
+  }, [open, newTask.assignedTo, newTask.companyName, newTask.brand, newTask.taskType, newTask.priority]);
 
   const filteredAssignUsers = useMemo(() => {
     const q = assignSearch.trim().toLowerCase();
