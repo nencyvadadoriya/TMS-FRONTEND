@@ -65,14 +65,14 @@ const ManagerMonthlyRankingPage = ({ currentUser }: { currentUser: UserType }) =
             const dataUrl = await toPng(cardRef.current, {
                 cacheBust: true,
                 pixelRatio: 2,
-                backgroundColor: 'white', // Ensure background isn't transparent if not intended
+                backgroundColor: 'white',
                 style: {
                     borderRadius: '24px',
                 },
-                // filter: (node) => {
-                //     // Optional: filter out elements if needed
-                //     return true;
-                // }
+                filter: (node) => {
+                    const exclusionClasses = ['download-btn-to-hide'];
+                    return !exclusionClasses.some(cls => (node as HTMLElement).classList?.contains(cls));
+                }
             });
 
             const link = document.createElement('a');
@@ -306,7 +306,7 @@ const ManagerMonthlyRankingPage = ({ currentUser }: { currentUser: UserType }) =
                          </div>
                          <button
                              type="button"
-                             className="p-2.5 rounded-xl bg-white/60 text-slate-600 hover:bg-white hover:text-blue-600 transition-all border border-slate-200/50 shadow-sm"
+                             className="p-2.5 rounded-xl bg-white/60 text-slate-600 hover:bg-white hover:text-blue-600 transition-all border border-slate-200/50 shadow-sm download-btn-to-hide"
                              title="Download Card"
                              onClick={downloadCard}
                          >

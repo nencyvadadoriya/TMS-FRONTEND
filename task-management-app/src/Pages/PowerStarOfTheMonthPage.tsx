@@ -117,6 +117,10 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
                 style: {
                     borderRadius: '24px',
                 },
+                filter: (node) => {
+                    const exclusionClasses = ['download-btn-to-hide'];
+                    return !exclusionClasses.some(cls => (node as HTMLElement).classList?.contains(cls));
+                }
             });
 
             const link = document.createElement('a');
@@ -494,7 +498,7 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
                          </div>
                          <button
                              type="button"
-                             className="p-2.5 rounded-xl bg-white/60 text-slate-600 hover:bg-white hover:text-blue-600 transition-all border border-slate-200/50 shadow-sm"
+                             className="p-2.5 rounded-xl bg-white/60 text-slate-600 hover:bg-white hover:text-blue-600 transition-all border border-slate-200/50 shadow-sm download-btn-to-hide"
                              title="Download Card"
                              onClick={downloadCard}
                          >
