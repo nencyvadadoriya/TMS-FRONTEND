@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { Star, Award, CheckCircle, Users, Download } from 'lucide-react';
+import { toPng } from 'html-to-image';
 
 import type { UserType } from '../Types/Types';
 import { managerMonthlyRankingService, type ManagerMonthlyRankingResponse, type ManagerMonthlyRankingRow } from '../Services/ManagerMonthlyRanking.service';
@@ -48,6 +49,43 @@ const ManagerMonthlyRankingPage = ({ currentUser }: { currentUser: UserType }) =
 
     const [data, setData] = useState<ManagerMonthlyRankingResponse | null>(null);
     const [rowsDraft, setRowsDraft] = useState<ManagerMonthlyRankingRow[]>([]);
+    const cardRef = useRef<HTMLDivElement>(null);
+
+    const downloadCard = async () => {
+        if (!cardRef.current) {
+            toast.error('Card element not found');
+            return;
+        }
+
+        const toastId = toast.loading('Preparing download...');
+        try {
+            // Wait for images to load
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            const dataUrl = await toPng(cardRef.current, {
+                cacheBust: true,
+                pixelRatio: 2,
+                backgroundColor: 'white', // Ensure background isn't transparent if not intended
+                style: {
+                    borderRadius: '24px',
+                },
+                // filter: (node) => {
+                //     // Optional: filter out elements if needed
+                //     return true;
+                // }
+            });
+
+            const link = document.createElement('a');
+            const fileName = `performance-card-${topRow?.name?.replace(/\s+/g, '-') || 'employee'}-${monthKey}.png`;
+            link.download = fileName;
+            link.href = dataUrl;
+            link.click();
+            toast.success('Downloaded successfully', { id: toastId });
+        } catch (err) {
+            console.error('Download error details:', err);
+            toast.error(`Failed to download: ${err instanceof Error ? err.message : 'Unknown error'}`, { id: toastId });
+        }
+    };
 
     const fetchMonthly = useCallback(async () => {
         setLoading(true);
@@ -190,7 +228,7 @@ const ManagerMonthlyRankingPage = ({ currentUser }: { currentUser: UserType }) =
                     />
                 </div>
             </div>
-            <div className="relative overflow-hidden rounded-3xl shadow-2xl border border-white/80">
+            <div className="relative overflow-hidden rounded-3xl shadow-2xl border border-white/80" ref={cardRef}>
 
                 {/* ✅ SOFT PASTEL GRADIENT BACKGROUND — sky blue → yellow → pink → white → green */}
                 <div
@@ -263,14 +301,14 @@ const ManagerMonthlyRankingPage = ({ currentUser }: { currentUser: UserType }) =
                                  <span className="text-xs font-semibold text-sky-500 uppercase tracking-widest">
                                      {formatMonthLabel(monthKey)}
                                  </span>
-                                 <h3 className="text-lg font-bold text-slate-700">Employee of the Month Marketer</h3>
+                                 <h3 className="text-lg font-bold text-slate-700">HM Square Solution LLP</h3>
                              </div>
                          </div>
                          <button
                              type="button"
                              className="p-2.5 rounded-xl bg-white/60 text-slate-600 hover:bg-white hover:text-blue-600 transition-all border border-slate-200/50 shadow-sm"
                              title="Download Card"
-                             onClick={() => window.print()}
+                             onClick={downloadCard}
                          >
                              <Download className="h-5 w-5" />
                          </button>
@@ -398,6 +436,7 @@ const ManagerMonthlyRankingPage = ({ currentUser }: { currentUser: UserType }) =
                                             alt={topRow?.name}
                                             className="w-full h-full object-cover"
                                             loading="lazy"
+                                            crossOrigin="anonymous"
                                         />
                                     ) : (
                                         <div

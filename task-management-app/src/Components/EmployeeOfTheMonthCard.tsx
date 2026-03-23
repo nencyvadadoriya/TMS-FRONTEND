@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
-
-import { Star, Award, CheckCircle, Users, Download } from 'lucide-react';
-
+import { useMemo, useRef } from 'react';
+import { Star, Award, CheckCircle, Download, Users } from 'lucide-react';
+import { toPng } from 'html-to-image';
+import toast from 'react-hot-toast';
 import { toAvatarUrl } from '../utils/avatar';
 
 type EmployeeOfTheMonthCardProps = {
@@ -9,8 +9,8 @@ type EmployeeOfTheMonthCardProps = {
   title?: string;
 
   name: string;
- 
-   email?: string;
+
+  email?: string;
 
   rating: number;
 
@@ -24,17 +24,11 @@ type EmployeeOfTheMonthCardProps = {
 
   onMonthChange?: (value: string) => void;
 
-
-
   totalReviews?: number;
 
   totalTasksReceived?: number;
 
-
-
   backgroundUrl?: string;
-
-
 
   summaryRows?: Array<{
 
@@ -66,8 +60,6 @@ type EmployeeOfTheMonthCardProps = {
 
 };
 
-
-
 const clampRating = (value: number): number => {
 
   if (!Number.isFinite(value)) return 0;
@@ -75,8 +67,6 @@ const clampRating = (value: number): number => {
   return Math.max(0, Math.min(5, value));
 
 };
-
-
 
 const toNumberSafe = (value: unknown): number => {
 
@@ -88,8 +78,6 @@ const toNumberSafe = (value: unknown): number => {
 
 };
 
-
-
 const parseStarsLabel = (label: unknown): number => {
 
   const raw = String(label ?? '').trim();
@@ -100,17 +88,15 @@ const parseStarsLabel = (label: unknown): number => {
 
 };
 
-
-
 const EmployeeOfTheMonthCard = ({
 
-  title = 'Top Performer of the Month',
+  title = 'HM Square Solution LLP',
 
   name,
- 
-   email,
- 
-   rating,
+
+  email,
+
+  rating,
 
   performance,
 
@@ -140,8 +126,6 @@ const EmployeeOfTheMonthCard = ({
 
     const topNameKey = String(name || '').trim().toLowerCase();
 
-
-
     return list.filter((r) => {
 
       if (String(r?.email || '') === '__top_placeholder__') return false;
@@ -154,19 +138,13 @@ const EmployeeOfTheMonthCard = ({
 
   }, [name, summaryRows]);
 
-
-
   const sortedRows = useMemo(() => {
 
     const list = Array.isArray(remainingRows) ? remainingRows : [];
 
     const copy = [...list];
 
-
-
     copy.sort((a, b) => {
-
-      // Sort by total reviews (highest first) - like Reviews page
 
       const aReviews = toNumberSafe(a?.total);
 
@@ -174,19 +152,11 @@ const EmployeeOfTheMonthCard = ({
 
       if (aReviews !== bReviews) return bReviews - aReviews;
 
-
-
-      // Tie-breaker: rating
-
       const aRating = parseStarsLabel(a?.avgStarsLabel);
 
       const bRating = parseStarsLabel(b?.avgStarsLabel);
 
       if (aRating !== bRating) return bRating - aRating;
-
-
-
-      // Tie-breaker: tasks completed
 
       const aTasks = toNumberSafe(a?.taskStats?.tasksCompleted);
 
@@ -194,19 +164,37 @@ const EmployeeOfTheMonthCard = ({
 
       if (aTasks !== bTasks) return bTasks - aTasks;
 
-
-
       return String(a?.name || '').localeCompare(String(b?.name || ''));
 
     });
-
-
 
     return copy;
 
   }, [remainingRows]);
 
+  const cardRef = useRef<HTMLDivElement>(null);
 
+  const downloadCard = async () => {
+    if (!cardRef.current) return;
+    const toastId = toast.loading('Preparing download...');
+    try {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const dataUrl = await toPng(cardRef.current, {
+        cacheBust: true,
+        pixelRatio: 2,
+        backgroundColor: 'white',
+        style: { borderRadius: '24px' }
+      });
+      const link = document.createElement('a');
+      link.download = `employee-of-the-month-${name.replace(/\s+/g, '-')}.png`;
+      link.href = dataUrl;
+      link.click();
+      toast.success('Downloaded successfully', { id: toastId });
+    } catch (err) {
+      console.error('Download error:', err);
+      toast.error('Failed to download card', { id: toastId });
+    }
+  };
 
   const formatMonthLabel = (value?: string): string => {
 
@@ -224,8 +212,6 @@ const EmployeeOfTheMonthCard = ({
 
   };
 
-
-
   const formatNumber = (num: number): string => {
 
     if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
@@ -235,8 +221,6 @@ const EmployeeOfTheMonthCard = ({
     return num.toString();
 
   };
-
-
 
   const getEfficiencyColor = (efficiency: number) => {
 
@@ -249,8 +233,6 @@ const EmployeeOfTheMonthCard = ({
     return 'text-rose-500 bg-rose-50';
 
   };
-
-
 
   return (
 
@@ -280,9 +262,7 @@ const EmployeeOfTheMonthCard = ({
 
       </div>
 
-      <div className="relative overflow-hidden rounded-3xl shadow-2xl border border-white/80">
-
-
+      <div ref={cardRef} className="relative overflow-hidden rounded-3xl shadow-2xl border border-white/80">
 
         {/* ✅ SOFT PASTEL GRADIENT BACKGROUND — sky blue → yellow → pink → white → green */}
 
@@ -299,8 +279,6 @@ const EmployeeOfTheMonthCard = ({
           }}
 
         />
-
-
 
         {/* Soft glow blob — sky blue top right */}
 
@@ -374,8 +352,6 @@ const EmployeeOfTheMonthCard = ({
 
         />
 
-
-
         {/* Dot grid texture */}
 
         <div
@@ -392,13 +368,9 @@ const EmployeeOfTheMonthCard = ({
 
         />
 
-
-
         {/* ─── CONTENT ─── */}
 
         <div className="relative p-8">
-
-
 
           {/* Top Bar */}
 
@@ -431,38 +403,43 @@ const EmployeeOfTheMonthCard = ({
               </div>
 
             </div>
+
             <button
-                type="button"
-                className="p-2.5 rounded-xl bg-white/60 text-slate-600 hover:bg-white hover:text-blue-600 transition-all border border-slate-200/50 shadow-sm"
-                title="Download Card"
-                onClick={() => window.print()}
+              type="button"
+              className="p-2.5 rounded-xl bg-white/60 text-slate-600 hover:bg-white hover:text-blue-600 transition-all border border-slate-200/50 shadow-sm"
+              title="Download Card"
+              onClick={downloadCard}
             >
-                <Download className="h-5 w-5" />
+              <Download className="h-5 w-5" />
             </button>
+
           </div>
-
-
 
           {/* Main Grid */}
 
           <div className="grid lg:grid-cols-2 gap-8 items-center">
 
-
-
             {/* Left Column */}
 
             <div className="space-y-6">
-
-
 
               {/* Name & Stars */}
 
               <div>
 
-                <h1 className="text-4xl lg:text-5xl font-extrabold text-slate-800 mb-1 drop-shadow-sm">
-                   {name}
-                 </h1>
-                 <p className="text-sm font-medium text-slate-500 mb-3">{email || ''}</p>
+                <div className="mb-1">
+                  <span className="text-lg uppercase tracking-wide text-emerald-600 font-semibold block">
+                    Welcome!
+                  </span>
+                  <h1 className="text-4xl lg:text-5xl font-extrabold drop-shadow-sm">
+                    <span className="text-slate-700">Congratulations </span>
+                    <span className="text-amber-600  px-2 rounded-lg inline-block">
+                      {name}
+                    </span>
+                  </h1>
+                </div>
+
+                <p className="text-sm font-medium text-slate-500 mb-3">{email || ''}</p>
 
                 <div className="flex items-center gap-4 flex-wrap">
 
@@ -478,13 +455,13 @@ const EmployeeOfTheMonthCard = ({
 
                           className={`h-5 w-5 ${i < Math.floor(safeRating)
 
-                              ? 'text-amber-400 fill-amber-400'
+                            ? 'text-amber-400 fill-amber-400'
 
-                              : i < safeRating
+                            : i < safeRating
 
-                                ? 'text-amber-400 fill-amber-400 opacity-50'
+                              ? 'text-amber-400 fill-amber-400 opacity-50'
 
-                                : 'text-slate-300'
+                              : 'text-slate-300'
 
                             }`}
 
@@ -516,8 +493,6 @@ const EmployeeOfTheMonthCard = ({
 
               </div>
 
-
-
               {/* Quote — left border pink */}
 
               <p
@@ -539,12 +514,6 @@ const EmployeeOfTheMonthCard = ({
                     : '"Showing improvement and dedication to tasks"'}
 
               </p>
-
-
-
-
-
-
 
               {/* Performance & Average */}
 
@@ -572,8 +541,6 @@ const EmployeeOfTheMonthCard = ({
 
                 </div>
 
-
-
                 {/* light yellow */}
 
                 <div
@@ -595,8 +562,6 @@ const EmployeeOfTheMonthCard = ({
                   <p className="text-base font-bold text-slate-800">{avg}</p>
 
                 </div>
-
-
 
                 {/* light blue */}
 
@@ -636,15 +601,11 @@ const EmployeeOfTheMonthCard = ({
 
             </div>
 
-
-
             {/* Right Column — Trophy Profile */}
 
             <div className="relative flex justify-center lg:justify-end">
 
               <div className="relative w-80 h-80 lg:w-96 lg:h-96">
-
-
 
                 {/* Pastel rainbow glow */}
 
@@ -663,8 +624,6 @@ const EmployeeOfTheMonthCard = ({
                   }}
 
                 />
-
-
 
                 {/* Thin conic ring */}
 
@@ -694,8 +653,6 @@ const EmployeeOfTheMonthCard = ({
 
                 </div>
 
-
-
                 {/* Profile Image */}
 
                 <div className="absolute inset-10 rounded-full overflow-hidden shadow-xl">
@@ -703,15 +660,11 @@ const EmployeeOfTheMonthCard = ({
                   {topAvatarUrl ? (
 
                     <img
-
                       src={topAvatarUrl}
-
                       alt={name}
-
                       className="w-full h-full object-cover"
-
                       loading="lazy"
-
+                      crossOrigin="anonymous"
                     />
 
                   ) : (
@@ -1222,7 +1175,7 @@ const EmployeeOfTheMonthCard = ({
 
               </div>
 
-            </div>
+            </div>=
 
           </div>
 

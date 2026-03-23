@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { Star, Award, CheckCircle, Users, Trophy, Download } from 'lucide-react';
+import { toPng } from 'html-to-image';
 
 import type { UserType } from '../Types/Types';
 import { powerStarMonthlyService, type PowerStarMonthlyResponse, type PowerStarMonthlyRow } from '../Services/PowerStarMonthly.service';
@@ -98,6 +99,37 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
 
     const [data, setData] = useState<PowerStarMonthlyResponse | null>(null);
     const [rowsDraft, setRowsDraft] = useState<PowerStarMonthlyRow[]>([]);
+    const cardRef = useRef<HTMLDivElement>(null);
+
+    const downloadCard = async () => {
+        if (!cardRef.current) {
+            toast.error('Card element not found');
+            return;
+        }
+
+        const toastId = toast.loading('Preparing download...');
+        try {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const dataUrl = await toPng(cardRef.current, {
+                cacheBust: true,
+                pixelRatio: 2,
+                backgroundColor: 'white',
+                style: {
+                    borderRadius: '24px',
+                },
+            });
+
+            const link = document.createElement('a');
+            const fileName = `power-star-${topActiveRow?.name?.replace(/\s+/g, '-') || 'employee'}-${monthKey}.png`;
+            link.download = fileName;
+            link.href = dataUrl;
+            link.click();
+            toast.success('Downloaded successfully', { id: toastId });
+        } catch (err) {
+            console.error('Download error:', err);
+            toast.error('Failed to download card', { id: toastId });
+        }
+    };
 
     const fetchMonthly = useCallback(async () => {
         setLoading(true);
@@ -383,7 +415,7 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
                     );
                 })}
             </div>
-            <div className="relative overflow-hidden rounded-3xl shadow-2xl border border-white/80">
+            <div ref={cardRef} className="relative overflow-hidden rounded-3xl shadow-2xl border border-white/80">
 
                 {/* ✅ SOFT PASTEL GRADIENT BACKGROUND — sky blue → yellow → pink → white → green */}
                 <div
@@ -456,14 +488,15 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
                                  <span className="text-xs font-semibold text-sky-500 uppercase tracking-widest">
                                      {formatMonthLabel(monthKey)}
                                  </span>
-                                 <h3 className="text-lg font-bold text-slate-700">Power Star of the Month</h3>
+                                 <h3 className="text-lg font-bold text-slate-700">HM Square Solution LLP
+</h3>
                              </div>
                          </div>
                          <button
                              type="button"
                              className="p-2.5 rounded-xl bg-white/60 text-slate-600 hover:bg-white hover:text-blue-600 transition-all border border-slate-200/50 shadow-sm"
                              title="Download Card"
-                             onClick={() => window.print()}
+                             onClick={downloadCard}
                          >
                              <Download className="h-5 w-5" />
                          </button>
@@ -596,6 +629,7 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
                                                     transform: 'scale(1.05)'
                                                 }}
                                                 loading="lazy"
+                                                crossOrigin="anonymous"
                                             />
                                         </div>
                                     ) : (
