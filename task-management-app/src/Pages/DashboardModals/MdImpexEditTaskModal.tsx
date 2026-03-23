@@ -1,6 +1,7 @@
 import { Edit, X } from 'lucide-react';
 import * as React from 'react';
 import mdImpexAccessService from '../../Services/MdImpexAccess.services';
+import { taskTypeService } from '../../Services/TaskType.service';
 import type { Task, TaskPriority, TaskStatus, UserType } from '../../Types/Types';
 
 
@@ -109,6 +110,7 @@ const MdImpexEditTaskModal = ({
   const [mdAllowedTaskTypes, setMdAllowedTaskTypes] = React.useState<string[]>([]);
   const [mdAllowedBrands, setMdAllowedBrands] = React.useState<string[]>([]);
   const [loadingAccess, setLoadingAccess] = React.useState(false);
+  const [taskTypesFromApi, setTaskTypesFromApi] = React.useState<any[]>([]);
 
   // Memoize role/id values - must be before early return
   const myRoleKey = React.useMemo(() => normalizeRoleKey((currentUser as any)?.role || ''), [currentUser]);
@@ -132,26 +134,58 @@ const MdImpexEditTaskModal = ({
   const filteredTaskTypes = React.useMemo(() => {
     if (!open) return [];
     const allTypes = availableTaskTypesForEditTask || [];
-    if (mdAllowedTaskTypes.length === 0) return allTypes;
 
+    // Normalize and deduplicate available task types from props
     const normalizedToOriginal = new Map<string, string>();
-    allTypes.forEach(t => {
-      normalizedToOriginal.set(t.toLowerCase().trim(), t);
+    const uniqueAvailable: string[] = [];
+    const seenAvailable = new Set<string>();
+
+    // 1. First, populate map with names from official API task types for best casing
+    taskTypesFromApi.forEach((t) => {
+      const name = String(t?.name || '').trim();
+      if (!name) return;
+      const norm = name.toLowerCase();
+      if (!normalizedToOriginal.has(norm)) {
+        normalizedToOriginal.set(norm, name);
+      }
     });
 
-    const result: string[] = [];
-    const seen = new Set<string>();
+    // 2. Then add names from availableTaskTypesForEditTask prop if not already mapped
+    allTypes.forEach((t) => {
+      if (!t) return;
+      const original = String(t).trim();
+      const norm = original.toLowerCase();
 
-    mdAllowedTaskTypes.forEach(allowed => {
-      const normalized = allowed.toLowerCase().trim();
-      if (seen.has(normalized)) return;
-      const displayValue = normalizedToOriginal.get(normalized) || allowed;
-      result.push(displayValue);
-      seen.add(normalized);
+      if (!normalizedToOriginal.has(norm)) {
+        normalizedToOriginal.set(norm, original);
+      }
+
+      if (!seenAvailable.has(norm)) {
+        seenAvailable.add(norm);
+        uniqueAvailable.push(normalizedToOriginal.get(norm) || original);
+      }
     });
 
-    return result;
-  }, [open, mdAllowedTaskTypes, availableTaskTypesForEditTask]);
+    // If we have specific allowed task types assigned in MD Access, show ONLY those
+    if (mdAllowedTaskTypes.length > 0) {
+      const result: string[] = [];
+      const seenResult = new Set<string>();
+
+      mdAllowedTaskTypes.forEach((allowed) => {
+        const norm = String(allowed).toLowerCase().trim();
+        if (norm && !seenResult.has(norm)) {
+          seenResult.add(norm);
+          // Prefer original casing if available
+          const displayValue = normalizedToOriginal.get(norm) || String(allowed).trim();
+          result.push(displayValue);
+        }
+      });
+      return result;
+    }
+
+    // Default: Return deduplicated list of all available types
+    return uniqueAvailable;
+  }, [open, mdAllowedTaskTypes, availableTaskTypesForEditTask, taskTypesFromApi]);
 
   // Filter users - must be before early return
   const filteredUsers = React.useMemo(() => {
@@ -205,10 +239,15 @@ const MdImpexEditTaskModal = ({
 
       setLoadingAccess(true);
       try {
-        const [membersRes, accessRes] = await Promise.all([
+        const [membersRes, accessRes, taskTypesRes] = await Promise.all([
           mdImpexAccessService.getAllMembers(),
-          mdImpexAccessService.getAllPersonAccess()
+          mdImpexAccessService.getAllPersonAccess(),
+          taskTypeService.getTaskTypes()
         ]);
+
+        if (taskTypesRes.success && taskTypesRes.data) {
+          setTaskTypesFromApi(taskTypesRes.data);
+        }
 
         if (membersRes.success && membersRes.data) {
           const allMembers = (membersRes.data || []).map((m: any) => ({

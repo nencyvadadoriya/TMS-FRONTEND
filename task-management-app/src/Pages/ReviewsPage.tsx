@@ -31,7 +31,7 @@ const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: Us
     return roleKey === 'assistant';
   }, [roleKey]);
   const canSubmit = useMemo(() => {
-    if (role === 'manager' || role === 'md_manager' || role === 'admin' || role === 'super_admin') return true;
+    if (role === 'manager' || role === 'marketer_manager' || role === 'md_manager' || role === 'admin' || role === 'super_admin') return true;
     return false;
   }, [role]);
   const canView = useMemo(() => {
@@ -121,7 +121,7 @@ const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: Us
     };
 
     const roleKey = normalizeRoleKey(role);
-    const managerOnlyAssistants = roleKey === 'manager' || roleKey === 'md_manager';
+    const managerOnlyAssistants = roleKey === 'manager' || roleKey === 'marketer_manager' || roleKey === 'md_manager';
 
     const userRoleKeyByEmail = (emailKey: string): string => {
       if (!emailKey) return '';
@@ -144,7 +144,7 @@ const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: Us
       });
     }
 
-    if ((roleKey === 'manager' || roleKey === 'md_manager') && Array.isArray(users)) {
+    if ((roleKey === 'manager' || roleKey === 'marketer_manager' || roleKey === 'md_manager') && Array.isArray(users)) {
       (users || []).forEach((u: any) => {
         const emailKey = normalizeEmailKey(u?.email);
         if (!emailKey) return;
@@ -563,7 +563,7 @@ const ReviewsPage = ({ currentUser, users }: { currentUser: UserType; users?: Us
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
               disabled={loading}
             />
-            {!isSubAssistance && (roleKey === 'manager' || roleKey === 'md_manager' || roleKey === 'admin' || roleKey === 'super_admin' || roleKey === 'ob_manager' || roleKey === 'assistant') ? (
+            {!isSubAssistance && (roleKey === 'manager' || roleKey === 'marketer_manager' || roleKey === 'md_manager' || roleKey === 'admin' || roleKey === 'super_admin' || roleKey === 'ob_manager' || roleKey === 'assistant') ? (
               <select
                 value={assigneeFilter}
                 onChange={(e) => setAssigneeFilter(e.target.value)}

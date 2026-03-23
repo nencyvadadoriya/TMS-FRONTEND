@@ -1976,21 +1976,6 @@ const DashboardPage = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [showLogout, setShowLogout] = useState(false);
     const [users, setUsers] = useState<UserType[]>([]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     const usersRef = useRef<UserType[]>([]);
 
 
@@ -4916,7 +4901,7 @@ const DashboardPage = () => {
 
 
 
-        if (roleKey !== 'manager' && roleKey !== 'md_manager') return [];
+        if (roleKey !== 'manager' && roleKey !== 'marketer_manager' && roleKey !== 'md_manager') return [];
 
 
 
@@ -12474,7 +12459,7 @@ const DashboardPage = () => {
 
 
 
-        if (role === 'manager') {
+        if (role === 'manager' || role === 'marketer_manager') {
 
 
 
@@ -17670,7 +17655,7 @@ const DashboardPage = () => {
 
 
 
-        if (role === 'manager' || role === 'assistant') {
+        if (role === 'manager' || role === 'marketer_manager' || role === 'assistant') {
 
 
 
@@ -23150,7 +23135,7 @@ const DashboardPage = () => {
 
 
 
-        if (role === 'manager') {
+        if (role === 'manager' || role === 'marketer_manager') {
 
 
 
@@ -23709,7 +23694,7 @@ const DashboardPage = () => {
             .sort((a, b) => a.localeCompare(b));
 
         const role = (currentUser?.role || '').toString().toLowerCase();
-        if (role === 'manager') {
+        if (role === 'manager' || role === 'marketer_manager') {
             const allowedKeys = allowedTaskTypeKeysForManager;
             return merged
                 .filter((t) => allowedKeys.has((t || '').toString().trim().toLowerCase()))
@@ -33323,9 +33308,6 @@ const DashboardPage = () => {
 
 
             'md-impex-strike': routepath.mdImpexStrike,
-
-
-
             'md-impex-access': routepath.mdImpexAccess,
             'personal-tasks': routepath.personalTasks,
             'headline': routepath.headline,
@@ -33334,333 +33316,26 @@ const DashboardPage = () => {
             'assigned-to-me': routepath.assignedToMe
 
         };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         const targetPath = routeMap[page];
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         setCurrentView(targetView);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         if (targetPath) {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             navigate(targetPath);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     useEffect(() => {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         if (!isAuthReady) return;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         const path = (location.pathname || '').toLowerCase();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         if (path === routepath.managerMonthlyRankings) {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
-
-
-
-
-
-
-
             if (roleKey !== 'manager' && roleKey !== 'md_manager' && roleKey !== 'all_manager') {
-
-
-
-
-
-
-
                 toast.error('Access denied');
-
-
-
-
-
-
-
                 navigate(routepath.dashboard);
-
-
-
-
-
-
-
                 return;
-
-
-
-
-
-
-
             }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             setCurrentView('manager-monthly-rankings');
-
-
-
-
-
-
-
             return;
-
-
-
-
-
-
-
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         if (path === routepath.mdImpexStrike) {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
 
 
@@ -33669,7 +33344,7 @@ const DashboardPage = () => {
 
 
 
-            if (roleKey !== 'manager' && roleKey !== 'md_manager' && roleKey !== 'troubleshoot_manager') {
+            if (roleKey !== 'manager' && roleKey !== 'md_manager' && roleKey !== 'troubleshoot_manager' && roleKey !== 'admin' && roleKey !== 'marketer_manager') {
 
 
 
@@ -33766,21 +33441,6 @@ const DashboardPage = () => {
 
 
         if (path === routepath.mdImpexAccess) {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
 
 
@@ -33797,7 +33457,7 @@ const DashboardPage = () => {
 
 
 
-            if (roleKey !== 'md_manager') {
+            if (roleKey !== 'md_manager' && roleKey !== 'admin') {
 
 
 
@@ -38265,7 +37925,7 @@ const DashboardPage = () => {
 
 
 
-        if (isMdImpexTask && (role === 'md_manager' || role === 'ob_manager' || role === 'manager')) return true;
+        if (isMdImpexTask && (role === 'md_manager' || role === 'ob_manager' || role === 'manager' || role === 'marketer_manager')) return true;
 
 
 
@@ -50455,7 +50115,7 @@ const DashboardPage = () => {
 
 
 
-            if (role === 'manager') {
+            if (role === 'manager' || role === 'marketer_manager') {
 
 
 
@@ -53831,7 +53491,7 @@ const DashboardPage = () => {
 
 
 
-            if (role === 'manager') {
+            if (role === 'manager' || role === 'marketer_manager') {
 
 
 
@@ -55407,7 +55067,7 @@ const DashboardPage = () => {
 
 
 
-            if (role === 'manager') {
+            if (role === 'manager' || role === 'marketer_manager') {
 
 
 
@@ -68161,7 +67821,7 @@ const DashboardPage = () => {
 
 
 
-                role === 'manager' ||
+                role === 'manager' || role === 'marketer_manager' ||
 
 
 
@@ -72354,7 +72014,7 @@ const DashboardPage = () => {
 
 
 
-        if (role === 'md_manager' || role === 'ob_manager' || role === 'manager' || role === 'assistant' || role === 'troubleshoot_manager' || role === 'sales_manager' || role === 'sales_man') {
+        if (role === 'md_manager' || role === 'ob_manager' || role === 'manager' || role === 'marketer_manager' || role === 'assistant' || role === 'troubleshoot_manager' || role === 'sales_manager' || role === 'sales_man') {
             setNewTask(prev => {
                 const current = (prev?.companyName || '').toString().trim();
                 if (current) return prev;
@@ -83914,7 +83574,7 @@ const DashboardPage = () => {
 
 
 
-                                    {!isSpeedEcomUser ? (
+                                    {(!isSpeedEcomUser || String((currentUser as any)?.role || '').trim().toLowerCase() === 'admin' || String((currentUser as any)?.role || '').trim().toLowerCase() === 'super_admin') ? (
 
 
 
@@ -84494,7 +84154,7 @@ const DashboardPage = () => {
 
 
 
-                                                            roleKey === 'manager' ||
+                                                            roleKey === 'manager' || roleKey === 'marketer_manager' ||
 
 
 
@@ -95578,20 +95238,13 @@ const DashboardPage = () => {
 
 
             {(() => {
-
-
-
                 const currentUserCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase();
-
                 const currentUserRole = String((currentUser as any)?.role || '').trim().toLowerCase();
                 const isMdImpexUser = currentUserCompany.includes('mdimpex') ||
                     currentUserCompany.includes('md_impex') ||
                     currentUserCompany.includes('md impex') ||
                     currentUserRole === 'md_manager';
                 if (isMdImpexUser) {
-
-
-
                     return (
 
 
@@ -95745,521 +95398,48 @@ const DashboardPage = () => {
 
 
                         isSubmitting={isCreatingTask}
-
-
-
                         isSbmUser={isSbmUser}
-
-
-
                         showCompanyDropdownIcon={true}
-
-
-
                     />
-
-
-
                 );
-
-
-
             })()}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             <EditTaskModal
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 open={showEditTaskModal}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 editingTask={editingTask}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 onClose={() => setShowEditTaskModal(false)}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 editFormData={editFormData}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 editFormErrors={editFormErrors}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 onChange={handleEditInputChange}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 users={users}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 availableTaskTypesForEditTask={availableTaskTypesForEditTask}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 availableCompanies={availableCompanies}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 getEditFormBrandOptions={getEditFormBrandOptions}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 onSubmit={handleSaveEditedTask}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 isSubmitting={isUpdatingTask}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 disableDueDate={true}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 currentUserEmail={(currentUser as any)?.email || ''}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 currentUser={currentUser as any}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             />
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             <MdImpexEditTaskModal
-
-
-
-
-
-
-
                 open={showMdImpexEditModal}
-
-
-
-
-
-
-
                 editingTask={editingTask}
-
-
-
-
-
-
-
                 currentUser={currentUser as any}
-
-
-
-
-
-
-
                 currentUserEmail={(currentUser as any)?.email || ''}
-
-
-
-
-
-
-
                 onClose={() => setShowMdImpexEditModal(false)}
-
-
-
-
-
-
-
                 onSubmit={handleSaveEditedTask}
-
-
-
-
-
-
-
                 users={users}
-
-
-
-
-
-
-
                 editFormData={editFormData}
-
-
-
-
-
-
-
                 editFormErrors={editFormErrors}
-
-
-
-
-
-
-
                 onChange={handleEditInputChange}
-
-
-
-
-
-
-
                 availableTaskTypesForEditTask={availableTaskTypesForEditTask}
-
-
-
-
-
-
-
                 availableCompanies={availableCompanies}
-
-
-
-
-
-
-
                 getEditFormBrandOptions={getEditFormBrandOptions}
-
-
-
-
-
-
-
                 isSubmitting={isUpdatingTask}
-
-
-
-
-
-
-
                 disableDueDate={false}
-
-
-
-
-
-
-
             />
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             <BulkAddBrandsModal
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 open={canBulkAddBrands && showBulkBrandModal}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 onClose={() => setShowBulkBrandModal(false)}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 bulkBrandForm={bulkBrandForm}
                 setBulkBrandForm={(next) => setBulkBrandForm(next)}
                 availableCompanies={availableCompaniesForSbm}
@@ -96303,4 +95483,5 @@ const DashboardPage = () => {
 
 };
 export default DashboardPage;
+
 

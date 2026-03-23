@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { Star, Award, CheckCircle, Users } from 'lucide-react';
+import { Star, Award, CheckCircle, Users, Download } from 'lucide-react';
 
 import { toAvatarUrl } from '../utils/avatar';
 
@@ -9,6 +9,8 @@ type EmployeeOfTheMonthCardProps = {
   title?: string;
 
   name: string;
+ 
+   email?: string;
 
   rating: number;
 
@@ -105,8 +107,10 @@ const EmployeeOfTheMonthCard = ({
   title = 'Top Performer of the Month',
 
   name,
-
-  rating,
+ 
+   email,
+ 
+   rating,
 
   performance,
 
@@ -392,7 +396,7 @@ const EmployeeOfTheMonthCard = ({
 
         {/* ─── CONTENT ─── */}
 
-        <div className="relative  p-8">
+        <div className="relative p-8">
 
 
 
@@ -427,7 +431,14 @@ const EmployeeOfTheMonthCard = ({
               </div>
 
             </div>
-
+            <button
+                type="button"
+                className="p-2.5 rounded-xl bg-white/60 text-slate-600 hover:bg-white hover:text-blue-600 transition-all border border-slate-200/50 shadow-sm"
+                title="Download Card"
+                onClick={() => window.print()}
+            >
+                <Download className="h-5 w-5" />
+            </button>
           </div>
 
 
@@ -448,11 +459,10 @@ const EmployeeOfTheMonthCard = ({
 
               <div>
 
-                <h1 className="text-4xl lg:text-5xl font-extrabold text-slate-800 mb-3 drop-shadow-sm">
-
-                  {name}
-
-                </h1>
+                <h1 className="text-4xl lg:text-5xl font-extrabold text-slate-800 mb-1 drop-shadow-sm">
+                   {name}
+                 </h1>
+                 <p className="text-sm font-medium text-slate-500 mb-3">{email || ''}</p>
 
                 <div className="flex items-center gap-4 flex-wrap">
 

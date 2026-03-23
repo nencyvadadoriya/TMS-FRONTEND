@@ -156,7 +156,7 @@ const MdImpexStrikePage = ({
     return list
       .filter((u: any) => {
         const r = normalizeRoleKey(u?.role);
-        return r === 'manager';
+        return r === 'manager' || r === 'marketer_manager';
       })
       .map((u: any) => ({
         ...u,
@@ -183,7 +183,7 @@ const MdImpexStrikePage = ({
     void currentUser;
 
     const currentManagerId = String((currentUser as any)?.managerId || '').trim();
-    const filterToSameMdManager = roleKey === 'manager' && Boolean(currentManagerId);
+    const filterToSameMdManager = (roleKey === 'manager' || roleKey === 'marketer_manager') && Boolean(currentManagerId);
 
     // First pass: Pre-populate with ALL valid managers from managerUsers
     managerUsers.forEach((m: any) => {
@@ -423,7 +423,7 @@ const MdImpexStrikePage = ({
     await refreshStrike();
   };
 
-  if (roleKey !== 'manager' && roleKey !== 'md_manager' && roleKey !== 'troubleshoot_manager' && roleKey !== 'admin') {
+  if (roleKey !== 'manager' && roleKey !== 'md_manager' && roleKey !== 'troubleshoot_manager' && roleKey !== 'admin' && roleKey !== 'marketer_manager') {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
         <h2 className="text-xl font-semibold text-gray-900">Strike</h2>
@@ -453,7 +453,7 @@ const MdImpexStrikePage = ({
                 className="bg-transparent text-sm font-medium text-gray-700 outline-none"
               />
             </div>
-            
+
           </div>
         </div>
         {isLoading && (
@@ -669,7 +669,7 @@ const MdImpexStrikePage = ({
                                         <div className="flex flex-col items-end">
                                           <span className="text-[10px] text-gray-400 uppercase">Priority</span>
                                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${task.priority === 'high' ? 'bg-orange-100 text-orange-700' :
-                                              task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'
+                                            task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'
                                             }`}>
                                             {task.priority}
                                           </span>

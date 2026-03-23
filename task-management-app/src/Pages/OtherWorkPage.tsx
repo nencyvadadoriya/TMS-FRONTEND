@@ -13,7 +13,7 @@ const OtherWorkPage = ({ currentUser, tasks, onRefreshTasks }: { currentUser: Us
   const myEmail = useMemo(() => normalizeEmail(currentUser?.email), [currentUser?.email]);
   const role = useMemo(() => String((currentUser as any)?.role || '').trim().toLowerCase().replace(/[\s-]+/g, '_'), [currentUser]);
 
-  const isManagerRole = role === 'manager' || role === 'md_manager' || role === 'admin' || role === 'super_admin';
+  const isManagerRole = role === 'manager' || role === 'marketer_manager' || role === 'md_manager' || role === 'admin' || role === 'super_admin';
   const isAssistantRole = role === 'assistant' || role === 'sub_assistance';
   const isObManagerRole = role === 'ob_manager';
 

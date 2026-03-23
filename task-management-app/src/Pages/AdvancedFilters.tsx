@@ -266,6 +266,8 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                         { value: 'in-progress', label: 'In Progress' },
                         { value: 'reassigned', label: 'Reassigned' },
                         { value: 'completed', label: 'Completed' },
+                        { value: 'approved', label: 'Approved' },
+                        { value: 'unapproval', label: 'Unapproval' },
                     ]}
                 />
 

@@ -1511,7 +1511,7 @@ const MobileTaskItem = memo(({
   const role = String((currentUser as any)?.role || '').trim().toLowerCase();
   const taskCompanyKey = String((task as any)?.companyName || (task as any)?.company || '').trim().toLowerCase().replace(/\s+/g, '');
   taskCompanyKey === 'speedecom';
-  const canDeleteThisTask = (role === 'admin' || role === 'super_admin' || role === 'manager' || role === 'md_manager') && userIsAssigner;
+  const canDeleteThisTask = (role === 'admin' || role === 'super_admin' || role === 'manager' || role === 'marketer_manager' || role === 'md_manager') && userIsAssigner;
 
   const canEditThisTask = typeof canEditTask === 'function' ? canEditTask(task) : userIsAssigner;
   const normalizeEmailSafe = (v: unknown): string => {
@@ -1765,7 +1765,7 @@ const DesktopTaskItem = memo(({
     normalizeEmailSafe((task as any)?.assignedByUser?.email);
   const isCreator = Boolean(myEmail && assignedByEmailForCheck && myEmail === assignedByEmailForCheck);
 
-  const canDeleteThisTask = (role === 'admin' || role === 'super_admin' || role === 'manager' || role === 'md_manager') && userIsAssigner;
+  const canDeleteThisTask = (role === 'admin' || role === 'super_admin' || role === 'manager' || role === 'marketer_manager' || role === 'md_manager') && userIsAssigner;
 
   // Edit/Delete should not be coupled to create_task permission.
   // Show edit if user can edit OR they are the creator (assignedBy matches user).
@@ -2639,7 +2639,7 @@ const ReassignModal = memo(({
     (myId && assignedToId && myId === assignedToId)
   );
 
-  const isManagerRole = myRoleKey === 'manager' || myRoleKey === 'md_manager';
+  const isManagerRole = myRoleKey === 'manager' || myRoleKey === 'marketer_manager' || myRoleKey === 'md_manager';
   const assignedById = typeof assignedByCandidate === 'object'
     ? String(assignedByCandidate?.id || assignedByCandidate?._id || '').trim()
     : '';
@@ -3186,7 +3186,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     (async () => {
       try {
         const role = String((currentUser as any)?.role || '').toLowerCase();
-        const needsAllowedCompanies = role === 'md_manager' || role === 'manager' || role === 'assistant' || role === 'ob_manager';
+        const needsAllowedCompanies = role === 'md_manager' || role === 'manager' || role === 'marketer_manager' || role === 'assistant' || role === 'ob_manager';
         const res = needsAllowedCompanies
           ? await companyService.getAllowedCompanies()
           : await companyService.getCompanies();
@@ -3690,7 +3690,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       return [...new Set(labels)].sort((a, b) => a.localeCompare(b));
     }
 
-    if (role === 'manager') {
+    if (role === 'manager' || role === 'marketer_manager') {
       const managerDefaultTypeLabels = ['Other Work', 'Trubbleshot'];
       const allowedKeys = allowedTaskTypeKeysForManager;
       const mergedLabelByKey = new Map<string, string>();
@@ -3764,7 +3764,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
 
     const merged = uniqueLabelsByKey(Array.from(new Set([...fromOverrides, ...fromTasks, ...fromMappings])));
 
-    if (role === 'manager') {
+    if (role === 'manager' || role === 'marketer_manager') {
       const managerDefaultTypeLabels = ['Other Work', 'Troubleshoot'];
       const mergedWithDefaults = uniqueLabelsByKey(Array.from(new Set([...merged, ...managerDefaultTypeLabels])));
       const allowedKeys = allowedTaskTypeKeysForManager;
@@ -3818,7 +3818,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     const fromTasks = Array.from(taskTypesByCompanyFromTasks.values()).flatMap((set) => Array.from(set));
     const merged = uniqueLabelsByKey(Array.from(new Set([...availableTaskTypes, ...fromOverrides, ...fromTasks])));
 
-    if (roleKey === 'manager') {
+    if (roleKey === 'manager' || roleKey === 'marketer_manager') {
       const allowedKeys = allowedTaskTypeKeysForManager;
       return restrictTaskTypesForCompany(effectiveAdvancedFilters.company, merged
         .filter((t) => allowedKeys.has((t || '').toString().trim().toLowerCase()))
@@ -3840,7 +3840,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         if (response?.success && Array.isArray(response.data)) {
           const role = (currentUser?.role || '').toLowerCase();
 
-          if (role === 'manager') {
+          if (role === 'manager' || role === 'marketer_manager') {
             const allowed = allowedTaskTypeKeysForManager;
             const filtered = (response.data as TaskTypeItem[]).filter(t => allowed.has((t?.name || '').toString().trim().toLowerCase()));
             setTaskTypes(filtered);
@@ -5417,7 +5417,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         if (!obManagerVisible) return false;
       }
 
-      if (roleKey === 'manager') {
+      if (roleKey === 'manager' || roleKey === 'marketer_manager') {
         const assignedByMe = normalizeText(getAssignerEmail(task)) === myEmail;
 
         const assignedToEmail = normalizeText(
@@ -5498,9 +5498,13 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
           if (s === 'pending') return !isCompleted && ['pending', 'in-progress', 'reassigned'].includes(taskStatus);
           if (s === 'in-progress') return taskStatus === 'in-progress';
           if (s === 'reassigned') return taskStatus === 'reassigned';
-          if (s === 'pending-approval') {
-            // Only show tasks that are completed but pending approval (completedApproval is false)
+          if (s === 'pending-approval' || s === 'unapproval') {
+            // Only show tasks that are completed but pending approval (completedApproval is false or missing)
             return isCompleted && !Boolean((task as any).completedApproval);
+          }
+          if (s === 'approved') {
+            // Only show tasks that are completed and approved (completedApproval is true)
+            return isCompleted && Boolean((task as any).completedApproval);
           }
           return taskStatus === s;
         });
@@ -5863,7 +5867,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                 return uEmail && uEmail === assignedByEmail;
               });
 
-              const isManagerRole = roleKey === 'manager' || roleKey === 'md_manager';
+              const isManagerRole = roleKey === 'manager' || roleKey === 'marketer_manager' || roleKey === 'md_manager';
 
               const isRmRole = roleKey === 'rm';
               const isAmRole = roleKey === 'am';

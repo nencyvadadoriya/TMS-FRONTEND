@@ -85,8 +85,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   const canSeePersonalTasks = hasAccess('personal_tasks_page');
 
   const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
-  const canSeeMdImpexAccess = roleKey === 'md_manager';
   const isAdmin = roleKey === 'admin' || roleKey === 'super_admin';
+  const canSeeMdImpexAccess = roleKey === 'md_manager' || isAdmin;
 
   const getDisplayInitial = () => {
     if (!currentUser) return 'U';

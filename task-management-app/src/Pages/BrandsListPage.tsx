@@ -100,7 +100,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
     const canBulkAddCompanies = useMemo(() => hasAccess('company_bulk_add'), [hasAccess]);
     const canBulkAddBrands = useMemo(() => {
         const r = String((currentUser as any)?.role || '').trim().toLowerCase();
-        return r === 'super_admin' || r === 'admin' || r === 'md_manager' || r === 'manager' || hasAccess('brand_bulk_add');
+        return r === 'super_admin' || r === 'admin' || r === 'md_manager' || r === 'manager' || r === 'marketer_manager' || hasAccess('brand_bulk_add');
     }, [currentUser, hasAccess]);
     const canEditCompany = useMemo(() => {
         const r = String((currentUser as any)?.role || '').trim().toLowerCase();
@@ -207,7 +207,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
             return tasks.filter(isAssignedToCurrentUser);
         }
 
-        if (role === 'manager') {
+        if (role === 'manager' || role === 'marketer_manager') {
             return tasks.filter((t: any) => {
                 if (isAssignedToCurrentUser(t)) return true;
 
@@ -252,7 +252,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
             }
         }
 
-        if (role === 'manager') {
+        if (role === 'manager' || role === 'marketer_manager') {
             const normalize = (v: any) => String(v || '').trim().toLowerCase();
             const myId = String((currentUser as any)?.id || (currentUser as any)?._id || '').trim();
 
@@ -392,7 +392,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                 return false;
             }
 
-            if (role === 'manager') {
+            if (role === 'manager' || role === 'marketer_manager') {
                 const meta = (h as any)?.metadata || {};
                 const assignedToEmail = normalize(meta?.assignedToEmail || meta?.assignedTo || meta?.assistantEmail || meta?.assigneeEmail || meta?.assignedToUser?.email);
                 const assignedToId = String(meta?.assignedToId || meta?.assigneeId || meta?.assignedToUser?.id || meta?.assignedToUser?._id || '').trim();
@@ -436,7 +436,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                 if (name) assignedCompanyNames.add(name);
             });
         }
-        if (role === 'manager') {
+        if (role === 'manager' || role === 'marketer_manager') {
             (reportTasks || []).forEach((t: any) => {
                 const name = normalize(t?.companyName || t?.company);
                 if (name) assignedCompanyNames.add(name);
@@ -444,7 +444,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         }
 
         let sources: any[] = [...(companyDocs || []), ...(deletedCompanyDocs || [])];
-        if (role === 'assistant' || role === 'manager') {
+        if (role === 'assistant' || role === 'manager' || role === 'marketer_manager') {
             sources = sources.filter((c: any) => assignedCompanyNames.has(normalize(c?.name)));
         }
 
@@ -492,7 +492,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                 return false;
             }
 
-            if (role === 'manager') {
+            if (role === 'manager' || role === 'marketer_manager') {
                 const meta = (h as any)?.metadata || {};
                 const assignedToEmail = normalize(meta?.assignedToEmail || meta?.assignedTo);
                 const assignedToId = String(meta?.assignedToId || meta?.assigneeId || '');
@@ -563,7 +563,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                 if (name) assignedCompanyNames.add(name);
             });
         }
-        if (role === 'manager') {
+        if (role === 'manager' || role === 'marketer_manager') {
             (reportTasks || []).forEach((t: any) => {
                 const name = normalize(t?.companyName || t?.company);
                 if (name) assignedCompanyNames.add(name);
@@ -571,7 +571,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         }
 
         let list = Array.isArray(companyDocs) ? [...companyDocs] : [];
-        if (role === 'assistant' || role === 'manager') {
+        if (role === 'assistant' || role === 'manager' || role === 'marketer_manager') {
             list = list.filter((c: any) => assignedCompanyNames.has(normalize(c?.name)));
         }
         return list.sort((a: any, b: any) => String(a?.name || '').localeCompare(String(b?.name || '')));
@@ -640,10 +640,10 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         (accessibleBrands || []).forEach((b: any) => {
             const owner = (b?.owner && typeof b.owner === 'object') ? (b.owner.id || b.owner._id) : b?.owner;
             const ownerId = String(owner || '');
-            if (role === 'manager' && myId && ownerId !== myId) return;
+            if ((role === 'manager' || role === 'marketer_manager') && myId && ownerId !== myId) return;
 
             const ownerRole = userRoleById.get(ownerId);
-            if (ownerRole !== 'manager' && ownerRole !== 'md_manager') return;
+            if (ownerRole !== 'manager' && ownerRole !== 'md_manager' && ownerRole !== 'marketer_manager') return;
 
             const managerLabel = userDisplayById.get(ownerId) || ownerId;
             if (!groups.has(ownerId)) {
@@ -655,9 +655,9 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
 
         (companyDocs || []).forEach((c: any) => {
             const creatorId = String(c?.createdBy || c?.owner || '');
-            if (role === 'manager' && myId && creatorId !== myId) return;
+            if ((role === 'manager' || role === 'marketer_manager') && myId && creatorId !== myId) return;
             const creatorRole = userRoleById.get(creatorId);
-            if (creatorRole !== 'manager' && creatorRole !== 'md_manager') return;
+            if (creatorRole !== 'manager' && creatorRole !== 'md_manager' && creatorRole !== 'marketer_manager') return;
 
             const managerLabel = userDisplayById.get(creatorId) || creatorId;
             if (!groups.has(creatorId)) {
@@ -723,7 +723,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         (reportTasks || []).forEach((t: any) => {
             const managerEmail = normalize(getEmail(t?.assignedBy));
             if (!managerEmail) return;
-            if (userRoleByEmail.get(managerEmail) !== 'manager') return;
+            if (userRoleByEmail.get(managerEmail) !== 'manager' && userRoleByEmail.get(managerEmail) !== 'marketer_manager') return;
 
             const assistantEmail = normalize(getEmail(t?.assignedToUser?.email || t?.assignedTo));
             if (!assistantEmail) return;

@@ -2,6 +2,7 @@ import { PlusCircle, X } from 'lucide-react';
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import type { TaskPriority, UserType } from '../../Types/Types';
 import mdImpexAccessService from '../../Services/MdImpexAccess.services';
+import { taskTypeService } from '../../Services/TaskType.service';
 
 interface NewTaskForm {
   title: string;
@@ -64,10 +65,17 @@ const MdImpexAddTaskModal = ({
   const [allowedBrands, setAllowedBrands] = useState<string[]>([]);
   const [hasSpecificAccess, setHasSpecificAccess] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [taskTypesFromApi, setTaskTypesFromApi] = useState<any[]>([]);
   const hasInitializedRef = useRef(false);
-  
+  const emailDropdownRef = useRef<HTMLDivElement | null>(null);
+  const brandDropdownRef = useRef<HTMLDivElement | null>(null);
+
   // Local state for text inputs to prevent lag during typing
   const [localTitle, setLocalTitle] = useState('');
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailSearch, setEmailSearch] = useState('');
+  const [brandOpen, setBrandOpen] = useState(false);
+  const [brandSearch, setBrandSearch] = useState('');
 
   const normalizedCurrentUserRole = (currentUserRole || '').toString().trim().toLowerCase();
   const isMdManager = normalizedCurrentUserRole === 'md_manager';
@@ -162,11 +170,16 @@ const MdImpexAddTaskModal = ({
 
       setLoadingUsers(true);
       try {
-        console.log("[MdImpexAddTaskModal] Fetching real-time access for:", currentUserEmail);
-        const [membersRes, accessRes] = await Promise.all([
+        console.log("[MdImpexAddTaskModal] Fetching real-time access and task types for:", currentUserEmail);
+        const [membersRes, accessRes, taskTypesRes] = await Promise.all([
           mdImpexAccessService.getAllMembers(),
-          mdImpexAccessService.getAllPersonAccess()
+          mdImpexAccessService.getAllPersonAccess(),
+          taskTypeService.getTaskTypes()
         ]);
+
+        if (taskTypesRes.success && taskTypesRes.data) {
+          setTaskTypesFromApi(taskTypesRes.data);
+        }
 
         if (membersRes.success && membersRes.data) {
           const allMembers = (membersRes.data || []).map((m: any) => ({
@@ -289,33 +302,59 @@ const MdImpexAddTaskModal = ({
 
   // Filter task types - show all for managers, but filtered for others
   const filteredTaskTypes = useMemo(() => {
-    // If Admin or MD Manager, show all available types (old + new)
-    const isAdmin = currentUserRole === 'admin' || currentUserRole === 'super_admin' || currentUserRole === 'troubleshoot_manager';
-    if (isMdManager || isAdmin) return availableTaskTypesForNewTask;
-
-    // If no specific restrictions for other roles, show all available types
-    if (allowedTaskTypes.length === 0) return availableTaskTypesForNewTask;
-
-    // Use a Map to deduplicate while preferring the case from availableTaskTypesForNewTask
+    // Normalize and deduplicate available task types from props
+    // We keep a map to preserve the preferred casing
     const normalizedToOriginal = new Map<string, string>();
-    availableTaskTypesForNewTask.forEach(t => {
-      normalizedToOriginal.set(t.toLowerCase().trim(), t);
+    const uniqueAvailable: string[] = [];
+    const seenAvailable = new Set<string>();
+
+    // 1. First, populate map with names from official API task types for best casing (matches MD Access page)
+    taskTypesFromApi.forEach((t) => {
+      const name = String(t?.name || '').trim();
+      if (!name) return;
+      const norm = name.toLowerCase();
+      if (!normalizedToOriginal.has(norm)) {
+        normalizedToOriginal.set(norm, name);
+      }
     });
 
-    const result: string[] = [];
-    const seen = new Set<string>();
-
-    allowedTaskTypes.forEach(allowed => {
-      const normalized = allowed.toLowerCase().trim();
-      if (seen.has(normalized)) return;
+    // 2. Then add names from availableTaskTypesForNewTask prop if not already mapped
+    availableTaskTypesForNewTask.forEach((t) => {
+      if (!t) return;
+      const original = String(t).trim();
+      const norm = original.toLowerCase();
       
-      const displayValue = normalizedToOriginal.get(normalized) || allowed;
-      result.push(displayValue);
-      seen.add(normalized);
+      if (!normalizedToOriginal.has(norm)) {
+        normalizedToOriginal.set(norm, original);
+      }
+      
+      if (!seenAvailable.has(norm)) {
+        seenAvailable.add(norm);
+        uniqueAvailable.push(normalizedToOriginal.get(norm) || original);
+      }
     });
 
-    return result;
-  }, [allowedTaskTypes, availableTaskTypesForNewTask, isMdManager, currentUserRole]);
+    // If we have specific allowed task types assigned in MD Access, show ONLY those
+    // This now applies to all users if they have a specific access record
+    if (allowedTaskTypes.length > 0) {
+      const result: string[] = [];
+      const seenResult = new Set<string>();
+      
+      allowedTaskTypes.forEach((allowed) => {
+        const norm = String(allowed).toLowerCase().trim();
+        if (norm && !seenResult.has(norm)) {
+          seenResult.add(norm);
+          // Prefer original casing from provided map (official task types or props)
+          const displayValue = normalizedToOriginal.get(norm) || String(allowed).trim();
+          result.push(displayValue);
+        }
+      });
+      return result;
+    }
+
+    // Default: Return deduplicated list of all available types
+    return uniqueAvailable;
+  }, [allowedTaskTypes, availableTaskTypesForNewTask, taskTypesFromApi]);
 
   // Auto-select Brand if only one is available (runs when brand options change)
   useEffect(() => {
@@ -331,6 +370,41 @@ const MdImpexAddTaskModal = ({
     onChange('title', localTitle);
     onSubmit();
   };
+
+  const filteredEmailUsers = useMemo(() => {
+    const q = emailSearch.trim().toLowerCase();
+    if (!q) return allowedUsers;
+    return allowedUsers.filter((u) => {
+      const name = String(u?.name || '').trim().toLowerCase();
+      const email = String(u?.email || '').trim().toLowerCase();
+      return name.includes(q) || email.includes(q);
+    });
+  }, [allowedUsers, emailSearch]);
+
+  const filteredBrandOptions = useMemo(() => {
+    const q = brandSearch.trim().toLowerCase();
+    if (!q) return brandOptions;
+    return brandOptions.filter((opt) => {
+      const value = String(opt?.value || '').trim().toLowerCase();
+      const label = String(opt?.label || '').trim().toLowerCase();
+      return value.includes(q) || label.includes(q);
+    });
+  }, [brandOptions, brandSearch]);
+
+  useEffect(() => {
+    if (!emailOpen && !brandOpen) return;
+    const onDocMouseDown = (e: MouseEvent) => {
+      const target = e.target as Node | null;
+      if (emailOpen && emailDropdownRef.current && target && !emailDropdownRef.current.contains(target)) {
+        setEmailOpen(false);
+      }
+      if (brandOpen && brandDropdownRef.current && target && !brandDropdownRef.current.contains(target)) {
+        setBrandOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocMouseDown);
+    return () => document.removeEventListener('mousedown', onDocMouseDown);
+  }, [emailOpen, brandOpen]);
 
   if (!open) return null;
 
@@ -384,19 +458,66 @@ const MdImpexAddTaskModal = ({
 
             <div>
               <label className="block text-sm font-medium text-gray-900 mb-2">Email Address *</label>
-              <select
-                value={newTask.assignedTo}
-                onChange={(e) => onChange('assignedTo', e.target.value)}
-                disabled={loadingUsers}
-                className={`w-full px-4 py-3 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 ${formErrors.assignedTo ? 'border-red-500' : 'border-gray-300'}`}
-              >
-                <option value="">{loadingUsers ? 'Loading members...' : 'Select email address'}</option>
-                {allowedUsers.map((user) => (
-                  <option key={String(user.id || user.email)} value={String(user.email || '')}>
-                    {user.name?.trim() ? `${user.name.trim()} (${user.email.trim()})` : user.email?.trim() || ''}
-                  </option>
-                ))}
-              </select>
+              <div ref={emailDropdownRef} className="relative">
+                <button
+                  type="button"
+                  disabled={loadingUsers}
+                  onClick={() => setEmailOpen((v) => !v)}
+                  className={`w-full px-4 py-3 text-sm border rounded-xl text-left focus:outline-none focus:ring-2 focus:ring-indigo-500 ${formErrors.assignedTo ? 'border-red-500' : 'border-gray-300'} ${loadingUsers ? 'bg-gray-50 text-gray-400 cursor-not-allowed' : 'bg-white'}`}
+                >
+                  {newTask.assignedTo
+                    ? (() => {
+                        const u = allowedUsers.find((x) => String(x?.email || '') === String(newTask.assignedTo || ''));
+                        if (!u) return String(newTask.assignedTo || '').trim();
+                        const name = String(u?.name || '').trim();
+                        const email = String(u?.email || '').trim();
+                        return name ? `${name} (${email})` : email;
+                      })()
+                    : (loadingUsers ? 'Loading members...' : 'Select email address')}
+                </button>
+
+                {emailOpen && !loadingUsers && (
+                  <div className="absolute z-50 mt-2 w-full rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden">
+                    <div className="p-2 border-b border-gray-100">
+                      <input
+                        type="text"
+                        value={emailSearch}
+                        onChange={(e) => {
+                          setEmailSearch(e.target.value);
+                          setEmailOpen(true);
+                        }}
+                        placeholder="Search email or name"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="max-h-56 overflow-auto">
+                      {filteredEmailUsers.length === 0 ? (
+                        <div className="px-4 py-3 text-sm text-gray-500">No results</div>
+                      ) : (
+                        filteredEmailUsers.map((user) => {
+                          const name = String(user?.name || '').trim();
+                          const email = String(user?.email || '').trim();
+                          const label = name ? `${name} (${email})` : email;
+                          return (
+                            <button
+                              key={String(user.id || user.email)}
+                              type="button"
+                              onClick={() => {
+                                onChange('assignedTo', email);
+                                setEmailOpen(false);
+                              }}
+                              className="w-full text-left px-4 py-2.5 text-sm hover:bg-indigo-50"
+                            >
+                              {label}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
               {formErrors.assignedTo && <p className="mt-1 text-sm text-red-600">{formErrors.assignedTo}</p>}
               {!loadingUsers && allowedUsers.length === 0 && (
                 <p className="mt-1 text-xs text-amber-600">No MD Impex members found.</p>
@@ -427,19 +548,58 @@ const MdImpexAddTaskModal = ({
             {/* Brand Field */}
             <div>
               <label className="block text-sm font-medium text-gray-900 mb-2">Brand</label>
-              <select
-                className="w-full px-4 py-3 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={newTask.brand}
-                onChange={(e) => onChange('brand', e.target.value)}
-                disabled={!newTask.companyName}
-              >
-                <option value="">Select a brand</option>
-                {brandOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+              <div ref={brandDropdownRef} className="relative">
+                <button
+                  type="button"
+                  disabled={!newTask.companyName}
+                  onClick={() => {
+                    if (!newTask.companyName) return;
+                    setBrandOpen((v) => !v);
+                  }}
+                  className={`w-full px-4 py-3 text-sm border rounded-xl text-left focus:outline-none focus:ring-2 focus:ring-blue-500 ${!newTask.companyName ? 'bg-gray-50 text-gray-400 cursor-not-allowed' : 'bg-white'} border-gray-300`}
+                >
+                  {newTask.brand
+                    ? (brandOptions.find((x) => String(x?.value || '') === String(newTask.brand || ''))?.label || String(newTask.brand || '').trim())
+                    : 'Select a brand'}
+                </button>
+
+                {brandOpen && newTask.companyName && (
+                  <div className="absolute z-50 mt-2 w-full rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden">
+                    <div className="p-2 border-b border-gray-100">
+                      <input
+                        type="text"
+                        value={brandSearch}
+                        onChange={(e) => {
+                          setBrandSearch(e.target.value);
+                          setBrandOpen(true);
+                        }}
+                        placeholder="Search brand"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="max-h-56 overflow-auto">
+                      {filteredBrandOptions.length === 0 ? (
+                        <div className="px-4 py-3 text-sm text-gray-500">No results</div>
+                      ) : (
+                        filteredBrandOptions.map((opt) => (
+                          <button
+                            key={String(opt.value)}
+                            type="button"
+                            onClick={() => {
+                              onChange('brand', String(opt.value || '').trim());
+                              setBrandOpen(false);
+                            }}
+                            className="w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50"
+                          >
+                            {opt.label}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
               {!newTask.companyName && (
                 <p className="mt-1 text-[10px] text-gray-500 italic">Select a company first</p>
               )}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Star, Award, CheckCircle, Users, Trophy } from 'lucide-react';
+import { Star, Award, CheckCircle, Users, Trophy, Download } from 'lucide-react';
 
 import type { UserType } from '../Types/Types';
 import { powerStarMonthlyService, type PowerStarMonthlyResponse, type PowerStarMonthlyRow } from '../Services/PowerStarMonthly.service';
@@ -384,7 +384,7 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
                 })}
             </div>
             <div className="relative overflow-hidden rounded-3xl shadow-2xl border border-white/80">
-                
+
                 {/* ✅ SOFT PASTEL GRADIENT BACKGROUND — sky blue → yellow → pink → white → green */}
                 <div
                     className="absolute inset-0"
@@ -393,7 +393,7 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
                             'linear-gradient(135deg, #e0f4ff 0%, #fef9c3 25%, #fce7f3 50%, #f0fdf4 75%, #e0f4ff 100%)',
                     }}
                 />
-    
+
                 {/* Soft glow blob — sky blue top right */}
                 <div
                     className="absolute -top-20 -right-20 w-80 h-80 rounded-full pointer-events-none"
@@ -446,19 +446,27 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
                     {/* Top Bar */}
                     <div className="flex items-center justify-between mb-8">
                         <div className="flex items-center gap-3">
-                            <div
-                                className="p-2.5 rounded-xl shadow-md"
-                                style={{ background: 'linear-gradient(135deg, #fbbf24, #f9a8d4)' }}
-                            >
-                                <Award className="h-5 w-5 text-white drop-shadow" />
-                            </div>
-                            <div>
-                                <span className="text-xs font-semibold text-sky-500 uppercase tracking-widest">
-                                    {formatMonthLabel(monthKey)}
-                                </span>
-                                <h3 className="text-lg font-bold text-slate-700">Power Star of the Month</h3>
-                            </div>
-                        </div>
+                             <div
+                                 className="p-2.5 rounded-xl shadow-md"
+                                 style={{ background: 'linear-gradient(135deg, #fbbf24, #f9a8d4)' }}
+                             >
+                                 <Award className="h-5 w-5 text-white drop-shadow" />
+                             </div>
+                             <div>
+                                 <span className="text-xs font-semibold text-sky-500 uppercase tracking-widest">
+                                     {formatMonthLabel(monthKey)}
+                                 </span>
+                                 <h3 className="text-lg font-bold text-slate-700">Power Star of the Month</h3>
+                             </div>
+                         </div>
+                         <button
+                             type="button"
+                             className="p-2.5 rounded-xl bg-white/60 text-slate-600 hover:bg-white hover:text-blue-600 transition-all border border-slate-200/50 shadow-sm"
+                             title="Download Card"
+                             onClick={() => window.print()}
+                         >
+                             <Download className="h-5 w-5" />
+                         </button>
                     </div>
 
                     {/* Main Grid */}
@@ -469,20 +477,20 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
 
                             {/* Name & Performance */}
                             <div>
-                                <h1 className="text-4xl lg:text-5xl font-extrabold text-slate-800 mb-3 drop-shadow-sm">
+                                <h1 className="text-4xl lg:text-5xl font-extrabold text-slate-800 mb-1 drop-shadow-sm">
                                     {topActiveRow?.name || 'Not any yet'}
                                 </h1>
+                                <p className="text-sm font-medium text-slate-500 mb-3">{topActiveRow?.email || ''}</p>
                                 <div className="flex items-center gap-4 flex-wrap">
                                     <div className="flex items-center gap-2">
                                         <div className="flex">
                                             {[...Array(5)].map((_, i) => (
                                                 <Star
                                                     key={i}
-                                                    className={`h-5 w-5 ${
-                                                        i < Math.floor((topActiveRow ? 4 : 0))
-                                                            ? 'text-amber-400 fill-amber-400'
-                                                            : 'text-slate-300'
-                                                    }`}
+                                                    className={`h-5 w-5 ${i < Math.floor((topActiveRow ? 4 : 0))
+                                                        ? 'text-amber-400 fill-amber-400'
+                                                        : 'text-slate-300'
+                                                        }`}
                                                 />
                                             ))}
                                         </div>
@@ -629,13 +637,13 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
 
                                 {/* Pastel sparkles — fixed positions */}
                                 {[
-                                    { color: '#7dd3fc', top: '8%',  left: '50%' },
+                                    { color: '#7dd3fc', top: '8%', left: '50%' },
                                     { color: '#fbbf24', top: '20%', left: '88%' },
                                     { color: '#f9a8d4', top: '50%', left: '92%' },
                                     { color: '#6ee7b7', top: '78%', left: '80%' },
                                     { color: '#7dd3fc', top: '85%', left: '30%' },
-                                    { color: '#fbbf24', top: '65%', left: '5%'  },
-                                    { color: '#f9a8d4', top: '30%', left: '3%'  },
+                                    { color: '#fbbf24', top: '65%', left: '5%' },
+                                    { color: '#f9a8d4', top: '30%', left: '3%' },
                                     { color: '#6ee7b7', top: '10%', left: '18%' },
                                 ].map((s, i) => (
                                     <div
@@ -726,13 +734,12 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
                                         key={m.key}
                                         type="button"
                                         onClick={() => setActiveMetric(m.key)}
-                                        className={`px-4 py-3 rounded-xl text-sm font-semibold border transition-all duration-300 ${
-                                            isActive
-                                                ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-50 scale-105'
-                                                : isTopMetric
-                                                    ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100 hover:shadow-md'
-                                                    : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50 hover:shadow-md'
-                                        }`}
+                                        className={`px-4 py-3 rounded-xl text-sm font-semibold border transition-all duration-300 ${isActive
+                                            ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-50 scale-105'
+                                            : isTopMetric
+                                                ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100 hover:shadow-md'
+                                                : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50 hover:shadow-md'
+                                            }`}
                                     >
                                         <div className="flex flex-col items-center gap-1">
                                             <span className="font-bold">{m.title}</span>
@@ -829,7 +836,7 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
                                         'linear-gradient(135deg, #e0f4ff, #f0fdf4)',
                                     ];
                                     const cardBorders = ['#bae6fd', '#fde68a', '#fbcfe8', '#bbf7d0', '#fbbf24', '#7dd3fc'];
-                                    const badgeGrads  = [
+                                    const badgeGrads = [
                                         'linear-gradient(135deg, #38bdf8, #bae6fd)',
                                         'linear-gradient(135deg, #fbbf24, #fde68a)',
                                         'linear-gradient(135deg, #f472b6, #fbcfe8)',
@@ -837,7 +844,7 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
                                         'linear-gradient(135deg, #fbbf24, #fef9c3)',
                                         'linear-gradient(135deg, #38bdf8, #e0f4ff)',
                                     ];
-                                    const badgeTextColors = ['#0369a1','#92400e','#be185d','#065f46','#92400e','#0369a1'];
+                                    const badgeTextColors = ['#0369a1', '#92400e', '#be185d', '#065f46', '#92400e', '#0369a1'];
 
                                     const ci = index % cardGradients.length;
                                     const weeks = normalizeWeekArray((r as any)[activeMetric]);
@@ -849,9 +856,8 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
                                     return (
                                         <div key={r.userId} className="group relative ">
                                             <div
-                                                className={`  rounded-2xl border p-4 hover:shadow-lg transition-all duration-300 ${
-                                                    isTop ? 'ring-2 ring-amber-400 ring-offset-2' : ''
-                                                } ${isFrozen ? 'opacity-75 ring-2 ring-rose-200' : ''}`}
+                                                className={`  rounded-2xl border p-4 hover:shadow-lg transition-all duration-300 ${isTop ? 'ring-2 ring-amber-400 ring-offset-2' : ''
+                                                    } ${isFrozen ? 'opacity-75 ring-2 ring-rose-200' : ''}`}
                                                 style={{ background: cardGradients[ci], borderColor: isTop ? '#fbbf24' : isFrozen ? '#fbcfe8' : cardBorders[ci] }}
                                             >
                                                 {/* Freeze indicator on top of card */}
@@ -864,9 +870,8 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
                                                 )}
                                                 {/* Rank badge */}
                                                 <div
-                                                    className={`absolute -top-2.5 -right-2.5 w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold text-white shadow-md ${
-                                                        isTop ? 'ring-2 ring-amber-400' : ''
-                                                    }`}
+                                                    className={`absolute -top-2.5 -right-2.5 w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold text-white shadow-md ${isTop ? 'ring-2 ring-amber-400' : ''
+                                                        }`}
                                                     style={{ background: isTop ? 'linear-gradient(135deg, #fbbf24, #f59e0b)' : badgeGrads[ci] }}
                                                 >
                                                     <span style={{ color: isTop ? '#92400e' : badgeTextColors[ci] }}>#{index + 1}</span>
@@ -933,8 +938,8 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
                                                                 isTop
                                                                     ? { background: '#fef3c7', color: '#92400e', borderColor: '#fbbf24' }
                                                                     : index < 3
-                                                                    ? { background: '#e0f4ff', color: '#0369a1', borderColor: '#bae6fd' }
-                                                                    : { background: '#f0fdf4', color: '#16a34a', borderColor: '#bbf7d0' }
+                                                                        ? { background: '#e0f4ff', color: '#0369a1', borderColor: '#bae6fd' }
+                                                                        : { background: '#f0fdf4', color: '#16a34a', borderColor: '#bbf7d0' }
                                                             }
                                                         >
                                                             {isTop ? '⭐ Top' : index < 3 ? '🏆 Excellent' : 'Good'}
@@ -946,11 +951,10 @@ const PowerStarOfTheMonthPage = ({ currentUser }: { currentUser: UserType }) => 
                                                                 type="button"
                                                                 onClick={() => handleFreezeToggle(r.userId, activeMetric)}
                                                                 disabled={saving || loading}
-                                                                className={`mt-2 ml-2 text-xs px-3 py-1 rounded-full font-medium transition-all ${
-                                                                    isFrozen
-                                                                        ? 'bg-rose-100 text-rose-700 border border-rose-200 hover:bg-rose-200'
-                                                                        : 'bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200'
-                                                                } disabled:opacity-60`}
+                                                                className={`mt-2 ml-2 text-xs px-3 py-1 rounded-full font-medium transition-all ${isFrozen
+                                                                    ? 'bg-rose-100 text-rose-700 border border-rose-200 hover:bg-rose-200'
+                                                                    : 'bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200'
+                                                                    } disabled:opacity-60`}
                                                             >
                                                                 {isFrozen ? 'Unfreeze' : 'Freeze'}
                                                             </button>

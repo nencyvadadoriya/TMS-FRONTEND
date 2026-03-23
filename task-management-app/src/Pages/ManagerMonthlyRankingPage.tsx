@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import {  Star, Award, CheckCircle, Users } from 'lucide-react';
+import { Star, Award, CheckCircle, Users, Download } from 'lucide-react';
 
 import type { UserType } from '../Types/Types';
 import { managerMonthlyRankingService, type ManagerMonthlyRankingResponse, type ManagerMonthlyRankingRow } from '../Services/ManagerMonthlyRanking.service';
 import { toAvatarUrl } from '../utils/avatar';
 
 const ALLOWED_MARKETER_MANAGER_EMAILS = new Set([
-    'drashtismartbiz@gmail.com',
-    'krunalsmartbiz@gmail.com',
-    'harshsmartbiz@gmail.com'
-]);
+     'drashtismartbiz@gmail.com',
+     'krunalsmartbiz@gmail.com',
+     'harshsmartbiz@gmail.com'
+ ].map((e) => e.trim().toLowerCase()));
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
@@ -56,7 +56,7 @@ const ManagerMonthlyRankingPage = ({ currentUser }: { currentUser: UserType }) =
             const res = await managerMonthlyRankingService.getMonthlyRanking(monthKey);
             console.log('Fetch response:', res);
             if (!res?.success || !res.data) {
-                setData(null); 
+                setData(null);
                 setRowsDraft([]);
                 return;
             }
@@ -76,7 +76,12 @@ const ManagerMonthlyRankingPage = ({ currentUser }: { currentUser: UserType }) =
 
     const computedRows = useMemo(() => {
         const list = Array.isArray(rowsDraft) ? rowsDraft : [];
-        const filtered = list.filter((r) => ALLOWED_MARKETER_MANAGER_EMAILS.has(normalizeEmailKey((r as any).email)));
+        const filtered = list.filter((r) => {
+            const email = normalizeEmailKey((r as any).email);
+            const role = normalizeRoleKey((r as any).role);
+            // Show if hardcoded email OR if role is marketer_manager
+            return ALLOWED_MARKETER_MANAGER_EMAILS.has(email) || role === 'marketer_manager';
+        });
         const mapped = filtered.map((r) => {
             const assign = clampNonNegativeInt(toNumberSafe((r as any).assign));
             const achieved = clampNonNegativeInt(toNumberSafe((r as any).achieved));
@@ -105,12 +110,12 @@ const ManagerMonthlyRankingPage = ({ currentUser }: { currentUser: UserType }) =
                 const currentAchieved = clampNonNegativeInt(toNumberSafe((r as any).achieved));
 
                 if (field === 'assign') {
-                      const nextAssign = clampNonNegativeInt(toNumberSafe(value));
+                    const nextAssign = clampNonNegativeInt(toNumberSafe(value));
                     const nextAchieved = Math.min(currentAchieved, nextAssign);
                     return { ...r, assign: nextAssign, achieved: nextAchieved } as any;
-                }   
+                }
 
-                
+
 
                 const nextAchievedRaw = clampNonNegativeInt(toNumberSafe(value));
                 const nextAchieved = Math.min(nextAchievedRaw, currentAssign);
@@ -168,7 +173,7 @@ const ManagerMonthlyRankingPage = ({ currentUser }: { currentUser: UserType }) =
         return num.toString();
     };
 
-  
+
 
     return (
         <div className="space-y-6 mb-5">
@@ -186,8 +191,8 @@ const ManagerMonthlyRankingPage = ({ currentUser }: { currentUser: UserType }) =
                 </div>
             </div>
             <div className="relative overflow-hidden rounded-3xl shadow-2xl border border-white/80">
-                
-                {/* ✅ SOFT PASTEL GRADIENT BACKGROUND — sky blue → yellow → pink → white → green */}  
+
+                {/* ✅ SOFT PASTEL GRADIENT BACKGROUND — sky blue → yellow → pink → white → green */}
                 <div
                     className="absolute inset-0"
                     style={{
@@ -195,7 +200,7 @@ const ManagerMonthlyRankingPage = ({ currentUser }: { currentUser: UserType }) =
                             'linear-gradient(135deg, #e0f4ff 0%, #fef9c3 25%, #fce7f3 50%, #f0fdf4 75%, #e0f4ff 100%)',
                     }}
                 />
-    
+
                 {/* Soft glow blob — sky blue top right */}
                 <div
                     className="absolute -top-20 -right-20 w-80 h-80 rounded-full pointer-events-none"
@@ -248,19 +253,27 @@ const ManagerMonthlyRankingPage = ({ currentUser }: { currentUser: UserType }) =
                     {/* Top Bar */}
                     <div className="flex items-center justify-between mb-8">
                         <div className="flex items-center gap-3">
-                            <div
-                                className="p-2.5 rounded-xl shadow-md"
-                                style={{ background: 'linear-gradient(135deg, #fbbf24, #f9a8d4)' }}
-                            >
-                                <Award className="h-5 w-5 text-white drop-shadow" />
-                            </div>
-                            <div>
-                                <span className="text-xs font-semibold text-sky-500 uppercase tracking-widest">
-                                    {formatMonthLabel(monthKey)}
-                                </span>
-                                <h3 className="text-lg font-bold text-slate-700">Employee of the Month Marketer</h3>
-                            </div>
-                        </div>
+                             <div
+                                 className="p-2.5 rounded-xl shadow-md"
+                                 style={{ background: 'linear-gradient(135deg, #fbbf24, #f9a8d4)' }}
+                             >
+                                 <Award className="h-5 w-5 text-white drop-shadow" />
+                             </div>
+                             <div>
+                                 <span className="text-xs font-semibold text-sky-500 uppercase tracking-widest">
+                                     {formatMonthLabel(monthKey)}
+                                 </span>
+                                 <h3 className="text-lg font-bold text-slate-700">Employee of the Month Marketer</h3>
+                             </div>
+                         </div>
+                         <button
+                             type="button"
+                             className="p-2.5 rounded-xl bg-white/60 text-slate-600 hover:bg-white hover:text-blue-600 transition-all border border-slate-200/50 shadow-sm"
+                             title="Download Card"
+                             onClick={() => window.print()}
+                         >
+                             <Download className="h-5 w-5" />
+                         </button>
                     </div>
 
                     {/* Main Grid */}
@@ -271,20 +284,20 @@ const ManagerMonthlyRankingPage = ({ currentUser }: { currentUser: UserType }) =
 
                             {/* Name & Performance */}
                             <div>
-                                <h1 className="text-4xl lg:text-5xl font-extrabold text-slate-800 mb-3 drop-shadow-sm">
+                                <h1 className="text-4xl lg:text-5xl font-extrabold text-slate-800 mb-1 drop-shadow-sm">
                                     {computedRows.length > 0 ? topRow?.name : 'No data available for this month'}
                                 </h1>
+                                <p className="text-sm font-medium text-slate-500 mb-3">{topRow?.email || ''}</p>
                                 <div className="flex items-center gap-4 flex-wrap">
                                     <div className="flex items-center gap-2">
                                         <div className="flex">
                                             {[...Array(5)].map((_, i) => (
                                                 <Star
                                                     key={i}
-                                                    className={`h-5 w-5 ${
-                                                        i < Math.floor((topRow?.percent || 0) / 20)
-                                                            ? 'text-amber-400 fill-amber-400'
-                                                            : 'text-slate-300'
-                                                    }`}
+                                                    className={`h-5 w-5 ${i < Math.floor((topRow?.percent || 0) / 20)
+                                                        ? 'text-amber-400 fill-amber-400'
+                                                        : 'text-slate-300'
+                                                        }`}
                                                 />
                                             ))}
                                         </div>
@@ -425,13 +438,13 @@ const ManagerMonthlyRankingPage = ({ currentUser }: { currentUser: UserType }) =
 
                                 {/* Pastel sparkles — fixed positions */}
                                 {[
-                                    { color: '#7dd3fc', top: '8%',  left: '50%' },
+                                    { color: '#7dd3fc', top: '8%', left: '50%' },
                                     { color: '#fbbf24', top: '20%', left: '88%' },
                                     { color: '#f9a8d4', top: '50%', left: '92%' },
                                     { color: '#6ee7b7', top: '78%', left: '80%' },
                                     { color: '#7dd3fc', top: '85%', left: '30%' },
-                                    { color: '#fbbf24', top: '65%', left: '5%'  },
-                                    { color: '#f9a8d4', top: '30%', left: '3%'  },
+                                    { color: '#fbbf24', top: '65%', left: '5%' },
+                                    { color: '#f9a8d4', top: '30%', left: '3%' },
                                     { color: '#6ee7b7', top: '10%', left: '18%' },
                                 ].map((s, i) => (
                                     <div
@@ -537,7 +550,7 @@ const ManagerMonthlyRankingPage = ({ currentUser }: { currentUser: UserType }) =
                                         'linear-gradient(135deg, #e0f4ff, #f0fdf4)',
                                     ];
                                     const cardBorders = ['#bae6fd', '#fde68a', '#fbcfe8', '#bbf7d0', '#fbbf24', '#7dd3fc'];
-                                    const badgeGrads  = [
+                                    const badgeGrads = [
                                         'linear-gradient(135deg, #38bdf8, #bae6fd)',
                                         'linear-gradient(135deg, #fbbf24, #fde68a)',
                                         'linear-gradient(135deg, #f472b6, #fbcfe8)',
@@ -545,7 +558,7 @@ const ManagerMonthlyRankingPage = ({ currentUser }: { currentUser: UserType }) =
                                         'linear-gradient(135deg, #fbbf24, #fef9c3)',
                                         'linear-gradient(135deg, #38bdf8, #e0f4ff)',
                                     ];
-                                    const badgeTextColors = ['#0369a1','#92400e','#be185d','#065f46','#92400e','#0369a1'];
+                                    const badgeTextColors = ['#0369a1', '#92400e', '#be185d', '#065f46', '#92400e', '#0369a1'];
 
                                     const ci = index % cardGradients.length;
 
@@ -623,8 +636,8 @@ const ManagerMonthlyRankingPage = ({ currentUser }: { currentUser: UserType }) =
                                                                 r.percent >= 90
                                                                     ? { background: '#f0fdf4', color: '#16a34a', borderColor: '#bbf7d0' }
                                                                     : r.percent >= 70
-                                                                    ? { background: '#e0f4ff', color: '#0369a1', borderColor: '#bae6fd' }
-                                                                    : { background: '#fef9c3', color: '#b45309', borderColor: '#fde68a' }
+                                                                        ? { background: '#e0f4ff', color: '#0369a1', borderColor: '#bae6fd' }
+                                                                        : { background: '#fef9c3', color: '#b45309', borderColor: '#fde68a' }
                                                             }
                                                         >
                                                             {r.percent >= 90 ? 'Excellent' : r.percent >= 70 ? 'Good' : 'Needs Improvement'}

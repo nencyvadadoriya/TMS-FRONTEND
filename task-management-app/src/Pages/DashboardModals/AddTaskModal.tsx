@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, memo, useMemo, useRef } from 'react';
 import { PlusCircle, X } from 'lucide-react';
 
 
@@ -137,13 +137,59 @@ const AddTaskModal = ({
 
   const [localTask, setLocalTask] = useState<NewTaskForm>(newTask);
 
+  const assignDropdownRef = useRef<HTMLDivElement | null>(null);
+  const brandDropdownRef = useRef<HTMLDivElement | null>(null);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [assignSearch, setAssignSearch] = useState('');
+  const [brandOpen, setBrandOpen] = useState(false);
+  const [brandSearch, setBrandSearch] = useState('');
+
 
 
   useEffect(() => {
     if (open) {
       setLocalTask(newTask);
+      setAssignOpen(false);
+      setBrandOpen(false);
+      setAssignSearch('');
+      setBrandSearch('');
     }
   }, [open]);
+
+  const filteredAssignUsers = useMemo(() => {
+    const q = assignSearch.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter((u) => {
+      const name = String(u?.name || '').trim().toLowerCase();
+      const email = String(u?.email || '').trim().toLowerCase();
+      return name.includes(q) || email.includes(q);
+    });
+  }, [users, assignSearch]);
+
+  const filteredBrands = useMemo(() => {
+    const q = brandSearch.trim().toLowerCase();
+    if (!q) return availableBrandOptions;
+    return availableBrandOptions.filter((opt) => {
+      const value = String(opt?.value || '').trim().toLowerCase();
+      const label = String(opt?.label || '').trim().toLowerCase();
+      return value.includes(q) || label.includes(q);
+    });
+  }, [availableBrandOptions, brandSearch]);
+
+  useEffect(() => {
+    if (!assignOpen && !brandOpen) return;
+    const onDocMouseDown = (e: MouseEvent) => {
+      const target = e.target as Node | null;
+      if (assignOpen && assignDropdownRef.current && target && !assignDropdownRef.current.contains(target)) {
+        setAssignOpen(false);
+      }
+      if (brandOpen && brandDropdownRef.current && target && !brandDropdownRef.current.contains(target)) {
+        setBrandOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocMouseDown);
+    return () => document.removeEventListener('mousedown', onDocMouseDown);
+  }, [assignOpen, brandOpen]);
 
 
 
@@ -283,27 +329,65 @@ const AddTaskModal = ({
 
               <label className="block text-sm font-medium text-gray-900 mb-2">Assign To *</label>
 
-              <select
+              <div ref={assignDropdownRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setAssignOpen((v) => !v)}
+                  className={`w-full px-4 py-3 text-sm border rounded-xl text-left focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.assignedTo ? 'border-red-500' : 'border-gray-300'} bg-white`}
+                >
+                  {localTask.assignedTo
+                    ? (() => {
+                        const u = users.find((x) => String(x?.email || '') === String(localTask.assignedTo || ''));
+                        if (!u) return String(localTask.assignedTo || '').trim();
+                        const name = String(u?.name || '').trim();
+                        const email = String(u?.email || '').trim();
+                        return name ? `${name} (${email})` : email;
+                      })()
+                    : 'Select team member'}
+                </button>
 
-                value={localTask.assignedTo}
-
-                onChange={(e) => handleInternalChange('assignedTo', e.target.value)}
-
-                className={`w-full px-4 py-3 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.assignedTo ? 'border-red-500' : 'border-gray-300'}`}
-
-              >
-
-                <option value="">Select team member</option>
-
-                {users.map((user) => (
-
-                  <option key={user.id} value={user.email}>
-                    {user.name && user.name.trim() ? `${user.name.trim()} - ${user.email}` : String(user.email || '').trim()}
-                  </option>
-
-                ))}
-
-              </select>
+                {assignOpen && (
+                  <div className="absolute z-50 mt-2 w-full rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden">
+                    <div className="p-2 border-b border-gray-100">
+                      <input
+                        type="text"
+                        value={assignSearch}
+                        onChange={(e) => {
+                          setAssignSearch(e.target.value);
+                          setAssignOpen(true);
+                        }}
+                        placeholder="Search email or name"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="max-h-56 overflow-auto">
+                      {filteredAssignUsers.length === 0 ? (
+                        <div className="px-4 py-3 text-sm text-gray-500">No results</div>
+                      ) : (
+                        filteredAssignUsers.map((user) => {
+                          const name = String(user?.name || '').trim();
+                          const email = String(user?.email || '').trim();
+                          const label = name ? `${name} (${email})` : email;
+                          return (
+                            <button
+                              key={String(user.id || user.email)}
+                              type="button"
+                              onClick={() => {
+                                handleInternalChange('assignedTo', email);
+                                setAssignOpen(false);
+                              }}
+                              className="w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50"
+                            >
+                              {label}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {formErrors.assignedTo && <p className="mt-1 text-sm text-red-600">{formErrors.assignedTo}</p>}
 
@@ -419,31 +503,58 @@ const AddTaskModal = ({
 
               </div>
 
-              <select
+              <div ref={brandDropdownRef} className="relative">
+                <button
+                  type="button"
+                  disabled={!localTask.companyName}
+                  onClick={() => {
+                    if (!localTask.companyName) return;
+                    setBrandOpen((v) => !v);
+                  }}
+                  className={`w-full px-4 py-3 text-sm border rounded-xl text-left focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.brand ? 'border-red-500' : 'border-gray-300'} ${!localTask.companyName ? 'bg-gray-50 text-gray-400 cursor-not-allowed' : 'bg-white'}`}
+                >
+                  {localTask.brand
+                    ? (availableBrandOptions.find((x) => String(x?.value || '') === String(localTask.brand || ''))?.label || String(localTask.brand || '').trim())
+                    : 'Select a brand'}
+                </button>
 
-                value={localTask.brand}
-
-                onChange={(e) => handleInternalChange('brand', e.target.value)}
-
-                className={`w-full px-4 py-3 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.brand ? 'border-red-500' : 'border-gray-300'}`}
-
-                disabled={!localTask.companyName}
-
-              >
-
-                <option value="">Select a brand</option>
-
-                {availableBrandOptions.map((opt) => (
-
-                  <option key={opt.value} value={opt.value}>
-
-                    {opt.label}
-
-                  </option>
-
-                ))}
-
-              </select>
+                {brandOpen && localTask.companyName && (
+                  <div className="absolute z-50 mt-2 w-full rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden">
+                    <div className="p-2 border-b border-gray-100">
+                      <input
+                        type="text"
+                        value={brandSearch}
+                        onChange={(e) => {
+                          setBrandSearch(e.target.value);
+                          setBrandOpen(true);
+                        }}
+                        placeholder="Search brand"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="max-h-56 overflow-auto">
+                      {filteredBrands.length === 0 ? (
+                        <div className="px-4 py-3 text-sm text-gray-500">No results</div>
+                      ) : (
+                        filteredBrands.map((opt) => (
+                          <button
+                            key={String(opt.value)}
+                            type="button"
+                            onClick={() => {
+                              handleInternalChange('brand', String(opt.value || '').trim());
+                              setBrandOpen(false);
+                            }}
+                            className="w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50"
+                          >
+                            {opt.label}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {formErrors.brand && <p className="mt-1 text-sm text-red-600">{formErrors.brand}</p>}
 

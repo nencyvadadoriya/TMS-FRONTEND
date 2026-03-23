@@ -26,7 +26,7 @@ type RoleItem = {
     name: string;
 };
 
-const normalizeRole = (role: unknown) => (role || '').toString().trim().toLowerCase();
+const normalizeRole = (role: unknown) => (role || '').toString().trim().toLowerCase().replace(/[\s-]+/g, '_');
 
 const randomId = () => {
     return `access_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
