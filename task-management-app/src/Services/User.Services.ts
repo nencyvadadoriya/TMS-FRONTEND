@@ -2,7 +2,7 @@ import apiClient from "./apiClient";
 import type { LoginBody, OtpverifyPayload, RegisterUserBody } from "../Types/Types";
 import toast from "react-hot-toast";
 
-const isDev = Boolean(import.meta.env.DEV);
+  Boolean(import.meta.env.DEV);
 
 class AuthServices {
     authLoginUrl = "/auth/login";
