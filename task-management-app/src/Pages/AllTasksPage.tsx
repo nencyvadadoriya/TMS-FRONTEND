@@ -3280,12 +3280,8 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
 
   // Debug: Log when effective filters change
   useEffect(() => {
-    console.log('Effective advanced filters changed:', effectiveAdvancedFilters);
-    console.log('From props (advancedFilters):', advancedFilters);
-    console.log('From local state (localAdvancedFilters):', localAdvancedFilters);
   }, [effectiveAdvancedFilters, advancedFilters, localAdvancedFilters]);
   const handleAdvancedFilterChange = useCallback((filterType: string, value: string) => {
-    console.log('Filter change:', filterType, '=', value);
     if (onAdvancedFilterChange) {
       onAdvancedFilterChange(filterType, value);
       return;
@@ -3295,7 +3291,6 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         ...prev,
         [filterType]: value
       };
-      console.log('New local filters:', newState);
       return newState;
     });
   }, [onAdvancedFilterChange]);
@@ -4596,9 +4591,6 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
 
     // Show success message
     toast.success('Filters applied successfully');
-
-    // Log current filter state for debugging
-    console.log('Applied filters:', currentFilters);
   }, [effectiveAdvancedFilters, setFilter, setAssignedFilter, setDateFilter]);
 
   const resetFilters = useCallback(() => {

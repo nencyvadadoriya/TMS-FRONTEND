@@ -99,6 +99,7 @@ import {
     tasksAddedMany,
     tasksReset
 } from '../Store/tasksSlice';
+
 type TaskReminderClientItem = {
     id: string;
     taskId: string;
@@ -113,6 +114,7 @@ type TaskReminderClientItem = {
         brand?: string;
     };
 };
+
 const resolveSocketUrl = () => {
     const envBaseUrl = import.meta.env.VITE_API_BASE_URL;
     const envSocketUrl = import.meta.env.VITE_SOCKET_URL;
@@ -127,6 +129,7 @@ const resolveSocketUrl = () => {
     const trimmed = String(apiBase || '').trim().replace(/\/+$/, '');
     return trimmed.endsWith('/api') ? trimmed.slice(0, -4) : trimmed;
 };
+
 const stripDeletedEmailSuffix = (value: unknown): string => {
     const raw = (value == null ? '' : String(value)).trim();
     if (!raw) return '';
@@ -135,8 +138,10 @@ const stripDeletedEmailSuffix = (value: unknown): string => {
     if (idx === -1) return raw;
     return raw.slice(0, idx).trim();
 };
+
 const pad2 = (n: number) => String(n).padStart(2, '0');
 const monthKeyOfDate = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+
 const performanceLevelForAvg = (avgStars: number) => {
     const v = Number(avgStars);
     if (!Number.isFinite(v)) return '—';
@@ -145,6 +150,7 @@ const performanceLevelForAvg = (avgStars: number) => {
     if (v >= 3.0) return 'Good';
     return 'Improve';
 };
+
 interface NewTaskForm {
     title: string;
     assignedTo: string;
@@ -154,6 +160,7 @@ interface NewTaskForm {
     companyName: string;
     brand: string;
 }
+
 interface EditTaskForm {
     id: string;
     title: string;
@@ -165,6 +172,7 @@ interface EditTaskForm {
     brand: string;
     status: TaskStatus;
 }
+
 interface StatMeta {
     name: string;
     value: number;
@@ -175,6 +183,7 @@ interface StatMeta {
     color: string;
     bgColor: string;
 }
+
 interface FilterState {
     status: string;
     priority: string;
@@ -186,6 +195,7 @@ interface FilterState {
     rm: string;
     sort?: string;
 }
+
 const DashboardPage = () => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -280,7 +290,7 @@ const DashboardPage = () => {
     const [taskPage, setTaskPage] = useState(1);
     const [reviewsMonth, setReviewsMonth] = useState<string>(() => monthKeyOfDate(new Date()));
     const [reviewedTasksForSummary, setReviewedTasksForSummary] = useState<Task[]>([]);
-    const [allMdImpexUsers, setAllMdImpexUsers] = useState<any[]>([]); // New state for comprehensive user data
+    const [allMdImpexUsers, setAllMdImpexUsers] = useState<any[]>([]);
     const [reviewModalTaskId, setReviewModalTaskId] = useState<string | null>(null);
     const [reviewModalStars, setReviewModalStars] = useState<number>(0);
     const [reviewModalComment, setReviewModalComment] = useState<string>('');
@@ -322,6 +332,7 @@ const DashboardPage = () => {
     const userMappingsFetchedAtRef = useRef<Map<string, number>>(new Map());
     const USER_MAPPINGS_TTL_MS = 60_000;
     const BRANDS_AUTO_REFRESH_MS = 15_000;
+
     const fetchMyReminders = useCallback(async () => {
         try {
             const res = await apiClient.get('/reminders/my');
@@ -345,6 +356,7 @@ const DashboardPage = () => {
             // ignore
         }
     }, []);
+
     const acknowledgeReminder = useCallback(async (reminderId: string) => {
         const id = String(reminderId || '').trim();
         if (!id) return;
@@ -360,11 +372,13 @@ const DashboardPage = () => {
             return remaining[0]?.id || '';
         });
     }, [unreadReminders]);
+
     const activeReminder = useMemo(() => {
         const id = String(activeReminderId || '').trim();
         if (!id) return null;
         return (unreadReminders || []).find((r) => r.id === id) || null;
     }, [activeReminderId, unreadReminders]);
+
     useEffect(() => {
         let mounted = true;
         const fetchReviewedForSummary = async () => {
@@ -383,6 +397,7 @@ const DashboardPage = () => {
             mounted = false;
         };
     }, []);
+
     const employeeOfTheMonth = useMemo(() => {
         const parseMonth = (value: string) => {
             const [y, m] = String(value || '').split('-').map((x) => Number(x));
@@ -392,18 +407,10 @@ const DashboardPage = () => {
             return { start, endExclusive };
         };
         const monthRange = parseMonth(reviewsMonth);
-        // For all MDIMPEX users, show comprehensive data regardless of role restrictions
         const currentUserCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase();
         const isMdImpexUser = currentUserCompany.includes('mdimpex') || currentUserCompany.includes('md_impex');
-        console.log('EmployeeOfTheMonth Debug:', {
-            currentUserCompany,
-            isMdImpexUser,
-            totalUsersAvailable: users?.length,
-            totalMdImpexUsersAvailable: allMdImpexUsers?.length,
-            usersList: users?.map(u => ({ email: u.email, name: u.name, hasAvatar: !!u.avatar, avatar: u.avatar }))
-        });
+        
         let reviewedData = reviewedTasksForSummary || [];
-        // If user is from MDIMPEX, use all tasks data to show comprehensive view
         if (isMdImpexUser) {
             reviewedData = (tasks || []).filter((t) => {
                 const stars = (t as any).reviewStars;
@@ -444,7 +451,6 @@ const DashboardPage = () => {
             const name = String(assignedToUser?.name || email);
             const starsValue = Number((t as any).reviewStars);
             if (!Number.isFinite(starsValue) || starsValue < 1 || starsValue > 5) return;
-            // Only count reviews for tasks that were assigned in the selected month
             if (monthRange) {
                 const createdAtRaw = (t as any).createdAt || (t as any).assignedAt;
                 if (!createdAtRaw) return;
@@ -470,25 +476,15 @@ const DashboardPage = () => {
             };
         });
         rows.sort((a, b) => {
-            // Sort by total reviews (highest first)
             if (b.total !== a.total) return b.total - a.total;
-            // Tie-breaker: avgStars
             return b.avgStars - a.avgStars;
         });
-        // Debug: log reviewed tasks and rows to check data
-        console.log('reviewed tasks count:', reviewed.length);
-        console.log('first 3 reviewed tasks:', reviewed.slice(0, 3));
-        console.log('rows after aggregation:', rows.slice(0, 3));
         const top = rows.find((r) => (r.total || 0) >= 30) || rows[0] || null;
-        // Debug: log top performer and first row data
-        console.log('Top performer:', top);
-        console.log('First row (summaryRowsBase[0] before mapping):', rows[0]);
         const summaryRowsBase = rows.slice(0, 10).map((r) => {
             let avatar = (users || []).find((u: any) => {
                 const uemail = String(u?.email || '').trim().toLowerCase();
                 return uemail && uemail === r.email;
             })?.avatar;
-            // For MDIMPEX users, if no avatar found in restricted users, try comprehensive user data
             if (!avatar && isMdImpexUser && allMdImpexUsers?.length > 0) {
                 avatar = (allMdImpexUsers || []).find((u: any) => {
                     const uemail = String(u?.email || '').trim().toLowerCase();
@@ -521,29 +517,19 @@ const DashboardPage = () => {
                 performance: r.performance,
             };
         });
-        // Debug: log first row to see total value
-        console.log('summaryRowsBase[0]:', summaryRowsBase[0]);
         const photoUrl = top
             ? (users || []).find((u: any) => {
                 const uemail = String(u?.email || '').trim().toLowerCase();
                 return uemail && uemail === top.email;
             })?.avatar
             : undefined;
-        console.log('Photo search debug:', {
-            lookingFor: top?.email,
-            foundPhotoUrl: photoUrl,
-            isMdImpexUser
-        });
-        // For MDIMPEX users, if no photo found in restricted users, try comprehensive user data
         let finalPhotoUrl = photoUrl;
         if (top && !finalPhotoUrl && isMdImpexUser && allMdImpexUsers?.length > 0) {
-            console.log('MDIMPEX user: searching comprehensive user data for photo');
             const comprehensivePhotoUrl = (allMdImpexUsers || []).find((u: any) => {
                 const uemail = String(u?.email || '').trim().toLowerCase();
                 return uemail && uemail === top.email;
             })?.avatar;
             finalPhotoUrl = comprehensivePhotoUrl;
-            console.log('Found photo in comprehensive data:', finalPhotoUrl);
         }
         return {
             name: top?.name || 'Not any yet',
@@ -582,6 +568,7 @@ const DashboardPage = () => {
                 ],
         };
     }, [reviewedTasksForSummary, reviewsMonth, users, allMdImpexUsers, tasks, currentUser?.companyName, currentUser?.company]);
+
     const pendingManagerReviewTasks = useMemo(() => {
         const normalizeEmailSafe = (v: unknown): string => String(v || '').trim().toLowerCase();
         const normalizeRoleKey = (v: unknown): string => String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
@@ -633,10 +620,12 @@ const DashboardPage = () => {
             });
         return list;
     }, [currentUser, tasks, users]);
+
     const reviewModalTask = useMemo(() => {
         if (!reviewModalTaskId) return null;
         return (pendingManagerReviewTasks || []).find((t: any) => String((t as any)?.id || (t as any)?._id || '') === reviewModalTaskId) || null;
     }, [pendingManagerReviewTasks, reviewModalTaskId]);
+
     useEffect(() => {
         const next = pendingManagerReviewTasks || [];
         if (next.length === 0) {
@@ -648,11 +637,13 @@ const DashboardPage = () => {
             return String((next[0] as any)?.id || (next[0] as any)?._id || '');
         });
     }, [pendingManagerReviewTasks]);
+
     useEffect(() => {
         if (!reviewModalTaskId) return;
         setReviewModalStars(0);
         setReviewModalComment('');
     }, [reviewModalTaskId]);
+
     useEffect(() => {
         const next = pendingManagerReviewTasks || [];
         if (next.length === 0) return;
@@ -666,6 +657,7 @@ const DashboardPage = () => {
             toast.success(`Task completed${assigneeName ? ` by ${assigneeName}` : ''}: ${title}. Review required.`);
         });
     }, [pendingManagerReviewTasks]);
+
     const submitReviewFromModal = useCallback(async () => {
         if (!reviewModalTaskId) return;
         if (reviewModalSubmitting) return;
@@ -687,12 +679,15 @@ const DashboardPage = () => {
             setReviewModalSubmitting(false);
         }
     }, [dispatch, reviewModalComment, reviewModalStars, reviewModalSubmitting, reviewModalTaskId]);
+
     useEffect(() => {
         usersRef.current = users;
     }, [users]);
+
     useEffect(() => {
         currentUserEmailRef.current = (currentUser?.email || '').toString();
     }, [currentUser?.email]);
+
     useEffect(() => {
         const email = (currentUser?.email || '').toString().trim().toLowerCase();
         if (!email) return;
@@ -705,6 +700,7 @@ const DashboardPage = () => {
                 setLoading(false);
             });
     }, [currentUser?.email, dispatch]);
+
     useEffect(() => {
         if (!isAuthReady) return;
         const email = (currentUser?.email || '').toString().trim().toLowerCase();
@@ -714,7 +710,6 @@ const DashboardPage = () => {
         const companyName = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim();
         const socketUrl = resolveSocketUrl();
         if (!socketUrl) return;
-        // initial pull (covers refresh)
         void fetchMyReminders();
         try {
             socketRef.current?.disconnect();
@@ -730,25 +725,7 @@ const DashboardPage = () => {
         });
         socketRef.current = socket;
         socket.on('connect', () => {
-            try {
-                console.log('[socket] connected', { id: socket.id, socketUrl, userId, role, companyName });
-            } catch {
-                // ignore
-            }
-        });
-        socket.on('disconnect', (reason) => {
-            try {
-                console.log('[socket] disconnected', { reason });
-            } catch {
-                // ignore
-            }
-        });
-        socket.on('connect_error', (err: any) => {
-            try {
-                console.error('[socket] connect_error', err?.message || err);
-            } catch {
-                // ignore
-            }
+            // connection established
         });
         const normalizeIncomingTask = (task: any) => {
             if (!task) return task;
@@ -980,6 +957,7 @@ const DashboardPage = () => {
             }
         };
     }, [currentUser, dispatch, fetchMyReminders, isAuthReady]);
+
     const hasAccess = useCallback((moduleId: string) => {
         const role = String((currentUser as any)?.role || '').trim().toLowerCase();
         if (moduleId === 'user_management') return role === 'super_admin' || role === 'admin';
@@ -997,16 +975,19 @@ const DashboardPage = () => {
         if (['allow', 'allowed', 'yes', 'true', '1'].includes(perm)) return true;
         return perm !== 'deny';
     }, [currentUser, isAuthReady]);
+
     const canViewAllTasks = useMemo(() => {
         const role = String((currentUser as any)?.role || '').trim().toLowerCase();
         if (role === 'ob_manager') return true;
         return hasAccess('view_all_tasks');
     }, [currentUser, hasAccess]);
+
     const canCreateTasks = useMemo(() => {
         const role = String((currentUser as any)?.role || '').trim().toLowerCase();
         if (role === 'ob_manager') return true;
         return hasAccess('create_task');
     }, [currentUser, hasAccess]);
+
     const canBulkAddTaskTypes = useMemo(() => hasAccess('task_type_bulk_add'), [hasAccess]);
     const canBulkAddCompanies = useMemo(() => hasAccess('company_bulk_add'), [hasAccess]);
     const canBulkAddBrands = useMemo(() => hasAccess('brand_bulk_add'), [hasAccess]);
@@ -1019,6 +1000,7 @@ const DashboardPage = () => {
         const role = String((currentUser as any)?.role || '').trim().toLowerCase();
         return role === 'admin' || role === 'super_admin' || role === 'troubleshoot_manager';
     }, [currentUser]);
+
     const canSendReminderForTask = useCallback((task: Task): boolean => {
         if (isAdminLike) return true;
         const myEmail = String((currentUser as any)?.email || '').trim().toLowerCase();
@@ -1037,6 +1019,7 @@ const DashboardPage = () => {
             .toLowerCase();
         return Boolean(creatorEmail && creatorEmail === myEmail);
     }, [currentUser, isAdminLike]);
+
     const handleSendReminder = useCallback(async (task: Task) => {
         if (!canSendReminderForTask(task)) return;
         const taskId = String((task as any)?.id || (task as any)?._id || '').trim();
@@ -1045,10 +1028,12 @@ const DashboardPage = () => {
         setSendReminderTask(task);
         setSendReminderOpen(true);
     }, [canSendReminderForTask, sendingReminderByTaskId]);
+
     const closeSendReminderModal = useCallback(() => {
         setSendReminderOpen(false);
         setSendReminderTask(null);
     }, []);
+
     const submitSendReminder = useCallback(async (message: string) => {
         const taskId = String((sendReminderTask as any)?.id || (sendReminderTask as any)?._id || '').trim();
         if (!taskId) return;
@@ -1068,6 +1053,7 @@ const DashboardPage = () => {
             closeSendReminderModal();
         }
     }, [closeSendReminderModal, sendReminderTask, sendingReminderByTaskId]);
+
     const [newTask, setNewTask] = useState<NewTaskForm>({
         title: '',
         assignedTo: '',
@@ -1077,6 +1063,7 @@ const DashboardPage = () => {
         companyName: '',
         brand: '',
     });
+
     const usersForAddTaskModal = useMemo(() => {
         const role = String((currentUser as any)?.role || '').trim().toLowerCase();
         const normalizeCompany = (value: unknown): string => {
@@ -1089,16 +1076,13 @@ const DashboardPage = () => {
         const userCompanyKey = normalizeCompany((currentUser as any)?.companyName || (currentUser as any)?.company);
         const targetCompanyKey = (() => {
             if (role === 'admin' || role === 'super_admin') {
-                // Admin: filter by selected company in modal when set; otherwise no company restriction
                 return modalCompanyKey;
             }
-            // Non-admin: always stay within their own company; prefer selected company when present
             return modalCompanyKey || userCompanyKey;
         })();
         const filterByCompany = (list: UserType[] | undefined | null): UserType[] => {
             const source = list || [];
             if (!targetCompanyKey) {
-                // If no target company, only admins/super_admins should see all
                 if (role === 'admin' || role === 'super_admin') return source;
                 return source.filter((u: any) => normalizeCompany((u as any)?.companyName || (u as any)?.company) === userCompanyKey);
             }
@@ -1111,8 +1095,6 @@ const DashboardPage = () => {
             return String(u?.id || u?._id || '').trim();
         };
         const baseUsers = users || [];
-        // Always allow super admins/admins to be assignable across companies
-        // (sales roles also need to assign to / receive from super_admin)
         const adminUsersAnyCompany = baseUsers.filter((u: any) => {
             const r = normalizeRole((u as any)?.role);
             return r === 'admin' || r === 'super_admin';
@@ -1147,7 +1129,6 @@ const DashboardPage = () => {
         }
         const taskTypeKey = (newTask.taskType || '').toString().trim().toLowerCase();
         const isOtherWork = taskTypeKey === 'other work';
-        // MD Manager: show Managers of same company
         if (role === 'md_manager') {
             const requesterId = toId(currentUser);
             const myEmail = String((currentUser as any)?.email || '').trim().toLowerCase();
@@ -1164,7 +1145,6 @@ const DashboardPage = () => {
             const candidates = [...mdManagers, selfUser, ...managersAndObManagersAndAssistants];
             return Array.from(new Map(candidates.map((u: any) => [toId(u) || String(u?.email || ''), u])).values());
         }
-        // Manager: show Managers + OB Managers + Assistants of same company
         if (role === 'manager' || role === 'marketer_manager') {
             const byRole = baseUsers.filter((u: any) => {
                 const r = normalizeRole(u?.role);
@@ -1188,7 +1168,6 @@ const DashboardPage = () => {
                 .filter((u: any) => Boolean(String((u as any)?.email || '').trim()));
             return Array.from(new Map(merged.map((u: any) => [String((u as any)?.email || '').trim().toLowerCase(), u])).values());
         }
-        // OB Manager: show Managers + MD Managers + OB Managers + Assistants of same company
         if (role === 'ob_manager') {
             const byRole = baseUsers.filter((u: any) => {
                 const r = normalizeRole(u?.role);
@@ -1196,7 +1175,6 @@ const DashboardPage = () => {
             });
             return filterByCompany(byRole);
         }
-        // Speed E Com specific: SBM / RM / AM can assign to each other within same company
         if (role === 'sbm' || role === 'rm' || role === 'am' || role === 'ar') {
             const requesterId = toId(currentUser);
             const requesterManagerId = String((currentUser as any)?.managerId || '').trim();
@@ -1253,7 +1231,6 @@ const DashboardPage = () => {
                 });
                 return Array.from(new Map(visible.map((u: any) => [toId(u) || String(u?.email || ''), u])).values());
             }
-            // SBM: keep existing behavior (SBM/RM/AM within same company)
             if (role === 'sbm') {
                 const adminUsers = baseUsers.filter((u: any) => {
                     const r = normalizeRole(u?.role);
@@ -1273,7 +1250,6 @@ const DashboardPage = () => {
             });
             return filterByCompany(byRole);
         }
-        // Sales Manager / Sales Man: show own company + admins + (SBMs for sales manager)
         if (role === 'sales_manager' || role === 'sales_man') {
             const adminUsers = baseUsers.filter((u: any) => {
                 const r = normalizeRole(u?.role);
@@ -1286,16 +1262,14 @@ const DashboardPage = () => {
             const merged = [...adminUsers, ...sbmUsers, ...scoped];
             return Array.from(new Map(merged.map((u: any) => [String((u as any)?.email || '').trim().toLowerCase(), u])).values());
         }
-        // Admin / Super Admin: all users filtered by selected company when set
         if (role === 'admin' || role === 'super_admin') {
             return filterByCompany(baseUsers);
         }
-        // Default: all users within the same company (or selected company if any)
-        // plus admins/super_admins (any company)
         const scoped = filterByCompany(baseUsers);
         const merged = [...adminUsersAnyCompany, ...scoped];
         return Array.from(new Map(merged.map((u: any) => [toId(u) || String((u as any)?.email || ''), u])).values());
     }, [currentUser, newTask.companyName, users]);
+
     const handleLogout = useCallback(() => {
         try {
             const accessToken = sessionStorage.getItem('tms_google_calendar_access_token');
@@ -1316,6 +1290,7 @@ const DashboardPage = () => {
         localStorage.removeItem('currentUser');
         navigate('/login');
     }, [navigate]);
+
     const [editFormData, setEditFormData] = useState<EditTaskForm>({
         id: '',
         title: '',
@@ -1348,6 +1323,7 @@ const DashboardPage = () => {
     const [companies, setCompanies] = useState<Company[]>([]);
     const [taskTypes, setTaskTypes] = useState<TaskTypeItem[]>([]);
     const [companyUsers, setCompanyUsers] = useState<any[]>([]);
+
     const loadUsersForCompany = useCallback(async (companyName: string) => {
         const company = (companyName || '').toString().trim();
         if (!company) {
@@ -1362,12 +1338,14 @@ const DashboardPage = () => {
             setCompanyUsers([]);
         }
     }, []);
+
     useEffect(() => {
         if (!showBulkBrandModal) return;
         const company = (bulkBrandForm.company || '').toString().trim();
         if (!company) return;
         void loadUsersForCompany(company);
     }, [bulkBrandForm.company, loadUsersForCompany, showBulkBrandModal]);
+
     const [filters, setFilters] = useState<FilterState>({
         status: 'all',
         priority: 'all',
@@ -1382,6 +1360,7 @@ const DashboardPage = () => {
     const [taskTypeIdsByBrandId, setTaskTypeIdsByBrandId] = useState<Record<string, string[]>>({});
     const [taskTypeIdsByCompanyUserBrandKey, setTaskTypeIdsByCompanyUserBrandKey] = useState<Record<string, string[]>>({});
     const [brandNamesByCompanyUserKey, setBrandNamesByCompanyUserKey] = useState<Record<string, string[]>>({});
+
     const mainContentClasses = useMemo(() => {
         return `
             flex-1 flex flex-col
@@ -1390,38 +1369,47 @@ const DashboardPage = () => {
             min-w-0
         `;
     }, [isSidebarCollapsed]);
+
     const dashboardContainerClasses = useMemo(() => {
         return `
             w-full max-w-full mx-auto px-0 sm:px-6 md:px-8
             transition-all duration-300 ease-in-out
         `;
     }, []);
+
     const brands = useMemo(() => {
         return [...apiBrands];
     }, [apiBrands]);
+
     const normalizeText = useCallback((value: unknown): string => {
         return (value == null ? '' : String(value)).trim().toLowerCase();
     }, []);
+
     const normalizeRoleKey = useCallback((value: unknown): string => {
         return String(value || '')
             .trim()
             .toLowerCase()
             .replace(/[\s-]+/g, '_');
     }, []);
+
     const normalizeCompanyKey = useCallback((value: unknown): string => {
         return normalizeText(value).replace(/\s+/g, '');
     }, [normalizeText]);
+
     const SPEED_E_COM_COMPANY_NAME = 'Speed E Com';
     const SPEED_E_COM_COMPANY_KEY = 'speedecom';
     const SPEED_E_COM_FIXED_TASK_TYPES = ['Meeting Pending', 'CP Pending', 'Recharge Negative'];
+
     const isSpeedEcomUser = useMemo(() => {
         const key = normalizeCompanyKey((currentUser as any)?.companyName || (currentUser as any)?.company);
         return key === SPEED_E_COM_COMPANY_KEY;
     }, [currentUser, normalizeCompanyKey]);
+
     const isSpeedEcomTask = useCallback((task: any): boolean => {
         const companyKey = normalizeCompanyKey(task?.companyName || task?.company);
         return companyKey === SPEED_E_COM_COMPANY_KEY;
     }, [normalizeCompanyKey]);
+
     const getTaskAssigneeEmail = useCallback((task: any): string => {
         const assignedTo = (task as any)?.assignedTo;
         const assignedToUser = (task as any)?.assignedToUser;
@@ -1432,11 +1420,11 @@ const DashboardPage = () => {
             '';
         return stripDeletedEmailSuffix(email).trim().toLowerCase();
     }, []);
+
     const restrictTaskTypesForCompany = useCallback((companyName: unknown, list: string[]): string[] => {
         const companyKey = normalizeCompanyKey(companyName);
         if (companyKey === SPEED_E_COM_COMPANY_KEY) {
             const safe = Array.isArray(list) ? list.filter(Boolean) : [];
-            // Always ensure fixed task types are included and no duplicates
             return Array.from(new Set([...safe, ...SPEED_E_COM_FIXED_TASK_TYPES]));
         }
         const currentUserCompanyKey = normalizeCompanyKey((currentUser as any)?.companyName || (currentUser as any)?.company);
@@ -1450,7 +1438,9 @@ const DashboardPage = () => {
         }
         return list;
     }, [currentUser, normalizeCompanyKey]);
+
     const [taskTypeCompanyOverrides, setTaskTypeCompanyOverrides] = useState<Record<string, string[]>>({});
+
     const loadCompanyTaskTypeOverrides = useCallback(async () => {
         try {
             const res = await companyTaskTypeService.getAllCompanyTaskTypes();
@@ -1472,9 +1462,11 @@ const DashboardPage = () => {
             setTaskTypeCompanyOverrides({});
         }
     }, [normalizeText]);
+
     useEffect(() => {
         void loadCompanyTaskTypeOverrides();
     }, [loadCompanyTaskTypeOverrides]);
+
     const addTaskTypesToCompany = useCallback(async (companyName: string, typeNames: string[]) => {
         const companyKey = normalizeText(companyName);
         if (!companyKey) return;
@@ -1508,6 +1500,7 @@ const DashboardPage = () => {
             toast.error('Failed to save task types for company');
         }
     }, [normalizeText]);
+
     const availableCompanies = useMemo(() => {
         const resolveFromCompanyList = (raw: string) => {
             const input = (raw || '').toString().trim();
@@ -1521,7 +1514,6 @@ const DashboardPage = () => {
             return (match?.name || input).toString().trim();
         };
         const role = (currentUser?.role || '').toString().toLowerCase();
-        // role already resolved above
         if (role === 'md_manager' || role === 'ob_manager') {
             const fromCompanies = (companies || []).map(c => (c?.name || '').toString().trim()).filter(Boolean);
             return [...new Set(fromCompanies)].filter(Boolean).sort();
@@ -1580,6 +1572,7 @@ const DashboardPage = () => {
         (currentUser as any)?.company,
         (currentUser as any)?.companyName
     ]);
+
     const availableRmUsersForFilters = useMemo(() => {
         const roleKey = normalizeRoleKey(currentUser?.role);
         if (roleKey !== 'sbm') return [] as Array<{ id: string; name: string; email: string }>;
@@ -1597,7 +1590,6 @@ const DashboardPage = () => {
                 companyKey: normalizeCompanyKey(u?.companyName || u?.company),
             }))
             .filter((u: any) => Boolean(u?.email));
-        // Prefer company-matched RMs; if none, fallback to all RMs
         const companyMatched = companyKeyForRms
             ? allRms.filter((u: any) => Boolean(u?.companyKey) && u.companyKey === companyKeyForRms)
             : [];
@@ -1606,6 +1598,7 @@ const DashboardPage = () => {
             .map(({ id, name, email }: any) => ({ id, name, email }))
             .sort((a: any, b: any) => String(a?.name || a?.email || '').localeCompare(String(b?.name || b?.email || '')));
     }, [currentUser, filters.company, normalizeCompanyKey, normalizeRoleKey, users, usersRef, filters]);
+
     const availableCompaniesForSbm = useMemo(() => {
         const role = String((currentUser as any)?.role || '').trim().toLowerCase();
         if (role === 'troubleshoot_manager') {
@@ -1621,10 +1614,10 @@ const DashboardPage = () => {
         if (onlyRaw) return [onlyRaw];
         return (availableCompanies || []).slice(0, 1);
     }, [availableCompanies, currentUser, isSbmRole]);
+
     useEffect(() => {
         const role = (currentUser?.role || '').toString().toLowerCase();
         if (role !== 'md_manager' && role !== 'ob_manager' && role !== 'manager' && role !== 'assistant') return;
-        // For MD/OB managers, prefer the first allowed/assigned company from availableCompanies.
         const fromList = (role === 'md_manager' || role === 'ob_manager')
             ? ((availableCompanies[0] || '').toString().trim())
             : '';
@@ -1633,14 +1626,13 @@ const DashboardPage = () => {
         const allowedSet = new Set((availableCompanies || []).map((c) => (c || '').toString().trim()));
         setNewTask((prev) => {
             const current = (prev?.companyName || '').toString().trim();
-            // If current selection is already allowed, keep it. If it's not in the allowed list,
-            // or if nothing is set yet, switch to the resolved defaultCompany.
             if (current && (allowedSet.size === 0 || allowedSet.has(current))) {
                 return prev;
             }
             return { ...prev, companyName: defaultCompany };
         });
     }, [MD_IMPEX_COMPANY_NAME, availableCompanies, (currentUser as any)?.company, (currentUser as any)?.companyName, currentUser?.role]);
+
     useEffect(() => {
         const role = (currentUser?.role || '').toString().toLowerCase();
         if (role !== 'rm' && role !== 'am' && role !== 'ar') return;
@@ -1662,6 +1654,7 @@ const DashboardPage = () => {
             return { ...prev, companyName: defaultCompany };
         });
     }, [SPEED_E_COM_COMPANY_NAME, availableCompanies, companies, (currentUser as any)?.company, (currentUser as any)?.companyName, currentUser?.role]);
+
     useEffect(() => {
         if (!showBulkBrandModal) return;
         setBulkBrandForm((prev) => {
@@ -1670,6 +1663,7 @@ const DashboardPage = () => {
             return { ...prev, company: MD_IMPEX_COMPANY_NAME };
         });
     }, [MD_IMPEX_COMPANY_NAME, showBulkBrandModal]);
+
     useEffect(() => {
         if (!showBulkTaskTypeModal) return;
         setBulkTaskTypeCompany((prev) => {
@@ -1678,6 +1672,7 @@ const DashboardPage = () => {
             return MD_IMPEX_COMPANY_NAME;
         });
     }, [MD_IMPEX_COMPANY_NAME, showBulkTaskTypeModal]);
+
     const allowedTaskTypeKeysForManager = useMemo(() => {
         const role = (currentUser?.role || '').toString().toLowerCase();
         if (role !== 'manager') return new Set<string>();
@@ -1776,11 +1771,11 @@ const DashboardPage = () => {
             if (key) allowed.add(key);
         });
         if (allowed.size === 0) {
-            // Keep 2 default task types visible in Manager filter even when no tasks/assignments exist yet
             return new Set<string>(['other work', 'troubleshoot']);
         }
         return allowed;
     }, [currentUser, tasks, users]);
+
     const availableTaskTypes = useMemo(() => {
         const normalizeLabel = (v: unknown) => (v || '').toString().trim();
         const normalizeKey = (v: unknown) => normalizeLabel(v).toLowerCase();
@@ -1880,6 +1875,7 @@ const DashboardPage = () => {
         }
         return [...new Set(apiLabels)].sort((a, b) => a.localeCompare(b));
     }, [allowedTaskTypeKeysForManager, currentUser, taskTypes, tasks]);
+
     const taskTypesByCompanyFromTasks = useMemo(() => {
         const map = new Map<string, Set<string>>();
         (tasks || []).forEach((t: any) => {
@@ -1891,6 +1887,7 @@ const DashboardPage = () => {
         });
         return map;
     }, [tasks, normalizeText]);
+
     const getTaskTypesForCompany = useCallback((companyName: string): string[] => {
         const companyKey = normalizeText(companyName);
         if (!companyKey) return [];
@@ -1900,7 +1897,6 @@ const DashboardPage = () => {
             : [];
         const merged = Array.from(new Set([...fromOverrides, ...fromTasks]));
         const selectedCompanyKey = normalizeCompanyKey(companyName);
-        // Get matching company ID
         const matchingCompanyId =
             (companies || []).find((c: any) => {
                 const name = String(c?.name || c?.companyName || c?.title || '').trim();
@@ -1910,7 +1906,6 @@ const DashboardPage = () => {
                 const name = String(c?.name || c?.companyName || c?.title || '').trim();
                 return normalizeCompanyKey(name) === selectedCompanyKey;
             })?.id;
-        // Get task types from API (including global ones)
         const fromApi = (taskTypes || [])
             .filter((t: any) => {
                 const typeCompanyId = String(t?.companyId || '').trim();
@@ -1919,12 +1914,10 @@ const DashboardPage = () => {
             .map((t: any) => (t?.name || '').toString().trim())
             .filter(Boolean);
         const combined = Array.from(new Set([...fromApi, ...merged]));
-        // 🔥 Special handling for Speed Ecom
         if (selectedCompanyKey === SPEED_E_COM_COMPANY_KEY) {
             return restrictTaskTypesForCompany(companyName, combined)
                 .sort((a, b) => a.localeCompare(b));
         }
-        // Default return for other companies
         return restrictTaskTypesForCompany(companyName, combined)
             .sort((a, b) => a.localeCompare(b));
         const role = (currentUser?.role || '').toString().toLowerCase();
@@ -1936,6 +1929,7 @@ const DashboardPage = () => {
         }
         return merged.sort((a, b) => a.localeCompare(b));
     }, [allowedTaskTypeKeysForManager, companies, currentUser?.role, normalizeCompanyKey, normalizeText, restrictTaskTypesForCompany, taskTypeCompanyOverrides, taskTypes, taskTypesByCompanyFromTasks]);
+
     function getBrandCompanyNameSafe(b: any): string {
         const raw = (b?.company ?? (b as any)?.companyName) as any;
         if (typeof raw === 'string') return raw.toString().trim();
@@ -1944,9 +1938,11 @@ const DashboardPage = () => {
         }
         return '';
     }
+
     function getBrandNameSafe(b: any): string {
         return String(b?.name || b?.brandName || b?.brand || '').trim();
     }
+
     const getTaskTypesForCompanyBrand = useCallback((companyName: string, brandName: string): string[] => {
         const companyKey = normalizeCompanyKey(companyName);
         const brandKey = (brandName || '').toString().trim();
@@ -1968,6 +1964,7 @@ const DashboardPage = () => {
         const labels = mappedIds.map((id) => labelById.get(id) || '').filter(Boolean);
         return [...new Set(labels)].sort((a, b) => a.localeCompare(b));
     }, [apiBrands, normalizeCompanyKey, normalizeText, taskTypeIdsByBrandId, taskTypes]);
+
     const getTaskTypesForCompanyUser = useCallback((companyName: string, assignedToEmail: string): string[] => {
         const companyKey = normalizeCompanyKey(companyName);
         const emailKey = stripDeletedEmailSuffix(assignedToEmail).trim().toLowerCase();
@@ -2004,6 +2001,7 @@ const DashboardPage = () => {
         const labels = ids.map((id) => labelById.get(id) || '').filter(Boolean);
         return [...new Set(labels)].sort((a, b) => a.localeCompare(b));
     }, [currentUser, normalizeCompanyKey, taskTypeIdsByCompanyUserBrandKey, taskTypes]);
+
     const getTaskTypesForCompanyUserBrand = useCallback((companyName: string, brandName: string, assignedToEmail: string): string[] => {
         const companyKey = normalizeCompanyKey(companyName);
         const brandKey = (brandName || '').toString().trim();
@@ -2039,6 +2037,7 @@ const DashboardPage = () => {
         const labels = mappedIds.map((id) => labelById.get(id) || '').filter(Boolean);
         return [...new Set(labels)].sort((a, b) => a.localeCompare(b));
     }, [apiBrands, currentUser, normalizeCompanyKey, normalizeText, taskTypeIdsByCompanyUserBrandKey, taskTypes]);
+
     const assistantManagerEmail = useMemo(() => {
         const role = (currentUser?.role || '').toString().trim().toLowerCase();
         if (role !== 'assistant') return '';
@@ -2051,6 +2050,7 @@ const DashboardPage = () => {
         });
         return stripDeletedEmailSuffix(manager?.email || '').trim().toLowerCase();
     }, [currentUser?.role, (currentUser as any)?.managerId, users]);
+
     const assistantScopedTasks = useMemo(() => {
         const role = (currentUser?.role || '').toString().trim().toLowerCase();
         if (role !== 'assistant') return [] as Task[];
@@ -2072,6 +2072,7 @@ const DashboardPage = () => {
             return normalizeAssignerEmail(t) === assistantManagerEmail;
         });
     }, [assistantManagerEmail, currentUser?.email, currentUser?.role, tasks]);
+
     const availableBrands = useMemo(() => {
         const getCompanyName = (b: any): string => {
             const raw = b?.company ?? b?.companyName;
@@ -2110,6 +2111,7 @@ const DashboardPage = () => {
             .filter(Boolean)
             .sort();
     }, [assistantScopedTasks, brands, currentUser?.role, filters.company, normalizeCompanyKey]);
+
     const getBrandLabelForFilter = useCallback((brandName: string): string => {
         const plain = String(brandName || '').trim();
         if (!plain) return '';
@@ -2133,6 +2135,7 @@ const DashboardPage = () => {
         }
         return plain;
     }, [brands, filters.company, normalizeCompanyKey, normalizeText]);
+
     const availableTaskTypesForFilters = useMemo(() => {
         const brandAssignmentLabel = (taskTypes || []).find((t: any) => {
             const name = (t?.name || '').toString().trim().toLowerCase();
@@ -2214,6 +2217,7 @@ const DashboardPage = () => {
         }
         return restrictTaskTypesForCompany(filters.company, dedupeByCanonicalKey(merged).sort((a, b) => a.localeCompare(b)));
     }, [allowedTaskTypeKeysForManager, assistantScopedTasks, availableTaskTypes, currentUser?.email, currentUser?.role, filters.brand, filters.company, getTaskTypesForCompany, getTaskTypesForCompanyBrand, getTaskTypesForCompanyUser, getTaskTypesForCompanyUserBrand, normalizeRoleKey, normalizeText, restrictTaskTypesForCompany, taskTypeCompanyOverrides, taskTypes, taskTypesByCompanyFromTasks]);
+
     const availableTaskTypesForNewTask = useMemo(() => {
         const role = String((currentUser as any)?.role || '').toString().trim().toLowerCase();
         if (role === 'troubleshoot_manager') {
@@ -2251,6 +2255,7 @@ const DashboardPage = () => {
         }
         return ensureManagerOtherWork(baseCompany());
     }, [currentUser, currentUser?.email, getTaskTypesForCompany, getTaskTypesForCompanyBrand, getTaskTypesForCompanyUser, getTaskTypesForCompanyUserBrand, newTask.brand, newTask.companyName, restrictTaskTypesForCompany]);
+
     const availableTaskTypesForEditTask = useMemo(() => {
         if (!editFormData.companyName) return availableTaskTypesForFilters;
         if (editFormData.brand && editFormData.assignedTo) {
@@ -2272,6 +2277,7 @@ const DashboardPage = () => {
         if (editFormData.brand) return restrictTaskTypesForCompany(editFormData.companyName, getTaskTypesForCompanyBrand(editFormData.companyName, editFormData.brand));
         return restrictTaskTypesForCompany(editFormData.companyName, getTaskTypesForCompany(editFormData.companyName));
     }, [availableTaskTypesForFilters, editFormData.assignedTo, editFormData.brand, editFormData.companyName, editFormData.taskType, getTaskTypesForCompany, getTaskTypesForCompanyBrand, getTaskTypesForCompanyUser, getTaskTypesForCompanyUserBrand, restrictTaskTypesForCompany]);
+
     const fetchCompanyBrandTaskTypeMapping = useCallback(async (companyName: string, brandName: string) => {
         try {
             const company = (companyName || '').toString().trim();
@@ -2293,6 +2299,7 @@ const DashboardPage = () => {
             // ignore
         }
     }, [apiBrands, normalizeCompanyKey, normalizeText]);
+
     const fetchUserBrandTaskTypeMappings = useCallback(async (companyName: string, assignedToEmail: string) => {
         try {
             const company = (companyName || '').toString().trim();
@@ -2366,6 +2373,7 @@ const DashboardPage = () => {
             // ignore
         }
     }, [currentUser, normalizeCompanyKey]);
+
     const fetchUserBrandTaskTypeMappingsCached = useCallback(async (companyName: string, assignedToEmail: string) => {
         const companyKey = normalizeCompanyKey(companyName);
         const emailKey = stripDeletedEmailSuffix(assignedToEmail).trim().toLowerCase();
@@ -2387,6 +2395,7 @@ const DashboardPage = () => {
         userMappingsFetchInFlightRef.current.set(cacheKey, p);
         return p;
     }, [fetchUserBrandTaskTypeMappings, normalizeCompanyKey]);
+
     useEffect(() => {
         const role = (currentUser?.role || '').toString().toLowerCase();
         const isPersonScoped = role === 'assistant' || role === 'sbm' || role === 'rm' || role === 'am' || role === 'ar';
@@ -2397,6 +2406,7 @@ const DashboardPage = () => {
         if (!email) return;
         void fetchUserBrandTaskTypeMappingsCached(company, email);
     }, [currentUser?.email, currentUser?.role, fetchUserBrandTaskTypeMappingsCached, filters.company]);
+
     useEffect(() => {
         const handler = (e: any) => {
             const detail = e?.detail || {};
@@ -2405,16 +2415,19 @@ const DashboardPage = () => {
         window.addEventListener('companyBrandTaskTypesUpdated', handler as any);
         return () => window.removeEventListener('companyBrandTaskTypesUpdated', handler as any);
     }, [fetchCompanyBrandTaskTypeMapping, newTask.brand, newTask.companyName]);
+
     useEffect(() => {
         if (!newTask.companyName || !newTask.brand) return;
         void fetchCompanyBrandTaskTypeMapping(newTask.companyName, newTask.brand);
     }, [fetchCompanyBrandTaskTypeMapping, newTask.brand, newTask.companyName]);
+
     useEffect(() => {
         if (!newTask.companyName) return;
         const email = stripDeletedEmailSuffix(currentUser?.email || '').trim().toLowerCase();
         if (!email) return;
         void fetchUserBrandTaskTypeMappingsCached(newTask.companyName, email);
     }, [currentUser?.email, fetchUserBrandTaskTypeMappingsCached, newTask.companyName]);
+
     useEffect(() => {
         if (!showAddTaskModal) return;
         if (!newTask.companyName) return;
@@ -2422,11 +2435,13 @@ const DashboardPage = () => {
         if (!email) return;
         void fetchUserBrandTaskTypeMappingsCached(newTask.companyName, email);
     }, [currentUser?.email, fetchUserBrandTaskTypeMappingsCached, newTask.companyName, showAddTaskModal]);
+
     useEffect(() => {
         if (!showEditTaskModal) return;
         if (!editFormData.companyName || !editFormData.assignedTo) return;
         void fetchUserBrandTaskTypeMappingsCached(editFormData.companyName, editFormData.assignedTo);
     }, [editFormData.assignedTo, editFormData.companyName, fetchUserBrandTaskTypeMappingsCached, showEditTaskModal]);
+
     const formatDate = useCallback((dateString: string) => {
         try {
             if (!dateString) return '';
@@ -2441,10 +2456,12 @@ const DashboardPage = () => {
             return dateString;
         }
     }, []);
+
     const isMongoObjectId = useCallback((value: unknown) => {
         if (typeof value !== 'string') return false;
         return /^[a-f\d]{24}$/i.test(value);
     }, []);
+
     const navigateTo = (page: string) => {
         const viewMap: Record<
             string,
@@ -2553,6 +2570,7 @@ const DashboardPage = () => {
             navigate(targetPath);
         }
     };
+
     useEffect(() => {
         if (!isAuthReady) return;
         const path = (location.pathname || '').toLowerCase();
@@ -2770,6 +2788,7 @@ const DashboardPage = () => {
             setCurrentView('dashboard');
         }
     }, [hasAccess, isAuthReady, location.pathname, location.search, currentUser, navigate]);
+
     const handleSpeedEcomReassignSubmit = useCallback(async (payload: { assignedTo: string; dueDate: string }) => {
         if (!speedEcomReassignTask?.id) {
             toast.error('Task not found');
@@ -2788,7 +2807,6 @@ const DashboardPage = () => {
             toast.error(response.message || 'Failed to reassign task');
             return false;
         } catch (e: any) {
-            console.error('Speed E Com reassign failed:', e);
             const message = e?.response?.data?.message || e?.message || 'Failed to reassign task';
             toast.error(message);
             return false;
@@ -2796,13 +2814,13 @@ const DashboardPage = () => {
             setIsSpeedEcomReassignSubmitting(false);
         }
     }, [dispatch, speedEcomReassignTask?.id]);
+
     const isOverdue = useCallback((dueDate: string, status: string) => {
         const statusKey = String(status || '').trim().toLowerCase();
         if (statusKey === 'completed') return false;
         try {
             const due = new Date(dueDate);
             if (Number.isNaN(due.getTime())) return false;
-            // Not overdue on the due date itself; start overdue only after the due day ends.
             const dueEndOfDay = new Date(
                 due.getFullYear(),
                 due.getMonth(),
@@ -2817,6 +2835,7 @@ const DashboardPage = () => {
             return false;
         }
     }, []);
+
     const getTaskBorderColor = useCallback((task: Task): string => {
         const isCompleted = task.status === 'completed' || task.completedApproval;
         if (isCompleted) {
@@ -2836,6 +2855,7 @@ const DashboardPage = () => {
             return 'border-l-4 border-l-gray-300';
         }
     }, [isOverdue]);
+
     const canEditDeleteTask = useCallback(
         (task: Task) => {
             const normalizeEmailSafe = (v: any): string => {
@@ -2856,6 +2876,7 @@ const DashboardPage = () => {
         },
         [currentUser],
     );
+
     const canEditTask = useCallback((task: Task): boolean => {
         const normalizeEmailSafe = (v: any): string => {
             if (!v) return '';
@@ -2877,13 +2898,13 @@ const DashboardPage = () => {
             normalizeEmailSafe((task as any)?.assignedBy) || normalizeEmailSafe((task as any)?.assignedByUser?.email);
         const isAssigner = Boolean(myEmail && assignedByEmail && myEmail === assignedByEmail);
         if (isAssigner) return true;
-        // Speed E Com: Allow assignee to edit (limited fields in modal)
         const isSpeedEcomTask = normalizeCompanyKey(task?.companyName || (task as any)?.company) === 'speedecom';
         const assignedToEmail = normalizeEmailSafe((task as any)?.assignedTo) || normalizeEmailSafe((task as any)?.assignedToUser?.email);
         const isAssignee = Boolean(myEmail && assignedToEmail && myEmail === assignedToEmail);
         if (isSpeedEcomTask && isAssignee) return true;
         return false;
     }, [currentUser]);
+
     const canMarkTaskDone = useCallback(
         (task: Task) => {
             if (task.completedApproval) return false;
@@ -2895,6 +2916,7 @@ const DashboardPage = () => {
         },
         [currentUser],
     );
+
     const handleUpdateUser = useCallback(async (userId: string, updatedData: Partial<UserType>) => {
         const requesterRole = (currentUser?.role || '').toString().trim().toLowerCase();
         const allowedByPerms = hasAccess('user_management');
@@ -2944,10 +2966,10 @@ const DashboardPage = () => {
                 throw new Error(response.message || 'Failed to update user');
             }
         } catch (error: any) {
-            console.error('Error updating user:', error);
             throw error;
         }
     }, [currentUser, hasAccess]);
+
     const handleCreateUser = useCallback(async (newUser: Partial<UserType>) => {
         const requesterRole = (currentUser?.role || '').toString().trim().toLowerCase();
         const allowedByPerms = hasAccess('user_management');
@@ -2990,10 +3012,10 @@ const DashboardPage = () => {
                 throw new Error(response.message || 'Failed to create user');
             }
         } catch (error: any) {
-            console.error('Error creating user:', error);
             throw error;
         }
     }, [currentUser, hasAccess]);
+
     const handleDeleteUser = useCallback(async (userId: string) => {
         const requesterRole = (currentUser?.role || '').toString().trim().toLowerCase();
         const allowedByPerms = hasAccess('user_management');
@@ -3030,10 +3052,10 @@ const DashboardPage = () => {
                 throw new Error(response?.message || 'Failed to delete user');
             }
         } catch (error: any) {
-            console.error('Error deleting user:', error);
             throw error;
         }
     }, [currentUser, hasAccess]);
+
     const getAssignedUserInfo = useCallback(
         (task: Task): { name: string; email: string } => {
             if (task.assignedToUser?.email) {
@@ -3070,6 +3092,7 @@ const DashboardPage = () => {
         },
         [users],
     );
+
     const getAvailableBrandOptions = useCallback((): Array<{ value: string; label: string }> => {
         const company = newTask.companyName;
         if (!company) return [];
@@ -3114,6 +3137,7 @@ const DashboardPage = () => {
             .forEach(addOption);
         return Array.from(byNameKey.values()).sort((a, b) => a.label.localeCompare(b.label));
     }, [brandNamesByCompanyUserKey, brands, currentUser?.email, getBrandCompanyNameSafe, getBrandNameSafe, newTask.companyName, normalizeCompanyKey, normalizeText, stripDeletedEmailSuffix]);
+
     const getEditFormBrandOptions = useCallback((): Array<{ value: string; label: string }> => {
         const company = editFormData.companyName;
         if (!company) return [];
@@ -3152,6 +3176,7 @@ const DashboardPage = () => {
             .forEach(addOption);
         return Array.from(byNameKey.values()).sort((a, b) => a.label.localeCompare(b.label));
     }, [brandNamesByCompanyUserKey, brands, editFormData.assignedTo, editFormData.companyName, getBrandCompanyNameSafe, getBrandNameSafe, normalizeCompanyKey, normalizeText, stripDeletedEmailSuffix]);
+
     const formatBrandWithGroupNumber = useCallback((task: any): string => {
         const plain = String(task?.brand || '').trim();
         if (!plain) return '';
@@ -3170,6 +3195,7 @@ const DashboardPage = () => {
         const groupNumber = String(brandDoc?.groupNumber || '').trim();
         return groupNumber ? `${groupNumber} - ${plain}` : plain;
     }, [brands, getBrandCompanyNameSafe, getBrandNameSafe, normalizeCompanyKey, normalizeText]);
+
     const handleSaveComment = useCallback(async (taskId: string, comment: string): Promise<CommentType> => {
         try {
             const response = await taskService.addComment(taskId, comment);
@@ -3187,7 +3213,6 @@ const DashboardPage = () => {
                     updatedAt: commentData.updatedAt || commentData.createdAt || new Date().toISOString(),
                 };
                 toast.success('Comment saved successfully!');
-                // Update task in Redux store to reflect latest comment
                 const existingTask = tasks.find(t => t.id === taskId);
                 if (existingTask) {
                     const updatedTask = {
@@ -3207,7 +3232,6 @@ const DashboardPage = () => {
                 throw new Error(response.message || 'Failed to save comment');
             }
         } catch (error: any) {
-            console.error('Error saving comment:', error);
             const mockComment: CommentType = {
                 id: `mock-${Date.now()}`,
                 taskId: taskId,
@@ -3223,6 +3247,7 @@ const DashboardPage = () => {
             return mockComment;
         }
     }, [currentUser, tasks, dispatch]);
+
     const handleDeleteComment = useCallback(async (taskId: string, commentId: string) => {
         try {
             if (!taskService.deleteComment) {
@@ -3232,15 +3257,11 @@ const DashboardPage = () => {
             const response = await taskService.deleteComment(taskId, commentId);
             if (response && response.success) {
                 toast.success('Comment deleted successfully');
-                // Update task in Redux store to reflect latest comment
                 const existingTask = tasks.find(t => t.id === taskId);
                 if (existingTask) {
-                    // Note: We don't have the next latest comment here without a fetch,
-                    // but we can clear it or the user will see it update on next refresh/fetch.
-                    // For now, let's just clear it to be safe, or we could fetch the task history.
                     const updatedTask = {
                         ...existingTask,
-                        latestComment: null // Clear it so it shows "No comments" or updates correctly
+                        latestComment: null
                     };
                     dispatch(taskUpserted(updatedTask as Task));
                 }
@@ -3248,10 +3269,10 @@ const DashboardPage = () => {
                 toast.error(response?.message || 'Failed to delete comment');
             }
         } catch (error: any) {
-            console.error('Error deleting comment:', error);
             toast.error('Failed to delete comment');
         }
     }, [tasks, dispatch]);
+
     const handleFetchTaskComments = useCallback(async (taskId: string): Promise<CommentType[]> => {
         try {
             const response = await taskService.fetchComments(taskId);
@@ -3273,10 +3294,10 @@ const DashboardPage = () => {
             }
             return [];
         } catch (error: any) {
-            console.error('Error fetching comments:', error);
             return [];
         }
     }, []);
+
     const isSbmUser = useMemo(() => {
         const roleKey = String((currentUser as any)?.role || '')
             .trim()
@@ -3284,11 +3305,13 @@ const DashboardPage = () => {
             .replace(/[\s-]+/g, '_');
         return roleKey === 'sbm';
     }, [currentUser]);
+
     const getCommentSidebarComments = useCallback((taskId: string): CommentType[] => {
         const key = String(taskId || '').trim();
         if (!key) return [];
         return Array.isArray(commentSidebarCommentsByTaskId[key]) ? commentSidebarCommentsByTaskId[key] : [];
     }, [commentSidebarCommentsByTaskId]);
+
     const handleOpenTaskCommentSidebar = useCallback(async (task: Task) => {
         if (!task?.id) return;
         if (!isSbmUser) return;
@@ -3306,6 +3329,7 @@ const DashboardPage = () => {
             setCommentSidebarLoadingComments(false);
         }
     }, [handleFetchTaskComments, isSbmUser]);
+
     const handleCloseTaskCommentSidebar = useCallback(() => {
         setShowTaskCommentSidebar(false);
         setCommentSidebarTask(null);
@@ -3313,6 +3337,7 @@ const DashboardPage = () => {
         setCommentSidebarLoading(false);
         setCommentSidebarLoadingComments(false);
     }, []);
+
     const handleSubmitTaskComment = useCallback(async () => {
         if (!commentSidebarTask?.id) return;
         if (!isSbmUser) return;
@@ -3333,6 +3358,7 @@ const DashboardPage = () => {
             setCommentSidebarLoading(false);
         }
     }, [commentDraft, commentSidebarTask, handleSaveComment, isSbmUser]);
+
     const handleReassignTask = useCallback(async (taskId: string, newAssigneeId: string, dueDate?: string) => {
         try {
             const task = tasks.find(t => t.id === taskId);
@@ -3500,12 +3526,12 @@ const DashboardPage = () => {
                 toast.error(response.message || 'Failed to reassign task');
             }
         } catch (error) {
-            console.error('Error reassigning task:', error);
             const anyErr: any = error as any;
             const message = anyErr?.response?.data?.message || anyErr?.message || 'Failed to reassign task';
             toast.error(message);
         }
     }, [tasks, users, currentUser, dispatch]);
+
     const handleMdImpexReassignTask = useCallback(async (taskId: string, newAssigneeEmail: string) => {
         try {
             const response = await taskService.mdImpexReassignTask(taskId, newAssigneeEmail);
@@ -3515,10 +3541,10 @@ const DashboardPage = () => {
             }
             toast.error(response.message || 'Failed to reassign task');
         } catch (error: any) {
-            console.error('MD Impex reassignment failed:', error);
             toast.error(error?.message || 'Failed to reassign task');
         }
     }, [dispatch]);
+
     const handleAddTaskHistory = useCallback(
         async (
             taskId: string,
@@ -3550,12 +3576,12 @@ const DashboardPage = () => {
                 }
                 toast.success('History recorded');
             } catch (error) {
-                console.error('Error adding history:', error);
                 toast.error('Failed to record history');
             }
         },
         [dispatch, tasks]
     );
+
     const handleApproveTask = useCallback(async (taskId: string) => {
         try {
             const task = tasks.find(t => t.id === taskId);
@@ -3585,10 +3611,10 @@ const DashboardPage = () => {
                 toast.error(response.message || 'Failed to approve task');
             }
         } catch (error) {
-            console.error('Failed to approve task:', error);
             toast.error('Failed to approve task');
         }
     }, [tasks, currentUser, hasAccess, dispatch]);
+
     const handleUpdateTaskApproval = useCallback(async (taskId: string, completedApproval: boolean) => {
         try {
             const task = tasks.find(t => t.id === taskId);
@@ -3619,10 +3645,10 @@ const DashboardPage = () => {
                 toast.error(response.message || 'Failed to update approval status');
             }
         } catch (error) {
-            console.error('Error updating task approval:', error);
             toast.error('Failed to update approval status');
         }
     }, [tasks, currentUser, hasAccess, dispatch]);
+
     const handleFetchTaskHistory = useCallback(async (taskId: string): Promise<TaskHistory[]> => {
         try {
             const response = await taskService.getTaskHistory(taskId);
@@ -3632,15 +3658,16 @@ const DashboardPage = () => {
             }
             return response.data as TaskHistory[];
         } catch (error) {
-            console.error('Error fetching task history:', error);
             toast.error('Failed to load task history');
             return [];
         }
     }, []);
+
     const handleOpenTaskHistorySidebar = useCallback(async (task: Task) => {
         if (!task?.id) return;
         await handleFetchTaskHistory(String(task.id));
     }, [handleFetchTaskHistory]);
+
     const getFilteredTasksByStat = useCallback(() => {
         if (!currentUser?.email) return [];
         const role = String((currentUser as any)?.role || '').trim().toLowerCase();
@@ -3747,7 +3774,6 @@ const DashboardPage = () => {
         if (filters.priority !== 'all') {
             filtered = filtered.filter((task) => task.priority === filters.priority);
         }
-        // Task Type Filter
         if (filters.taskType !== 'all') {
             const canonicalizeTypeKey = (value: unknown): string => {
                 const raw = (value == null ? '' : String(value)).trim();
@@ -3842,12 +3868,14 @@ const DashboardPage = () => {
         }
         return filtered;
     }, [canViewAllTasks, currentUser, filters, isOverdue, normalizeCompanyKey, searchTerm, selectedStatFilter, tasks]);
+
     const displayTasks = useMemo(() => getFilteredTasksByStat(), [getFilteredTasksByStat]);
     const PAGE_SIZE_OPTIONS = [10, 25, 50, 75, 100, 125, 150, 175, 200];
     const [tasksPerPage, setTasksPerPage] = useState<number>(10);
     const totalTaskPages = useMemo(() => {
         return Math.max(1, Math.ceil(displayTasks.length / tasksPerPage));
     }, [displayTasks.length, tasksPerPage]);
+
     useEffect(() => {
         setTaskPage(1);
     }, [
@@ -3862,6 +3890,7 @@ const DashboardPage = () => {
         filters.brand,
         tasksPerPage,
     ]);
+
     useEffect(() => {
         setTaskPage((prev) => {
             if (prev < 1) return 1;
@@ -3869,10 +3898,12 @@ const DashboardPage = () => {
             return prev;
         });
     }, [totalTaskPages]);
+
     const paginatedTasks = useMemo(() => {
         const start = (taskPage - 1) * tasksPerPage;
         return displayTasks.slice(start, start + tasksPerPage);
     }, [displayTasks, taskPage, tasksPerPage]);
+
     const taskPageNumbers = useMemo(() => {
         const pages: number[] = [];
         if (totalTaskPages <= 7) {
@@ -3886,9 +3917,11 @@ const DashboardPage = () => {
         pages.push(totalTaskPages);
         return Array.from(new Set(pages));
     }, [taskPage, totalTaskPages]);
+
     const showListActionsColumn = useMemo(() => {
         return displayTasks.some((t: Task) => canEditTask(t) || canEditDeleteTask(t));
     }, [displayTasks, canEditTask, canEditDeleteTask]);
+
     useMemo(() => {
         if (!currentUser?.email) return [];
         const role = String((currentUser as any)?.role || '').trim().toLowerCase();
@@ -3938,7 +3971,6 @@ const DashboardPage = () => {
         if (filters.priority !== 'all') {
             filtered = filtered.filter((task) => task.priority === filters.priority);
         }
-        // Task Type Filter
         if (filters.taskType !== 'all') {
             const canonicalizeTypeKey = (value: unknown): string => {
                 const raw = (value == null ? '' : String(value)).trim();
@@ -3998,8 +4030,8 @@ const DashboardPage = () => {
         }
         return filtered;
     }, [canViewAllTasks, currentUser, filters, isOverdue, normalizeCompanyKey, normalizeRoleKey, searchTerm, tasks, usersRef]);
+
     const stats: StatMeta[] = useMemo(() => {
-        // Use baseFilteredTasks without selectedStatFilter for stats
         const role = String((currentUser as any)?.role || '').trim().toLowerCase();
         const myEmail = (currentUser.email || '').toString().trim().toLowerCase();
         const normalizeRoleKey = (v: unknown) => String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
@@ -4043,7 +4075,6 @@ const DashboardPage = () => {
             if (canViewAllTasks || role === 'rm' || role === 'am') return true;
             return task.assignedTo === currentUser.email || task.assignedBy === currentUser.email;
         });
-        // Apply SBM RM filter for stats
         if (normalizeRoleKey(role) === 'sbm') {
             const selectedRm = String((filters as any)?.rm || '').trim().toLowerCase();
             if (selectedRm && selectedRm !== 'all') {
@@ -4090,7 +4121,6 @@ const DashboardPage = () => {
                 });
             }
         }
-        // Apply other filters for stats (except selectedStatFilter)
         if (filters.status !== 'all') {
             if (filters.status === 'pending') {
                 filtered = filtered.filter((task) => task.status === 'pending' || task.status === 'in-progress' || task.status === 'reassigned');
@@ -4233,6 +4263,7 @@ const DashboardPage = () => {
             }
         ];
     }, [canViewAllTasks, currentUser, filters, isOverdue, normalizeCompanyKey, normalizeRoleKey, searchTerm, tasks, usersRef]);
+
     const getPriorityColor = useCallback((priority?: TaskPriority) => {
         switch (priority) {
             case 'high': return 'border-red-300 bg-red-50 text-red-700';
@@ -4241,6 +4272,7 @@ const DashboardPage = () => {
             default: return 'border-gray-300 bg-gray-50 text-gray-700';
         }
     }, []);
+
     const getStatusColor = useCallback((status: TaskStatus) => {
         switch (status) {
             case 'completed': return 'border-emerald-300 bg-emerald-50 text-emerald-700';
@@ -4249,6 +4281,7 @@ const DashboardPage = () => {
             default: return 'border-gray-300 bg-gray-50 text-gray-700';
         }
     }, []);
+
     const getCompanyColor = useCallback((companyName?: string) => {
         const value = (companyName || '').toLowerCase().trim();
         if (!value) return 'border-gray-300 bg-gray-50 text-gray-700';
@@ -4263,6 +4296,7 @@ const DashboardPage = () => {
         const hash = value.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
         return palette[hash % palette.length];
     }, []);
+
     const getBrandColor = useCallback((brand: string) => {
         const value = (brand || '').toLowerCase().trim();
         if (!value) return 'border-gray-300 bg-gray-50 text-gray-700';
@@ -4277,6 +4311,7 @@ const DashboardPage = () => {
         const hash = value.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
         return palette[hash % palette.length];
     }, []);
+
     const getActiveFilterCount = useCallback(() => {
         let count = 0;
         const isCompanyForced = (availableCompanies || []).length === 1;
@@ -4287,18 +4322,18 @@ const DashboardPage = () => {
         });
         return count;
     }, [availableCompanies, filters]);
+
     const handleStatClick = useCallback((statId: string) => {
         setTaskPage(1);
-        // behave like a radio group: selecting a card selects it (no toggle-off)
         setSelectedStatFilter(statId);
     }, []);
+
     const handleFilterChange = useCallback((filterType: keyof FilterState, value: string) => {
         setTaskPage(1);
         setFilters(prev => ({
             ...prev,
             [filterType]: value,
         }));
-        // If company changes, reset brand
         if (filterType === 'company') {
             setFilters(prev => ({
                 ...prev,
@@ -4307,13 +4342,13 @@ const DashboardPage = () => {
             }));
         }
     }, []);
+
     const handleAdvancedFilterChange = useCallback((filterType: string, value: string) => {
         setTaskPage(1);
         setFilters(prev => ({
             ...prev,
             [filterType]: value,
         }));
-        // If company changes, reset brand
         if (filterType === 'company') {
             setFilters(prev => ({
                 ...prev,
@@ -4322,6 +4357,7 @@ const DashboardPage = () => {
             }));
         }
     }, []);
+
     const resetFilters = useCallback(() => {
         setTaskPage(1);
         setFilters({
@@ -4338,6 +4374,7 @@ const DashboardPage = () => {
         setSelectedStatFilter('all');
         setSearchTerm('');
     }, []);
+
     const handleInputChange = useCallback((field: keyof NewTaskForm, value: string) => {
         setNewTask(prev => {
             const next: any = {
@@ -4371,6 +4408,7 @@ const DashboardPage = () => {
             });
         }
     }, [formErrors]);
+
     useEffect(() => {
         const company = (newTask.companyName || '').toString().trim();
         if (!company) return;
@@ -4385,6 +4423,7 @@ const DashboardPage = () => {
             return { ...prev, taskType: normalizedOptions[0] };
         });
     }, [availableTaskTypesForNewTask, newTask.companyName, newTask.taskType]);
+
     const handleAddTaskTypeClick = useCallback(async () => {
         if (canBulkAddTaskTypes) {
             if (!bulkTaskTypeCompany) {
@@ -4413,9 +4452,10 @@ const DashboardPage = () => {
                 handleInputChange('taskType', res.data.name.toLowerCase());
             }
         } catch (error) {
-            console.error('Failed to create task type:', error);
+            // ignore
         }
     }, [addTaskTypesToCompany, bulkTaskTypeCompany, canBulkAddTaskTypes, handleInputChange, newTask.companyName]);
+
     const handleAddCompanyClick = useCallback(async () => {
         if (canBulkAddCompanies) {
             setShowBulkCompanyModal(true);
@@ -4437,9 +4477,10 @@ const DashboardPage = () => {
                 handleInputChange('companyName', res.data.name);
             }
         } catch (error) {
-            console.error('Failed to create company:', error);
+            // ignore
         }
     }, [canBulkAddCompanies, handleInputChange]);
+
     const handleAddBrandClick = useCallback(async () => {
         if (canBulkAddBrands) {
             setShowBulkBrandModal(true);
@@ -4456,6 +4497,7 @@ const DashboardPage = () => {
         setManagerBrandName('');
         setShowManagerAddBrandModal(true);
     }, [canBulkAddBrands, canCreateBrand, newTask.companyName]);
+
     const handleSubmitBulkBrands = useCallback(async () => {
         if (!canBulkAddBrands) {
             toast.error('Access denied');
@@ -4594,12 +4636,12 @@ const DashboardPage = () => {
                 toast.error('Failed to add brands');
             }
         } catch (err) {
-            console.error('Error bulk creating brands:', err);
             toast.error('Failed to add brands');
         } finally {
             setIsCreatingBulkBrands(false);
         }
     }, [bulkBrandForm, canBulkAddBrands, companyUsers, normalizeText, taskTypes]);
+
     const handleSubmitBulkCompanies = useCallback(async () => {
         if (!canBulkAddCompanies) {
             toast.error('Access denied');
@@ -4632,12 +4674,12 @@ const DashboardPage = () => {
                 toast.error('Failed to add companies');
             }
         } catch (err) {
-            console.error('Error bulk creating companies:', err);
             toast.error('Failed to add companies');
         } finally {
             setIsCreatingBulkCompanies(false);
         }
     }, [bulkCompanyNames, canBulkAddCompanies]);
+
     const handleSubmitBulkTaskTypes = useCallback(async () => {
         if (!canBulkAddTaskTypes) {
             toast.error('Access denied');
@@ -4676,12 +4718,12 @@ const DashboardPage = () => {
                 toast.error('Failed to add task types');
             }
         } catch (err) {
-            console.error('Error bulk creating task types:', err);
             toast.error('Failed to add task types');
         } finally {
             setIsCreatingBulkTaskTypes(false);
         }
     }, [addTaskTypesToCompany, bulkTaskTypeCompany, bulkTaskTypeNames, canBulkAddTaskTypes]);
+
     const handleEditInputChange = useCallback((field: keyof EditTaskForm, value: string) => {
         setEditFormData(prev => ({
             ...prev,
@@ -4702,6 +4744,7 @@ const DashboardPage = () => {
             }));
         }
     }, [editFormErrors]);
+
     const validateForm = useCallback((formToValidate: NewTaskForm = newTask) => {
         const errors: Record<string, string> = {};
         if (!formToValidate.title.trim()) {
@@ -4723,17 +4766,16 @@ const DashboardPage = () => {
                 errors.dueDate = 'Due date cannot be in the past';
             }
         }
-        // Company validation
         if (!newTask.companyName || newTask.companyName.trim() === '') {
             errors.companyName = 'Company is required';
         }
-        // Brand validation
         if (!newTask.brand || newTask.brand.trim() === '') {
             errors.brand = 'Brand is required';
         }
         setFormErrors(errors);
         return Object.keys(errors).length === 0;
     }, [isSpeedEcomUser, newTask]);
+
     const validateEditForm = useCallback(() => {
         const errors: Record<string, string> = {};
         if (!editFormData.title.trim()) {
@@ -4758,6 +4800,7 @@ const DashboardPage = () => {
         setEditFormErrors(errors);
         return Object.keys(errors).length === 0;
     }, [editFormData]);
+
     const fetchTasks = useCallback(async (options?: { force?: boolean }) => {
         try {
             const isInitialFetch = !hasFetchedTasksOnceRef.current && tasks.length === 0;
@@ -4854,12 +4897,12 @@ const DashboardPage = () => {
                 toast.error('Failed to fetch tasks');
             }
         } catch (error) {
-            console.error('Failed to fetch tasks:', error);
             toast.error('Failed to load tasks');
         } finally {
             setLoading(false);
         }
     }, [dispatch, tasks]);
+
     const fetchUsers = useCallback(async () => {
         try {
             const response = await authService.getAllUsers();
@@ -4882,19 +4925,18 @@ const DashboardPage = () => {
                     id,
                 } as UserType;
             });
-            // Store comprehensive user data for MDIMPEX users
             const currentUserCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase();
             const isMdImpexUser = currentUserCompany.includes('mdimpex') || currentUserCompany.includes('md_impex');
             if (isMdImpexUser) {
-                console.log('Storing comprehensive user data for MDIMPEX user');
                 setAllMdImpexUsers(normalizedUsers);
             }
             setUsers(normalizedUsers);
             usersFetchedAtRef.current = Date.now();
         } catch (error) {
-            console.error('Failed to fetch users:', error);
+            // ignore
         }
     }, []);
+
     const fetchBrands = useCallback(async () => {
         try {
             const role = (currentUser?.role || '').toString().trim().toLowerCase();
@@ -4907,9 +4949,10 @@ const DashboardPage = () => {
                 brandsFetchedAtRef.current = Date.now();
             }
         } catch (error) {
-            console.error('Error fetching brands:', error);
+            // ignore
         }
     }, [currentUser?.role]);
+
     const fetchCompanies = useCallback(async () => {
         try {
             const role = (currentUser?.role || '').toString().trim().toLowerCase();
@@ -4927,9 +4970,10 @@ const DashboardPage = () => {
                 companiesFetchedAtRef.current = Date.now();
             }
         } catch (error) {
-            console.error('Failed to fetch companies:', error);
+            // ignore
         }
     }, [currentUser?.role]);
+
     const fetchTaskTypes = useCallback(async () => {
         try {
             const response = await taskTypeService.getTaskTypes();
@@ -4938,9 +4982,10 @@ const DashboardPage = () => {
                 taskTypesFetchedAtRef.current = Date.now();
             }
         } catch (error) {
-            console.error('Failed to fetch task types:', error);
+            // ignore
         }
     }, []);
+
     const ensureUsersLoaded = useCallback(async (opts?: { force?: boolean }) => {
         const force = Boolean(opts?.force);
         const isFresh = usersFetchedAtRef.current && Date.now() - usersFetchedAtRef.current < SUPPORTING_FETCH_TTL_MS;
@@ -4951,6 +4996,7 @@ const DashboardPage = () => {
         });
         return usersFetchInFlightRef.current;
     }, [fetchUsers, users.length]);
+
     const ensureBrandsLoaded = useCallback(async (opts?: { force?: boolean }) => {
         const force = Boolean(opts?.force);
         const isFresh = brandsFetchedAtRef.current && Date.now() - brandsFetchedAtRef.current < SUPPORTING_FETCH_TTL_MS;
@@ -4961,6 +5007,7 @@ const DashboardPage = () => {
         });
         return brandsFetchInFlightRef.current;
     }, [apiBrands.length, fetchBrands]);
+
     const ensureCompaniesLoaded = useCallback(async (opts?: { force?: boolean }) => {
         const force = Boolean(opts?.force);
         const isFresh = companiesFetchedAtRef.current && Date.now() - companiesFetchedAtRef.current < SUPPORTING_FETCH_TTL_MS;
@@ -4971,6 +5018,7 @@ const DashboardPage = () => {
         });
         return companiesFetchInFlightRef.current;
     }, [companies.length, fetchCompanies]);
+
     const ensureTaskTypesLoaded = useCallback(async (opts?: { force?: boolean }) => {
         const force = Boolean(opts?.force);
         const isFresh = taskTypesFetchedAtRef.current && Date.now() - taskTypesFetchedAtRef.current < SUPPORTING_FETCH_TTL_MS;
@@ -4981,6 +5029,7 @@ const DashboardPage = () => {
         });
         return taskTypesFetchInFlightRef.current;
     }, [fetchTaskTypes, taskTypes.length]);
+
     useEffect(() => {
         const handler = (e: any) => {
             const detail = e?.detail || {};
@@ -5002,6 +5051,7 @@ const DashboardPage = () => {
         window.addEventListener('assignmentsApplied', handler as any);
         return () => window.removeEventListener('assignmentsApplied', handler as any);
     }, [ensureBrandsLoaded, ensureTaskTypesLoaded, ensureUsersLoaded, fetchUserBrandTaskTypeMappingsCached]);
+
     const fetchCurrentUser = useCallback(async () => {
         try {
             const response = await authService.getCurrentUser();
@@ -5029,7 +5079,6 @@ const DashboardPage = () => {
             localStorage.removeItem('currentUser');
             navigate('/login');
         } catch (error) {
-            console.error('Failed to fetch current user:', error);
             localStorage.removeItem('token');
             localStorage.removeItem('currentUser');
             navigate('/login');
@@ -5037,6 +5086,7 @@ const DashboardPage = () => {
             setIsAuthReady(true);
         }
     }, [navigate]);
+
     useEffect(() => {
         fetchCurrentUser();
         const savedSidebarState = localStorage.getItem('sidebarCollapsed');
@@ -5044,6 +5094,7 @@ const DashboardPage = () => {
             setIsSidebarCollapsed(JSON.parse(savedSidebarState));
         }
     }, [fetchCurrentUser]);
+
     useEffect(() => {
         const role = (currentUser?.role || '').toString().toLowerCase();
         if (role !== 'md_manager' && role !== 'ob_manager') return;
@@ -5056,6 +5107,7 @@ const DashboardPage = () => {
             return { ...prev, companyName: only };
         });
     }, [companies, currentUser?.role]);
+
     useEffect(() => {
         const role = (currentUser?.role || '').toString().toLowerCase();
         if (role !== 'md_manager' && role !== 'ob_manager') return;
@@ -5068,6 +5120,7 @@ const DashboardPage = () => {
             return { ...prev, company: only };
         });
     }, [companies, currentUser?.role]);
+
     useEffect(() => {
         const role = (currentUser?.role || '').toString().trim().toLowerCase();
         const isAdminLike = role === 'admin' || role === 'super_admin';
@@ -5080,6 +5133,7 @@ const DashboardPage = () => {
             window.clearInterval(intervalId);
         };
     }, [BRANDS_AUTO_REFRESH_MS, currentUser?.role, ensureBrandsLoaded, showAddTaskModal, showEditTaskModal]);
+
     useEffect(() => {
         const role = (currentUser?.role || '').toString().toLowerCase();
         if (role === 'sbm') {
@@ -5098,6 +5152,7 @@ const DashboardPage = () => {
             return { ...prev, companyName: SPEED_E_COM_COMPANY_NAME };
         });
     }, [SPEED_E_COM_COMPANY_NAME, availableCompaniesForSbm, currentUser?.role]);
+
     useEffect(() => {
         const role = (currentUser?.role || '').toString().toLowerCase();
         if (role === 'sbm') {
@@ -5116,6 +5171,7 @@ const DashboardPage = () => {
             return { ...prev, company: SPEED_E_COM_COMPANY_NAME };
         });
     }, [SPEED_E_COM_COMPANY_NAME, availableCompaniesForSbm, currentUser?.role]);
+
     useEffect(() => {
         const role = (currentUser?.role || '').toString().trim().toLowerCase();
         const needsUsers =
@@ -5176,6 +5232,7 @@ const DashboardPage = () => {
         showEditTaskModal,
         showManagerAddBrandModal,
     ]);
+
     const getAssignedToValue = useCallback((assignedTo: any): string => {
         if (!assignedTo) return '';
         if (typeof assignedTo === 'string') return assignedTo;
@@ -5184,9 +5241,11 @@ const DashboardPage = () => {
         }
         return '';
     }, []);
+
     const updateTaskInState = useCallback((updatedTask: Task) => {
         dispatch(taskUpserted(updatedTask));
     }, [dispatch]);
+
     const openAddTaskModal = useCallback(() => {
         const role = (currentUser?.role || '').toString().toLowerCase();
         const resolvedCompany = ((currentUser as any)?.companyName || (currentUser as any)?.company || '').toString().trim();
@@ -5220,6 +5279,7 @@ const DashboardPage = () => {
         ensureTaskTypesLoaded,
         ensureUsersLoaded,
     ]);
+
     const handleOpenEditModal = useCallback((task: Task) => {
         void ensureUsersLoaded();
         void ensureBrandsLoaded({ force: true });
@@ -5237,7 +5297,6 @@ const DashboardPage = () => {
         }
         setEditingTask(task);
         const resolvedTaskId = ((task as any)?.id || (task as any)?._id || '').toString();
-        // Check if this is an MD Impex task
         const isMdImpexTask = (task.companyName || '').toLowerCase().replace(/\s+/g, '') === 'mdimpex';
         const currentUserCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase();
         const currentUserRole = String((currentUser as any)?.role || '').trim().toLowerCase();
@@ -5261,7 +5320,6 @@ const DashboardPage = () => {
             setEditFormErrors({});
             setShowMdImpexEditModal(true);
         } else {
-            // Use regular edit modal
             const dueDate = task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '';
             setEditFormData({
                 id: resolvedTaskId,
@@ -5279,6 +5337,7 @@ const DashboardPage = () => {
         }
         setOpenMenuId(null);
     }, [canEditTask, ensureBrandsLoaded, ensureCompaniesLoaded, ensureTaskTypesLoaded, ensureUsersLoaded, getAssignedToValue]);
+
     const handleSaveTaskFromModal = useCallback(async (taskDataFromModal?: NewTaskForm) => {
         const dataToValidate = taskDataFromModal || newTask;
         if (!validateForm(dataToValidate)) return;
@@ -5323,12 +5382,12 @@ const DashboardPage = () => {
                 toast.error(response.message || 'Failed to create task');
             }
         } catch (error) {
-            console.error('Failed to create task:', error);
             toast.error('Failed to create task');
         } finally {
             setIsCreatingTask(false);
         }
     }, [brands, newTask, currentUser, users, validateForm, isMongoObjectId, dispatch]);
+
     const handleBulkCreateTasks = useCallback(
         async (payloads: any[]): Promise<{ created: Task[]; failures: { index: number; rowNumber: number; title: string; reason: string }[] }> => {
             const created: Task[] = [];
@@ -5369,7 +5428,6 @@ const DashboardPage = () => {
                         });
                     }
                 } catch (error: any) {
-                    console.error('Failed to create task in bulk:', error);
                     failures.push({
                         index,
                         rowNumber: payload.rowNumber ?? index + 1,
@@ -5385,6 +5443,7 @@ const DashboardPage = () => {
         },
         [brands, currentUser, users, isMongoObjectId, dispatch]
     );
+
     const handleSaveEditedTask = useCallback(async () => {
         if (!validateEditForm() || !editingTask) return;
         const resolvedTaskId = ((editFormData as any)?.id || (editingTask as any)?.id || (editingTask as any)?._id || '').toString();
@@ -5425,7 +5484,6 @@ const DashboardPage = () => {
             if (resolvedBrandId) {
                 updateData.brandId = resolvedBrandId;
             }
-            // Send dueDate for MD Impex always; for other tasks only when changed to avoid backend validation
             if (isMdImpexTask) {
                 if (editFormData.dueDate) updateData.dueDate = editFormData.dueDate;
             } else if (dueDateChanged) {
@@ -5470,12 +5528,12 @@ const DashboardPage = () => {
                 toast.error(response.message || 'Failed to update task');
             }
         } catch (error) {
-            console.error('Failed to update task:', error);
             toast.error('Failed to update task');
         } finally {
             setIsUpdatingTask(false);
         }
     }, [validateEditForm, editingTask, editFormData, brands, users, isMongoObjectId, updateTaskInState, currentUser, getTaskAssigneeEmail, isSpeedEcomTask]);
+
     const handleToggleTaskStatus = useCallback(async (taskId: string, currentStatus: TaskStatus, doneByAdmin: boolean = false) => {
         const task = tasks.find(t => t.id === taskId);
         if (!task) {
@@ -5525,10 +5583,10 @@ const DashboardPage = () => {
                 // ignore history failure
             }
         } catch (error) {
-            console.error('Failed to update task status:', error);
             toast.error('Failed to update task');
         }
     }, [tasks, canMarkTaskDone, updateTaskInState, currentUser]);
+
     const handleDeleteTask = useCallback(async (taskId: string) => {
         const task = tasks.find(t => t.id === taskId);
         if (!task) return;
@@ -5546,10 +5604,10 @@ const DashboardPage = () => {
             dispatch(taskRemoved(taskId));
             toast.success('Task deleted');
         } catch (error) {
-            console.error('Failed to delete task:', error);
             toast.error('Failed to delete task');
         }
     }, [tasks, canEditDeleteTask, dispatch]);
+
     const handleUpdateTask = useCallback(async (taskId: string, updatedData: Partial<Task>): Promise<Task | null> => {
         const task = tasks.find(t => t.id === taskId);
         if (!task) {
@@ -5579,7 +5637,6 @@ const DashboardPage = () => {
             toast.success('Task updated successfully');
             return updatedTask;
         } catch (error: any) {
-            console.error('Error updating task:', error);
             let errorMessage = 'Failed to update task';
             if (error.response?.status === 401) {
                 errorMessage = 'Session expired. Please login again.';
@@ -5592,6 +5649,7 @@ const DashboardPage = () => {
             return null;
         }
     }, [tasks, canEditTask, updateTaskInState]);
+
     const handleManagerCreateBrand = useCallback(async () => {
         if (!newTask.companyName) {
             toast.error('Please select a company first');
@@ -5642,15 +5700,16 @@ const DashboardPage = () => {
                 toast.error('Failed to create brand');
             }
         } catch (error) {
-            console.error('Failed to create brand:', error);
             toast.error('Failed to create brand');
         } finally {
             setIsCreatingManagerBrand(false);
         }
     }, [apiBrands, handleInputChange, managerBrandName, newTask.companyName, normalizeText]);
+
     if (loading) {
         return <DashboardPageSkeleton />;
     }
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex">
             <SendReminderModal
@@ -5995,21 +6054,7 @@ const DashboardPage = () => {
                                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6 px-4 sm:px-0">
                                                     {(() => {
                                                         const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
-
-
-
-
-
-
-
                                                         const canSee = roleKey === 'admin' || roleKey === 'super_admin' || roleKey === 'manager' || roleKey === 'md_manager' || roleKey === 'ob_manager' || roleKey === 'all_manager' || roleKey === 'marketer_manager';
-
-
-
-
-
-
-
                                                         if (!canSee) return null;
                                                         return (
                                                             <button
@@ -6393,7 +6438,7 @@ const DashboardPage = () => {
                                                             {showListActionsColumn ? (
                                                                 <th className="px-6 py-4 text-right">Actions</th>
                                                             ) : null}
-                                                        </tr>
+                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-gray-100">
                                                         {paginatedTasks.map((task: Task) => (
@@ -6676,7 +6721,6 @@ const DashboardPage = () => {
                                         try {
                                             await handleToggleTaskStatus(taskId, currentStatus, false);
                                         } catch (error) {
-                                            console.error('Error toggling task status:', error);
                                             toast.error('Failed to update task status');
                                         }
                                     }}
@@ -6684,7 +6728,6 @@ const DashboardPage = () => {
                                         try {
                                             await handleDeleteTask(taskId);
                                         } catch (error) {
-                                            console.error('Error deleting task:', error);
                                             toast.error('Failed to delete task');
                                         }
                                     }}
@@ -6692,7 +6735,6 @@ const DashboardPage = () => {
                                         try {
                                             await handleUpdateTask(taskId, updatedData);
                                         } catch (error) {
-                                            console.error('Error updating task:', error);
                                             toast.error('Failed to update task');
                                         }
                                     }}
@@ -7032,4 +7074,5 @@ const DashboardPage = () => {
         </div>
     );
 };
+
 export default DashboardPage;
