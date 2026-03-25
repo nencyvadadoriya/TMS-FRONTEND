@@ -427,6 +427,32 @@ class ChatService {
     });
   }
 
+  // Get currently online users
+  getOnlineUsers(): Promise<string[]> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        await this.ensureConnected();
+      } catch (e) {
+        reject(e instanceof Error ? e : new Error('Not connected to chat server'));
+        return;
+      }
+
+      const socket = this.socket;
+      if (!socket) {
+        reject(new Error('Socket not connected'));
+        return;
+      }
+
+      socket.emit('get_online_users', {}, (response: string[]) => {
+        if (Array.isArray(response)) {
+          resolve(response);
+        } else {
+          resolve([]);
+        }
+      });
+    });
+  }
+
   // Listen to new messages (for components)
   onNewMessage(callback: (message: ChatMessage) => void) {
     this.socket?.on('new_message', callback);

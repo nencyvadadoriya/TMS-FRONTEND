@@ -87,15 +87,16 @@ class TaskService {
         }
     }
 
-    async getAllTasks() {
+    async getAllTasks(params?: { page?: number; limit?: number }) {
         try {
-            const res = await apiClient.get(this.baseUrl + this.authGetAllTask);
+            const res = await apiClient.get(this.baseUrl + this.authGetAllTask, { params });
 
             const tasks = (res.data.data || []).map((task: any) => normalizeTask(task));
 
             return {
                 success: Boolean(res.data.success),
                 data: tasks,
+                pagination: res.data.pagination,
                 message: res.data.message || res.data.msg || 'Tasks fetched successfully'
             };
         } catch (err: any) {
@@ -397,21 +398,21 @@ class TaskService {
         }
     }
 
-    async getAssignedByMeTasks() {
+    async getAssignedByMeTasks(params?: { page?: number; limit?: number }) {
         try {
-            const res = await apiClient.get(`${this.baseUrl}assigned-by-me`);
+            const res = await apiClient.get(`${this.baseUrl}assigned-by-me`, { params });
             const tasks = (res.data.data || []).map((task: any) => normalizeTask(task));
-            return { success: true, data: tasks };
+            return { success: true, data: tasks, pagination: res.data.pagination };
         } catch (error: any) {
             return { success: false, message: error?.response?.data?.message || 'Failed to fetch tasks' };
         }
     }
 
-    async getAssignedToMeTasks() {
+    async getAssignedToMeTasks(params?: { page?: number; limit?: number }) {
         try {
-            const res = await apiClient.get(`${this.baseUrl}assigned-to-me`);
+            const res = await apiClient.get(`${this.baseUrl}assigned-to-me`, { params });
             const tasks = (res.data.data || []).map((task: any) => normalizeTask(task));
-            return { success: true, data: tasks };
+            return { success: true, data: tasks, pagination: res.data.pagination };
         } catch (error: any) {
             return { success: false, message: error?.response?.data?.message || 'Failed to fetch tasks' };
         }

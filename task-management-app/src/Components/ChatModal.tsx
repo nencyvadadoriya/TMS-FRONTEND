@@ -39,9 +39,20 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, selectedUser }) 
   useEffect(() => {
     if (isOpen && selectedUser) {
       loadChatHistory();
+      checkOnlineStatus();
       inputRef.current?.focus();
     }
   }, [isOpen, selectedUser]);
+
+  const checkOnlineStatus = async () => {
+    if (!selectedUser) return;
+    try {
+      const onlineUsersList = await chatService.getOnlineUsers();
+      setIsOnline(onlineUsersList.includes(selectedUser.id));
+    } catch {
+      // ignore
+    }
+  };
 
   // Setup socket listeners
   useEffect(() => {

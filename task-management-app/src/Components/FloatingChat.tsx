@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MessageCircle, X, Search, User } from 'lucide-react';
 import { authService } from '../Services/User.Services';
+import { chatService } from '../Services/Chat.service';
 
 interface CompanyUser {
   id: string;
@@ -94,8 +95,13 @@ const FloatingChat: React.FC<FloatingChatProps> = ({
         return;
       }
 
-      // Fetch all users
-      const response = await authService.getAllUsers();
+      // Fetch all users and online status
+      const [response, onlineUsersList] = await Promise.all([
+        authService.getAllUsers(),
+        chatService.getOnlineUsers().catch(() => [])
+      ]);
+      const onlineSet = new Set(onlineUsersList);
+
       if (response?.success && response?.data) {
         const userList = response.data
           .filter((user: any) => {
@@ -115,7 +121,7 @@ const FloatingChat: React.FC<FloatingChatProps> = ({
             email: user.email,
             role: user.role,
             avatar: user.avatar,
-            isOnline: Math.random() > 0.5 // Random online status for demo
+            isOnline: onlineSet.has(String(user._id || user.id))
           }));
         
         console.log(`Found ${userList.length} users in company "${userCompany}"`);
@@ -146,6 +152,13 @@ const FloatingChat: React.FC<FloatingChatProps> = ({
       fetchCurrentUser();
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    const unsub = chatService.onUserStatusChange(({ userId, online }) => {
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, isOnline: online } : u));
+    });
+    return () => unsub?.();
+  }, []);
 
   const handleToggle = () => {
     if (isControlled && onToggle) {
