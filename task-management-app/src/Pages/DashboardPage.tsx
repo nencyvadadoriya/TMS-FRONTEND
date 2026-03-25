@@ -739,16 +739,22 @@ const DashboardPage = () => {
             };
         };
         const onUpserted = (payload: any) => {
+            console.log('📡 [socket] Received task:upserted:', payload);
             try {
                 const task = normalizeIncomingTask(payload?.task);
-                if (!task?.id) return;
+                console.log('📡 [socket] Normalized task:', task);
+                if (!task?.id) {
+                    console.warn('📡 [socket] No task ID found in payload, skipping update.');
+                    return;
+                }
                 dispatch(taskUpserted(task as Task));
                 try {
                     window.dispatchEvent(new CustomEvent('taskUpdated', { detail: { task } }));
                 } catch {
                     // ignore
                 }
-            } catch {
+            } catch (err) {
+                console.error('📡 [socket] Error handling task:upserted:', err);
                 return;
             }
         };

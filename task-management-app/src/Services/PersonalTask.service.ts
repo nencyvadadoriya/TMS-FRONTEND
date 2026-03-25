@@ -106,7 +106,7 @@ class PersonalTaskService {
   }>) {
     try {
       const url = `${this.baseUrl}/${id}`;
-      const res = await apiClient.patch(url, payload);
+      const res = await apiClient.put(url, payload);
       const data = res.data?.data;
       return {
         success: Boolean(res.data?.success),
