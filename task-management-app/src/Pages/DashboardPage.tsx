@@ -2912,8 +2912,7 @@ const DashboardPage = () => {
     const canMarkTaskDone = useCallback(
         (task: Task) => {
             if (task.completedApproval) return false;
-            const role = String((currentUser as any)?.role || '').trim().toLowerCase();
-            if (role === 'ob_manager') return false;
+             String((currentUser as any)?.role || '').trim().toLowerCase();
             const normalizeEmailSafe = (v: any): string => {
                 if (!v) return '';
                 if (typeof v === 'string') return stripDeletedEmailSuffix(v).trim().toLowerCase();
