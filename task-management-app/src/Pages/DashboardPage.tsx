@@ -2914,8 +2914,21 @@ const DashboardPage = () => {
             if (task.completedApproval) return false;
             const role = String((currentUser as any)?.role || '').trim().toLowerCase();
             if (role === 'ob_manager') return false;
-            const myEmail = stripDeletedEmailSuffix(currentUser?.email).trim().toLowerCase();
-            const assignedToEmail = stripDeletedEmailSuffix((task as any)?.assignedTo).trim().toLowerCase();
+            const normalizeEmailSafe = (v: any): string => {
+                if (!v) return '';
+                if (typeof v === 'string') return stripDeletedEmailSuffix(v).trim().toLowerCase();
+                if (typeof v === 'object' && v !== null) {
+                    const email = (v as any).email;
+                    if (typeof email === 'string') return stripDeletedEmailSuffix(email).trim().toLowerCase();
+                }
+                return stripDeletedEmailSuffix(String(v)).trim().toLowerCase();
+            };
+
+            const myEmail = normalizeEmailSafe((currentUser as any)?.email);
+            const assignedToEmail =
+                normalizeEmailSafe((task as any)?.assignedToUser?.email) ||
+                normalizeEmailSafe((task as any)?.assignedTo);
+
             return Boolean(myEmail && assignedToEmail && assignedToEmail === myEmail);
         },
         [currentUser],
@@ -6392,6 +6405,29 @@ const DashboardPage = () => {
                                                                         const info = getAssignedUserInfo(task);
                                                                         const email = (info as any)?.email ? stripDeletedEmailSuffix(String((info as any).email)) : '';
                                                                         const name = (info as any)?.name ? String((info as any).name) : '';
+                                                                        return name || (email ? email.split('@')[0] : '') || email || '—';
+                                                                    })()}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center justify-between text-xs">
+                                                                <div className="flex items-center gap-1.5 text-gray-500">
+                                                                    <User className="h-3.5 w-3.5" />
+                                                                    <span>Assigned by</span>
+                                                                </div>
+                                                                <span className="text-black font-medium truncate max-w-[60%]">
+                                                                    {(() => {
+                                                                        const assignedByUser = (task as any)?.assignedByUser;
+                                                                        const assignedBy = (task as any)?.assignedBy;
+                                                                        const rawEmail =
+                                                                            (assignedByUser && typeof assignedByUser === 'object' ? assignedByUser?.email : '') ||
+                                                                            (typeof assignedBy === 'string' ? assignedBy : assignedBy?.email) ||
+                                                                            '';
+                                                                        const rawName =
+                                                                            (assignedByUser && typeof assignedByUser === 'object' ? assignedByUser?.name : '') ||
+                                                                            (typeof assignedBy === 'object' ? assignedBy?.name : '') ||
+                                                                            '';
+                                                                        const email = rawEmail ? stripDeletedEmailSuffix(String(rawEmail)) : '';
+                                                                        const name = rawName ? String(rawName) : '';
                                                                         return name || (email ? email.split('@')[0] : '') || email || '—';
                                                                     })()}
                                                                 </span>
