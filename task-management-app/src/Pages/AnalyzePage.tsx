@@ -1,9 +1,58 @@
-import { useEffect, useMemo, useRef, useState, type FC } from 'react';
+import React, { useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { useNavigate } from 'react-router-dom';
-import * as echarts from 'echarts';
+import * as echarts from 'echarts/core';
+import {
+    BarChart,
+    LineChart,
+    PieChart,
+    MapChart,
+    PictorialBarChart,
+    CustomChart
+} from 'echarts/charts';
+import {
+    TitleComponent,
+    TooltipComponent,
+    GridComponent,
+    LegendComponent,
+    DataZoomComponent,
+    MarkPointComponent,
+    MarkLineComponent,
+    ToolboxComponent,
+    DatasetComponent,
+    TransformComponent,
+    VisualMapComponent
+} from 'echarts/components';
+import { CanvasRenderer } from 'echarts/renderers';
+import { LabelLayout, UniversalTransition } from 'echarts/features';
+
+echarts.use([
+    BarChart,
+    LineChart,
+    PieChart,
+    MapChart,
+    PictorialBarChart,
+    CustomChart,
+    TitleComponent,
+    TooltipComponent,
+    GridComponent,
+    LegendComponent,
+    ToolboxComponent,
+    DataZoomComponent,
+    MarkPointComponent,
+    MarkLineComponent,
+    DatasetComponent,
+    TransformComponent,
+    VisualMapComponent,
+    LabelLayout,
+    UniversalTransition,
+    CanvasRenderer
+]);
+
+import type { EChartsOption } from 'echarts';
+import type { TitleComponentOption } from 'echarts/components';
 import { Trash2, PlusCircle, Filter, Calendar, Building2, BarChart3, CheckCircle2, Clock, AlertCircle, Users, Download, CalendarClock } from 'lucide-react';
 import ManagerAnalysisChart from '../Components/ManagerAnalysisChart';
-import type { Task } from '../Types/Types';
+import type { Task, UserType } from '../Types/Types';
 
 type ChartType =
     | 'bar'
@@ -204,11 +253,12 @@ type CustomWidget = {
 
 export interface AnalyzePageProps {
     tasks: Task[];
+    users?: UserType[];
     currentUserEmail?: string;
     currentUserRole?: string;
 }
 
-const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUserEmailProp, currentUserRole }) => {
+const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, users = [], currentUserEmail: currentUserEmailProp, currentUserRole }) => {
     const navigate = useNavigate();
     const chartRef = useRef<HTMLDivElement | null>(null);
     const chartInstanceRef = useRef<ReturnType<typeof echarts.init> | null>(null);
@@ -721,7 +771,17 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
     }, [filteredTasksByGlobalDates, globalSummary, globalCompany]);
 
     const userReportData = useMemo(() => {
-        const userMap: Record<string, { name: string; total: number; completed: number; pending: number; overdue: number; overdueCompleted: number }> = {};
+        const userMap: Record<string, { name: string; role: string; total: number; completed: number; pending: number; overdue: number; overdueCompleted: number }> = {};
+
+        // Pre-create user to role mapping for faster lookup
+        const userRoleMap = new Map<string, string>();
+        if (users && users.length > 0) {
+            users.forEach(u => {
+                const email = String(u.email || '').toLowerCase().trim();
+                const role = String(u.role || '').trim();
+                if (email) userRoleMap.set(email, role);
+            });
+        }
 
         let reportTasks = filteredTasksByGlobalDates;
         if (reportFilterCompany !== 'all') {
@@ -734,7 +794,14 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
         reportTasks.forEach(t => {
             const u = extractUserLabel(t.assignedTo, t.assignedToName) || 'Unassigned';
             if (!userMap[u]) {
-                userMap[u] = { name: u, total: 0, completed: 0, pending: 0, overdue: 0, overdueCompleted: 0 };
+                let role = normalizeText((t as any)?.assignedTo?.role);
+                if (!role || role.toLowerCase() === 'unknown') {
+                    const email = normalizeText(typeof t.assignedTo === 'string' ? t.assignedTo : (t as any).assignedTo?.email).toLowerCase();
+                    if (email && userRoleMap.has(email)) {
+                        role = userRoleMap.get(email)!;
+                    }
+                }
+                userMap[u] = { name: u, role: role || 'No Role', total: 0, completed: 0, pending: 0, overdue: 0, overdueCompleted: 0 };
             }
 
             userMap[u].total++;
@@ -769,14 +836,26 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
                 rate: u.total > 0 ? Math.round((u.completed / u.total) * 100) : 0
             }))
             .sort((a, b) => b.completed - a.completed || b.total - a.total);
-    }, [filteredTasksByGlobalDates, reportFilterCompany]);
+    }, [filteredTasksByGlobalDates, reportFilterCompany, users]);
+
+    const groupedUserReportData = useMemo(() => {
+        const groups: Record<string, typeof userReportData> = {};
+        userReportData.forEach(row => {
+            const role = row.role || 'No Role';
+            if (!groups[role]) groups[role] = [];
+            groups[role].push(row);
+        });
+        // Sort roles alphabetically if helpful, or keep as is.
+        return groups;
+    }, [userReportData]);
 
     const handleExportReport = () => {
         if (!userReportData.length) return;
 
-        const headers = ['User', 'Total Tasks', 'Completed', 'Pending', 'Overdue', 'Overdue Completed', 'Success Rate (%)'];
+        const headers = ['User', 'Role', 'Total Tasks', 'Completed', 'Pending', 'Overdue', 'Overdue Completed', 'Success Rate (%)'];
         const rows = userReportData.map(r => [
             r.name,
+            r.role,
             r.total,
             r.completed,
             r.pending,
@@ -1027,7 +1106,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
         });
     };
 
-    const getEmptyTitle = (hasData: boolean, emptyText: string): echarts.TitleComponentOption | undefined => {
+    const getEmptyTitle = (hasData: boolean, emptyText: string): TitleComponentOption | undefined => {
         return hasData
             ? undefined
             : {
@@ -1049,7 +1128,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
         numberLabel?: string;
         donutRadiusLabel?: string;
         rotateXAxis?: boolean;
-    }): echarts.EChartsOption => {
+    }): EChartsOption => {
         const {
             categories,
             values,
@@ -1190,7 +1269,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
     };
 
 
-    const buildOptionForWidget = (widget: CustomWidget): echarts.EChartsOption => {
+    const buildOptionForWidget = (widget: CustomWidget): EChartsOption => {
         const forceRotateXAxis = widget.chartType === 'bar_label_rotation';
         const effectiveChartType: ChartType = widget.chartType === 'column' || forceRotateXAxis ? 'bar' : widget.chartType;
 
@@ -2270,7 +2349,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
 
         const totalValue = createdByCounts.data.reduce((acc, v) => acc + (Number(v) || 0), 0);
 
-        const option: echarts.EChartsOption = isNumber
+        const option: EChartsOption = isNumber
             ? {
                 title: emptyTitle,
                 tooltip: { show: false },
@@ -2423,7 +2502,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
         const isGroupedOrClustered = assignedChartType === 'grouped_bar' || assignedChartType === 'clustered_bar';
         const totalAssignments = values.reduce((acc, v) => acc + (Number(v) || 0), 0);
 
-        const option: echarts.EChartsOption = isNumber
+        const option: EChartsOption = isNumber
             ? {
                 title: emptyTitle,
                 tooltip: { show: false },
@@ -2557,7 +2636,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
             textStyle: { color: '#9ca3af', fontSize: 14, fontWeight: 400 }
         };
 
-        const option: echarts.EChartsOption = {
+        const option: EChartsOption = {
             title: emptyTitle,
             tooltip: { trigger: 'axis' },
             grid: { left: 40, right: 20, top: 30, bottom: 80 },
@@ -2626,7 +2705,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
 
         const totalAssigned = assignedToByMeCounts.data.reduce((acc, v) => acc + (Number(v) || 0), 0);
 
-        const option: echarts.EChartsOption = isNumber
+        const option: EChartsOption = isNumber
             ? {
                 title: emptyTitle,
                 tooltip: { show: false },
@@ -2741,7 +2820,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
         if (!chart) return;
 
         const hasData = completionTrends.labels.length > 0;
-        const option: echarts.EChartsOption = {
+        const option: EChartsOption = {
             title: hasData
                 ? undefined
                 : {
@@ -2803,7 +2882,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
         if (!chart) return;
 
         const hasData = leaderboardData.categories.length > 0;
-        const option: echarts.EChartsOption = {
+        const option: EChartsOption = {
             title: hasData
                 ? undefined
                 : {
@@ -2846,7 +2925,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
         if (!chart) return;
 
         const hasData = performanceData.categories.length > 0;
-        const option: echarts.EChartsOption = {
+        const option: EChartsOption = {
             title: hasData
                 ? undefined
                 : {
@@ -3234,7 +3313,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
                                     cy="80"
                                     r="70"
                                     fill="transparent"
-                                    stroke={smartInsights.health === 'Good' ? '#10b981' : smartInsights.health === 'Critical' ? '#ef4444' : '#f59e0b'}
+                                    stroke={smartInsights?.health === 'Good' ? '#10b981' : smartInsights?.health === 'Critical' ? '#ef4444' : '#f59e0b'}
                                     strokeWidth="12"
                                     strokeDasharray={439.8}
                                     strokeDashoffset={439.8 - (439.8 * globalSummary.rate) / 100}
@@ -3315,57 +3394,70 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, currentUserEmail: currentUse
                                     </td>
                                 </tr>
                             ) : (
-                                userReportData.map((row) => (
-                                    <tr key={row.name} className="hover:bg-blue-50/30 transition-colors group">
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white text-[10px] font-bold shadow-sm">
-                                                    {row.name.charAt(0).toUpperCase()}
-                                                </div>
-                                                <span className="text-sm font-semibold text-gray-700">{row.name}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-center whitespace-nowrap">
-                                            <span className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-gray-100 text-sm font-bold text-gray-700">
-                                                {row.total}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-center whitespace-nowrap">
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700">
-                                                {row.completed}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-center whitespace-nowrap">
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700">
-                                                {row.pending}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-center whitespace-nowrap">
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-50 text-red-700 font-mono">
-                                                {row.overdue}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-center whitespace-nowrap">
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-50 text-purple-700 font-mono">
-                                                {row.overdueCompleted}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap min-w-[160px]">
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex-grow bg-gray-100 h-2 rounded-full overflow-hidden max-w-[100px]">
-                                                    <div
-                                                        className={`h-full rounded-full transition-all duration-500 ${row.rate > 75 ? 'bg-emerald-500' : row.rate > 40 ? 'bg-amber-500' : 'bg-red-500'
-                                                            }`}
-                                                        style={{ width: `${row.rate}%` }}
-                                                    />
-                                                </div>
-                                                <span className={`text-xs font-bold ${row.rate > 75 ? 'text-emerald-700' : row.rate > 40 ? 'text-amber-700' : 'text-red-700'
-                                                    }`}>
-                                                    {row.rate}%
-                                                </span>
-                                            </div>
-                                        </td>
-                                    </tr>
+                                Object.entries(groupedUserReportData).map(([role, users]) => (
+                                    <React.Fragment key={role}>
+                                        <tr className="bg-gray-50/80">
+                                            <td colSpan={7} className="px-6 py-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest border-y border-gray-100 flex items-center gap-2">
+                                                <div className="h-1.5 w-1.5 rounded-full bg-blue-500"></div>
+                                                ROLE: {role}
+                                            </td>
+                                        </tr>
+                                        {users.map((row) => (
+                                            <tr key={row.name} className="hover:bg-blue-50/30 transition-colors group">
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white text-[10px] font-bold shadow-sm">
+                                                            {row.name.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-sm font-semibold text-gray-700">{row.name}</div>
+                                                            <div className="text-[10px] text-gray-400">{row.role}</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-center whitespace-nowrap">
+                                                    <span className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-gray-100 text-sm font-bold text-gray-700">
+                                                        {row.total}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-center whitespace-nowrap">
+                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700">
+                                                        {row.completed}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-center whitespace-nowrap">
+                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700">
+                                                        {row.pending}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-center whitespace-nowrap">
+                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-50 text-red-700 font-mono">
+                                                        {row.overdue}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-center whitespace-nowrap">
+                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-50 text-purple-700 font-mono">
+                                                        {row.overdueCompleted}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap min-w-[160px]">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="flex-grow bg-gray-100 h-2 rounded-full overflow-hidden max-w-[100px]">
+                                                            <div
+                                                                className={`h-full rounded-full transition-all duration-500 ${row.rate > 75 ? 'bg-emerald-500' : row.rate > 40 ? 'bg-amber-500' : 'bg-red-500'
+                                                                    }`}
+                                                                style={{ width: `${row.rate}%` }}
+                                                            />
+                                                        </div>
+                                                        <span className={`text-xs font-bold ${row.rate > 75 ? 'text-emerald-700' : row.rate > 40 ? 'text-amber-700' : 'text-red-700'
+                                                            }`}>
+                                                            {row.rate}%
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </React.Fragment>
                                 ))
                             )}
                         </tbody>

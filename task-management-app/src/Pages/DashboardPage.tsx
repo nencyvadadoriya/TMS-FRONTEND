@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { lazy, Suspense, useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
 import {
@@ -34,36 +34,36 @@ import {
 import toast from 'react-hot-toast';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
-import AllTasksPage from './AllTasksPage';
-import CalendarView from './CalendarView';
-import TeamPage from './TeamPage';
-import UserProfilePage from './UserProfilePage';
-import BrandsListPage from './BrandsListPage';
-import BrandDetailPage from './BrandDetailPage';
-import AccessPage from './AccessPage';
-import CompanyBrandTaskTypePage from './CompanyBrandTaskTypePage';
-import AssignPage from './AssignPage';
-import ReviewsPage from './ReviewsPage';
-import OtherWorkPage from './OtherWorkPage';
-import MdImpexStrikePage from './MdImpexStrikePage';
-import MdImpexAccessPage from './MdImpexAccessPage';
-import ManagerMonthlyRankingPage from './ManagerMonthlyRankingPage';
-import PowerStarOfTheMonthPage from './PowerStarOfTheMonthPage';
-import SpeedEcomReassignPage from './SpeedEcomReassignPage';
-import AdvancedFilters from './AdvancedFilters';
-import AnalyzePage from './AnalyzePage';
+const AllTasksPage = lazy(() => import('./AllTasksPage'));
+const CalendarView = lazy(() => import('./CalendarView'));
+const TeamPage = lazy(() => import('./TeamPage'));
+const UserProfilePage = lazy(() => import('./UserProfilePage'));
+const BrandsListPage = lazy(() => import('./BrandsListPage'));
+const BrandDetailPage = lazy(() => import('./BrandDetailPage'));
+const AccessPage = lazy(() => import('./AccessPage'));
+const CompanyBrandTaskTypePage = lazy(() => import('./CompanyBrandTaskTypePage'));
+const AssignPage = lazy(() => import('./AssignPage'));
+const ReviewsPage = lazy(() => import('./ReviewsPage'));
+const OtherWorkPage = lazy(() => import('./OtherWorkPage'));
+const MdImpexStrikePage = lazy(() => import('./MdImpexStrikePage'));
+const MdImpexAccessPage = lazy(() => import('./MdImpexAccessPage'));
+const ManagerMonthlyRankingPage = lazy(() => import('./ManagerMonthlyRankingPage'));
+const PowerStarOfTheMonthPage = lazy(() => import('./PowerStarOfTheMonthPage'));
+const SpeedEcomReassignPage = lazy(() => import('./SpeedEcomReassignPage'));
+const AdvancedFilters = lazy(() => import('./AdvancedFilters'));
+const AnalyzePage = lazy(() => import('./AnalyzePage'));
 import { DashboardPageSkeleton } from '../Components/LoadingSkeletons';
 import EmployeeOfTheMonthCard from '../Components/EmployeeOfTheMonthCard';
 import TaskReminderCard from '../Components/TaskReminderCard';
-import AddTaskModal from './DashboardModals/AddTaskModal';
-import MdImpexAddTaskModal from './DashboardModals/MdImpexAddTaskModal';
-import EditTaskModal from './DashboardModals/EditTaskModal';
-import MdImpexEditTaskModal from './DashboardModals/MdImpexEditTaskModal';
-import SendReminderModal from './DashboardModals/SendReminderModal';
-import BulkAddBrandsModal from './DashboardModals/BulkAddBrandsModal';
-import BulkAddCompaniesModal from './DashboardModals/BulkAddCompaniesModal';
-import BulkAddTaskTypesModal from './DashboardModals/BulkAddTaskTypesModal';
-import ManagerAddBrandModal from './DashboardModals/ManagerAddBrandModal';
+const AddTaskModal = lazy(() => import('./DashboardModals/AddTaskModal'));
+const MdImpexAddTaskModal = lazy(() => import('./DashboardModals/MdImpexAddTaskModal'));
+const EditTaskModal = lazy(() => import('./DashboardModals/EditTaskModal'));
+const MdImpexEditTaskModal = lazy(() => import('./DashboardModals/MdImpexEditTaskModal'));
+const SendReminderModal = lazy(() => import('./DashboardModals/SendReminderModal'));
+const BulkAddBrandsModal = lazy(() => import('./DashboardModals/BulkAddBrandsModal'));
+const BulkAddCompaniesModal = lazy(() => import('./DashboardModals/BulkAddCompaniesModal'));
+const BulkAddTaskTypesModal = lazy(() => import('./DashboardModals/BulkAddTaskTypesModal'));
+const ManagerAddBrandModal = lazy(() => import('./DashboardModals/ManagerAddBrandModal'));
 import AdminHeadlineManager from '../Components/AdminHeadlineManager';
 import type {
     Brand,
@@ -86,9 +86,9 @@ import { companyTaskTypeService } from '../Services/CompanyTaskType.service';
 import { companyBrandTaskTypeService } from '../Services/CompanyBrandTaskType.service';
 import { assignService } from '../Services/Assign.service';
 import { routepath } from '../Routes/route';
-import PersonalTasksPage from './PersonalTasksPage';
-import AssignedByMe from './AssignedByMe';
-import AssignedToMe from './AssignedToMe';
+const PersonalTasksPage = lazy(() => import('./PersonalTasksPage'));
+const AssignedByMe = lazy(() => import('./AssignedByMe'));
+const AssignedToMe = lazy(() => import('./AssignedToMe'));
 import { useAppDispatch, useAppSelector } from '../Store/hooks';
 import {
     fetchTasks as fetchTasksThunk,
@@ -480,6 +480,28 @@ const DashboardPage = () => {
             return b.avgStars - a.avgStars;
         });
         const top = rows.find((r) => (r.total || 0) >= 30) || rows[0] || null;
+        // Pre-calculate task counts for all users within the current month in one pass
+        const taskCounts = new Map<string, number>();
+        if (monthRange) {
+            tasks.forEach((t: any) => {
+                const createdAtRaw = (t as any).createdAt || (t as any).assignedAt;
+                if (!createdAtRaw) return;
+                const createdAt = new Date(createdAtRaw);
+                if (Number.isNaN(createdAt.getTime())) return;
+                if (createdAt >= monthRange.start && createdAt < monthRange.endExclusive) {
+                    const assignedToEmail = normalizeEmailForMatch((t as any)?.assignedToUser?.email)
+                        || normalizeEmailForMatch((t as any)?.assignedToUser)
+                        || normalizeEmailForMatch((t as any)?.assignedTo?.email)
+                        || normalizeEmailForMatch((t as any)?.assignedTo)
+                        || normalizeEmailForMatch((t as any)?.assignedToId)
+                        || normalizeEmailForMatch((t as any)?.assignedToUserId);
+                    if (assignedToEmail) {
+                        taskCounts.set(assignedToEmail, (taskCounts.get(assignedToEmail) || 0) + 1);
+                    }
+                }
+            });
+        }
+
         const summaryRowsBase = rows.slice(0, 10).map((r) => {
             let avatar = (users || []).find((u: any) => {
                 const uemail = String(u?.email || '').trim().toLowerCase();
@@ -497,23 +519,7 @@ const DashboardPage = () => {
                 avatar: avatar ? String(avatar) : '',
                 avgStarsLabel: r.avgStarsLabel,
                 total: r.total,
-                totalTasksReceived: (tasks || []).filter((t: any) => {
-                    const rowEmail = String((r as any)?.email || '').trim().toLowerCase();
-                    const assignedToEmail =
-                        normalizeEmailForMatch((t as any)?.assignedToUser?.email)
-                        || normalizeEmailForMatch((t as any)?.assignedToUser)
-                        || normalizeEmailForMatch((t as any)?.assignedTo?.email)
-                        || normalizeEmailForMatch((t as any)?.assignedTo)
-                        || normalizeEmailForMatch((t as any)?.assignedToId)
-                        || normalizeEmailForMatch((t as any)?.assignedToUserId);
-                    if (!assignedToEmail || !rowEmail || assignedToEmail !== rowEmail) return false;
-                    if (!monthRange) return true;
-                    const createdAtRaw = (t as any).createdAt || (t as any).assignedAt;
-                    if (!createdAtRaw) return false;
-                    const createdAt = new Date(createdAtRaw);
-                    if (Number.isNaN(createdAt.getTime())) return false;
-                    return createdAt >= monthRange.start && createdAt < monthRange.endExclusive;
-                }).length,
+                totalTasksReceived: taskCounts.get(r.email) || 0,
                 performance: r.performance,
             };
         });
@@ -539,20 +545,7 @@ const DashboardPage = () => {
             avg: top?.ratingPctLabel || 'Not any yet',
             photoUrl: finalPhotoUrl ? String(finalPhotoUrl) : undefined,
             totalReviews: top ? (summaryRowsBase.find(r => r.email === top.email)?.total ?? 0) : (rows[0]?.total ?? 0),
-            totalTasksReceived: top ? (tasks || []).filter((t: any) => {
-                const topEmail = String((top as any)?.email || '').trim().toLowerCase();
-                const assignedToEmail =
-                    normalizeEmailForMatch((t as any)?.assignedTo)
-                    || normalizeEmailForMatch((t as any)?.assignedToUser?.email)
-                    || normalizeEmailForMatch((t as any)?.assignedToUser);
-                if (!assignedToEmail || !topEmail || assignedToEmail !== topEmail) return false;
-                if (!monthRange) return true;
-                const createdAtRaw = (t as any).createdAt || (t as any).assignedAt;
-                if (!createdAtRaw) return false;
-                const createdAt = new Date(createdAtRaw);
-                if (Number.isNaN(createdAt.getTime())) return false;
-                return createdAt >= monthRange.start && createdAt < monthRange.endExclusive;
-            }).length : 0,
+            totalTasksReceived: top ? (taskCounts.get(top.email) || 0) : 0,
             summaryRows: top
                 ? summaryRowsBase
                 : [
@@ -567,7 +560,7 @@ const DashboardPage = () => {
                     ...summaryRowsBase,
                 ],
         };
-    }, [reviewedTasksForSummary, reviewsMonth, users, allMdImpexUsers, tasks, currentUser?.companyName, currentUser?.company]);
+    }, [reviewedTasksForSummary, reviewsMonth, users, allMdImpexUsers, tasks, currentUser?.companyName, currentUser?.company, normalizeEmailForMatch]);
 
     const pendingManagerReviewTasks = useMemo(() => {
         const normalizeEmailSafe = (v: unknown): string => String(v || '').trim().toLowerCase();
@@ -5822,7 +5815,8 @@ const DashboardPage = () => {
                 <main className="flex-1 overflow-auto pb-24 sm:pb-0">
                     <div className="py-0 sm:py-8">
                         <div className={dashboardContainerClasses}>
-                            {currentView === 'dashboard' ? (
+                            <Suspense fallback={<DashboardPageSkeleton />}>
+                                {currentView === 'dashboard' ? (
                                 <>
                                     <div className="mb-6 sm:mb-10 px-4 sm:px-0">
                                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
@@ -6758,6 +6752,7 @@ const DashboardPage = () => {
                             ) : currentView === 'analyze' ? (
                                 <AnalyzePage
                                     tasks={tasks}
+                                    users={users}
                                     currentUserEmail={currentUser?.email}
                                     currentUserRole={currentUser?.role}
                                 />
@@ -6899,11 +6894,13 @@ const DashboardPage = () => {
                                     tasks={tasks}
                                 />
                             ) : null}
+                            </Suspense>
                         </div>
                     </div>
                 </main>
             </div>
-            {(() => {
+            <Suspense fallback={null}>
+                {(() => {
                 const currentUserCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase();
                 const currentUserRole = String((currentUser as any)?.role || '').trim().toLowerCase();
                 const isMdImpexUser = currentUserCompany.includes('mdimpex') ||
@@ -7022,14 +7019,15 @@ const DashboardPage = () => {
                 onSubmit={handleSubmitBulkTaskTypes}
                 isSubmitting={isCreatingBulkTaskTypes}
             />
-            <ManagerAddBrandModal
-                open={showManagerAddBrandModal}
-                managerBrandName={managerBrandName}
-                setManagerBrandName={(next) => setManagerBrandName(next)}
-                isSubmitting={isCreatingManagerBrand}
-                onSubmit={() => handleManagerCreateBrand()}
-                onClose={() => setShowManagerAddBrandModal(false)}
-            />
+                <ManagerAddBrandModal
+                    open={showManagerAddBrandModal}
+                    managerBrandName={managerBrandName}
+                    setManagerBrandName={(next) => setManagerBrandName(next)}
+                    isSubmitting={isCreatingManagerBrand}
+                    onSubmit={() => handleManagerCreateBrand()}
+                    onClose={() => setShowManagerAddBrandModal(false)}
+                />
+            </Suspense>
 
             {/* Mobile Bottom Navigation - "Beast" UX */}
             <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-gray-200 px-6 py-2.5 flex items-center justify-between z-40 pb-safe">
