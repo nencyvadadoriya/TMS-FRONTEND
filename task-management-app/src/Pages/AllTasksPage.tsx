@@ -1539,7 +1539,7 @@ const MobileTaskItem = memo(({
   const role = String((currentUser as any)?.role || '').trim().toLowerCase();
   const taskCompanyKey = String((task as any)?.companyName || (task as any)?.company || '').trim().toLowerCase().replace(/\s+/g, '');
   taskCompanyKey === 'speedecom';
-  const canDeleteThisTask = (role === 'admin' || role === 'super_admin' || role === 'manager' || role === 'marketer_manager' || role === 'md_manager') && userIsAssigner;
+  const canDeleteThisTask = (role === 'admin' || role === 'super_admin' || role === 'manager' || role === 'marketer_manager' || role === 'md_manager' || role === 'ob_manager') && userIsAssigner;
 
   const canEditThisTask = typeof canEditTask === 'function' ? canEditTask(task) : userIsAssigner;
   const normalizeEmailSafe = (v: unknown): string => {
@@ -1792,7 +1792,7 @@ const DesktopTaskItem = memo(({
     normalizeEmailSafe((task as any)?.assignedByUser?.email);
   const isCreator = Boolean(myEmail && assignedByEmailForCheck && myEmail === assignedByEmailForCheck);
 
-  const canDeleteThisTask = (role === 'admin' || role === 'super_admin' || role === 'manager' || role === 'marketer_manager' || role === 'md_manager') && userIsAssigner;
+  const canDeleteThisTask = (role === 'admin' || role === 'super_admin' || role === 'manager' || role === 'marketer_manager' || role === 'md_manager' || role === 'ob_manager') && userIsAssigner;
 
   // Edit/Delete should not be coupled to create_task permission.
   // Show edit if user can edit OR they are the creator (assignedBy matches user).
@@ -4606,9 +4606,9 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       return;
     }
     const role = (currentUser?.role || '').toString().trim().toLowerCase();
-    if (role === 'ob_manager') {
-      toast.error('You do not have permission to update task status');
-      return;
+    const isObManager = role === 'ob_manager';
+    if (isObManager) {
+      // For ob_manager, we check if they are either assignee or assigner for each task in the loop below
     }
 
     const confirmMessage = status === 'completed'
@@ -4623,8 +4623,12 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       for (const taskId of selectedTasks) {
         const task = tasks.find(t => t.id === taskId);
         if (task) {
-          if (!isTaskAssignee(task)) {
-            toast.error('You can only change status for tasks assigned to you');
+          const isAssignee = isTaskAssignee(task);
+          const isAssigner = isTaskAssigner(task);
+          const isObManager = (currentUser?.role || '').toString().trim().toLowerCase() === 'ob_manager';
+
+          if (!isAssignee && !(isObManager && isAssigner)) {
+            toast.error(`You can only change status for tasks assigned to you${isObManager ? ' or by you' : ''}`);
             continue;
           }
           await onToggleTaskStatus(taskId, currentStatusForToggle, false);
@@ -4652,11 +4656,8 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
     if (selectedTasks.length === 0) return;
 
     const role = (currentUser?.role || '').toString().trim().toLowerCase();
-    if (role === 'ob_manager') {
-      toast.error('You do not have permission to delete tasks');
-      return;
-    }
-
+    const isObManager = role === 'ob_manager';
+    
     if (!window.confirm(`Delete ${selectedTasks.length} tasks? This action cannot be undone.`)) return;
 
     setBulkDeleting(true);
@@ -4664,6 +4665,12 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       for (const taskId of selectedTasks) {
         const task = tasks.find(t => t.id === taskId);
         if (task) {
+          const isAssigner = isTaskAssigner(task);
+          
+          if (isObManager && !isAssigner) {
+            toast.error(`You do not have permission to delete task: ${task.title}`);
+            continue;
+          }
           await addHistoryRecord(
             taskId,
             'task_deleted',
@@ -5938,7 +5945,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                       onOpenHistoryModal={handleOpenHistoryModal}
                       showAssignButton={showAssignButton}
                       onAssignClick={handleOpenReassignModal}
-                      disableStatusToggle={isObManagerRole || !isTaskAssignee(task)}
+                      disableStatusToggle={(isObManagerRole && !isTaskAssignee(task) && !isTaskAssigner(task)) || (!isObManagerRole && !isTaskAssignee(task))}
                       hasUnreadComments={(taskId: string) => Boolean(unreadCommentsMap && (unreadCommentsMap as any)[taskId])}
                       canEditTask={canEditTask}
                     />
@@ -5974,7 +5981,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
                       isUpdatingApproval={isUpdatingApproval}
                       showAssignButton={showAssignButton}
                       onAssignClick={handleOpenReassignModal}
-                      disableStatusToggle={isObManagerRole || !isTaskAssignee(task)}
+                      disableStatusToggle={(isObManagerRole && !isTaskAssignee(task) && !isTaskAssigner(task)) || (!isObManagerRole && !isTaskAssignee(task))}
                       hasUnreadComments={(taskId: string) => Boolean(unreadCommentsMap && (unreadCommentsMap as any)[taskId])}
                       hideAssignBy={hideAssignBy}
                     />

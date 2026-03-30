@@ -2907,10 +2907,22 @@ const DashboardPage = () => {
     const canMarkTaskDone = useCallback(
         (task: Task) => {
             if (task.completedApproval) return false;
-            const role = String((currentUser as any)?.role || '').trim().toLowerCase();
-            if (role === 'ob_manager') return false;
-            const myEmail = stripDeletedEmailSuffix(currentUser?.email).trim().toLowerCase();
-            const assignedToEmail = stripDeletedEmailSuffix((task as any)?.assignedTo).trim().toLowerCase();
+             String((currentUser as any)?.role || '').trim().toLowerCase();
+            const normalizeEmailSafe = (v: any): string => {
+                if (!v) return '';
+                if (typeof v === 'string') return stripDeletedEmailSuffix(v).trim().toLowerCase();
+                if (typeof v === 'object' && v !== null) {
+                    const email = (v as any).email;
+                    if (typeof email === 'string') return stripDeletedEmailSuffix(email).trim().toLowerCase();
+                }
+                return stripDeletedEmailSuffix(String(v)).trim().toLowerCase();
+            };
+
+            const myEmail = normalizeEmailSafe((currentUser as any)?.email);
+            const assignedToEmail =
+                normalizeEmailSafe((task as any)?.assignedToUser?.email) ||
+                normalizeEmailSafe((task as any)?.assignedTo);
+
             return Boolean(myEmail && assignedToEmail && assignedToEmail === myEmail);
         },
         [currentUser],
