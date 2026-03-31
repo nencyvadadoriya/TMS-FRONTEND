@@ -109,6 +109,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   const canSeeAssignPage = isAdmin ? true : hasAccess('assign_page');
   const canSeeMdImpexAccess = isAdmin ? true : (roleKey === 'md_manager');
 
+  const userCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase();
+  const isMdImpexUser = isAdmin || userCompany.includes('mdimpex') || userCompany.includes('md_impex') || userCompany === 'md impex';
+
   const getDisplayInitial = () => {
     if (!currentUser) return 'U';
     if (currentUser.name && currentUser.name.trim() !== '') {
@@ -156,6 +159,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       items: [
         ...(canSeeTeam ? [{ name: 'Team', icon: Users, id: 'team', badge: 0 }] : []),
         ...(canSeeStrike ? [{ name: 'Strike', icon: AlertTriangle, id: 'md-impex-strike', badge: 0 }] : []),
+        ...(isMdImpexUser ? [{ name: 'Manual Strike', icon: AlertTriangle, id: 'md-impex-manual-strike', badge: 0 }] : []),
         ...(canSeeMdImpexAccess ? [{ name: 'MD Access', icon: Shield, id: 'md-impex-access', badge: 0 }] : []),
         ...(canSeeAccess ? [{ name: 'Access Control', icon: Settings, id: 'access', badge: 0 }] : []),
         ...(isAdmin ? [{ name: 'Headline', icon: Megaphone, id: 'headline', badge: 0 }] : []),

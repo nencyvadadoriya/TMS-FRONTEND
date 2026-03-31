@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
 import {
@@ -13,14 +13,11 @@ import {
     Grid,
     List,
     Filter,
-    TrendingUp,
-    TrendingDown,
     BarChart3,
     CalendarDays,
     UserCheck,
     Flag,
-    Building,
-    Tag,
+    Layers,
     Edit,
     User,
     Star,
@@ -30,40 +27,42 @@ import {
     X,
     Send,
     Loader2,
+    RotateCcw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
-const AllTasksPage = lazy(() => import('./AllTasksPage'));
-const CalendarView = lazy(() => import('./CalendarView'));
-const TeamPage = lazy(() => import('./TeamPage'));
-const UserProfilePage = lazy(() => import('./UserProfilePage'));
-const BrandsListPage = lazy(() => import('./BrandsListPage'));
-const BrandDetailPage = lazy(() => import('./BrandDetailPage'));
-const AccessPage = lazy(() => import('./AccessPage'));
-const CompanyBrandTaskTypePage = lazy(() => import('./CompanyBrandTaskTypePage'));
-const AssignPage = lazy(() => import('./AssignPage'));
-const ReviewsPage = lazy(() => import('./ReviewsPage'));
-const OtherWorkPage = lazy(() => import('./OtherWorkPage'));
-const MdImpexStrikePage = lazy(() => import('./MdImpexStrikePage'));
-const MdImpexAccessPage = lazy(() => import('./MdImpexAccessPage'));
-const ManagerMonthlyRankingPage = lazy(() => import('./ManagerMonthlyRankingPage'));
-const PowerStarOfTheMonthPage = lazy(() => import('./PowerStarOfTheMonthPage'));
-const SpeedEcomReassignPage = lazy(() => import('./SpeedEcomReassignPage'));
-const AdvancedFilters = lazy(() => import('./AdvancedFilters'));
-const AnalyzePage = lazy(() => import('./AnalyzePage'));
+import AllTasksPage from './AllTasksPage';
+import CalendarView from './CalendarView';
+import TeamPage from './TeamPage';
+import UserProfilePage from './UserProfilePage';
+import BrandsListPage from './BrandsListPage';
+import BrandDetailPage from './BrandDetailPage';
+import AccessPage from './AccessPage';
+import CompanyBrandTaskTypePage from './CompanyBrandTaskTypePage';
+import AssignPage from './AssignPage';
+import ReviewsPage from './ReviewsPage';
+import OtherWorkPage from './OtherWorkPage';
+import MdImpexStrikePage from './MdImpexStrikePage';
+import NewMdImpexStrikePage from './NewMdImpexStrikePage';
+import MdImpexAccessPage from './MdImpexAccessPage';
+import ManagerMonthlyRankingPage from './ManagerMonthlyRankingPage';
+import PowerStarOfTheMonthPage from './PowerStarOfTheMonthPage';
+import SpeedEcomReassignPage from './SpeedEcomReassignPage';
+import AdvancedFilters from './AdvancedFilters';
+import AnalyzePage from './AnalyzePage';
 import { DashboardPageSkeleton } from '../Components/LoadingSkeletons';
 import EmployeeOfTheMonthCard from '../Components/EmployeeOfTheMonthCard';
 import TaskReminderCard from '../Components/TaskReminderCard';
-const AddTaskModal = lazy(() => import('./DashboardModals/AddTaskModal'));
-const MdImpexAddTaskModal = lazy(() => import('./DashboardModals/MdImpexAddTaskModal'));
-const EditTaskModal = lazy(() => import('./DashboardModals/EditTaskModal'));
-const MdImpexEditTaskModal = lazy(() => import('./DashboardModals/MdImpexEditTaskModal'));
-const SendReminderModal = lazy(() => import('./DashboardModals/SendReminderModal'));
-const BulkAddBrandsModal = lazy(() => import('./DashboardModals/BulkAddBrandsModal'));
-const BulkAddCompaniesModal = lazy(() => import('./DashboardModals/BulkAddCompaniesModal'));
-const BulkAddTaskTypesModal = lazy(() => import('./DashboardModals/BulkAddTaskTypesModal'));
-const ManagerAddBrandModal = lazy(() => import('./DashboardModals/ManagerAddBrandModal'));
+import AddTaskModal from './DashboardModals/AddTaskModal';
+import MdImpexAddTaskModal from './DashboardModals/MdImpexAddTaskModal';
+import EditTaskModal from './DashboardModals/EditTaskModal';
+import MdImpexEditTaskModal from './DashboardModals/MdImpexEditTaskModal';
+import SendReminderModal from './DashboardModals/SendReminderModal';
+import BulkAddBrandsModal from './DashboardModals/BulkAddBrandsModal';
+import BulkAddCompaniesModal from './DashboardModals/BulkAddCompaniesModal';
+import BulkAddTaskTypesModal from './DashboardModals/BulkAddTaskTypesModal';
+import ManagerAddBrandModal from './DashboardModals/ManagerAddBrandModal';
 import AdminHeadlineManager from '../Components/AdminHeadlineManager';
 import type {
     Brand,
@@ -86,9 +85,9 @@ import { companyTaskTypeService } from '../Services/CompanyTaskType.service';
 import { companyBrandTaskTypeService } from '../Services/CompanyBrandTaskType.service';
 import { assignService } from '../Services/Assign.service';
 import { routepath } from '../Routes/route';
-const PersonalTasksPage = lazy(() => import('./PersonalTasksPage'));
-const AssignedByMe = lazy(() => import('./AssignedByMe'));
-const AssignedToMe = lazy(() => import('./AssignedToMe'));
+import PersonalTasksPage from './PersonalTasksPage';
+import AssignedByMe from './AssignedByMe';
+import AssignedToMe from './AssignedToMe';
 import { useAppDispatch, useAppSelector } from '../Store/hooks';
 import {
     fetchTasks as fetchTasksThunk,
@@ -315,6 +314,7 @@ const DashboardPage = () => {
         | 'speed-ecom-reassign'
         | 'manager-monthly-rankings'
         | 'md-impex-strike'
+        | 'md-impex-manual-strike'
         | 'md-impex-access'
         | 'personal-tasks'
         | 'assigned-by-me'
@@ -480,28 +480,6 @@ const DashboardPage = () => {
             return b.avgStars - a.avgStars;
         });
         const top = rows.find((r) => (r.total || 0) >= 30) || rows[0] || null;
-        // Pre-calculate task counts for all users within the current month in one pass
-        const taskCounts = new Map<string, number>();
-        if (monthRange) {
-            tasks.forEach((t: any) => {
-                const createdAtRaw = (t as any).createdAt || (t as any).assignedAt;
-                if (!createdAtRaw) return;
-                const createdAt = new Date(createdAtRaw);
-                if (Number.isNaN(createdAt.getTime())) return;
-                if (createdAt >= monthRange.start && createdAt < monthRange.endExclusive) {
-                    const assignedToEmail = normalizeEmailForMatch((t as any)?.assignedToUser?.email)
-                        || normalizeEmailForMatch((t as any)?.assignedToUser)
-                        || normalizeEmailForMatch((t as any)?.assignedTo?.email)
-                        || normalizeEmailForMatch((t as any)?.assignedTo)
-                        || normalizeEmailForMatch((t as any)?.assignedToId)
-                        || normalizeEmailForMatch((t as any)?.assignedToUserId);
-                    if (assignedToEmail) {
-                        taskCounts.set(assignedToEmail, (taskCounts.get(assignedToEmail) || 0) + 1);
-                    }
-                }
-            });
-        }
-
         const summaryRowsBase = rows.slice(0, 10).map((r) => {
             let avatar = (users || []).find((u: any) => {
                 const uemail = String(u?.email || '').trim().toLowerCase();
@@ -519,7 +497,23 @@ const DashboardPage = () => {
                 avatar: avatar ? String(avatar) : '',
                 avgStarsLabel: r.avgStarsLabel,
                 total: r.total,
-                totalTasksReceived: taskCounts.get(r.email) || 0,
+                totalTasksReceived: (tasks || []).filter((t: any) => {
+                    const rowEmail = String((r as any)?.email || '').trim().toLowerCase();
+                    const assignedToEmail =
+                        normalizeEmailForMatch((t as any)?.assignedToUser?.email)
+                        || normalizeEmailForMatch((t as any)?.assignedToUser)
+                        || normalizeEmailForMatch((t as any)?.assignedTo?.email)
+                        || normalizeEmailForMatch((t as any)?.assignedTo)
+                        || normalizeEmailForMatch((t as any)?.assignedToId)
+                        || normalizeEmailForMatch((t as any)?.assignedToUserId);
+                    if (!assignedToEmail || !rowEmail || assignedToEmail !== rowEmail) return false;
+                    if (!monthRange) return true;
+                    const createdAtRaw = (t as any).createdAt || (t as any).assignedAt;
+                    if (!createdAtRaw) return false;
+                    const createdAt = new Date(createdAtRaw);
+                    if (Number.isNaN(createdAt.getTime())) return false;
+                    return createdAt >= monthRange.start && createdAt < monthRange.endExclusive;
+                }).length,
                 performance: r.performance,
             };
         });
@@ -545,7 +539,20 @@ const DashboardPage = () => {
             avg: top?.ratingPctLabel || 'Not any yet',
             photoUrl: finalPhotoUrl ? String(finalPhotoUrl) : undefined,
             totalReviews: top ? (summaryRowsBase.find(r => r.email === top.email)?.total ?? 0) : (rows[0]?.total ?? 0),
-            totalTasksReceived: top ? (taskCounts.get(top.email) || 0) : 0,
+            totalTasksReceived: top ? (tasks || []).filter((t: any) => {
+                const topEmail = String((top as any)?.email || '').trim().toLowerCase();
+                const assignedToEmail =
+                    normalizeEmailForMatch((t as any)?.assignedTo)
+                    || normalizeEmailForMatch((t as any)?.assignedToUser?.email)
+                    || normalizeEmailForMatch((t as any)?.assignedToUser);
+                if (!assignedToEmail || !topEmail || assignedToEmail !== topEmail) return false;
+                if (!monthRange) return true;
+                const createdAtRaw = (t as any).createdAt || (t as any).assignedAt;
+                if (!createdAtRaw) return false;
+                const createdAt = new Date(createdAtRaw);
+                if (Number.isNaN(createdAt.getTime())) return false;
+                return createdAt >= monthRange.start && createdAt < monthRange.endExclusive;
+            }).length : 0,
             summaryRows: top
                 ? summaryRowsBase
                 : [
@@ -560,7 +567,7 @@ const DashboardPage = () => {
                     ...summaryRowsBase,
                 ],
         };
-    }, [reviewedTasksForSummary, reviewsMonth, users, allMdImpexUsers, tasks, currentUser?.companyName, currentUser?.company, normalizeEmailForMatch]);
+    }, [reviewedTasksForSummary, reviewsMonth, users, allMdImpexUsers, tasks, currentUser?.companyName, currentUser?.company]);
 
     const pendingManagerReviewTasks = useMemo(() => {
         const normalizeEmailSafe = (v: unknown): string => String(v || '').trim().toLowerCase();
@@ -1364,7 +1371,7 @@ const DashboardPage = () => {
         return `
             flex-1 flex flex-col
             transition-all duration-300 ease-in-out
-            ${isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'}
+            ${isSidebarCollapsed ? 'lg:ml-17' : 'lg:ml-56'}
             min-w-0
         `;
     }, [isSidebarCollapsed]);
@@ -1420,46 +1427,23 @@ const DashboardPage = () => {
         return stripDeletedEmailSuffix(email).trim().toLowerCase();
     }, []);
 
-    const canonicalizeTaskTypeLabel = useCallback((value: unknown): string => {
-        const raw = (value == null ? '' : String(value)).trim();
-        if (!raw) return '';
-        const key = raw.toLowerCase().replace(/[\s-]+/g, ' ').trim();
-        if (key === 'troubleshoot' || key === 'trouble shoot' || key === 'trubbleshot' || key === 'trubble shoot') {
-            return 'Troubleshoot';
-        }
-        return raw;
-    }, []);
-
-    const dedupeTaskTypes = useCallback((items: string[]): string[] => {
-        const map = new Map<string, { label: string; caps: number }>();
-        (items || []).forEach((x) => {
-            const label = canonicalizeTaskTypeLabel(x);
-            if (!label) return;
-            const key = label.toLowerCase();
-            const caps = (label.match(/[A-Z]/g) || []).length;
-            const existing = map.get(key);
-            if (!existing || caps > existing.caps) {
-                map.set(key, { label, caps });
-            }
-        });
-        return Array.from(map.values()).map((v) => v.label);
-    }, [canonicalizeTaskTypeLabel]);
-
     const restrictTaskTypesForCompany = useCallback((companyName: unknown, list: string[]): string[] => {
         const companyKey = normalizeCompanyKey(companyName);
-        let results = [...list];
         if (companyKey === SPEED_E_COM_COMPANY_KEY) {
-            results = Array.from(new Set([...results, ...SPEED_E_COM_FIXED_TASK_TYPES]));
+            const safe = Array.isArray(list) ? list.filter(Boolean) : [];
+            return Array.from(new Set([...safe, ...SPEED_E_COM_FIXED_TASK_TYPES]));
         }
         const currentUserCompanyKey = normalizeCompanyKey((currentUser as any)?.companyName || (currentUser as any)?.company);
         if (!companyKey && currentUserCompanyKey === SPEED_E_COM_COMPANY_KEY) {
-            results = results.length > 0 ? results : [...SPEED_E_COM_FIXED_TASK_TYPES];
+            const safe = Array.isArray(list) ? list.filter(Boolean) : [];
+            return safe.length > 0 ? safe : [...SPEED_E_COM_FIXED_TASK_TYPES];
         }
         if (companyKey === 'all' && currentUserCompanyKey === SPEED_E_COM_COMPANY_KEY) {
-            results = results.length > 0 ? results : [...SPEED_E_COM_FIXED_TASK_TYPES];
+            const safe = Array.isArray(list) ? list.filter(Boolean) : [];
+            return safe.length > 0 ? safe : [...SPEED_E_COM_FIXED_TASK_TYPES];
         }
-        return dedupeTaskTypes(results);
-    }, [currentUser, dedupeTaskTypes, normalizeCompanyKey]);
+        return list;
+    }, [currentUser, normalizeCompanyKey]);
 
     const [taskTypeCompanyOverrides, setTaskTypeCompanyOverrides] = useState<Record<string, string[]>>({});
 
@@ -1911,15 +1895,23 @@ const DashboardPage = () => {
     }, [tasks, normalizeText]);
 
     const getTaskTypesForCompany = useCallback((companyName: string): string[] => {
+        const companyKey = normalizeText(companyName);
+        if (!companyKey) return [];
+        const fromTasks = Array.from(taskTypesByCompanyFromTasks.get(companyKey) || []);
+        const fromOverrides = Array.isArray(taskTypeCompanyOverrides?.[companyKey])
+            ? taskTypeCompanyOverrides[companyKey]
+            : [];
+        const merged = Array.from(new Set([...fromOverrides, ...fromTasks]));
         const selectedCompanyKey = normalizeCompanyKey(companyName);
-        if (!selectedCompanyKey) return [];
-
-        const isAdmin = normalizeRoleKey(currentUser?.role) === 'admin' || normalizeRoleKey(currentUser?.role) === 'super_admin';
-        const isSpeedEcom = selectedCompanyKey === SPEED_E_COM_COMPANY_KEY;
-
-        const matched = (companies || []).find((c: any) => normalizeCompanyKey(c?.name || c?.companyName || c?.title) === selectedCompanyKey);
-        const matchingCompanyId = matched?._id || matched?.id;
-
+        const matchingCompanyId =
+            (companies || []).find((c: any) => {
+                const name = String(c?.name || c?.companyName || c?.title || '').trim();
+                return normalizeCompanyKey(name) === selectedCompanyKey;
+            })?._id ||
+            (companies || []).find((c: any) => {
+                const name = String(c?.name || c?.companyName || c?.title || '').trim();
+                return normalizeCompanyKey(name) === selectedCompanyKey;
+            })?.id;
         const fromApi = (taskTypes || [])
             .filter((t: any) => {
                 const typeCompanyId = String(t?.companyId || '').trim();
@@ -1927,26 +1919,22 @@ const DashboardPage = () => {
             })
             .map((t: any) => (t?.name || '').toString().trim())
             .filter(Boolean);
-
-        if (isAdmin || isSpeedEcom) {
-            const fromTasks = Array.from(taskTypesByCompanyFromTasks.get(selectedCompanyKey) || []);
-            const fromOverrides = Array.isArray(taskTypeCompanyOverrides?.[selectedCompanyKey])
-                ? taskTypeCompanyOverrides[selectedCompanyKey]
-                : [];
-            return restrictTaskTypesForCompany(companyName, [...fromApi, ...fromOverrides, ...fromTasks]);
+        const combined = Array.from(new Set([...fromApi, ...merged]));
+        if (selectedCompanyKey === SPEED_E_COM_COMPANY_KEY) {
+            return restrictTaskTypesForCompany(companyName, combined)
+                .sort((a, b) => a.localeCompare(b));
         }
-
-        const fromOverrides = Array.isArray(taskTypeCompanyOverrides?.[selectedCompanyKey])
-            ? taskTypeCompanyOverrides[selectedCompanyKey]
-            : [];
-
-        if (fromOverrides.length > 0) {
-            return restrictTaskTypesForCompany(companyName, fromOverrides);
+        return restrictTaskTypesForCompany(companyName, combined)
+            .sort((a, b) => a.localeCompare(b));
+        const role = (currentUser?.role || '').toString().toLowerCase();
+        if (role === 'manager' || role === 'marketer_manager') {
+            const allowedKeys = allowedTaskTypeKeysForManager;
+            return merged
+                .filter((t) => allowedKeys.has((t || '').toString().trim().toLowerCase()))
+                .sort((a, b) => a.localeCompare(b));
         }
-
-        const fromTasks = Array.from(taskTypesByCompanyFromTasks.get(selectedCompanyKey) || []);
-        return restrictTaskTypesForCompany(companyName, [...fromApi, ...fromTasks]);
-    }, [companies, currentUser?.role, normalizeCompanyKey, normalizeRoleKey, restrictTaskTypesForCompany, taskTypeCompanyOverrides, taskTypes, taskTypesByCompanyFromTasks]);
+        return merged.sort((a, b) => a.localeCompare(b));
+    }, [allowedTaskTypeKeysForManager, companies, currentUser?.role, normalizeCompanyKey, normalizeText, restrictTaskTypesForCompany, taskTypeCompanyOverrides, taskTypes, taskTypesByCompanyFromTasks]);
 
     function getBrandCompanyNameSafe(b: any): string {
         const raw = (b?.company ?? (b as any)?.companyName) as any;
@@ -2159,7 +2147,6 @@ const DashboardPage = () => {
             const name = (t?.name || '').toString().trim().toLowerCase();
             return name === 'brand assignment';
         })?.name;
-
         const ensureBrandAssignment = (list: string[]) => {
             const label = (brandAssignmentLabel || '').toString().trim();
             if (!label) return list;
@@ -2167,13 +2154,8 @@ const DashboardPage = () => {
             if (has) return list;
             return [...list, label];
         };
-
         const roleKey = normalizeRoleKey(currentUser?.role);
-        const isAdmin = roleKey === 'admin' || roleKey === 'super_admin';
         const isPersonScoped = roleKey === 'assistant' || roleKey === 'sbm' || roleKey === 'rm' || roleKey === 'am' || roleKey === 'ar';
-        const selectedCompanyKey = normalizeCompanyKey(filters.company);
-        const isSpeedEcom = selectedCompanyKey === SPEED_E_COM_COMPANY_KEY;
-
         if (roleKey === 'assistant') {
             const companyKey = normalizeText(filters.company === 'all' ? '' : filters.company);
             const brandKey = normalizeText(filters.brand === 'all' ? '' : filters.brand);
@@ -2191,40 +2173,56 @@ const DashboardPage = () => {
                 })
                 .map((t: any) => String((t as any)?.taskType || (t as any)?.type || '').trim())
                 .filter(Boolean);
-            return restrictTaskTypesForCompany(filters.company, ensureBrandAssignment(filtered));
+            const merged = ensureBrandAssignment(Array.from(new Set(filtered)));
+            return restrictTaskTypesForCompany(filters.company, merged.sort((a, b) => a.localeCompare(b)));
         }
-
         if (filters.company !== 'all' && filters.brand !== 'all') {
-            if (isPersonScoped && !isSpeedEcom) {
+            if (isPersonScoped) {
                 return restrictTaskTypesForCompany(filters.company, ensureBrandAssignment(getTaskTypesForCompanyUserBrand(filters.company, filters.brand, currentUser?.email || '')));
-            }
-            if (isAdmin || isSpeedEcom) {
-                return restrictTaskTypesForCompany(filters.company, ensureBrandAssignment(getTaskTypesForCompany(filters.company)));
             }
             return restrictTaskTypesForCompany(filters.company, ensureBrandAssignment(getTaskTypesForCompanyBrand(filters.company, filters.brand)));
         }
-
         if (filters.company !== 'all') {
-            if (isPersonScoped && !isSpeedEcom) {
+            if (isPersonScoped) {
                 return restrictTaskTypesForCompany(filters.company, ensureBrandAssignment(getTaskTypesForCompanyUser(filters.company, currentUser?.email || '')));
             }
             return restrictTaskTypesForCompany(filters.company, ensureBrandAssignment(getTaskTypesForCompany(filters.company)));
         }
-
         const fromOverrides = Object.values(taskTypeCompanyOverrides || {}).flatMap((arr) => (Array.isArray(arr) ? arr : []));
         const fromTasks = Array.from(taskTypesByCompanyFromTasks.values()).flatMap((set) => Array.from(set));
-        const merged = ensureBrandAssignment([...availableTaskTypes, ...fromOverrides, ...fromTasks]);
-
-        const role = (currentUser?.role || '').toString().toLowerCase();
-        if (role === 'manager' || role === 'marketer_manager' || role === 'md_manager' || role === 'ob_manager') {
+        const merged = ensureBrandAssignment(Array.from(new Set([...availableTaskTypes, ...fromOverrides, ...fromTasks])));
+        const canonicalizeTypeLabel = (value: unknown): string => {
+            const raw = (value == null ? '' : String(value)).trim();
+            if (!raw) return '';
+            const key = raw.toLowerCase().replace(/[\s-]+/g, ' ').trim();
+            if (key === 'troubleshoot' || key === 'trouble shoot' || key === 'trubbleshot' || key === 'trubble shoot') {
+                return 'Troubleshoot';
+            }
+            return raw;
+        };
+        const dedupeByCanonicalKey = (items: string[]): string[] => {
+            const map = new Map<string, string>();
+            (items || []).forEach((x) => {
+                const label = canonicalizeTypeLabel(x);
+                if (!label) return;
+                const key = label.toLowerCase();
+                if (!map.has(key)) map.set(key, label);
+            });
+            return Array.from(map.values());
+        };
+        if (roleKey === 'manager' || roleKey === 'md_manager' || roleKey === 'ob_manager') {
             const fixed = ['Other Work', 'Troubleshoot', 'Regular', 'goggle']
                 .map((x) => (x || '').toString().trim())
                 .filter(Boolean);
-            return dedupeTaskTypes(fixed).sort((a, b) => a.localeCompare(b));
+            const uniqueByKey = new Map<string, string>();
+            fixed.forEach((label) => {
+                const key = label.toLowerCase();
+                if (!uniqueByKey.has(key)) uniqueByKey.set(key, label);
+            });
+            return Array.from(uniqueByKey.values()).sort((a, b) => a.localeCompare(b));
         }
-
-        return restrictTaskTypesForCompany(filters.company, merged).sort((a, b) => a.localeCompare(b));
-    }, [assistantScopedTasks, availableTaskTypes, currentUser?.email, currentUser?.role, dedupeTaskTypes, filters.brand, filters.company, getTaskTypesForCompany, getTaskTypesForCompanyBrand, getTaskTypesForCompanyUser, getTaskTypesForCompanyUserBrand, normalizeCompanyKey, normalizeRoleKey, normalizeText, restrictTaskTypesForCompany, taskTypeCompanyOverrides, taskTypes, taskTypesByCompanyFromTasks]);
+        return restrictTaskTypesForCompany(filters.company, dedupeByCanonicalKey(merged).sort((a, b) => a.localeCompare(b)));
+    }, [allowedTaskTypeKeysForManager, assistantScopedTasks, availableTaskTypes, currentUser?.email, currentUser?.role, filters.brand, filters.company, getTaskTypesForCompany, getTaskTypesForCompanyBrand, getTaskTypesForCompanyUser, getTaskTypesForCompanyUserBrand, normalizeRoleKey, normalizeText, restrictTaskTypesForCompany, taskTypeCompanyOverrides, taskTypes, taskTypesByCompanyFromTasks]);
 
     const availableTaskTypesForNewTask = useMemo(() => {
         const role = String((currentUser as any)?.role || '').toString().trim().toLowerCase();
@@ -2265,20 +2263,7 @@ const DashboardPage = () => {
     }, [currentUser, currentUser?.email, getTaskTypesForCompany, getTaskTypesForCompanyBrand, getTaskTypesForCompanyUser, getTaskTypesForCompanyUserBrand, newTask.brand, newTask.companyName, restrictTaskTypesForCompany]);
 
     const availableTaskTypesForEditTask = useMemo(() => {
-        const role = normalizeRoleKey(currentUser?.role);
-        if (role === 'troubleshoot_manager') return ['Troubleshoot'];
         if (!editFormData.companyName) return availableTaskTypesForFilters;
-
-        const company = editFormData.companyName;
-        const isAdmin = role === 'admin' || role === 'super_admin';
-        const isSpeedEcom = normalizeCompanyKey(company) === SPEED_E_COM_COMPANY_KEY;
-
-        const baseCompany = () => restrictTaskTypesForCompany(company, getTaskTypesForCompany(company));
-
-        if (isAdmin || isSpeedEcom) {
-            return baseCompany();
-        }
-
         if (editFormData.brand && editFormData.assignedTo) {
             const fromPerson = restrictTaskTypesForCompany(editFormData.companyName, getTaskTypesForCompanyUserBrand(editFormData.companyName, editFormData.brand, editFormData.assignedTo));
             const current = (editFormData.taskType || '').toString().trim();
@@ -2296,8 +2281,8 @@ const DashboardPage = () => {
             return [...fromUser, current];
         }
         if (editFormData.brand) return restrictTaskTypesForCompany(editFormData.companyName, getTaskTypesForCompanyBrand(editFormData.companyName, editFormData.brand));
-        return baseCompany();
-    }, [availableTaskTypesForFilters, currentUser?.role, editFormData.assignedTo, editFormData.brand, editFormData.companyName, editFormData.taskType, getTaskTypesForCompany, getTaskTypesForCompanyBrand, getTaskTypesForCompanyUser, getTaskTypesForCompanyUserBrand, normalizeCompanyKey, normalizeRoleKey, restrictTaskTypesForCompany]);
+        return restrictTaskTypesForCompany(editFormData.companyName, getTaskTypesForCompany(editFormData.companyName));
+    }, [availableTaskTypesForFilters, editFormData.assignedTo, editFormData.brand, editFormData.companyName, editFormData.taskType, getTaskTypesForCompany, getTaskTypesForCompanyBrand, getTaskTypesForCompanyUser, getTaskTypesForCompanyUserBrand, restrictTaskTypesForCompany]);
 
     const fetchCompanyBrandTaskTypeMapping = useCallback(async (companyName: string, brandName: string) => {
         try {
@@ -2502,6 +2487,7 @@ const DashboardPage = () => {
             | 'other-work'
             | 'manager-monthly-rankings'
             | 'md-impex-strike'
+            | 'md-impex-manual-strike'
             | 'md-impex-access'
             | 'personal-tasks'
             | 'assigned-by-me'
@@ -2525,6 +2511,7 @@ const DashboardPage = () => {
             'manager-monthly-rankings': 'manager-monthly-rankings',
             'other-work': 'other-work',
             'md-impex-strike': 'md-impex-strike',
+            'md-impex-manual-strike': 'md-impex-manual-strike',
             'md-impex-access': 'md-impex-access',
             'personal-tasks': 'personal-tasks',
             'assigned-by-me': 'assigned-by-me',
@@ -2550,6 +2537,7 @@ const DashboardPage = () => {
             'manager-monthly-rankings': 'tasks_page',
             'other-work': 'other_work_page',
             'md-impex-strike': '',
+            'md-impex-manual-strike': '',
             'md-impex-access': '',
             'personal-tasks': '',
             'headline': '',
@@ -2579,6 +2567,7 @@ const DashboardPage = () => {
             'manager-monthly-rankings': routepath.managerMonthlyRankings,
             'other-work': routepath.otherWork,
             'md-impex-strike': routepath.mdImpexStrike,
+            'md-impex-manual-strike': routepath.mdImpexManualStrike,
             'md-impex-access': routepath.mdImpexAccess,
             'personal-tasks': routepath.personalTasks,
             'headline': routepath.headline,
@@ -2613,6 +2602,20 @@ const DashboardPage = () => {
                 return;
             }
             setCurrentView('md-impex-strike');
+            return;
+        }
+        if (path === routepath.mdImpexManualStrike) {
+            const userCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase();
+            const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
+            const isAdmin = roleKey === 'admin' || roleKey === 'super_admin';
+            const isMdImpexUser = isAdmin || userCompany.includes('mdimpex') || userCompany.includes('md_impex') || userCompany === 'md impex';
+
+            if (!isMdImpexUser) {
+                toast.error('Access denied');
+                navigate(routepath.dashboard);
+                return;
+            }
+            setCurrentView('md-impex-manual-strike');
             return;
         }
         if (path === routepath.mdImpexAccess) {
@@ -3126,11 +3129,11 @@ const DashboardPage = () => {
         [users],
     );
 
-    const getAvailableBrandOptions = useCallback((): Array<{ value: string; label: string }> => {
+    const getAvailableBrandOptions = useCallback((): Array<{ value: string; label: string; ownerId?: string; createdBy?: string }> => {
         const company = newTask.companyName;
         if (!company) return [];
         const companyKey = normalizeCompanyKey(company);
-        const byNameKey = new Map<string, { value: string; label: string }>();
+        const byNameKey = new Map<string, { value: string; label: string; ownerId?: string; createdBy?: string }>();
         const addOption = (plainName: string) => {
             const name = (plainName || '').toString().trim();
             if (!name) return;
@@ -3142,7 +3145,16 @@ const DashboardPage = () => {
             ));
             const groupNumber = String((brandDoc as any)?.groupNumber || '').trim();
             const label = groupNumber ? `${groupNumber} - ${name}` : name;
-            byNameKey.set(key, { value: name, label });
+
+            const ownerId = (brandDoc as any)?.ownerId || (brandDoc as any)?.owner?.id || (brandDoc as any)?.owner?._id || (brandDoc as any)?.owner;
+            const createdBy = (brandDoc as any)?.createdBy;
+
+            byNameKey.set(key, {
+                value: name,
+                label,
+                ownerId: typeof ownerId === 'string' ? ownerId : undefined,
+                createdBy: typeof createdBy === 'string' ? createdBy : undefined
+            });
         };
         const email = stripDeletedEmailSuffix(currentUser?.email || '').trim().toLowerCase();
         if (email) {
@@ -3210,7 +3222,7 @@ const DashboardPage = () => {
         return Array.from(byNameKey.values()).sort((a, b) => a.label.localeCompare(b.label));
     }, [brandNamesByCompanyUserKey, brands, editFormData.assignedTo, editFormData.companyName, getBrandCompanyNameSafe, getBrandNameSafe, normalizeCompanyKey, normalizeText, stripDeletedEmailSuffix]);
 
-    const formatBrandWithGroupNumber = useCallback((task: any): string => {
+    const _formatBrandWithGroupNumber = useCallback((task: any): string => {
         const plain = String(task?.brand || '').trim();
         if (!plain) return '';
         const company = String(task?.companyName || task?.company || '').trim();
@@ -3228,6 +3240,8 @@ const DashboardPage = () => {
         const groupNumber = String(brandDoc?.groupNumber || '').trim();
         return groupNumber ? `${groupNumber} - ${plain}` : plain;
     }, [brands, getBrandCompanyNameSafe, getBrandNameSafe, normalizeCompanyKey, normalizeText]);
+
+    void _formatBrandWithGroupNumber;
 
     const handleSaveComment = useCallback(async (taskId: string, comment: string): Promise<CommentType> => {
         try {
@@ -3951,9 +3965,11 @@ const DashboardPage = () => {
         return Array.from(new Set(pages));
     }, [taskPage, totalTaskPages]);
 
-    const showListActionsColumn = useMemo(() => {
+    const _showListActionsColumn = useMemo(() => {
         return displayTasks.some((t: Task) => canEditTask(t) || canEditDeleteTask(t));
     }, [displayTasks, canEditTask, canEditDeleteTask]);
+
+    void _showListActionsColumn;
 
     useMemo(() => {
         if (!currentUser?.email) return [];
@@ -4257,7 +4273,8 @@ const DashboardPage = () => {
             {
                 name: 'Total Tasks',
                 value: filtered.length,
-                change: '+12%',
+                change: '',
+
                 changeType: 'positive',
                 icon: BarChart3,
                 id: 'total',
@@ -4267,7 +4284,8 @@ const DashboardPage = () => {
             {
                 name: 'Completed',
                 value: completedTasks.length,
-                change: '+8%',
+                change: '',
+
                 changeType: 'positive',
                 icon: CheckCircle,
                 id: 'completed',
@@ -4277,7 +4295,8 @@ const DashboardPage = () => {
             {
                 name: 'Pending',
                 value: pendingTasks.length,
-                change: '-3%',
+                change: '',
+
                 changeType: 'negative',
                 icon: Clock,
                 id: 'pending',
@@ -4287,7 +4306,8 @@ const DashboardPage = () => {
             {
                 name: 'Overdue',
                 value: overdueTasks.length,
-                change: '+5%',
+                change: '',
+
                 changeType: 'negative',
                 icon: AlertCircle,
                 id: 'overdue',
@@ -4296,55 +4316,6 @@ const DashboardPage = () => {
             }
         ];
     }, [canViewAllTasks, currentUser, filters, isOverdue, normalizeCompanyKey, normalizeRoleKey, searchTerm, tasks, usersRef]);
-
-    const getPriorityColor = useCallback((priority?: TaskPriority) => {
-        switch (priority) {
-            case 'high': return 'border-red-300 bg-red-50 text-red-700';
-            case 'medium': return 'border-amber-300 bg-amber-50 text-amber-700';
-            case 'low': return 'border-blue-300 bg-blue-50 text-blue-700';
-            default: return 'border-gray-300 bg-gray-50 text-gray-700';
-        }
-    }, []);
-
-    const getStatusColor = useCallback((status: TaskStatus) => {
-        switch (status) {
-            case 'completed': return 'border-emerald-300 bg-emerald-50 text-emerald-700';
-            case 'in-progress': return 'border-blue-300 bg-blue-50 text-blue-700';
-            case 'pending': return 'border-amber-300 bg-amber-50 text-amber-700';
-            default: return 'border-gray-300 bg-gray-50 text-gray-700';
-        }
-    }, []);
-
-    const getCompanyColor = useCallback((companyName?: string) => {
-        const value = (companyName || '').toLowerCase().trim();
-        if (!value) return 'border-gray-300 bg-gray-50 text-gray-700';
-        const palette = [
-            'border-purple-300 bg-purple-50 text-purple-700',
-            'border-indigo-300 bg-indigo-50 text-indigo-700',
-            'border-blue-300 bg-blue-50 text-blue-700',
-            'border-emerald-300 bg-emerald-50 text-emerald-700',
-            'border-amber-300 bg-amber-50 text-amber-700',
-            'border-rose-300 bg-rose-50 text-rose-700',
-        ];
-        const hash = value.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
-        return palette[hash % palette.length];
-    }, []);
-
-    const getBrandColor = useCallback((brand: string) => {
-        const value = (brand || '').toLowerCase().trim();
-        if (!value) return 'border-gray-300 bg-gray-50 text-gray-700';
-        const palette = [
-            'border-purple-300 bg-purple-50 text-purple-700',
-            'border-indigo-300 bg-indigo-50 text-indigo-700',
-            'border-blue-300 bg-blue-50 text-blue-700',
-            'border-emerald-300 bg-emerald-50 text-emerald-700',
-            'border-amber-300 bg-amber-50 text-amber-700',
-            'border-rose-300 bg-rose-50 text-rose-700',
-        ];
-        const hash = value.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
-        return palette[hash % palette.length];
-    }, []);
-
     const getActiveFilterCount = useCallback(() => {
         let count = 0;
         const isCompanyForced = (availableCompanies || []).length === 1;
@@ -5336,7 +5307,9 @@ const DashboardPage = () => {
         const isMdImpexUser = currentUserCompany.includes('mdimpex') ||
             currentUserCompany.includes('md_impex') ||
             currentUserCompany.includes('md impex') ||
-            currentUserRole === 'md_manager';
+            currentUserRole === 'md_manager' ||
+            currentUserRole === 'assistant' ||
+            currentUserRole === 'assistance';
         if (isMdImpexTask || isMdImpexUser) {
             const dueDate = task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '';
             setEditFormData({
@@ -5849,1219 +5822,1328 @@ const DashboardPage = () => {
                 <main className="flex-1 overflow-auto pb-24 sm:pb-0">
                     <div className="py-0 sm:py-8">
                         <div className={dashboardContainerClasses}>
-                            <Suspense fallback={<DashboardPageSkeleton />}>
-                                {currentView === 'dashboard' ? (
-                                    <>
-                                        <div className="mb-6 sm:mb-10 px-4 sm:px-0">
-                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-                                                <div>
-                                                    <div className="flex items-center gap-3 mb-1">
-                                                        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-                                                            Dashboard
-                                                        </h1>
-                                                    </div>
-                                                    <p className="text-gray-600">
-                                                        {canViewAllTasks
-                                                            ? `Welcome ${currentUser.name}. Manage all tasks.`
-                                                            : `Welcome back, ${currentUser.name}. Here are your tasks.`
-                                                        }
-                                                    </p>
+                            {currentView === 'dashboard' ? (
+                                <>
+                                    <div className="mb-6 sm:mb-10 px-4 sm:px-0">
+                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+                                            <div>
+                                                <div className="flex items-center gap-3 mb-1">
+                                                    <h1 className="text-4xl sm:text-2xl font-bold text-gray-900">
+                                                        Dashboard
+                                                    </h1>
                                                 </div>
-                                                <div className="flex flex-wrap gap-3">
-                                                    <button
-                                                        onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                                                        className="inline-flex items-center px-4 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
-                                                    >
-                                                        <Filter className="mr-2 h-4 w-4" />
-                                                        Advanced Filters
-                                                        {getActiveFilterCount() > 0 && (
-                                                            <span className="ml-2 bg-blue-100 text-blue-600 text-xs font-semibold px-2 py-0.5 rounded-full">
-                                                                {getActiveFilterCount()}
-                                                            </span>
-                                                        )}
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setCurrentView('all-tasks')}
-                                                        className="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-xl shadow-sm text-white bg-linear-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
-                                                    >
-                                                        <ListTodo className="mr-2 h-4 w-4" />
-                                                        View All Tasks
-                                                    </button>
-                                                    {canCreateTasks && (
-                                                        <button
-                                                            onClick={() => openAddTaskModal()}
-                                                            className="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-xl shadow-sm text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700"
-                                                        >
-                                                            <PlusCircle className="mr-2 h-4 w-4" />
-                                                            Add Task
-                                                        </button>
+                                                <p className="text-gray-600 ">
+                                                    {canViewAllTasks
+                                                        ? `Welcome ${currentUser.name}. Manage all tasks.`
+                                                        : `Welcome back, ${currentUser.name}. Here are your tasks.`
+                                                    }
+                                                </p>
+                                            </div>
+                                            <div className="flex flex-wrap gap-3">
+                                                <button
+                                                    onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                                                    className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
+                                                >
+                                                    <Filter className="mr-2 h-4 w-4" />
+                                                    Advanced Filters
+                                                    {getActiveFilterCount() > 0 && (
+                                                        <span className="ml-2 bg-blue-100 text-blue-600 text-xs font-semibold px-2 py-0.5 rounded-full">
+                                                            {getActiveFilterCount()}
+                                                        </span>
                                                     )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <AdvancedFilters
-                                            filters={filters}
-                                            availableCompanies={availableCompanies}
-                                            availableTaskTypes={availableTaskTypesForFilters}
-                                            availableBrands={availableBrands}
-                                            availableRms={availableRmUsersForFilters}
-                                            getBrandLabel={getBrandLabelForFilter}
-                                            users={users}
-                                            currentUser={currentUser}
-                                            onFilterChange={handleAdvancedFilterChange}
-                                            onResetFilters={resetFilters}
-                                            showFilters={showAdvancedFilters}
-                                            onToggleFilters={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                                        />
-                                        {showTaskCommentSidebar && commentSidebarTask ? (
-                                            <div className="fixed inset-0 z-50">
-                                                <div
-                                                    className="absolute inset-0 bg-black/20 backdrop-blur-sm"
-                                                    onClick={handleCloseTaskCommentSidebar}
-                                                />
-                                                <div className="absolute inset-0 right-0">
-                                                    <div className="h-full bg-white shadow-xl overflow-y-auto w-full md:w-[500px]">
-                                                        <div className="sticky top-0 bg-white border-b z-10">
-                                                            <div className="px-4 py-4">
-                                                                <div className="flex items-center justify-between">
-                                                                    <div>
-                                                                        <h2 className="text-lg font-bold text-gray-900">Comments</h2>
-                                                                        <p className="text-gray-600 text-sm mt-1">{commentSidebarTask.title}</p>
-                                                                    </div>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={handleCloseTaskCommentSidebar}
-                                                                        className="p-2 hover:bg-gray-100 rounded-lg"
-                                                                    >
-                                                                        <X className="h-5 w-5 text-gray-500" />
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div className="p-4">
-                                                            <div className="mb-4">
-                                                                <h4 className="font-medium text-gray-900 mb-2">Add Comment</h4>
-                                                                <textarea
-                                                                    value={commentDraft}
-                                                                    onChange={(e) => setCommentDraft(e.target.value)}
-                                                                    placeholder="Type your comment here..."
-                                                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[90px] resize-none"
-                                                                    rows={3}
-                                                                />
-                                                                <div className="flex justify-end mt-3">
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={handleSubmitTaskComment}
-                                                                        disabled={!commentDraft.trim() || commentSidebarLoading}
-                                                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2 transition-colors"
-                                                                    >
-                                                                        {commentSidebarLoading ? (
-                                                                            <>
-                                                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                                                                Sending...
-                                                                            </>
-                                                                        ) : (
-                                                                            <>
-                                                                                <Send className="h-4 w-4" />
-                                                                                Add Comment
-                                                                            </>
-                                                                        )}
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                            <div className="border-t pt-4">
-                                                                <div className="flex items-center justify-between mb-3">
-                                                                    <h4 className="font-medium text-gray-900">All Comments</h4>
-                                                                    <span className="text-xs text-gray-500">
-                                                                        {getCommentSidebarComments(String(commentSidebarTask.id)).length} total
-                                                                    </span>
-                                                                </div>
-                                                                {commentSidebarLoadingComments ? (
-                                                                    <div className="text-center py-8">
-                                                                        <Loader2 className="h-8 w-8 animate-spin mx-auto text-gray-400" />
-                                                                        <p className="mt-2 text-gray-500">Loading comments...</p>
-                                                                    </div>
-                                                                ) : getCommentSidebarComments(String(commentSidebarTask.id)).length === 0 ? (
-                                                                    <div className="text-center py-8">
-                                                                        <MessageSquare className="h-10 w-10 mx-auto text-gray-300" />
-                                                                        <p className="mt-2 text-gray-500">No comments yet</p>
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className="space-y-3">
-                                                                        {getCommentSidebarComments(String(commentSidebarTask.id)).map((c) => (
-                                                                            <div key={c.id} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                                                                                <div className="flex items-center justify-between gap-3 mb-1">
-                                                                                    <div className="text-xs font-semibold text-gray-700 truncate" title={c.userEmail}>
-                                                                                        {c.userName || c.userEmail}
-                                                                                    </div>
-                                                                                    <div className="text-[11px] text-gray-500 shrink-0">
-                                                                                        {c.createdAt ? formatDate(c.createdAt) : ''}
-                                                                                    </div>
-                                                                                </div>
-                                                                                <div className="text-sm text-gray-800 whitespace-pre-wrap break-words">
-                                                                                    {(c.content || '').trim()}
-                                                                                </div>
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ) : null}
-                                        <div className="hidden sm:block mb-10 px-4 sm:px-0">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-                                                {stats.map((stat) => (
+                                                </button>
+                                                <button
+                                                    onClick={() => setCurrentView('all-tasks')}
+                                                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-lg shadow-sm text-white bg-primary hover:bg-primary-dark"
+                                                >
+                                                    <ListTodo className="mr-2 h-4 w-4" />
+                                                    View All Tasks
+                                                </button>
+                                                {canCreateTasks && (
                                                     <button
-                                                        key={stat.name}
-                                                        onClick={() => handleStatClick(stat.id)}
-                                                        type="button"
-                                                        role="radio"
-                                                        aria-checked={selectedStatFilter === stat.id}
-                                                        className={`bg-white p-6 rounded-2xl shadow-sm border-2 cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-1 relative ${selectedStatFilter === stat.id
-                                                            ? 'border-blue-500 shadow-lg shadow-blue-50'
-                                                            : 'border-transparent hover:border-gray-200'
-                                                            }`}
+                                                        onClick={() => openAddTaskModal()}
+                                                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-lg shadow-sm text-white bg-primary-light hover:bg-primary"
                                                     >
-                                                        <div
-                                                            className={`absolute top-4 right-4 h-5 w-5 rounded-full border-2 transition-colors ${selectedStatFilter === stat.id
-                                                                ? 'border-blue-600'
-                                                                : 'border-gray-300'
-                                                                }`}
-                                                        >
-                                                            {selectedStatFilter === stat.id ? (
-                                                                <div className="h-full w-full flex items-center justify-center">
-                                                                    <div className="h-2.5 w-2.5 rounded-full bg-blue-600" />
-                                                                </div>
-                                                            ) : null}
-                                                        </div>
-                                                        <div className="flex items-start justify-between">
-                                                            <div className="flex-1">
-                                                                <div className="flex items-center gap-3 mb-3">
-                                                                    <div className={`p-3 rounded-xl ${stat.bgColor}`}>
-                                                                        <stat.icon className={`h-6 w-6 ${stat.color}`} />
-                                                                    </div>
-                                                                    <div>
-                                                                        <p className="text-sm font-medium text-gray-600">{stat.name}</p>
-                                                                        <div className="flex items-baseline gap-2">
-                                                                            <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
-                                                                            <div className={`flex items-center text-xs font-medium px-2 py-1 rounded-full ${stat.changeType === 'positive'
-                                                                                ? 'bg-emerald-50 text-emerald-700'
-                                                                                : stat.changeType === 'negative'
-                                                                                    ? 'bg-rose-50 text-rose-700'
-                                                                                    : 'bg-gray-50 text-gray-700'
-                                                                                }`}>
-                                                                                {stat.changeType === 'positive' ? (
-                                                                                    <TrendingUp className="h-3 w-3 mr-1" />
-                                                                                ) : stat.changeType === 'negative' ? (
-                                                                                    <TrendingDown className="h-3 w-3 mr-1" />
-                                                                                ) : null}
-                                                                                {stat.change}
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="flex items-center justify-between">
-                                                                    <span className="text-xs text-gray-500">
-                                                                        {stat.id === 'completed' ? 'From last week' :
-                                                                            stat.id === 'overdue' ? 'Needs attention' :
-                                                                                'View details'}
-                                                                    </span>
-                                                                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${selectedStatFilter === stat.id
-                                                                        ? 'bg-blue-100 text-blue-600'
-                                                                        : 'bg-gray-100 text-gray-600'
-                                                                        }`}>
-                                                                        Click to filter
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
+                                                        <PlusCircle className="mr-2 h-4 w-4" />
+                                                        Add Task
                                                     </button>
-                                                ))}
+                                                )}
                                             </div>
                                         </div>
-                                        {(!isSpeedEcomUser || String((currentUser as any)?.role || '').trim().toLowerCase() === 'admin' || String((currentUser as any)?.role || '').trim().toLowerCase() === 'super_admin') ? (
-                                            String((currentUser as any)?.role || '').trim().toLowerCase() !== 'troubleshoot_manager' ? (
-                                                <>
-                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6 px-4 sm:px-0">
-                                                        {(() => {
-                                                            const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
-                                                            const canSee = roleKey === 'admin' || roleKey === 'super_admin' || roleKey === 'manager' || roleKey === 'md_manager' || roleKey === 'ob_manager' || roleKey === 'all_manager' || roleKey === 'marketer_manager';
-                                                            if (!canSee) return null;
-                                                            return (
+                                    </div>
+                                    <AdvancedFilters
+                                        filters={filters}
+                                        availableCompanies={availableCompanies}
+                                        availableTaskTypes={availableTaskTypesForFilters}
+                                        availableBrands={availableBrands}
+                                        availableRms={availableRmUsersForFilters}
+                                        getBrandLabel={getBrandLabelForFilter}
+                                        users={users}
+                                        currentUser={currentUser}
+                                        onFilterChange={handleAdvancedFilterChange}
+                                        onResetFilters={resetFilters}
+                                        showFilters={showAdvancedFilters}
+                                        onToggleFilters={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                                    />
+                                    {showTaskCommentSidebar && commentSidebarTask ? (
+                                        <div className="fixed inset-0 z-50">
+                                            <div
+                                                className="absolute inset-0 bg-black/20 backdrop-blur-sm"
+                                                onClick={handleCloseTaskCommentSidebar}
+                                            />
+                                            <div className="absolute inset-0 right-0">
+                                                <div className="h-full bg-white shadow-xl overflow-y-auto w-full md:w-[500px]">
+                                                    <div className="sticky top-0 bg-white border-b z-10">
+                                                        <div className="px-4 py-4">
+                                                            <div className="flex items-center justify-between">
+                                                                <div>
+                                                                    <h2 className="text-lg font-bold text-gray-900">Comments</h2>
+                                                                    <p className="text-gray-600 text-sm mt-1">{commentSidebarTask.title}</p>
+                                                                </div>
                                                                 <button
                                                                     type="button"
-                                                                    onClick={() => setDashboardSpotlight('employee-of-month')}
-                                                                    className={`bg-white p-6 rounded-2xl shadow-sm border-2 transition-all duration-200 hover:shadow-md ${dashboardSpotlight === 'employee-of-month'
-                                                                        ? 'border-blue-500 shadow-lg shadow-blue-50'
-                                                                        : 'border-transparent hover:border-gray-200'
-                                                                        }`}
+                                                                    onClick={handleCloseTaskCommentSidebar}
+                                                                    className="p-2 hover:bg-gray-100 rounded-lg"
+                                                                >
+                                                                    <X className="h-5 w-5 text-gray-500" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="p-4">
+                                                        <div className="mb-4">
+                                                            <h4 className="font-medium text-gray-900 mb-2">Add Comment</h4>
+                                                            <textarea
+                                                                value={commentDraft}
+                                                                onChange={(e) => setCommentDraft(e.target.value)}
+                                                                placeholder="Type your comment here..."
+                                                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[90px] resize-none"
+                                                                rows={3}
+                                                            />
+                                                            <div className="flex justify-end mt-3">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={handleSubmitTaskComment}
+                                                                    disabled={!commentDraft.trim() || commentSidebarLoading}
+                                                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2 transition-colors"
+                                                                >
+                                                                    {commentSidebarLoading ? (
+                                                                        <>
+                                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                                            Sending...
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <Send className="h-4 w-4" />
+                                                                            Add Comment
+                                                                        </>
+                                                                    )}
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <div className="border-t pt-4">
+                                                            <div className="flex items-center justify-between mb-3">
+                                                                <h4 className="font-medium text-gray-900">All Comments</h4>
+                                                                <span className="text-xs text-gray-500">
+                                                                    {getCommentSidebarComments(String(commentSidebarTask.id)).length} total
+                                                                </span>
+                                                            </div>
+                                                            {commentSidebarLoadingComments ? (
+                                                                <div className="text-center py-8">
+                                                                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-gray-400" />
+                                                                    <p className="mt-2 text-gray-500">Loading comments...</p>
+                                                                </div>
+                                                            ) : getCommentSidebarComments(String(commentSidebarTask.id)).length === 0 ? (
+                                                                <div className="text-center py-8">
+                                                                    <MessageSquare className="h-10 w-10 mx-auto text-gray-300" />
+                                                                    <p className="mt-2 text-gray-500">No comments yet</p>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="space-y-3">
+                                                                    {getCommentSidebarComments(String(commentSidebarTask.id)).map((c) => (
+                                                                        <div key={c.id} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                                                            <div className="flex items-center justify-between gap-3 mb-1">
+                                                                                <div className="text-xs font-semibold text-gray-700 truncate" title={c.userEmail}>
+                                                                                    {c.userName || c.userEmail}
+                                                                                </div>
+                                                                                <div className="text-[11px] text-gray-500 shrink-0">
+                                                                                    {c.createdAt ? formatDate(c.createdAt) : ''}
+                                                                                </div>
+                                                                            </div>
+                                                                            <div className="text-sm text-gray-800 whitespace-pre-wrap break-words">
+                                                                                {(c.content || '').trim()}
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : null}
+                                    <div className="hidden sm:block mb-10 px-4 sm:px-0">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                                            {stats.map((stat) => (
+                                                <button
+                                                    key={stat.name}
+                                                    onClick={() => handleStatClick(stat.id)}
+                                                    type="button"
+                                                    role="radio"
+                                                    aria-checked={selectedStatFilter === stat.id}
+                                                    className={`
+                    bg-white p-4 rounded-xl shadow-sm border-2 cursor-pointer 
+                    transition-all duration-300 ease-out hover:shadow-md hover:-translate-y-0.5 
+                    relative group
+                    ${selectedStatFilter === stat.id
+                                                            ? 'border-[#1e3a8a] shadow-md'
+                                                            : 'border-gray-100 hover:border-[#1e3a8a]'
+                                                        }
+                `}
+                                                >
+                                                    {/* Selection Indicator */}
+                                                    <div
+                                                        className={`
+                        absolute top-3 right-3 h-4 w-4 rounded-full border-2 
+                        transition-all duration-200 ease-out
+                        ${selectedStatFilter === stat.id
+                                                                ? 'border-[#1e3a8a] bg-[#3b82f6] scale-100'
+                                                                : 'border-gray-200 bg-white group-hover:border-[#1e3a8a] group-hover:scale-110'
+                                                            }
+                    `}
+                                                    >
+                                                        {selectedStatFilter === stat.id && (
+                                                            <div className="h-full w-full flex items-center justify-center">
+                                                                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="flex items-start">
+                                                        <div className="flex-1">
+                                                            {/* Icon and Value Row */}
+                                                            <div className="flex items-center gap-3 mb-2">
+                                                                <div
+                                                                    className={`
+                                    p-2 rounded-lg transition-all duration-200
+                                    ${selectedStatFilter === stat.id
+                                                                            ? 'bg-[#3b82f6]/10 ring-1 ring-[#3b82f6]/20'
+                                                                            : 'bg-gray-50 group-hover:bg-[#3b82f6]/5'
+                                                                        }
+                                `}
+                                                                >
+                                                                    <stat.icon
+                                                                        className={`
+                                        h-5 w-5 transition-colors duration-200
+                                        ${selectedStatFilter === stat.id
+                                                                                ? 'text-[#3b82f6]'
+                                                                                : 'text-gray-400 group-hover:text-[#3b82f6]'
+                                                                            }
+                                    `}
+                                                                    />
+                                                                </div>
+                                                                <div className="text-left">
+                                                                    <p className="text-xs font-medium text-black tracking-wide">
+                                                                        {stat.name}
+                                                                    </p>
+                                                                    <div className="flex items-baseline gap-2 mt-0.5">
+                                                                        <p className="text-2xl font-bold text-black">{stat.value}</p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Footer */}
+                                                            <div className="flex items-center justify-between mt-2 pt-1 border-t border-gray-50">
+                                                                <span className={`
+                                text-[10px] font-medium px-2 py-0.5 rounded-full 
+                                transition-all duration-200
+                                ${selectedStatFilter === stat.id
+                                                                        ? 'bg-[#3b82f6]/10 text-[#3b82f6]'
+                                                                        : 'bg-gray-50 text-gray-400 group-hover:bg-[#3b82f6]/5 group-hover:text-[#3b82f6]'
+                                                                    }
+                            `}>
+                                                                    {selectedStatFilter === stat.id ? '✓ Selected' : 'Filter'}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Hover Effect Overlay - Thin border (ring-1) */}
+                                                    <div className={`
+                    absolute inset-0 rounded-xl pointer-events-none transition-all duration-300
+                    ${selectedStatFilter === stat.id
+                                                            ? 'ring-1 ring-[#1e3a8a] ring-inset'
+                                                            : 'group-hover:ring-1 group-hover:ring-[#1e3a8a] ring-inset'
+                                                        }
+                `} />
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    {(!isSpeedEcomUser || String((currentUser as any)?.role || '').trim().toLowerCase() === 'admin' || String((currentUser as any)?.role || '').trim().toLowerCase() === 'super_admin') ? (
+                                        String((currentUser as any)?.role || '').trim().toLowerCase() !== 'troubleshoot_manager' ? (
+                                            <>
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6 px-4 sm:px-0">
+                                                    {(() => {
+                                                        const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
+                                                        const canSee = roleKey === 'admin' || roleKey === 'super_admin' || roleKey === 'manager' || roleKey === 'md_manager' || roleKey === 'ob_manager' || roleKey === 'all_manager' || roleKey === 'marketer_manager';
+                                                        if (!canSee) return null;
+                                                        return (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setDashboardSpotlight('employee-of-month')}
+                                                                className={`
+        bg-white p-4 rounded-xl shadow-sm border-2 cursor-pointer 
+        transition-all duration-300 ease-out hover:shadow-md hover:-translate-y-0.5 
+        relative group
+        ${dashboardSpotlight === 'employee-of-month'
+                                                                        ? 'border-[#1e3a8a] shadow-md'
+                                                                        : 'border-gray-100 hover:border-[#1e3a8a]'
+                                                                    }
+    `}
+                                                            >
+                                                                <div className="flex items-start justify-between">
+                                                                    <div>
+                                                                        <h2 className="text-xs font-medium text-black tracking-wide">
+                                                                            <span className="inline-flex items-center gap-2">
+                                                                                <span className={`
+                        inline-flex items-center justify-center w-6 h-6 rounded-lg 
+                        transition-all duration-200
+                        ${dashboardSpotlight === 'employee-of-month'
+                                                                                        ? 'bg-[#3b82f6]/10 ring-1 ring-[#3b82f6]/20'
+                                                                                        : 'bg-gray-50 group-hover:bg-[#3b82f6]/5'
+                                                                                    }
+                    `}>
+                                                                                    <Crown className={`
+                            h-3.5 w-3.5 transition-colors duration-200
+                            ${dashboardSpotlight === 'employee-of-month'
+                                                                                            ? 'text-[#3b82f6]'
+                                                                                            : 'text-gray-400 group-hover:text-[#3b82f6]'
+                                                                                        }
+                        `} />
+                                                                                </span>
+                                                                                <span>Employee of the Month</span>
+                                                                            </span>
+                                                                        </h2>
+                                                                        <p className="text-[10px] text-gray-500 mt-1">Based on manager reviews</p>
+                                                                    </div>
+                                                                    <span className={`
+            text-[10px] font-medium px-2 py-0.5 rounded-full 
+            transition-all duration-200
+            ${dashboardSpotlight === 'employee-of-month'
+                                                                            ? 'bg-[#3b82f6]/10 text-[#3b82f6]'
+                                                                            : 'bg-gray-50 text-gray-400 group-hover:bg-[#3b82f6]/5 group-hover:text-[#3b82f6]'
+                                                                        }
+        `}>
+                                                                        {dashboardSpotlight === 'employee-of-month' ? '✓ Selected' : 'Filter'}
+                                                                    </span>
+                                                                </div>
+
+                                                                {/* Hover Effect Overlay - Thin border */}
+                                                                <div className={`
+        absolute inset-0 rounded-xl pointer-events-none transition-all duration-300
+        ${dashboardSpotlight === 'employee-of-month'
+                                                                        ? 'ring-1 ring-[#1e3a8a] ring-inset'
+                                                                        : 'group-hover:ring-1 group-hover:ring-[#1e3a8a] ring-inset'
+                                                                    }
+    `} />
+                                                            </button>
+                                                        );
+                                                    })()}
+                                                    {(() => {
+                                                        const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
+                                                        const canSee =
+                                                            roleKey === 'manager' || roleKey === 'marketer_manager' ||
+                                                            roleKey === 'md_manager' ||
+                                                            roleKey === 'ob_manager' ||
+                                                            roleKey === 'all_manager' ||
+                                                            roleKey === 'admin' ||
+                                                            roleKey === 'super_admin';
+                                                        if (!canSee) return null;
+                                                        return (
+                                                            <>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setDashboardSpotlight('manager-monthly-ranking')}
+                                                                    className={`
+        bg-white p-4 rounded-xl shadow-sm border-2 cursor-pointer 
+        transition-all duration-300 ease-out hover:shadow-md hover:-translate-y-0.5 
+        relative group
+        ${dashboardSpotlight === 'manager-monthly-ranking'
+                                                                            ? 'border-[#1e3a8a] shadow-md'
+                                                                            : 'border-gray-100 hover:border-[#1e3a8a]'
+                                                                        }
+    `}
                                                                 >
                                                                     <div className="flex items-start justify-between">
                                                                         <div>
-                                                                            <h2 className="text-sm font-semibold text-gray-900">
+                                                                            <h2 className="text-xs font-medium text-black tracking-wide">
                                                                                 <span className="inline-flex items-center gap-2">
-                                                                                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-amber-100/70 text-amber-700 ring-1 ring-amber-200 shadow-sm">
-                                                                                        <Crown className="h-4 w-4" />
+                                                                                    <span className={`
+                        inline-flex items-center justify-center w-6 h-6 rounded-lg 
+                        transition-all duration-200
+                        ${dashboardSpotlight === 'manager-monthly-ranking'
+                                                                                            ? 'bg-[#3b82f6]/10 ring-1 ring-[#3b82f6]/20'
+                                                                                            : 'bg-gray-50 group-hover:bg-[#3b82f6]/5'
+                                                                                        }
+                    `}>
+                                                                                        <Trophy className={`
+                            h-3.5 w-3.5 transition-colors duration-200
+                            ${dashboardSpotlight === 'manager-monthly-ranking'
+                                                                                                ? 'text-[#3b82f6]'
+                                                                                                : 'text-gray-400 group-hover:text-[#3b82f6]'
+                                                                                            }
+                        `} />
                                                                                     </span>
-                                                                                    <span>Employee of the Month </span>
+                                                                                    <span>Employee of the Month Marketer</span>
                                                                                 </span>
                                                                             </h2>
-                                                                            <p className="text-xs text-gray-500 mt-1 ">Based on manager reviews (month wise)</p>
+                                                                            <p className="text-[10px] text-gray-500 mt-1">Assign vs Achieved</p>
                                                                         </div>
-                                                                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${dashboardSpotlight === 'employee-of-month'
-                                                                            ? 'bg-blue-100 text-blue-600'
-                                                                            : 'bg-gray-100 text-gray-600'
-                                                                            }`}>
-                                                                            {dashboardSpotlight === 'employee-of-month' ? 'Selected' : 'Select'}
+                                                                        <span className={`
+            text-[10px] font-medium px-2 py-0.5 rounded-full 
+            transition-all duration-200
+            ${dashboardSpotlight === 'manager-monthly-ranking'
+                                                                                ? 'bg-[#3b82f6]/10 text-[#3b82f6]'
+                                                                                : 'bg-gray-50 text-gray-400 group-hover:bg-[#3b82f6]/5 group-hover:text-[#3b82f6]'
+                                                                            }
+        `}>
+                                                                            {dashboardSpotlight === 'manager-monthly-ranking' ? '✓ Selected' : 'Filter'}
                                                                         </span>
                                                                     </div>
+
+                                                                    {/* Hover Effect Overlay - Thin border */}
+                                                                    <div className={`
+        absolute inset-0 rounded-xl pointer-events-none transition-all duration-300
+        ${dashboardSpotlight === 'manager-monthly-ranking'
+                                                                            ? 'ring-1 ring-[#1e3a8a] ring-inset'
+                                                                            : 'group-hover:ring-1 group-hover:ring-[#1e3a8a] ring-inset'
+                                                                        }
+    `} />
                                                                 </button>
-                                                            );
-                                                        })()}
-                                                        {(() => {
-                                                            const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
-                                                            const canSee =
-                                                                roleKey === 'manager' || roleKey === 'marketer_manager' ||
-                                                                roleKey === 'md_manager' ||
-                                                                roleKey === 'ob_manager' ||
-                                                                roleKey === 'all_manager' ||
-                                                                roleKey === 'admin' ||
-                                                                roleKey === 'super_admin';
-                                                            if (!canSee) return null;
-                                                            return (
-                                                                <>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => setDashboardSpotlight('manager-monthly-ranking')}
-                                                                        className={`bg-white p-6 rounded-2xl shadow-sm border-2 transition-all duration-200 hover:shadow-md ${dashboardSpotlight === 'manager-monthly-ranking'
-                                                                            ? 'border-blue-500 shadow-lg shadow-blue-50'
-                                                                            : 'border-transparent hover:border-gray-200'
-                                                                            }`}
-                                                                    >
-                                                                        <div className="flex items-start justify-between">
-                                                                            <div>
-                                                                                <h2 className="text-sm font-semibold text-gray-900">
-                                                                                    <span className="inline-flex items-center gap-2">
-                                                                                        <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-amber-100/70 text-amber-700 ring-1 ring-amber-200 shadow-sm">
-                                                                                            <Trophy className="h-4 w-4" />
-                                                                                        </span>
-                                                                                        <span>Employee of the Month Marketer</span>
+
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setDashboardSpotlight('power-star-of-month')}
+                                                                    className={`
+        bg-white p-4 rounded-xl shadow-sm border-2 cursor-pointer 
+        transition-all duration-300 ease-out hover:shadow-md hover:-translate-y-0.5 
+        relative group
+        ${dashboardSpotlight === 'power-star-of-month'
+                                                                            ? 'border-[#1e3a8a] shadow-md'
+                                                                            : 'border-gray-100 hover:border-[#1e3a8a]'
+                                                                        }
+    `}
+                                                                >
+                                                                    <div className="flex items-start justify-between">
+                                                                        <div>
+                                                                            <h2 className="text-xs font-medium text-black tracking-wide">
+                                                                                <span className="inline-flex items-center gap-2">
+                                                                                    <span className={`
+                        inline-flex items-center justify-center w-6 h-6 rounded-lg 
+                        transition-all duration-200
+                        ${dashboardSpotlight === 'power-star-of-month'
+                                                                                            ? 'bg-[#3b82f6]/10 ring-1 ring-[#3b82f6]/20'
+                                                                                            : 'bg-gray-50 group-hover:bg-[#3b82f6]/5'
+                                                                                        }
+                    `}>
+                                                                                        <Star className={`
+                            h-3.5 w-3.5 transition-colors duration-200
+                            ${dashboardSpotlight === 'power-star-of-month'
+                                                                                                ? 'text-[#3b82f6]'
+                                                                                                : 'text-gray-400 group-hover:text-[#3b82f6]'
+                                                                                            }
+                        `} />
                                                                                     </span>
-                                                                                </h2>
-                                                                                <p className="text-xs text-gray-500">Assign vs Achieved (month wise)</p>
-                                                                            </div>
-                                                                            <span className={`text-xs font-medium px-2 py-1 rounded-full ${dashboardSpotlight === 'manager-monthly-ranking'
-                                                                                ? 'bg-blue-100 text-blue-600'
-                                                                                : 'bg-gray-100 text-gray-600'
-                                                                                }`}>
-                                                                                {dashboardSpotlight === 'manager-monthly-ranking' ? 'Selected' : 'Select'}
-                                                                            </span>
+                                                                                    <span>Power Star of the Month</span>
+                                                                                </span>
+                                                                            </h2>
+                                                                            <p className="text-[10px] text-gray-500 mt-1">Week wise performance</p>
                                                                         </div>
-                                                                    </button>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => setDashboardSpotlight('power-star-of-month')}
-                                                                        className={`bg-white p-6 rounded-2xl shadow-sm border-2 transition-all duration-200 hover:shadow-md ${dashboardSpotlight === 'power-star-of-month'
-                                                                            ? 'border-blue-500 shadow-lg shadow-blue-50'
-                                                                            : 'border-transparent hover:border-gray-200'
-                                                                            }`}
-                                                                    >
-                                                                        <div className="flex items-start justify-between">
-                                                                            <div>
-                                                                                <h2 className="text-sm font-semibold text-gray-900">
-                                                                                    <span className="inline-flex items-center gap-2">
-                                                                                        <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-amber-100/70 text-amber-700 ring-1 ring-amber-200 shadow-sm">
-                                                                                            <Star className="h-4 w-4" />
-                                                                                        </span>
-                                                                                        <span>Power Star of the Month</span>
-                                                                                    </span>
-                                                                                </h2>
-                                                                                <p className="text-xs text-gray-500 mt-1">Week wise (Churn / Live-Assign% / Hits)</p>
-                                                                            </div>
-                                                                            <span className={`text-xs font-medium px-2 py-1 rounded-full ${dashboardSpotlight === 'power-star-of-month'
-                                                                                ? 'bg-blue-100 text-blue-600'
-                                                                                : 'bg-gray-100 text-gray-600'
-                                                                                }`}>
-                                                                                {dashboardSpotlight === 'power-star-of-month' ? 'Selected' : 'Select'}
-                                                                            </span>
-                                                                        </div>
-                                                                    </button>
-                                                                </>
-                                                            );
-                                                        })()}
-                                                    </div>
-                                                    {dashboardSpotlight === 'employee-of-month' ? (
-                                                        <>
-                                                            <EmployeeOfTheMonthCard
-                                                                name={employeeOfTheMonth?.name || 'Not any yet'}
-                                                                rating={employeeOfTheMonth?.rating || 0}
-                                                                performance={employeeOfTheMonth?.performance || 'Not any yet'}
-                                                                avg={employeeOfTheMonth?.avg || 'Not any yet'}
-                                                                photoUrl={employeeOfTheMonth?.photoUrl}
-                                                                totalReviews={employeeOfTheMonth?.totalReviews}
-                                                                totalTasksReceived={employeeOfTheMonth?.totalTasksReceived}
-                                                                summaryRows={employeeOfTheMonth?.summaryRows}
-                                                                monthValue={reviewsMonth}
-                                                                onMonthChange={setReviewsMonth}
-                                                            />
-                                                        </>
-                                                    ) : dashboardSpotlight === 'manager-monthly-ranking' ? (
-                                                        <ManagerMonthlyRankingPage currentUser={currentUser} />
-                                                    ) : (
-                                                        <PowerStarOfTheMonthPage currentUser={currentUser} />
-                                                    )}
-                                                </>
-                                            ) : null
-                                        ) : null}
-                                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
-                                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                                <div>
-                                                    <div className="flex items-center gap-3 mb-2">
-                                                        <ListTodo className="h-5 w-5 text-blue-600" />
-                                                        <h2 className="text-xl font-semibold text-gray-900">
-                                                            {displayTasks.length} Tasks
-                                                        </h2>
-                                                        <span className="text-sm text-gray-500">
-                                                            • {selectedStatFilter !== 'all' ? `${getActiveFilterCount()} active filter(s)` : 'All tasks'}
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-sm text-gray-500">
-                                                        {selectedStatFilter === 'overdue'
-                                                            ? 'Tasks that require immediate attention'
-                                                            : selectedStatFilter === 'high-priority'
-                                                                ? 'High priority tasks requiring focus'
-                                                                : 'Your current tasks at a glance'}
-                                                    </p>
+                                                                        <span className={`
+            text-[10px] font-medium px-2 py-0.5 rounded-full 
+            transition-all duration-200
+            ${dashboardSpotlight === 'power-star-of-month'
+                                                                                ? 'bg-[#3b82f6]/10 text-[#3b82f6]'
+                                                                                : 'bg-gray-50 text-gray-400 group-hover:bg-[#3b82f6]/5 group-hover:text-[#3b82f6]'
+                                                                            }
+        `}>
+                                                                            {dashboardSpotlight === 'power-star-of-month' ? '✓ Selected' : 'Filter'}
+                                                                        </span>
+                                                                    </div>
+
+                                                                    {/* Hover Effect Overlay - Thin border */}
+                                                                    <div className={`
+        absolute inset-0 rounded-xl pointer-events-none transition-all duration-300
+        ${dashboardSpotlight === 'power-star-of-month'
+                                                                            ? 'ring-1 ring-[#1e3a8a] ring-inset'
+                                                                            : 'group-hover:ring-1 group-hover:ring-[#1e3a8a] ring-inset'
+                                                                        }
+    `} />
+                                                                </button>
+                                                            </>
+                                                        );
+                                                    })()}
                                                 </div>
-                                                <div className="flex flex-wrap items-center gap-3">
-                                                    <div className="flex items-center bg-gray-100 rounded-xl p-1">
-                                                        <button
-                                                            onClick={() => setViewMode('grid')}
-                                                            className={`px-3 py-2 rounded-lg transition-colors ${viewMode === 'grid'
-                                                                ? 'bg-white text-blue-600 shadow-sm'
-                                                                : 'text-gray-600 hover:text-gray-900'
-                                                                }`}
-                                                        >
-                                                            <Grid className="h-4 w-4" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setViewMode('list')}
-                                                            className={`px-3 py-2 rounded-lg transition-colors ${viewMode === 'list'
-                                                                ? 'bg-white text-blue-600 shadow-sm'
-                                                                : 'text-gray-600 hover:text-gray-900'
-                                                                }`}
-                                                        >
-                                                            <List className="h-4 w-4" />
-                                                        </button>
-                                                    </div>
-                                                    <div className="flex gap-2">
-                                                        {getActiveFilterCount() > 0 && (
-                                                            <button
-                                                                onClick={resetFilters}
-                                                                className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900 bg-gray-100 rounded-lg hover:bg-gray-200"
-                                                            >
-                                                                Clear filters
-                                                            </button>
-                                                        )}
-                                                    </div>
+                                                {dashboardSpotlight === 'employee-of-month' ? (
+                                                    <>
+                                                        <EmployeeOfTheMonthCard
+                                                            name={employeeOfTheMonth?.name || 'Not any yet'}
+                                                            rating={employeeOfTheMonth?.rating || 0}
+                                                            performance={employeeOfTheMonth?.performance || 'Not any yet'}
+                                                            avg={employeeOfTheMonth?.avg || 'Not any yet'}
+                                                            photoUrl={employeeOfTheMonth?.photoUrl}
+                                                            totalReviews={employeeOfTheMonth?.totalReviews}
+                                                            totalTasksReceived={employeeOfTheMonth?.totalTasksReceived}
+                                                            summaryRows={employeeOfTheMonth?.summaryRows}
+                                                            monthValue={reviewsMonth}
+                                                            onMonthChange={setReviewsMonth}
+                                                        />
+                                                    </>
+                                                ) : dashboardSpotlight === 'manager-monthly-ranking' ? (
+                                                    <ManagerMonthlyRankingPage currentUser={currentUser} />
+                                                ) : (
+                                                    <PowerStarOfTheMonthPage currentUser={currentUser} />
+                                                )}
+                                            </>
+                                        ) : null
+                                    ) : null}
+                                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4 mt-5">
+                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-1.5">
+                                                    <ListTodo className="h-4 w-4 text-[#3b82f6]" />
+                                                    <h2 className="text-base font-semibold text-black">
+                                                        {displayTasks.length} Tasks
+                                                    </h2>
+                                                    <span className="text-xs text-gray-500">
+                                                        • {selectedStatFilter !== 'all' ? `${getActiveFilterCount()} active filter(s)` : 'All tasks'}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-gray-500">
+                                                    {selectedStatFilter === 'overdue'
+                                                        ? 'Tasks that require immediate attention'
+                                                        : selectedStatFilter === 'high-priority'
+                                                            ? 'High priority tasks requiring focus'
+                                                            : 'Your current tasks at a glance'}
+                                                </p>
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
+                                                    <button
+                                                        onClick={() => setViewMode('grid')}
+                                                        className={`px-2.5 py-1.5 rounded-md transition-colors ${viewMode === 'grid'
+                                                            ? 'bg-white text-[#3b82f6] shadow-sm'
+                                                            : 'text-gray-600 hover:text-black'
+                                                            }`}
+                                                    >
+                                                        <Grid className="h-3.5 w-3.5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setViewMode('list')}
+                                                        className={`px-2.5 py-1.5 rounded-md transition-colors ${viewMode === 'list'
+                                                            ? 'bg-white text-[#3b82f6] shadow-sm'
+                                                            : 'text-gray-600 hover:text-black'
+                                                            }`}
+                                                    >
+                                                        <List className="h-3.5 w-3.5" />
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
-                                        {displayTasks.length === 0 ? (
-                                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
-                                                <div className="max-w-md mx-auto">
-                                                    <div className="p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-2xl inline-flex mb-6">
-                                                        <ListTodo className="h-12 w-12 text-blue-600" />
-                                                    </div>
-                                                    <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                                                        No tasks found
-                                                    </h3>
-                                                    <p className="text-gray-500 mb-6">
-                                                        {searchTerm
-                                                            ? `No tasks match "${searchTerm}"`
-                                                            : getActiveFilterCount() > 0
-                                                                ? 'Try adjusting your filters'
-                                                                : 'Get started by creating your first task'}
-                                                    </p>
-                                                    {canCreateTasks && (
-                                                        <button
-                                                            onClick={openAddTaskModal}
-                                                            className="inline-flex items-center px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 shadow-sm"
-                                                        >
-                                                            <PlusCircle className="mr-2 h-5 w-5" />
-                                                            Create New Task
-                                                        </button>
-                                                    )}
+                                    </div>
+                                    {displayTasks.length === 0 ? (
+                                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
+                                            <div className="max-w-md mx-auto">
+                                                <div className="p-4 bg-gradient-to-r from-[#3b82f6]/10 to-[#3b82f6]/5 rounded-2xl inline-flex mb-6">
+                                                    <ListTodo className="h-12 w-12 text-[#3b82f6]" />
                                                 </div>
-                                            </div>
-                                        ) : viewMode === 'grid' ? (
-                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                                {paginatedTasks.map((task: Task) => (
-                                                    <div
-                                                        key={task.id}
-                                                        className="group bg-white rounded-2xl shadow-sm border border-gray-200 p-5 hover:shadow-lg transition-all duration-200 hover:-translate-y-1 relative"
+                                                <h3 className="text-xl font-semibold text-black mb-2">
+                                                    No tasks found
+                                                </h3>
+                                                <p className="text-gray-500 mb-6">
+                                                    {searchTerm
+                                                        ? `No tasks match "${searchTerm}"`
+                                                        : getActiveFilterCount() > 0
+                                                            ? 'Try adjusting your filters'
+                                                            : 'Get started by creating your first task'}
+                                                </p>
+                                                {canCreateTasks && (
+                                                    <button
+                                                        onClick={openAddTaskModal}
+                                                        className="inline-flex items-center px-4 py-3 bg-[#3b82f6] text-white rounded-xl hover:bg-[#1e3a8a] shadow-sm transition-all duration-200"
                                                     >
-                                                        <div className="flex justify-between items-start mb-4">
-                                                            <div className="flex-1">
-                                                                <div className="flex items-center gap-2 mb-3">
-                                                                    <span className={`px-3 py-1 text-xs font-medium rounded-full border ${getPriorityColor(task.priority || 'medium')}`}>
-                                                                        <span className="flex items-center gap-1">
-                                                                            <Flag className="h-3 w-3" />
-                                                                            {task.priority}
-                                                                        </span>
-                                                                    </span>
-                                                                    <span className={`px-3 py-1 text-xs font-medium rounded-full border ${getStatusColor(task.status)}`}>
-                                                                        {task.status}
-                                                                        {task.completedApproval && (
-                                                                            <span className="ml-1 text-blue-500">By Admin</span>
-                                                                        )}
-                                                                    </span>
-                                                                </div>
-                                                                <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors whitespace-normal break-words [overflow-wrap:anywhere]">
-                                                                    {task.title}
-                                                                    {task.completedApproval && (
-                                                                        <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full">
-                                                                            Approved
-                                                                        </span>
-                                                                    )}
-                                                                </h3>
-                                                                <p className="text-sm text-gray-500 line-clamp-2 mb-3">
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="space-y-3 mb-5">
-                                                            <div className="flex items-start justify-between text-sm gap-4">
-                                                                <span className="text-gray-500 flex items-center gap-2 shrink-0">
-                                                                    <UserCheck className="h-4 w-4" />
-                                                                    Assign To
+                                                        <PlusCircle className="mr-2 h-5 w-5" />
+                                                        Create New Task
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ) : viewMode === 'grid' ? (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                                            {paginatedTasks.map((task: Task) => (
+                                                <div
+                                                    key={task.id}
+                                                    className="group bg-white rounded-xl border border-gray-100 hover:border-[#3b82f6]/30 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden"
+                                                >
+                                                    <div className="p-4">
+                                                        {/* Top Row - Status & Type */}
+                                                        <div className="flex items-center justify-between mb-3">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className={`w-2 h-2 rounded-full ${task.status === 'completed' ? 'bg-emerald-500' : task.status === 'in-progress' ? 'bg-amber-500' : 'bg-blue-500'}`} />
+                                                                <span className={`text-xs font-medium ${task.status === 'completed' ? 'text-emerald-600' : task.status === 'in-progress' ? 'text-amber-600' : 'text-blue-600'}`}>
+                                                                    {task.status === 'completed' ? 'Done' : task.status === 'in-progress' ? 'In Progress' : 'Pending'}
                                                                 </span>
-                                                                <span className="font-medium text-gray-900 text-right break-words">
+                                                            </div>
+                                                            <span className="text-[10px] text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">
+                                                                {task.taskType}
+                                                            </span>
+                                                        </div>
+
+                                                        {/* Title */}
+                                                        <h3 className="text-base font-semibold text-black mb-3 group-hover:text-[#3b82f6] transition-colors line-clamp-2">
+                                                            {task.title}
+                                                            {task.completedApproval && (
+                                                                <span className="ml-2 inline-flex items-center gap-1 text-[9px] bg-[#3b82f6]/10 text-[#3b82f6] px-1.5 py-0.5 rounded-full">
+                                                                    <CheckCircle className="h-2.5 w-2.5" />
+                                                                    Approved
+                                                                </span>
+                                                            )}
+                                                        </h3>
+
+                                                        {/* Key Info - Only 3 most important fields */}
+                                                        <div className="space-y-2 mb-4">
+                                                            <div className="flex items-center justify-between text-xs">
+                                                                <div className="flex items-center gap-1.5 text-gray-500">
+                                                                    <UserCheck className="h-3.5 w-3.5" />
+                                                                    <span>Assigned to</span>
+                                                                </div>
+                                                                <span className="text-black font-medium truncate max-w-[60%]">
                                                                     {(() => {
                                                                         const info = getAssignedUserInfo(task);
                                                                         const email = (info as any)?.email ? stripDeletedEmailSuffix(String((info as any).email)) : '';
-                                                                        return email || '—';
+                                                                        const name = (info as any)?.name ? String((info as any).name) : '';
+                                                                        return name || (email ? email.split('@')[0] : '') || email || '—';
                                                                     })()}
                                                                 </span>
                                                             </div>
-                                                            <div className="flex items-start justify-between text-sm gap-4">
-                                                                <span className="text-gray-500 flex items-center gap-2 shrink-0">
-                                                                    <User className="h-4 w-4" />
-                                                                    Assign By
-                                                                </span>
-                                                                <span className="font-medium text-gray-900 text-right break-words">
+                                                            <div className="flex items-center justify-between text-xs">
+                                                                <div className="flex items-center gap-1.5 text-gray-500">
+                                                                    <User className="h-3.5 w-3.5" />
+                                                                    <span>Assigned by</span>
+                                                                </div>
+                                                                <span className="text-black font-medium truncate max-w-[60%]">
                                                                     {(() => {
-                                                                        const assignedByUser: any = (task as any)?.assignedByUser;
-                                                                        const assignedBy: any = (task as any)?.assignedBy;
-                                                                        const email = (assignedByUser?.email || (typeof assignedBy === 'string' ? assignedBy : assignedBy?.email) || '').toString();
-                                                                        const name = (assignedByUser?.name || (typeof assignedBy === 'object' ? assignedBy?.name : '') || '').toString();
-                                                                        const match = !name && email
-                                                                            ? (users || []).find((u: any) => (u?.email || '').toLowerCase() === email.toLowerCase())
-                                                                            : null;
-                                                                        const displayName = (name || match?.name || (email ? email.split('@')[0] : '') || email || '—').toString();
-                                                                        return (
-                                                                            <span className="block truncate" title={email}>
-                                                                                {displayName}
-                                                                            </span>
-                                                                        );
+                                                                        const assignedByUser = (task as any)?.assignedByUser;
+                                                                        const assignedBy = (task as any)?.assignedBy;
+                                                                        const rawEmail =
+                                                                            (assignedByUser && typeof assignedByUser === 'object' ? assignedByUser?.email : '') ||
+                                                                            (typeof assignedBy === 'string' ? assignedBy : assignedBy?.email) ||
+                                                                            '';
+                                                                        const rawName =
+                                                                            (assignedByUser && typeof assignedByUser === 'object' ? assignedByUser?.name : '') ||
+                                                                            (typeof assignedBy === 'object' ? assignedBy?.name : '') ||
+                                                                            '';
+                                                                        const email = rawEmail ? stripDeletedEmailSuffix(String(rawEmail)) : '';
+                                                                        const name = rawName ? String(rawName) : '';
+                                                                        return name || (email ? email.split('@')[0] : '') || email || '—';
                                                                     })()}
                                                                 </span>
                                                             </div>
-                                                            <div className="flex items-center justify-between text-sm">
-                                                                <span className="text-gray-500 flex items-center gap-2">
-                                                                    <CalendarDays className="h-4 w-4" />
-                                                                    Due Date
+                                                            <div className="flex items-center justify-between text-xs">
+                                                                <div className="flex items-center gap-1.5 text-gray-500">
+                                                                    <Layers className="h-3.5 w-3.5" />
+                                                                    <span>Brand</span>
+                                                                </div>
+                                                                <span className="text-black font-medium truncate max-w-[60%]">
+                                                                    {_formatBrandWithGroupNumber(task) || '—'}
                                                                 </span>
-                                                                <span className={`font-medium ${isOverdue(task.dueDate, task.status)
-                                                                    ? 'text-rose-600'
-                                                                    : 'text-gray-900'
-                                                                    }`}>
+                                                            </div>
+                                                            <div className="flex items-center justify-between text-xs">
+                                                                <div className="flex items-center gap-1.5 text-gray-500">
+                                                                    <CalendarDays className="h-3.5 w-3.5" />
+                                                                    <span>Due date</span>
+                                                                </div>
+                                                                <span className={`font-medium ${isOverdue(task.dueDate, task.status) ? 'text-rose-600' : 'text-black'}`}>
                                                                     {task.dueDate ? formatDate(task.dueDate) : '—'}
                                                                 </span>
                                                             </div>
-                                                            <div className="flex items-center justify-between text-sm">
-                                                                <span className="text-gray-500 flex items-center gap-2">
-                                                                    <Building className="h-4 w-4" />
-                                                                    Company
-                                                                </span>
-                                                                <span className={`px-2 py-1 text-xs rounded-full border ${getCompanyColor(task.companyName)}`}>
-                                                                    {task.companyName}
+                                                            <div className="flex items-center justify-between text-xs">
+                                                                <div className="flex items-center gap-1.5 text-gray-500">
+                                                                    <Flag className="h-3.5 w-3.5" />
+                                                                    <span>Priority</span>
+                                                                </div>
+                                                                <span className={`inline-flex items-center gap-1 text-xs font-medium ${task.priority === 'high' ? 'text-rose-600' : task.priority === 'medium' ? 'text-amber-600' : 'text-emerald-600'}`}>
+                                                                    {task.priority || 'medium'}
                                                                 </span>
                                                             </div>
-                                                            {task.brand && (
-                                                                <div className="flex items-center justify-between text-sm">
-                                                                    <span className="text-gray-500 flex items-center gap-2">
-                                                                        <Tag className="h-4 w-4" />
-                                                                        Brand
-                                                                    </span>
-                                                                    <span className={`px-2 py-1 text-xs rounded-full border ${getBrandColor(task.brand)}`}>
-                                                                        {formatBrandWithGroupNumber(task)}
-                                                                    </span>
-                                                                </div>
-                                                            )}
                                                         </div>
-                                                        <div className="flex gap-2 pt-4 border-t border-gray-100">
+
+                                                        {/* Action Buttons - Clean & Minimal */}
+                                                        <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-50">
                                                             <button
                                                                 onClick={() => handleToggleTaskStatus(task.id, task.status)}
                                                                 disabled={!canMarkTaskDone(task)}
-                                                                className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${canMarkTaskDone(task)
+                                                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 ${canMarkTaskDone(task)
                                                                     ? task.status === 'completed'
-                                                                        ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-                                                                        : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                                                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                                        ? 'text-amber-600 hover:bg-amber-50'
+                                                                        : 'text-emerald-600 hover:bg-emerald-50'
+                                                                    : 'text-gray-400 cursor-not-allowed'
                                                                     }`}
                                                             >
-                                                                {task.status === 'completed' ? 'Mark Pending' : 'Complete'}
+                                                                {task.status === 'completed' ? (
+                                                                    <>
+                                                                        <RotateCcw className="h-3 w-3" />
+                                                                        <span>Mark Pending</span>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <CheckCircle className="h-3 w-3" />
+                                                                        <span>Mark Done</span>
+                                                                    </>
+                                                                )}
                                                             </button>
+
                                                             {canEditDeleteTask(task) && (
                                                                 <button
                                                                     onClick={() => handleDeleteTask(task.id)}
-                                                                    className="px-3 py-2 text-sm font-medium bg-rose-50 text-rose-700 rounded-lg hover:bg-rose-100 transition-colors"
+                                                                    className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-all duration-200"
+                                                                    title="Delete"
                                                                 >
-                                                                    Delete
+                                                                    <Trash2 className="h-3.5 w-3.5" />
                                                                 </button>
                                                             )}
+
                                                             {canSendReminderForTask(task) && (
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => handleSendReminder(task)}
                                                                     disabled={Boolean(sendingReminderByTaskId[String(task.id || '')])}
-                                                                    title="Send reminder"
-                                                                    className={`px-3 py-2 rounded-lg border transition-colors ${sendingReminderByTaskId[String(task.id || '')]
-                                                                        ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed'
-                                                                        : 'bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100'
+                                                                    className={`p-1.5 rounded-lg transition-all duration-200 ${sendingReminderByTaskId[String(task.id || '')]
+                                                                        ? 'text-gray-300 cursor-not-allowed'
+                                                                        : 'text-gray-400 hover:text-[#3b82f6] hover:bg-[#3b82f6]/5'
                                                                         }`}
+                                                                    title="Send reminder"
                                                                 >
-                                                                    <Bell className="h-4 w-4" />
+                                                                    <Bell className="h-3.5 w-3.5" />
                                                                 </button>
                                                             )}
-                                                            {isSbmUser ? (
+
+                                                            {isSbmUser && (
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => handleOpenTaskCommentSidebar(task)}
+                                                                    className="p-1.5 rounded-lg text-gray-400 hover:text-[#3b82f6] hover:bg-[#3b82f6]/5 transition-all duration-200"
                                                                     title="Comments"
-                                                                    className="px-3 py-2 rounded-lg border transition-colors bg-gray-50 text-gray-600 border-gray-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200"
                                                                 >
-                                                                    <MessageSquare className="h-4 w-4" />
+                                                                    <MessageSquare className="h-3.5 w-3.5" />
                                                                 </button>
-                                                            ) : null}
-                                                        </div>
-                                                        <div className="absolute top-4 right-4">
-                                                            <span className="text-xs text-gray-400 flex items-center gap-1">
-                                                                <Tag className="h-3 w-3" />
-                                                                {task.taskType}
-                                                            </span>
+                                                            )}
                                                         </div>
                                                     </div>
-                                                ))}
-                                            </div>
-                                        ) : viewMode === 'list' ? (
-                                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                                                <div className="overflow-x-auto">
-                                                    <table className="min-w-full">
-                                                        <thead className="bg-gray-50">
-                                                            <tr className="text-left text-sm font-semibold text-gray-700">
-                                                                <th className="px-6 py-4">Task</th>
-                                                                <th className="px-6 py-4">Status</th>
-                                                                <th className="px-6 py-4">Priority</th>
-                                                                <th className="px-6 py-4">Due Date</th>
-                                                                <th className="px-6 py-4">Assign To</th>
-                                                                <th className="px-6 py-4">Assign By</th>
-                                                                {showListActionsColumn ? (
-                                                                    <th className="px-6 py-4 text-right">Actions</th>
-                                                                ) : null}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : viewMode === 'list' ? (
+                                        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                                            <div className="overflow-x-auto">
+                                                <table className="min-w-full">
+                                                    <thead className="bg-gray-50/50">
+                                                        <tr className="text-left text-xs font-medium text-gray-500">
+                                                            <th className="px-4 py-3">Task</th>
+                                                            <th className="px-4 py-3">Status</th>
+                                                            <th className="px-4 py-3">Priority</th>
+                                                            <th className="px-4 py-3">Due Date</th>
+                                                            <th className="px-4 py-3">Brand</th>
+                                                            <th className="px-4 py-3">Assigned To</th>
+                                                            <th className="px-4 py-3 text-right">Actions</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-50">
+                                                        {paginatedTasks.map((task: Task) => (
+                                                            <tr key={task.id} className="hover:bg-gray-50/50 transition-colors group">
+                                                                <td className="px-4 py-3">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className={`w-1.5 h-1.5 rounded-full ${task.status === 'completed' ? 'bg-emerald-500' : task.status === 'in-progress' ? 'bg-amber-500' : 'bg-blue-500'}`} />
+                                                                        <div>
+                                                                            <div className="text-sm font-medium text-black group-hover:text-[#3b82f6] transition-colors">
+                                                                                {task.title}
+                                                                            </div>
+                                                                            {task.completedApproval && (
+                                                                                <span className="inline-flex items-center gap-1 text-[9px] text-[#3b82f6] mt-0.5">
+                                                                                    <CheckCircle className="h-2 w-2" />
+                                                                                    Approved by Admin
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-4 py-3">
+                                                                    <span className={`text-xs font-medium ${task.status === 'completed' ? 'text-emerald-600' : task.status === 'in-progress' ? 'text-amber-600' : 'text-blue-600'}`}>
+                                                                        {task.status === 'completed' ? 'Done' : task.status === 'in-progress' ? 'In Progress' : 'Pending'}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-4 py-3">
+                                                                    <span className={`text-xs font-medium ${task.priority === 'high' ? 'text-rose-600' : task.priority === 'medium' ? 'text-amber-600' : 'text-emerald-600'}`}>
+                                                                        {task.priority || 'medium'}
+                                                                    </span>
+                                                                </td>
+                                                                <td className={`px-4 py-3 text-xs ${isOverdue(task.dueDate, task.status) ? 'text-rose-600 font-medium' : 'text-gray-600'}`}>
+                                                                    {task.dueDate ? formatDate(task.dueDate) : '—'}
+                                                                </td>
+                                                                <td className="px-4 py-3 text-xs text-gray-600">
+                                                                    {_formatBrandWithGroupNumber(task) || '—'}
+                                                                </td>
+                                                                <td className="px-4 py-3 text-xs text-gray-600 truncate max-w-[150px]">
+                                                                    {(() => {
+                                                                        const info = getAssignedUserInfo(task);
+                                                                        const email = (info as any)?.email ? stripDeletedEmailSuffix(String((info as any).email)) : '';
+                                                                        const name = (info as any)?.name ? String((info as any).name) : '';
+                                                                        return name || (email ? email.split('@')[0] : '') || email || '—';
+                                                                    })()}
+                                                                </td>
+                                                                <td className="px-4 py-3 text-right">
+                                                                    <div className="flex items-center justify-end gap-1">
+                                                                        {canEditTask(task) && !task?.completedApproval && (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleOpenEditModal(task)}
+                                                                                className="p-1.5 rounded-lg text-gray-400 hover:text-[#3b82f6] hover:bg-[#3b82f6]/5 transition-all duration-200"
+                                                                                title="Edit"
+                                                                            >
+                                                                                <Edit className="h-3.5 w-3.5" />
+                                                                            </button>
+                                                                        )}
+                                                                        {canEditDeleteTask(task) && (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleDeleteTask(task.id)}
+                                                                                className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-all duration-200"
+                                                                                title="Delete"
+                                                                            >
+                                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                                            </button>
+                                                                        )}
+                                                                        {canSendReminderForTask(task) && (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleSendReminder(task)}
+                                                                                disabled={Boolean(sendingReminderByTaskId[String(task.id || '')])}
+                                                                                className={`p-1.5 rounded-lg transition-all duration-200 ${sendingReminderByTaskId[String(task.id || '')]
+                                                                                    ? 'text-gray-300 cursor-not-allowed'
+                                                                                    : 'text-gray-400 hover:text-[#3b82f6] hover:bg-[#3b82f6]/5'
+                                                                                    }`}
+                                                                                title="Send reminder"
+                                                                            >
+                                                                                <Bell className="h-3.5 w-3.5" />
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
                                                             </tr>
-                                                        </thead>
-                                                        <tbody className="divide-y divide-gray-100">
-                                                            {paginatedTasks.map((task: Task) => (
-                                                                <tr key={task.id} className="hover:bg-gray-50">
-                                                                    <td className="px-6 py-5">
-                                                                        <div className="font-semibold text-gray-900">{task.title}</div>
-                                                                    </td>
-                                                                    <td className="px-6 py-5">
-                                                                        <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full border ${getStatusColor(task.status)}`}>
-                                                                            {task.status}
-                                                                        </span>
-                                                                    </td>
-                                                                    <td className="px-6 py-5">
-                                                                        <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full border ${getPriorityColor(task.priority || 'medium')}`}>
-                                                                            {task.priority || 'medium'}
-                                                                        </span>
-                                                                    </td>
-                                                                    <td className="px-6 py-5 text-sm text-gray-700">
-                                                                        {formatDate(task.dueDate)}
-                                                                    </td>
-                                                                    <td className="px-6 py-5">
-                                                                        <div className="font-semibold text-gray-900">
-                                                                            {(() => {
-                                                                                const info = getAssignedUserInfo(task);
-                                                                                const email = (info as any)?.email ? stripDeletedEmailSuffix(String((info as any).email)) : '';
-                                                                                const name = (info as any)?.name ? String((info as any).name) : '';
-                                                                                const displayName = (name || (email ? email.split('@')[0] : '') || email || '—').toString();
-                                                                                return (
-                                                                                    <span className="block truncate" title={email}>
-                                                                                        {displayName}
-                                                                                    </span>
-                                                                                );
-                                                                            })()}
-                                                                        </div>
-                                                                    </td>
-                                                                    <td className="px-6 py-5">
-                                                                        <div className="font-semibold text-gray-900">
-                                                                            {(() => {
-                                                                                const assignedByUser: any = (task as any)?.assignedByUser;
-                                                                                const assignedBy: any = (task as any)?.assignedBy;
-                                                                                const email = stripDeletedEmailSuffix(assignedByUser?.email || (typeof assignedBy === 'string' ? assignedBy : assignedBy?.email) || '').toString();
-                                                                                const name = (assignedByUser?.name || (typeof assignedBy === 'object' ? assignedBy?.name : '') || '').toString();
-                                                                                const match = !name && email
-                                                                                    ? (users || []).find((u: any) => (u?.email || '').toLowerCase() === email.toLowerCase())
-                                                                                    : null;
-                                                                                const displayName = (name || match?.name || (email ? email.split('@')[0] : '') || email || '—').toString();
-                                                                                return (
-                                                                                    <span className="block truncate" title={email}>
-                                                                                        {displayName}
-                                                                                    </span>
-                                                                                );
-                                                                            })()}
-                                                                        </div>
-                                                                    </td>
-                                                                    {showListActionsColumn ? (
-                                                                        <td className="px-6 py-5 text-right">
-                                                                            {canEditTask(task) && (
-                                                                                <button
-                                                                                    type="button"
-                                                                                    onClick={() => handleOpenEditModal(task)}
-                                                                                    disabled={Boolean(task?.completedApproval)}
-                                                                                    className={`inline-flex items-center justify-center w-9 h-9 rounded-lg ${Boolean(task?.completedApproval)
-                                                                                        ? 'text-gray-300 cursor-not-allowed'
-                                                                                        : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'
-                                                                                        }`}
-                                                                                    title={Boolean(task?.completedApproval) ? 'Editing not allowed for permanently approved tasks' : 'Edit'}
-                                                                                >
-                                                                                    <Edit className="h-4 w-4" />
-                                                                                </button>
-                                                                            )}
-                                                                            {canEditDeleteTask(task) && (
-                                                                                <button
-                                                                                    type="button"
-                                                                                    onClick={() => handleDeleteTask(task.id)}
-                                                                                    className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-gray-500 hover:text-rose-700 hover:bg-rose-50"
-                                                                                    title="Delete" >
-                                                                                    <Trash2 className="h-4 w-4" />
-                                                                                </button>
-                                                                            )}
-                                                                            {isSbmUser ? (
-                                                                                <button
-                                                                                    type="button"
-                                                                                    onClick={() => handleOpenTaskCommentSidebar(task)}
-                                                                                    className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-gray-500 hover:text-blue-700 hover:bg-blue-50"
-                                                                                    title="Comments"
-                                                                                >
-                                                                                    <MessageSquare className="h-4 w-4" />
-                                                                                </button>
-                                                                            ) : null}
-                                                                        </td>
-                                                                    ) : null}
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            </div>
-                                        ) : null}
-                                        {displayTasks.length > 0 && totalTaskPages > 1 && (
-                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-6">
-                                                <div className="text-sm text-gray-600">
-                                                    <div className="flex items-center gap-3">
-                                                        <span>Page {taskPage} of {totalTaskPages}</span>
-                                                        <select
-                                                            value={String(tasksPerPage)}
-                                                            onChange={(e) => {
-                                                                const next = Number(e.target.value);
-                                                                if (!Number.isFinite(next)) return;
-                                                                setTasksPerPage(next);
-                                                                setTaskPage(1);
-                                                            }}
-                                                            className="px-3 py-1.5 text-sm rounded-lg border bg-white hover:bg-gray-50"
-                                                        >
-                                                            {PAGE_SIZE_OPTIONS.map((n) => (
-                                                                <option key={n} value={String(n)}>
-                                                                    {n}
-                                                                </option>
-                                                            ))}
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setTaskPage((p) => Math.max(1, p - 1))}
-                                                        disabled={taskPage <= 1}
-                                                        className="px-3 py-2 text-sm font-medium bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-                                                    >
-                                                        Previous
-                                                    </button>
-                                                    <div className="flex items-center gap-1">
-                                                        {taskPageNumbers.map((p) => (
-                                                            <button
-                                                                key={p}
-                                                                type="button"
-                                                                onClick={() => setTaskPage(p)}
-                                                                className={`w-9 h-9 text-sm font-medium rounded-lg border transition-colors ${p === taskPage
-                                                                    ? 'bg-blue-600 text-white border-blue-600'
-                                                                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                                                                    }`}
-                                                            >
-                                                                {p}
-                                                            </button>
                                                         ))}
-                                                    </div>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setTaskPage((p) => Math.min(totalTaskPages, p + 1))}
-                                                        disabled={taskPage >= totalTaskPages}
-                                                        className="px-3 py-2 text-sm font-medium bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    ) : null}
+
+                                    {displayTasks.length > 0 && totalTaskPages > 1 && (
+                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-4">
+                                            <div className="text-xs text-gray-500">
+                                                <div className="flex items-center gap-2">
+                                                    <span>Page {taskPage} of {totalTaskPages}</span>
+                                                    <select
+                                                        value={String(tasksPerPage)}
+                                                        onChange={(e) => {
+                                                            const next = Number(e.target.value);
+                                                            if (!Number.isFinite(next)) return;
+                                                            setTasksPerPage(next);
+                                                            setTaskPage(1);
+                                                        }}
+                                                        className="px-2 py-1 text-xs rounded-md border border-gray-200 bg-white hover:bg-gray-50 text-black focus:outline-none focus:ring-2 focus:ring-[#3b82f6]"
                                                     >
-                                                        Next
-                                                    </button>
+                                                        {PAGE_SIZE_OPTIONS.map((n) => (
+                                                            <option key={n} value={String(n)}>
+                                                                {n}
+                                                            </option>
+                                                        ))}
+                                                    </select>
                                                 </div>
                                             </div>
-                                        )}
-                                    </>
-                                ) : currentView === 'md-impex-strike' ? (
-                                    <MdImpexStrikePage
-                                        currentUser={currentUser as any}
-                                        users={users}
-                                        tasks={tasks}
-                                        isOverdue={isOverdue}
-                                    />
-                                ) : currentView === 'md-impex-access' ? (
-                                    <MdImpexAccessPage />
-                                ) : currentView === 'all-tasks' ? (
-                                    <AllTasksPage
-                                        tasks={tasks}
-                                        filter={filters.status}
-                                        setFilter={(value) => handleFilterChange('status', value)}
-                                        dateFilter={filters.date}
-                                        setDateFilter={(value) => handleFilterChange('date', value)}
-                                        assignedFilter={filters.assigned}
-                                        setAssignedFilter={(value) => handleFilterChange('assigned', value)}
-                                        advancedFilters={filters}
-                                        onAdvancedFilterChange={(filterType: string, value: string) =>
-                                            handleFilterChange(filterType as keyof FilterState, value)
-                                        }
-                                        onResetFilters={resetFilters}
-                                        searchTerm={searchTerm}
-                                        setSearchTerm={setSearchTerm}
-                                        currentUser={currentUser}
-                                        users={users}
-                                        onEditTask={async (taskId: string, updatedTask: Partial<Task>) => {
-                                            return await handleUpdateTask(taskId, updatedTask);
-                                        }}
-                                        onDeleteTask={handleDeleteTask}
-                                        formatDate={formatDate}
-                                        isOverdue={isOverdue}
-                                        getTaskBorderColor={getTaskBorderColor}
-                                        openMenuId={openMenuId}
-                                        setOpenMenuId={setOpenMenuId}
-                                        onToggleTaskStatus={handleToggleTaskStatus}
-                                        onCreateTask={async () => {
-                                            if (!canCreateTasks) {
-                                                toast.error('You do not have permission to create tasks');
-                                                return undefined;
-                                            }
-                                            openAddTaskModal();
+                                            <div className="flex items-center gap-1.5">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setTaskPage((p) => Math.max(1, p - 1))}
+                                                    disabled={taskPage <= 1}
+                                                    className="px-2.5 py-1 text-xs font-medium bg-white border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-50 text-black transition-colors"
+                                                >
+                                                    Previous
+                                                </button>
+                                                <div className="flex items-center gap-1">
+                                                    {taskPageNumbers.map((p) => (
+                                                        <button
+                                                            key={p}
+                                                            type="button"
+                                                            onClick={() => setTaskPage(p)}
+                                                            className={`w-6 h-6 text-xs font-medium rounded-md border transition-colors ${p === taskPage
+                                                                ? 'bg-[#3b82f6] text-white border-[#3b82f6]'
+                                                                : 'bg-white text-black border-gray-200 hover:bg-gray-50'
+                                                                }`}
+                                                        >
+                                                            {p}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setTaskPage((p) => Math.min(totalTaskPages, p + 1))}
+                                                    disabled={taskPage >= totalTaskPages}
+                                                    className="px-2.5 py-1 text-xs font-medium bg-white border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-50 text-black transition-colors"
+                                                >
+                                                    Next
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            ) : currentView === 'md-impex-strike' ? (
+                                <MdImpexStrikePage
+                                    currentUser={currentUser as any}
+                                    users={users}
+                                    tasks={tasks}
+                                    isOverdue={isOverdue}
+                                />
+                            ) : currentView === 'md-impex-manual-strike' ? (
+                                <NewMdImpexStrikePage
+                                    currentUser={currentUser as any}
+                                    users={users}
+                                />
+                            ) : currentView === 'md-impex-access' ? (
+                                <MdImpexAccessPage />
+                            ) : currentView === 'all-tasks' ? (
+                                <AllTasksPage
+                                    tasks={tasks}
+                                    filter={filters.status}
+                                    setFilter={(value) => handleFilterChange('status', value)}
+                                    dateFilter={filters.date}
+                                    setDateFilter={(value) => handleFilterChange('date', value)}
+                                    assignedFilter={filters.assigned}
+                                    setAssignedFilter={(value) => handleFilterChange('assigned', value)}
+                                    advancedFilters={filters}
+                                    onAdvancedFilterChange={(filterType: string, value: string) =>
+                                        handleFilterChange(filterType as keyof FilterState, value)
+                                    }
+                                    onResetFilters={resetFilters}
+                                    searchTerm={searchTerm}
+                                    setSearchTerm={setSearchTerm}
+                                    currentUser={currentUser}
+                                    users={users}
+                                    onEditTask={async (taskId: string, updatedTask: Partial<Task>) => {
+                                        return await handleUpdateTask(taskId, updatedTask);
+                                    }}
+                                    onDeleteTask={handleDeleteTask}
+                                    formatDate={formatDate}
+                                    isOverdue={isOverdue}
+                                    getTaskBorderColor={getTaskBorderColor}
+                                    openMenuId={openMenuId}
+                                    setOpenMenuId={setOpenMenuId}
+                                    onToggleTaskStatus={handleToggleTaskStatus}
+                                    onCreateTask={async () => {
+                                        if (!canCreateTasks) {
+                                            toast.error('You do not have permission to create tasks');
                                             return undefined;
-                                        }}
-                                        onSaveComment={handleSaveComment}
-                                        onDeleteComment={handleDeleteComment}
-                                        onFetchTaskComments={handleFetchTaskComments}
-                                        onReassignTask={handleReassignTask}
-                                        onMdImpexReassignTask={handleMdImpexReassignTask}
-                                        onAddTaskHistory={handleAddTaskHistory}
-                                        onApproveTask={handleApproveTask}
-                                        onUpdateTaskApproval={handleUpdateTaskApproval}
-                                        onFetchTaskHistory={handleFetchTaskHistory}
-                                        onBulkCreateTasks={handleBulkCreateTasks}
-                                        isSidebarCollapsed={isSidebarCollapsed}
-                                        brands={brands}
-                                        showEditModal={showEditTaskModal}
-                                        editingTask={editingTask}
-                                        onOpenEditModal={handleOpenEditModal}
-                                        onCloseEditModal={() => setShowEditTaskModal(false)}
-                                        onSaveEditedTask={handleSaveEditedTask}
-                                    />
-                                ) : currentView === 'assigned-by-me' ? (
-                                    <AssignedByMe
-                                        currentUser={currentUser as any}
-                                        users={users as any}
-                                        brands={brands as any}
-                                        getTaskBorderColor={getTaskBorderColor}
-                                        formatDate={formatDate}
-                                        isOverdue={isOverdue}
-                                        onApproveTask={handleApproveTask}
-                                        onUpdateTaskApproval={handleUpdateTaskApproval}
-                                        advancedFilters={filters}
-                                        onAdvancedFilterChange={(filterType: string, value: string) =>
-                                            handleFilterChange(filterType as keyof FilterState, value)
                                         }
-                                        onEditTask={handleOpenEditModal}
-                                        onViewHistory={handleOpenTaskHistorySidebar}
-                                        onOpenComments={handleOpenTaskCommentSidebar}
-                                        onSaveComment={handleSaveComment}
-                                        onDeleteComment={handleDeleteComment}
-                                        onFetchTaskComments={handleFetchTaskComments}
-                                        onFetchTaskHistory={handleFetchTaskHistory}
-                                        onToggleTaskStatus={handleToggleTaskStatus}
-                                    />
-                                ) : currentView === 'assigned-to-me' ? (
-                                    <AssignedToMe
-                                        currentUser={currentUser as any}
-                                        users={users as any}
-                                        brands={brands as any}
-                                        getTaskBorderColor={getTaskBorderColor}
-                                        formatDate={formatDate}
-                                        isOverdue={isOverdue}
-                                        onApproveTask={handleApproveTask}
-                                        onUpdateTaskApproval={handleUpdateTaskApproval}
-                                        advancedFilters={filters}
-                                        onAdvancedFilterChange={(filterType: string, value: string) =>
-                                            handleFilterChange(filterType as keyof FilterState, value)
+                                        openAddTaskModal();
+                                        return undefined;
+                                    }}
+                                    onSaveComment={handleSaveComment}
+                                    onDeleteComment={handleDeleteComment}
+                                    onFetchTaskComments={handleFetchTaskComments}
+                                    onReassignTask={handleReassignTask}
+                                    onMdImpexReassignTask={handleMdImpexReassignTask}
+                                    onAddTaskHistory={handleAddTaskHistory}
+                                    onApproveTask={handleApproveTask}
+                                    onUpdateTaskApproval={handleUpdateTaskApproval}
+                                    onFetchTaskHistory={handleFetchTaskHistory}
+                                    onBulkCreateTasks={handleBulkCreateTasks}
+                                    isSidebarCollapsed={isSidebarCollapsed}
+                                    brands={brands}
+                                    showEditModal={showEditTaskModal}
+                                    editingTask={editingTask}
+                                    onOpenEditModal={handleOpenEditModal}
+                                    onCloseEditModal={() => setShowEditTaskModal(false)}
+                                    onSaveEditedTask={handleSaveEditedTask}
+                                />
+                            ) : currentView === 'assigned-by-me' ? (
+                                <AssignedByMe
+                                    currentUser={currentUser as any}
+                                    users={users as any}
+                                    brands={brands as any}
+                                    getTaskBorderColor={getTaskBorderColor}
+                                    formatDate={formatDate}
+                                    isOverdue={isOverdue}
+                                    onApproveTask={handleApproveTask}
+                                    onUpdateTaskApproval={handleUpdateTaskApproval}
+                                    advancedFilters={filters}
+                                    onAdvancedFilterChange={(filterType: string, value: string) =>
+                                        handleFilterChange(filterType as keyof FilterState, value)
+                                    }
+                                    onEditTask={handleOpenEditModal}
+                                    onViewHistory={handleOpenTaskHistorySidebar}
+                                    onOpenComments={handleOpenTaskCommentSidebar}
+                                    onSaveComment={handleSaveComment}
+                                    onDeleteComment={handleDeleteComment}
+                                    onFetchTaskComments={handleFetchTaskComments}
+                                    onFetchTaskHistory={handleFetchTaskHistory}
+                                    onToggleTaskStatus={handleToggleTaskStatus}
+                                />
+                            ) : currentView === 'assigned-to-me' ? (
+                                <AssignedToMe
+                                    currentUser={currentUser as any}
+                                    users={users as any}
+                                    brands={brands as any}
+                                    getTaskBorderColor={getTaskBorderColor}
+                                    formatDate={formatDate}
+                                    isOverdue={isOverdue}
+                                    onApproveTask={handleApproveTask}
+                                    onUpdateTaskApproval={handleUpdateTaskApproval}
+                                    advancedFilters={filters}
+                                    onAdvancedFilterChange={(filterType: string, value: string) =>
+                                        handleFilterChange(filterType as keyof FilterState, value)
+                                    }
+                                    onEditTask={handleOpenEditModal}
+                                    onViewHistory={handleOpenTaskHistorySidebar}
+                                    onOpenComments={handleOpenTaskCommentSidebar}
+                                    onSaveComment={handleSaveComment}
+                                    onDeleteComment={handleDeleteComment}
+                                    onFetchTaskComments={handleFetchTaskComments}
+                                    onFetchTaskHistory={handleFetchTaskHistory}
+                                    onToggleTaskStatus={handleToggleTaskStatus}
+                                />
+                            ) : currentView === 'personal-tasks' ? (
+                                <PersonalTasksPage currentUser={currentUser} />
+                            ) : currentView === 'calendar' ? (
+                                <CalendarView
+                                    tasks={tasks}
+                                    currentUser={{
+                                        id: currentUser.id || '',
+                                        name: currentUser.name || 'User',
+                                        email: currentUser.email || '',
+                                        role: currentUser.role || 'user',
+                                        avatar: currentUser.avatar || 'U'
+                                    }}
+                                    handleToggleTaskStatus={async (taskId: string, currentStatus: TaskStatus) => {
+                                        try {
+                                            await handleToggleTaskStatus(taskId, currentStatus, false);
+                                        } catch (error) {
+                                            toast.error('Failed to update task status');
                                         }
-                                        onEditTask={handleOpenEditModal}
-                                        onViewHistory={handleOpenTaskHistorySidebar}
-                                        onOpenComments={handleOpenTaskCommentSidebar}
-                                        onSaveComment={handleSaveComment}
-                                        onDeleteComment={handleDeleteComment}
-                                        onFetchTaskComments={handleFetchTaskComments}
-                                        onFetchTaskHistory={handleFetchTaskHistory}
-                                        onToggleTaskStatus={handleToggleTaskStatus}
-                                    />
-                                ) : currentView === 'personal-tasks' ? (
-                                    <PersonalTasksPage currentUser={currentUser} />
-                                ) : currentView === 'calendar' ? (
-                                    <CalendarView
-                                        tasks={tasks}
-                                        currentUser={{
-                                            id: currentUser.id || '',
-                                            name: currentUser.name || 'User',
-                                            email: currentUser.email || '',
-                                            role: currentUser.role || 'user',
-                                            avatar: currentUser.avatar || 'U'
-                                        }}
-                                        handleToggleTaskStatus={async (taskId: string, currentStatus: TaskStatus) => {
-                                            try {
-                                                await handleToggleTaskStatus(taskId, currentStatus, false);
-                                            } catch (error) {
-                                                toast.error('Failed to update task status');
-                                            }
-                                        }}
-                                        handleDeleteTask={async (taskId: string) => {
-                                            try {
-                                                await handleDeleteTask(taskId);
-                                            } catch (error) {
-                                                toast.error('Failed to delete task');
-                                            }
-                                        }}
-                                        handleUpdateTask={async (taskId: string, updatedData: Partial<Task>) => {
-                                            try {
-                                                await handleUpdateTask(taskId, updatedData);
-                                            } catch (error) {
-                                                toast.error('Failed to update task');
-                                            }
-                                        }}
-                                        canEditTask={canEditTask}
-                                        canDeleteTaskForTask={canEditDeleteTask}
-                                        canMarkTaskDone={canMarkTaskDone}
-                                        getAssignedUserInfo={getAssignedUserInfo}
-                                        formatDate={formatDate}
-                                        isOverdue={isOverdue}
-                                        canDeleteTask={(() => {
-                                            const role = String((currentUser as any)?.role || '').trim().toLowerCase();
-                                            return role !== 'rm' && role !== 'am';
-                                        })()}
-                                    />
-                                ) : currentView === 'analyze' ? (
-                                    <AnalyzePage
-                                        tasks={tasks}
-                                        users={users}
-                                        currentUserEmail={currentUser?.email}
-                                        currentUserRole={currentUser?.role}
-                                    />
-                                ) : currentView === 'team' ? (
-                                    <TeamPage
-                                        users={users}
-                                        tasks={tasks}
-                                        onUpdateUser={handleUpdateUser}
-                                        onDeleteUser={handleDeleteUser}
-                                        onAddUser={handleCreateUser}
-                                        isOverdue={isOverdue}
-                                        currentUser={currentUser}
-                                        onFetchTaskHistory={handleFetchTaskHistory}
-                                    />
-                                ) : currentView === 'profile' ? (
-                                    <UserProfilePage
-                                        user={currentUser}
-                                        formatDate={formatDate}
-                                        onUserUpdated={(next) => {
-                                            try {
-                                                setCurrentUser(next);
-                                            } catch {
-                                                // ignore
-                                            }
-                                            try {
-                                                const nextId = (next as any)?.id || (next as any)?._id;
-                                                const nextEmail = String((next as any)?.email || '').trim().toLowerCase();
-                                                setUsers((prev) => {
-                                                    const list = Array.isArray(prev) ? prev : [];
-                                                    return list.map((u: any) => {
-                                                        const uid = (u?.id || u?._id || '').toString();
-                                                        const uemail = String(u?.email || '').trim().toLowerCase();
-                                                        const matchById = nextId && uid && uid === String(nextId);
-                                                        const matchByEmail = nextEmail && uemail && uemail === nextEmail;
-                                                        if (!matchById && !matchByEmail) return u;
-                                                        return { ...u, ...next, id: (next as any)?.id || (next as any)?._id || u?.id || uid };
-                                                    });
+                                    }}
+                                    handleDeleteTask={async (taskId: string) => {
+                                        try {
+                                            await handleDeleteTask(taskId);
+                                        } catch (error) {
+                                            toast.error('Failed to delete task');
+                                        }
+                                    }}
+                                    handleUpdateTask={async (taskId: string, updatedData: Partial<Task>) => {
+                                        try {
+                                            await handleUpdateTask(taskId, updatedData);
+                                        } catch (error) {
+                                            toast.error('Failed to update task');
+                                        }
+                                    }}
+                                    canEditTask={canEditTask}
+                                    canDeleteTaskForTask={canEditDeleteTask}
+                                    canMarkTaskDone={canMarkTaskDone}
+                                    getAssignedUserInfo={getAssignedUserInfo}
+                                    formatDate={formatDate}
+                                    isOverdue={isOverdue}
+                                    canDeleteTask={(() => {
+                                        const role = String((currentUser as any)?.role || '').trim().toLowerCase();
+                                        return role !== 'rm' && role !== 'am';
+                                    })()}
+                                />
+                            ) : currentView === 'analyze' ? (
+                                <AnalyzePage
+                                    tasks={tasks}
+                                    currentUserEmail={currentUser?.email}
+                                    currentUserRole={currentUser?.role}
+                                />
+                            ) : currentView === 'team' ? (
+                                <TeamPage
+                                    users={users}
+                                    tasks={tasks}
+                                    onUpdateUser={handleUpdateUser}
+                                    onDeleteUser={handleDeleteUser}
+                                    onAddUser={handleCreateUser}
+                                    isOverdue={isOverdue}
+                                    currentUser={currentUser}
+                                    onFetchTaskHistory={handleFetchTaskHistory}
+                                />
+                            ) : currentView === 'profile' ? (
+                                <UserProfilePage
+                                    user={currentUser}
+                                    formatDate={formatDate}
+                                    onUserUpdated={(next) => {
+                                        try {
+                                            setCurrentUser(next);
+                                        } catch {
+                                            // ignore
+                                        }
+                                        try {
+                                            const nextId = (next as any)?.id || (next as any)?._id;
+                                            const nextEmail = String((next as any)?.email || '').trim().toLowerCase();
+                                            setUsers((prev) => {
+                                                const list = Array.isArray(prev) ? prev : [];
+                                                return list.map((u: any) => {
+                                                    const uid = (u?.id || u?._id || '').toString();
+                                                    const uemail = String(u?.email || '').trim().toLowerCase();
+                                                    const matchById = nextId && uid && uid === String(nextId);
+                                                    const matchByEmail = nextEmail && uemail && uemail === nextEmail;
+                                                    if (!matchById && !matchByEmail) return u;
+                                                    return { ...u, ...next, id: (next as any)?.id || (next as any)?._id || u?.id || uid };
                                                 });
-                                            } catch {
-                                                // ignore
-                                            }
-                                            try {
-                                                localStorage.setItem('currentUser', JSON.stringify(next));
-                                            } catch {
-                                                // ignore
-                                            }
-                                        }}
-                                    />
-                                ) : currentView === 'access' ? (
-                                    <AccessPage
-                                        currentUser={currentUser}
-                                        users={users}
-                                        onAddUser={handleCreateUser}
-                                        onRefreshCurrentUser={fetchCurrentUser}
-                                    />
-                                ) : currentView === 'company-brand-task-types' ? (
-                                    <CompanyBrandTaskTypePage
-                                        currentUser={currentUser}
-                                    />
-                                ) : currentView === 'assign' ? (
-                                    <AssignPage
-                                        currentUser={currentUser}
-                                    />
-                                ) : currentView === 'speed-ecom-reassign' ? (
-                                    <SpeedEcomReassignPage
-                                        task={speedEcomReassignTask}
-                                        currentUser={currentUser}
-                                        users={users}
-                                        onSubmit={handleSpeedEcomReassignSubmit}
-                                        isSubmitting={isSpeedEcomReassignSubmitting}
-                                    />
-                                ) : currentView === 'reviews' ? (
-                                    <ReviewsPage
-                                        currentUser={currentUser}
-                                        users={users}
-                                    />
-                                ) : currentView === 'other-work' ? (
-                                    <OtherWorkPage
-                                        currentUser={currentUser}
-                                        tasks={tasks}
-                                        onRefreshTasks={fetchTasks}
-                                    />
-                                ) : currentView === 'brands' ? (
-                                    <BrandsListPage
-                                        isSidebarCollapsed={isSidebarCollapsed}
-                                        currentUser={currentUser}
-                                        tasks={tasks}
-                                        onSelectBrand={(brandId) => {
-                                            const nextId = String(brandId || '').trim();
-                                            if (!nextId) return;
-                                            setSelectedBrandId(nextId);
-                                            setCurrentView('brand-detail');
-                                            try {
-                                                navigate(`/brands/${encodeURIComponent(nextId)}`);
-                                            } catch {
-                                                // ignore
-                                            }
-                                        }}
-                                    />
-                                ) : currentView === 'brand-detail' ? (
-                                    <BrandDetailPage
-                                        brandId={selectedBrandId || ''}
-                                        brands={apiBrands}
-                                        currentUser={currentUser}
-                                        isSidebarCollapsed={isSidebarCollapsed}
-                                        onBack={() => {
-                                            setCurrentView('brands');
-                                            setSelectedBrandId(null);
-                                            try {
-                                                navigate(routepath.brands);
-                                            } catch {
-                                                // ignore
-                                            }
-                                        }}
-                                        tasks={tasks}
-                                        availableUsers={users}
-                                    />
-                                ) : currentView === 'headline' ? (
-                                    <AdminHeadlineManager />
-                                ) : currentView === 'manager-monthly-rankings' ? (
-                                    <ManagerMonthlyRankingPage currentUser={currentUser} />
-                                ) : currentView === 'brands' ? (
-                                    <BrandsListPage
-                                        isSidebarCollapsed={isSidebarCollapsed}
-                                        currentUser={currentUser}
-                                        tasks={tasks}
-                                        onSelectBrand={(brandId) => {
-                                            setSelectedBrandId(brandId);
-                                            setCurrentView('brand-detail');
-                                        }}
-                                    />
-                                ) : currentView === 'brand-detail' ? (
-                                    <BrandDetailPage
-                                        brandId={selectedBrandId || ''}
-                                        brands={apiBrands}
-                                        currentUser={currentUser}
-                                        isSidebarCollapsed={isSidebarCollapsed}
-                                        onBack={() => setCurrentView('brands')}
-                                        tasks={tasks}
-                                    />
-                                ) : null}
-                            </Suspense>
+                                            });
+                                        } catch {
+                                            // ignore
+                                        }
+                                        try {
+                                            localStorage.setItem('currentUser', JSON.stringify(next));
+                                        } catch {
+                                            // ignore
+                                        }
+                                    }}
+                                />
+                            ) : currentView === 'access' ? (
+                                <AccessPage
+                                    currentUser={currentUser}
+                                    users={users}
+                                    onAddUser={handleCreateUser}
+                                    onRefreshCurrentUser={fetchCurrentUser}
+                                />
+                            ) : currentView === 'company-brand-task-types' ? (
+                                <CompanyBrandTaskTypePage
+                                    currentUser={currentUser}
+                                />
+                            ) : currentView === 'assign' ? (
+                                <AssignPage
+                                    currentUser={currentUser}
+                                />
+                            ) : currentView === 'speed-ecom-reassign' ? (
+                                <SpeedEcomReassignPage
+                                    task={speedEcomReassignTask}
+                                    currentUser={currentUser}
+                                    users={users}
+                                    onSubmit={handleSpeedEcomReassignSubmit}
+                                    isSubmitting={isSpeedEcomReassignSubmitting}
+                                />
+                            ) : currentView === 'reviews' ? (
+                                <ReviewsPage
+                                    currentUser={currentUser}
+                                    users={users}
+                                />
+                            ) : currentView === 'other-work' ? (
+                                <OtherWorkPage
+                                    currentUser={currentUser}
+                                    tasks={tasks}
+                                    onRefreshTasks={fetchTasks}
+                                />
+                            ) : currentView === 'brands' ? (
+                                <BrandsListPage
+                                    isSidebarCollapsed={isSidebarCollapsed}
+                                    currentUser={currentUser}
+                                    tasks={tasks}
+                                    onSelectBrand={(brandId) => {
+                                        const nextId = String(brandId || '').trim();
+                                        if (!nextId) return;
+                                        setSelectedBrandId(nextId);
+                                        setCurrentView('brand-detail');
+                                        try {
+                                            navigate(`/brands/${encodeURIComponent(nextId)}`);
+                                        } catch {
+                                            // ignore
+                                        }
+                                    }}
+                                />
+                            ) : currentView === 'brand-detail' ? (
+                                <BrandDetailPage
+                                    brandId={selectedBrandId || ''}
+                                    brands={apiBrands}
+                                    currentUser={currentUser}
+                                    isSidebarCollapsed={isSidebarCollapsed}
+                                    onBack={() => {
+                                        setCurrentView('brands');
+                                        setSelectedBrandId(null);
+                                        try {
+                                            navigate(routepath.brands);
+                                        } catch {
+                                            // ignore
+                                        }
+                                    }}
+                                    tasks={tasks}
+                                    availableUsers={users}
+                                />
+                            ) : currentView === 'headline' ? (
+                                <AdminHeadlineManager />
+                            ) : currentView === 'manager-monthly-rankings' ? (
+                                <ManagerMonthlyRankingPage currentUser={currentUser} />
+                            ) : currentView === 'brands' ? (
+                                <BrandsListPage
+                                    isSidebarCollapsed={isSidebarCollapsed}
+                                    currentUser={currentUser}
+                                    tasks={tasks}
+                                    onSelectBrand={(brandId) => {
+                                        setSelectedBrandId(brandId);
+                                        setCurrentView('brand-detail');
+                                    }}
+                                />
+                            ) : currentView === 'brand-detail' ? (
+                                <BrandDetailPage
+                                    brandId={selectedBrandId || ''}
+                                    brands={apiBrands}
+                                    currentUser={currentUser}
+                                    isSidebarCollapsed={isSidebarCollapsed}
+                                    onBack={() => setCurrentView('brands')}
+                                    tasks={tasks}
+                                />
+                            ) : null}
                         </div>
                     </div>
                 </main>
             </div>
-            <Suspense fallback={null}>
-                {(() => {
-                    const currentUserCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase();
-                    const currentUserRole = String((currentUser as any)?.role || '').trim().toLowerCase();
-                    const isMdImpexUser = currentUserCompany.includes('mdimpex') ||
-                        currentUserCompany.includes('md_impex') ||
-                        currentUserCompany.includes('md impex') ||
-                        currentUserRole === 'md_manager';
-                    if (isMdImpexUser) {
-                        return (
-                            <MdImpexAddTaskModal
-                                open={showAddTaskModal}
-                                onClose={() => setShowAddTaskModal(false)}
-                                newTask={newTask}
-                                formErrors={formErrors}
-                                onChange={handleInputChange}
-                                availableCompanies={availableCompaniesForSbm}
-                                getAvailableBrandOptions={getAvailableBrandOptions}
-                                availableTaskTypesForNewTask={availableTaskTypesForNewTask}
-                                onSubmit={handleSaveTaskFromModal}
-                                isSubmitting={isCreatingTask}
-                                currentUserEmail={String(currentUser?.email || '')}
-                                currentUserRole={String(currentUser?.role || '')}
-                                canBulkAddTaskTypes={canBulkAddTaskTypes}
-                                onBulkAddTaskTypes={handleAddTaskTypeClick}
-                            />
-                        );
-                    }
+            {(() => {
+                const currentUserCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase();
+                const currentUserRole = String((currentUser as any)?.role || '').trim().toLowerCase();
+                const isMdImpexUser = currentUserCompany.includes('mdimpex') ||
+                    currentUserCompany.includes('md_impex') ||
+                    currentUserCompany.includes('md impex') ||
+                    currentUserRole === 'md_manager' ||
+                    currentUserRole === 'assistant' ||
+                    currentUserRole === 'assistance';
+                if (isMdImpexUser) {
                     return (
-                        <AddTaskModal
+                        <MdImpexAddTaskModal
                             open={showAddTaskModal}
                             onClose={() => setShowAddTaskModal(false)}
                             newTask={newTask}
                             formErrors={formErrors}
-                            onFieldChange={handleInputChange}
-                            users={usersForAddTaskModal}
+                            onChange={handleInputChange}
                             availableCompanies={availableCompaniesForSbm}
-                            canBulkAddCompanies={canBulkAddCompanies}
-                            onBulkAddCompanies={handleAddCompanyClick}
-                            canCreateBrand={canCreateBrand}
-                            canBulkAddBrands={canBulkAddBrands}
-                            onAddBrand={handleAddBrandClick}
-                            availableBrandOptions={getAvailableBrandOptions()}
-                            canBulkAddTaskTypes={canBulkAddTaskTypes}
-                            onBulkAddTaskTypes={handleAddTaskTypeClick}
+                            getAvailableBrandOptions={getAvailableBrandOptions}
                             availableTaskTypesForNewTask={availableTaskTypesForNewTask}
                             onSubmit={handleSaveTaskFromModal}
                             isSubmitting={isCreatingTask}
-                            isSbmUser={isSbmUser}
-                            showCompanyDropdownIcon={true}
+                            currentUserEmail={String(currentUser?.email || '')}
+                            currentUserRole={String(currentUser?.role || '')}
+                            currentUserId={String((currentUser as any)?.id || (currentUser as any)?._id || '')}
+                            canBulkAddTaskTypes={canBulkAddTaskTypes}
+                            onBulkAddTaskTypes={handleAddTaskTypeClick}
                         />
                     );
-                })()}
-                <EditTaskModal
-                    open={showEditTaskModal}
-                    editingTask={editingTask}
-                    onClose={() => setShowEditTaskModal(false)}
-                    editFormData={editFormData}
-                    editFormErrors={editFormErrors}
-                    onChange={handleEditInputChange}
-                    users={users}
-                    availableTaskTypesForEditTask={availableTaskTypesForEditTask}
-                    availableCompanies={availableCompanies}
-                    getEditFormBrandOptions={getEditFormBrandOptions}
-                    onSubmit={handleSaveEditedTask}
-                    isSubmitting={isUpdatingTask}
-                    disableDueDate={true}
-                    currentUserEmail={(currentUser as any)?.email || ''}
-                    currentUser={currentUser as any}
-                />
-                <MdImpexEditTaskModal
-                    open={showMdImpexEditModal}
-                    editingTask={editingTask}
-                    currentUser={currentUser as any}
-                    currentUserEmail={(currentUser as any)?.email || ''}
-                    onClose={() => setShowMdImpexEditModal(false)}
-                    onSubmit={handleSaveEditedTask}
-                    users={users}
-                    editFormData={editFormData}
-                    editFormErrors={editFormErrors}
-                    onChange={handleEditInputChange}
-                    availableTaskTypesForEditTask={availableTaskTypesForEditTask}
-                    availableCompanies={availableCompanies}
-                    getEditFormBrandOptions={getEditFormBrandOptions}
-                    isSubmitting={isUpdatingTask}
-                    disableDueDate={false}
-                />
-                <BulkAddBrandsModal
-                    open={canBulkAddBrands && showBulkBrandModal}
-                    onClose={() => setShowBulkBrandModal(false)}
-                    bulkBrandForm={bulkBrandForm}
-                    setBulkBrandForm={(next) => setBulkBrandForm(next)}
-                    availableCompanies={availableCompaniesForSbm}
-                    companyUsers={companyUsers}
-                    currentUserRole={(currentUser as any)?.role}
-                    onSubmit={handleSubmitBulkBrands}
-                    isSubmitting={isCreatingBulkBrands}
-                />
-                <BulkAddCompaniesModal
-                    open={canBulkAddCompanies && showBulkCompanyModal}
-                    onClose={() => setShowBulkCompanyModal(false)}
-                    bulkCompanyNames={bulkCompanyNames}
-                    setBulkCompanyNames={(next) => setBulkCompanyNames(next)}
-                    onSubmit={handleSubmitBulkCompanies}
-                    isSubmitting={isCreatingBulkCompanies}
-                />
-                <BulkAddTaskTypesModal
-                    open={canBulkAddTaskTypes && showBulkTaskTypeModal}
-                    onClose={() => {
-                        setShowBulkTaskTypeModal(false);
-                        setBulkTaskTypeCompany('');
-                    }}
-                    bulkTaskTypeCompany={bulkTaskTypeCompany}
-                    setBulkTaskTypeCompany={(next) => setBulkTaskTypeCompany(next)}
-                    bulkTaskTypeNames={bulkTaskTypeNames}
-                    setBulkTaskTypeNames={(next) => setBulkTaskTypeNames(next)}
-                    availableCompanies={availableCompaniesForSbm}
-                    onSubmit={handleSubmitBulkTaskTypes}
-                    isSubmitting={isCreatingBulkTaskTypes}
-                />
-                <ManagerAddBrandModal
-                    open={showManagerAddBrandModal}
-                    managerBrandName={managerBrandName}
-                    setManagerBrandName={(next) => setManagerBrandName(next)}
-                    isSubmitting={isCreatingManagerBrand}
-                    onSubmit={() => handleManagerCreateBrand()}
-                    onClose={() => setShowManagerAddBrandModal(false)}
-                />
-            </Suspense>
+                }
+                return (
+                    <AddTaskModal
+                        open={showAddTaskModal}
+                        onClose={() => setShowAddTaskModal(false)}
+                        newTask={newTask}
+                        formErrors={formErrors}
+                        onFieldChange={handleInputChange}
+                        users={usersForAddTaskModal}
+                        availableCompanies={availableCompaniesForSbm}
+                        canBulkAddCompanies={canBulkAddCompanies}
+                        onBulkAddCompanies={handleAddCompanyClick}
+                        canCreateBrand={canCreateBrand}
+                        canBulkAddBrands={canBulkAddBrands}
+                        onAddBrand={handleAddBrandClick}
+                        availableBrandOptions={getAvailableBrandOptions()}
+                        canBulkAddTaskTypes={canBulkAddTaskTypes}
+                        onBulkAddTaskTypes={handleAddTaskTypeClick}
+                        availableTaskTypesForNewTask={availableTaskTypesForNewTask}
+                        onSubmit={handleSaveTaskFromModal}
+                        isSubmitting={isCreatingTask}
+                        isSbmUser={isSbmUser}
+                        showCompanyDropdownIcon={true}
+                    />
+                );
+            })()}
+            <EditTaskModal
+                open={showEditTaskModal}
+                editingTask={editingTask}
+                onClose={() => setShowEditTaskModal(false)}
+                editFormData={editFormData}
+                editFormErrors={editFormErrors}
+                onChange={handleEditInputChange}
+                users={users}
+                availableTaskTypesForEditTask={availableTaskTypesForEditTask}
+                availableCompanies={availableCompanies}
+                getEditFormBrandOptions={getEditFormBrandOptions}
+                onSubmit={handleSaveEditedTask}
+                isSubmitting={isUpdatingTask}
+                disableDueDate={true}
+                currentUserEmail={(currentUser as any)?.email || ''}
+                currentUser={currentUser as any}
+            />
+            <MdImpexEditTaskModal
+                open={showMdImpexEditModal}
+                editingTask={editingTask}
+                currentUser={currentUser as any}
+                currentUserEmail={(currentUser as any)?.email || ''}
+                onClose={() => setShowMdImpexEditModal(false)}
+                onSubmit={handleSaveEditedTask}
+                users={users}
+                editFormData={editFormData}
+                editFormErrors={editFormErrors}
+                onChange={handleEditInputChange}
+                availableTaskTypesForEditTask={availableTaskTypesForEditTask}
+                availableCompanies={availableCompanies}
+                getEditFormBrandOptions={getEditFormBrandOptions}
+                isSubmitting={isUpdatingTask}
+                disableDueDate={false}
+            />
+            <BulkAddBrandsModal
+                open={canBulkAddBrands && showBulkBrandModal}
+                onClose={() => setShowBulkBrandModal(false)}
+                bulkBrandForm={bulkBrandForm}
+                setBulkBrandForm={(next) => setBulkBrandForm(next)}
+                availableCompanies={availableCompaniesForSbm}
+                companyUsers={companyUsers}
+                currentUserRole={(currentUser as any)?.role}
+                onSubmit={handleSubmitBulkBrands}
+                isSubmitting={isCreatingBulkBrands}
+            />
+            <BulkAddCompaniesModal
+                open={canBulkAddCompanies && showBulkCompanyModal}
+                onClose={() => setShowBulkCompanyModal(false)}
+                bulkCompanyNames={bulkCompanyNames}
+                setBulkCompanyNames={(next) => setBulkCompanyNames(next)}
+                onSubmit={handleSubmitBulkCompanies}
+                isSubmitting={isCreatingBulkCompanies}
+            />
+            <BulkAddTaskTypesModal
+                open={canBulkAddTaskTypes && showBulkTaskTypeModal}
+                onClose={() => {
+                    setShowBulkTaskTypeModal(false);
+                    setBulkTaskTypeCompany('');
+                }}
+                bulkTaskTypeCompany={bulkTaskTypeCompany}
+                setBulkTaskTypeCompany={(next) => setBulkTaskTypeCompany(next)}
+                bulkTaskTypeNames={bulkTaskTypeNames}
+                setBulkTaskTypeNames={(next) => setBulkTaskTypeNames(next)}
+                availableCompanies={availableCompaniesForSbm}
+                onSubmit={handleSubmitBulkTaskTypes}
+                isSubmitting={isCreatingBulkTaskTypes}
+            />
+            <ManagerAddBrandModal
+                open={showManagerAddBrandModal}
+                managerBrandName={managerBrandName}
+                setManagerBrandName={(next) => setManagerBrandName(next)}
+                isSubmitting={isCreatingManagerBrand}
+                onSubmit={() => handleManagerCreateBrand()}
+                onClose={() => setShowManagerAddBrandModal(false)}
+            />
 
             {/* Mobile Bottom Navigation - "Beast" UX */}
             <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-gray-200 px-6 py-2.5 flex items-center justify-between z-40 pb-safe">

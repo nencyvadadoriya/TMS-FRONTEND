@@ -4657,7 +4657,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
 
     const role = (currentUser?.role || '').toString().trim().toLowerCase();
     const isObManager = role === 'ob_manager';
-
+    
     if (!window.confirm(`Delete ${selectedTasks.length} tasks? This action cannot be undone.`)) return;
 
     setBulkDeleting(true);
@@ -4666,7 +4666,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         const task = tasks.find(t => t.id === taskId);
         if (task) {
           const isAssigner = isTaskAssigner(task);
-
+          
           if (isObManager && !isAssigner) {
             toast.error(`You do not have permission to delete task: ${task.title}`);
             continue;
