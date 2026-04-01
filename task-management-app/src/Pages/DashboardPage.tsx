@@ -6877,6 +6877,7 @@ const DashboardPage = () => {
                             ) : currentView === 'analyze' ? (
                                 <AnalyzePage
                                     tasks={tasks}
+                                    users={users}
                                     currentUserEmail={currentUser?.email}
                                     currentUserRole={currentUser?.role}
                                 />

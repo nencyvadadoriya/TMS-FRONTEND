@@ -771,7 +771,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, users = [], currentUserEmail
     }, [filteredTasksByGlobalDates, globalSummary, globalCompany]);
 
     const userReportData = useMemo(() => {
-        const userMap: Record<string, { name: string; role: string; total: number; completed: number; pending: number; overdue: number; overdueCompleted: number }> = {};
+        const userMap: Record<string, { name: string; role: string; total: number; completed: number; pending: number; reassigned: number; pendingApproval: number; overdue: number; overdueCompleted: number }> = {};
 
         // Pre-create user to role mapping for faster lookup
         const userRoleMap = new Map<string, string>();
@@ -801,14 +801,34 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, users = [], currentUserEmail
                         role = userRoleMap.get(email)!;
                     }
                 }
-                userMap[u] = { name: u, role: role || 'No Role', total: 0, completed: 0, pending: 0, overdue: 0, overdueCompleted: 0 };
+                userMap[u] = { name: u, role: role || 'No Role', total: 0, completed: 0, pending: 0, reassigned: 0, pendingApproval: 0, overdue: 0, overdueCompleted: 0 };
             }
 
             userMap[u].total++;
             const status = normalizeText(t.status).toLowerCase();
-            const isCompleted = status === 'completed';
+            const isCompleted = status === 'completed' || status === 'done';
             if (isCompleted) userMap[u].completed++;
             else if (status === 'pending') userMap[u].pending++;
+            else if (status === 'reassigned') userMap[u].reassigned++;
+
+            // Count Pending Approval: strictly match ReviewsPage "Review Pending" logic: (status is completed/done) && (reviewStars is missing)
+            const roleKey = (userMap[u].role || '').toLowerCase().replace(/[\s-]+/g, '_');
+            const isReviewableRole = roleKey === 'manager' 
+                || roleKey === 'marketer_manager' 
+                || roleKey === 'md_manager'
+                || roleKey === 'assistant' 
+                || roleKey === 'assistance' 
+                || roleKey === 'sub_assistance' 
+                || roleKey === 'sub_assistence' 
+                || roleKey === 'sub_assist' 
+                || roleKey === 'sub_assistant'
+                || roleKey.includes('assistant')
+                || roleKey.includes('assistence');
+
+            const hasReview = (t as any).reviewStars != null;
+            if (isReviewableRole && isCompleted && !hasReview) {
+                userMap[u].pendingApproval++;
+            }
 
             if (getCompletionStatus(t) === 'Overdue') {
                 userMap[u].overdue++;
@@ -852,13 +872,15 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, users = [], currentUserEmail
     const handleExportReport = () => {
         if (!userReportData.length) return;
 
-        const headers = ['User', 'Role', 'Total Tasks', 'Completed', 'Pending', 'Overdue', 'Overdue Completed', 'Success Rate (%)'];
+        const headers = ['User', 'Role', 'Total Tasks', 'Completed', 'Pending', 'Reassigned', 'Pending Approval', 'Overdue', 'Overdue Completed', 'Success Rate (%)'];
         const rows = userReportData.map(r => [
             r.name,
             r.role,
             r.total,
             r.completed,
             r.pending,
+            r.reassigned,
+            r.pendingApproval,
             r.overdue,
             r.overdueCompleted,
             r.rate
@@ -3381,6 +3403,8 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, users = [], currentUserEmail
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Total</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center text-emerald-600">Completed</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center text-amber-600">Pending</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center text-orange-600">Reassigned</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center text-blue-600">Pending Approval</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center text-red-600">Overdue</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center text-purple-600">Ovre due complete</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Success Rate</th>
@@ -3428,6 +3452,16 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, users = [], currentUserEmail
                                                 <td className="px-6 py-4 text-center whitespace-nowrap">
                                                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700">
                                                         {row.pending}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-center whitespace-nowrap">
+                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-50 text-orange-700">
+                                                        {row.reassigned}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-center whitespace-nowrap">
+                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700">
+                                                        {row.pendingApproval}
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 text-center whitespace-nowrap">
