@@ -191,9 +191,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   });
 
   const SidebarContent = ({ isMobile = false, onItemClick }: { isMobile?: boolean; onItemClick?: () => void }) => (
-    <div className="flex flex-col h-full bg-white dark:bg-gray-900">
+    <div className="flex flex-col h-full bg-white">
       {/* Logo Section */}
-      <div className={`flex-shrink-0 ${isCollapsed && !isMobile ? 'px-2 py-3' : 'px-4 py-4'} border-b border-gray-100 dark:border-gray-800`}>
+      <div className={`flex-shrink-0 ${isCollapsed && !isMobile ? 'px-2 py-3' : 'px-4 py-4'} border-b border-gray-100`}>
         {!isCollapsed || isMobile ? (
           <div className="flex items-center justify-center">
             <img 
@@ -228,7 +228,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <div key={section.id} className="mb-3">
               {(!isCollapsed || isMobile) && section.title && (
                 <div className="px-4 mb-1.5">
-                  <p className="text-[9px] font-semibold tracking-wider text-gray-400 dark:text-gray-500">{section.title}</p>
+                  <p className="text-[9px] font-semibold tracking-wider text-gray-400">{section.title}</p>
                 </div>
               )}
               <div className={`${isCollapsed && !isMobile ? 'px-1.5' : 'px-3'} space-y-0.5`}>
@@ -310,7 +310,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* User Profile Section */}
-      <div className={`flex-shrink-0 border-t border-gray-100 dark:border-gray-800 ${isCollapsed && !isMobile ? 'p-2.5' : 'p-3'} bg-white dark:bg-gray-900`}>
+      <div className={`flex-shrink-0 border-t border-gray-100 ${isCollapsed && !isMobile ? 'p-2.5' : 'p-3'} bg-white`}>
         {(!isCollapsed || isMobile) ? (
           <div className="flex items-center space-x-2.5 min-w-0">
             <div className="relative flex-shrink-0 transition-all duration-300 ease-out hover:scale-105">
@@ -421,13 +421,13 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Mobile Sidebar */}
       <div className={`fixed inset-0 flex z-40 lg:hidden ${sidebarOpen ? '' : 'hidden'}`}>
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setSidebarOpen(false)}></div>
-        <div className="relative flex flex-col w-full max-w-[260px] h-full bg-white dark:bg-gray-900 shadow-2xl">
+        <div className="relative flex flex-col w-full max-w-[260px] h-full bg-white shadow-2xl">
           <div className="absolute top-2.5 right-2.5 z-10">
             <button
               onClick={() => setSidebarOpen(false)}
-              className="p-1 rounded-lg bg-gray-100 dark:bg-gray-800 transition-all duration-300 ease-out hover:scale-105"
+              className="p-1 rounded-lg bg-gray-100 transition-all duration-300 ease-out hover:scale-105"
             >
-              <X className="h-3.5 w-3.5 text-gray-600 dark:text-gray-400" />
+              <X className="h-3.5 w-3.5 text-gray-600" />
             </button>
           </div>
           <SidebarContent isMobile onItemClick={() => setSidebarOpen(false)} />
@@ -437,13 +437,13 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Desktop Sidebar */}
       <div 
         className={`hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 transition-all duration-300 ease-in-out z-30
-          ${isCollapsed ? 'lg:w-17' : 'lg:w-56'} bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 shadow-lg`}
+          ${isCollapsed ? 'lg:w-17' : 'lg:w-56'} bg-white border-r border-gray-100 shadow-lg`}
       >
         {/* Toggle Button */}
         <div className="absolute -right-2.5 top-20 z-40">
           <button
             onClick={toggleSidebarMode}
-            className="p-0.5 rounded-full bg-white dark:bg-gray-800 border shadow-md transition-all duration-300 ease-out hover:scale-110"
+            className="p-0.5 rounded-full bg-white border shadow-md transition-all duration-300 ease-out hover:scale-110"
             style={{ borderColor: `${logoColor}30` }}
           >
             {isCollapsed ? (
@@ -461,7 +461,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       <div className="lg:hidden fixed top-3 left-3 z-20">
         <button
           onClick={() => setSidebarOpen(true)}
-          className="p-1.5 rounded-lg bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700 transition-all duration-300 ease-out hover:scale-105"
+          className="p-1.5 rounded-lg bg-white shadow-lg border border-gray-200 transition-all duration-300 ease-out hover:scale-105"
         >
           <Menu className="h-4 w-4 text-black" />
         </button>

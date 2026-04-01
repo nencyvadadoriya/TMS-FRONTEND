@@ -100,7 +100,7 @@ const ScheduleMeetingModal = ({
     if (!localMeeting.meetingName.trim()) errors.meetingName = 'Meeting name is required';
     if (!localMeeting.startTime) errors.startTime = 'Start time is required';
     if (!localMeeting.endTime) errors.endTime = 'End time is required';
-    
+
     if (localMeeting.startTime && localMeeting.endTime) {
       const start = new Date(localMeeting.startTime);
       const end = new Date(localMeeting.endTime);
@@ -162,9 +162,8 @@ const ScheduleMeetingModal = ({
               <input
                 type="text"
                 placeholder="e.g. Weekly Sync, Project Kick-off"
-                className={`w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${
-                  formErrors.meetingName ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'
-                }`}
+                className={`w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${formErrors.meetingName ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'
+                  }`}
                 value={localMeeting.meetingName}
                 onChange={(e) => handleFieldChange('meetingName', e.target.value)}
               />
@@ -180,9 +179,8 @@ const ScheduleMeetingModal = ({
                 </label>
                 <input
                   type="datetime-local"
-                  className={`w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${
-                    formErrors.startTime ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'
-                  }`}
+                  className={`w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${formErrors.startTime ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'
+                    }`}
                   value={localMeeting.startTime}
                   onChange={(e) => handleFieldChange('startTime', e.target.value)}
                 />
@@ -195,9 +193,8 @@ const ScheduleMeetingModal = ({
                 </label>
                 <input
                   type="datetime-local"
-                  className={`w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${
-                    formErrors.endTime ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'
-                  }`}
+                  className={`w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${formErrors.endTime ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'
+                    }`}
                   value={localMeeting.endTime}
                   onChange={(e) => handleFieldChange('endTime', e.target.value)}
                 />
@@ -254,13 +251,11 @@ const ScheduleMeetingModal = ({
                               key={id}
                               type="button"
                               onClick={() => toggleParticipant(id)}
-                              className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-blue-50 transition-colors ${
-                                isSelected ? 'bg-blue-50/50' : ''
-                              }`}
+                              className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-blue-50 transition-colors ${isSelected ? 'bg-blue-50/50' : ''
+                                }`}
                             >
-                              <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                                isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-300 bg-white'
-                              }`}>
+                              <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-300 bg-white'
+                                }`}>
                                 {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                               </div>
                               <div className="flex flex-col items-start min-w-0">
@@ -327,11 +322,10 @@ const ScheduleMeetingModal = ({
               type="button"
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className={`px-6 py-2.5 text-sm font-bold text-white rounded-xl shadow-lg transition-all active:scale-95 ${
-                isSubmitting
+              className={`px-6 py-2.5 text-sm font-bold text-white rounded-xl shadow-lg transition-all active:scale-95 ${isSubmitting
                   ? 'bg-blue-400 cursor-not-allowed'
                   : 'bg-blue-600 hover:bg-blue-700 hover:shadow-blue-200'
-              }`}
+                }`}
             >
               {isSubmitting ? (
                 <div className="flex items-center gap-2">

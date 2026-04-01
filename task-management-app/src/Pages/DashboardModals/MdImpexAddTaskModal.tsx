@@ -82,14 +82,14 @@ const MdImpexAddTaskModal = ({
   const isMdManager = normalizedCurrentUserRole === 'md_manager';
   const MD_IMPEX_COMPANY_NAME = 'MD Impex';
   const companyOptions = [MD_IMPEX_COMPANY_NAME];
-  
+
   const brandOptions = useMemo(() => {
     const allOptions = getAvailableBrandOptions();
     const isAdmin = currentUserRole === 'admin' || currentUserRole === 'super_admin' || currentUserRole === 'troubleshoot_manager';
     if (isMdManager || isAdmin) return allOptions;
     if (!hasSpecificAccess) return allOptions;
     if (allowedBrands.length === 0) return allOptions;
-    
+
     const normalize = (v: unknown) => String(v || '').trim().toLowerCase();
     const normalizeAllowed = (v: unknown) => normalize(v).replace(/\s+/g, ' ');
     const cleanLabel = (label: unknown) => {
@@ -116,17 +116,17 @@ const MdImpexAddTaskModal = ({
       );
     });
   }, [getAvailableBrandOptions, newTask.companyName, allowedBrands, isMdManager, currentUserRole, hasSpecificAccess, currentUserId, currentUserEmail]);
-  
+
   useEffect(() => {
     if (open) {
       setLocalTitle(newTask.title);
     }
   }, [open]);
-  
+
   const handleTitleChange = useCallback((value: string) => {
     setLocalTitle(value);
   }, []);
-  
+
   const handleTitleBlur = useCallback(() => {
     onChange('title', localTitle);
   }, [localTitle, onChange]);
@@ -140,10 +140,10 @@ const MdImpexAddTaskModal = ({
       return;
     }
     if (hasInitializedRef.current) return;
-    
+
     hasInitializedRef.current = true;
     setLocalTitle(newTask.title);
-    
+
     if (newTask.companyName !== MD_IMPEX_COMPANY_NAME) {
       onChange('companyName', MD_IMPEX_COMPANY_NAME);
     }
@@ -184,7 +184,7 @@ const MdImpexAddTaskModal = ({
           if (myRoleNormalized === 'md_manager' || isAdmin) {
             setHasSpecificAccess(!!myAccess);
             let members = [];
-            
+
             if (myAccess && myAccess.allowedAssignees && myAccess.allowedAssignees.length > 0) {
               const allowedIds = new Set(myAccess.allowedAssignees.map((id: any) => String(id)));
               members = allMembers.filter((m: any) =>
@@ -201,11 +201,11 @@ const MdImpexAddTaskModal = ({
                 name: m.name
               }));
             }
-            
+
             setAllowedUsers(members);
             setAllowedTaskTypes(myAccess?.allowedTaskTypes || []);
             setAllowedBrands(myAccess?.allowedBrands || []);
-            
+
             if (!newTask.assignedTo && members.length > 0) {
               onChange('assignedTo', members[0].email);
             }
@@ -272,11 +272,11 @@ const MdImpexAddTaskModal = ({
       if (!t) return;
       const original = String(t).trim();
       const norm = original.toLowerCase();
-      
+
       if (!normalizedToOriginal.has(norm)) {
         normalizedToOriginal.set(norm, original);
       }
-      
+
       if (!seenAvailable.has(norm)) {
         seenAvailable.add(norm);
         uniqueAvailable.push(normalizedToOriginal.get(norm) || original);
@@ -286,7 +286,7 @@ const MdImpexAddTaskModal = ({
     if (allowedTaskTypes.length > 0) {
       const result: string[] = [];
       const seenResult = new Set<string>();
-      
+
       allowedTaskTypes.forEach((allowed) => {
         const norm = String(allowed).toLowerCase().trim();
         if (norm && !seenResult.has(norm)) {
@@ -389,8 +389,8 @@ const MdImpexAddTaskModal = ({
                 type="text"
                 placeholder="What needs to be done?"
                 className={`w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 ${formErrors.title
-                    ? 'border-red-500 bg-red-50 dark:bg-red-900/10'
-                    : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
+                  ? 'border-red-500 bg-red-50 dark:bg-red-900/10'
+                  : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
                   }`}
                 value={localTitle}
                 onChange={(e) => handleTitleChange(e.target.value)}
@@ -405,8 +405,8 @@ const MdImpexAddTaskModal = ({
               <input
                 type="date"
                 className={`w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 ${formErrors.dueDate
-                    ? 'border-red-500 bg-red-50 dark:bg-red-900/10'
-                    : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
+                  ? 'border-red-500 bg-red-50 dark:bg-red-900/10'
+                  : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
                   }`}
                 value={newTask.dueDate}
                 onChange={(e) => onChange('dueDate', e.target.value)}
@@ -424,19 +424,19 @@ const MdImpexAddTaskModal = ({
                   disabled={loadingUsers}
                   onClick={() => setEmailOpen((v) => !v)}
                   className={`w-full px-3 py-2 text-sm border rounded-xl text-left focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 flex items-center justify-between ${formErrors.assignedTo
-                      ? 'border-red-500 bg-red-50 dark:bg-red-900/10'
-                      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
+                    ? 'border-red-500 bg-red-50 dark:bg-red-900/10'
+                    : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
                     } ${loadingUsers ? 'bg-gray-50 text-gray-400 cursor-not-allowed' : ''}`}
                 >
                   <span className="truncate text-sm">
                     {newTask.assignedTo
                       ? (() => {
-                          const u = allowedUsers.find((x) => String(x?.email || '') === String(newTask.assignedTo || ''));
-                          if (!u) return String(newTask.assignedTo || '').trim();
-                          const name = String(u?.name || '').trim();
-                          const email = String(u?.email || '').trim();
-                          return name ? `${name} (${email})` : email;
-                        })()
+                        const u = allowedUsers.find((x) => String(x?.email || '') === String(newTask.assignedTo || ''));
+                        if (!u) return String(newTask.assignedTo || '').trim();
+                        const name = String(u?.name || '').trim();
+                        const email = String(u?.email || '').trim();
+                        return name ? `${name} (${email})` : email;
+                      })()
                       : (loadingUsers ? 'Loading members...' : 'Select email address')}
                   </span>
                   <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${emailOpen ? 'rotate-180' : ''}`} />
@@ -518,8 +518,8 @@ const MdImpexAddTaskModal = ({
                     setBrandOpen((v) => !v);
                   }}
                   className={`w-full px-3 py-2 text-sm border rounded-xl text-left focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 flex items-center justify-between ${formErrors.brand
-                      ? 'border-red-500 bg-red-50 dark:bg-red-900/10'
-                      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
+                    ? 'border-red-500 bg-red-50 dark:bg-red-900/10'
+                    : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
                     } ${!newTask.companyName ? 'opacity-60 cursor-not-allowed' : ''}`}
                 >
                   <span className="truncate text-sm">
@@ -589,8 +589,8 @@ const MdImpexAddTaskModal = ({
               </div>
               <select
                 className={`w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 ${filteredTaskTypes.length === 0
-                    ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-400'
-                    : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
+                  ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-400'
+                  : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
                   }`}
                 value={newTask.taskType}
                 onChange={(e) => onChange('taskType', e.target.value)}
@@ -626,12 +626,12 @@ const MdImpexAddTaskModal = ({
                     type="button"
                     onClick={() => onChange('priority', priority as TaskPriority)}
                     className={`py-2 text-xs font-medium rounded-xl border transition-all duration-200 ${newTask.priority === (priority as TaskPriority)
-                        ? priority === 'high'
-                          ? 'bg-rose-100 text-rose-700 border-rose-300'
-                          : priority === 'medium'
-                            ? 'bg-amber-100 text-amber-700 border-amber-300'
-                            : 'bg-primary-ultralight text-primary border-primary-light'
-                        : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400'
+                      ? priority === 'high'
+                        ? 'bg-rose-100 text-rose-700 border-rose-300'
+                        : priority === 'medium'
+                          ? 'bg-amber-100 text-amber-700 border-amber-300'
+                          : 'bg-primary-ultralight text-primary border-primary-light'
+                      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400'
                       }`}
                   >
                     {priority.charAt(0).toUpperCase() + priority.slice(1)}
@@ -657,8 +657,8 @@ const MdImpexAddTaskModal = ({
               onClick={handleFormSubmit}
               disabled={isSubmitting || allowedUsers.length === 0}
               className={`px-4 py-2 text-xs font-medium text-white rounded-xl transition-all duration-200 ${isSubmitting || allowedUsers.length === 0
-                  ? 'bg-primary/60 cursor-not-allowed'
-                  : 'gradient-primary hover:shadow-md'
+                ? 'bg-primary/60 cursor-not-allowed'
+                : 'gradient-primary hover:shadow-md'
                 }`}
             >
               {isSubmitting ? (

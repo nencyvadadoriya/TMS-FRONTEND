@@ -1,7 +1,13 @@
 @import "tailwindcss";
+@config "../tailwind.config.js";
+
+@theme {
+  --variant-dark: :where(.never);
+}
 
 /* Theme Variables */
 :root {
+  color-scheme: light;
   /* Primary Navy Blue */
   --color-primary-dark: #0f2a6e;
   --color-primary-main: #1e3a8a;

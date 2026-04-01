@@ -186,8 +186,8 @@ const AddTaskModal = ({
                 type="text"
                 placeholder="What needs to be done?"
                 className={`w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 ${formErrors.title
-                    ? 'border-red-500 bg-red-50 dark:bg-red-900/10'
-                    : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
+                  ? 'border-red-500 bg-red-50 dark:bg-red-900/10'
+                  : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
                   }`}
                 value={localTask.title}
                 onChange={(e) => handleInternalChange('title', e.target.value)}
@@ -201,8 +201,8 @@ const AddTaskModal = ({
               <input
                 type="date"
                 className={`w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 ${formErrors.dueDate
-                    ? 'border-red-500 bg-red-50 dark:bg-red-900/10'
-                    : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
+                  ? 'border-red-500 bg-red-50 dark:bg-red-900/10'
+                  : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
                   }`}
                 value={localTask.dueDate}
                 onChange={(e) => handleInternalChange('dueDate', e.target.value)}
@@ -219,8 +219,8 @@ const AddTaskModal = ({
                   type="button"
                   onClick={() => setAssignOpen((v) => !v)}
                   className={`w-full px-3 py-2 text-sm border rounded-xl text-left focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 flex items-center justify-between ${formErrors.assignedTo
-                      ? 'border-red-500 bg-red-50 dark:bg-red-900/10'
-                      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
+                    ? 'border-red-500 bg-red-50 dark:bg-red-900/10'
+                    : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
                     }`}
                 >
                   <span className="truncate text-sm">
@@ -306,8 +306,8 @@ const AddTaskModal = ({
                     value={localTask.companyName}
                     onChange={(e) => handleInternalChange('companyName', e.target.value)}
                     className={`w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 ${formErrors.companyName
-                        ? 'border-red-500 bg-red-50 dark:bg-red-900/10'
-                        : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
+                      ? 'border-red-500 bg-red-50 dark:bg-red-900/10'
+                      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
                       } ${hideIcon ? 'appearance-none' : ''}`}
                     style={hideIcon ? { backgroundImage: 'none' } : undefined}
                     disabled={availableCompanies.length === 1}
@@ -346,8 +346,8 @@ const AddTaskModal = ({
                     setBrandOpen((v) => !v);
                   }}
                   className={`w-full px-3 py-2 text-sm border rounded-xl text-left focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 flex items-center justify-between ${formErrors.brand
-                      ? 'border-red-500 bg-red-50 dark:bg-red-900/10'
-                      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
+                    ? 'border-red-500 bg-red-50 dark:bg-red-900/10'
+                    : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
                     } ${!localTask.companyName ? 'opacity-60 cursor-not-allowed' : ''}`}
                 >
                   <span className="truncate text-sm">
@@ -417,8 +417,8 @@ const AddTaskModal = ({
               </div>
               <select
                 className={`w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 ${availableTaskTypesForNewTask.length === 0
-                    ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-400'
-                    : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
+                  ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-400'
+                  : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
                   }`}
                 value={localTask.taskType}
                 onChange={(e) => handleInternalChange('taskType', e.target.value)}
@@ -459,12 +459,12 @@ const AddTaskModal = ({
                     type="button"
                     onClick={() => handleInternalChange('priority', priority as TaskPriority)}
                     className={`py-2 text-xs font-medium rounded-xl border transition-all duration-200 ${localTask.priority === (priority as TaskPriority)
-                        ? priority === 'high'
-                          ? 'bg-rose-100 text-rose-700 border-rose-300'
-                          : priority === 'medium'
-                            ? 'bg-amber-100 text-amber-700 border-amber-300'
-                            : 'bg-primary-ultralight text-primary border-primary-light'
-                        : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400'
+                      ? priority === 'high'
+                        ? 'bg-rose-100 text-rose-700 border-rose-300'
+                        : priority === 'medium'
+                          ? 'bg-amber-100 text-amber-700 border-amber-300'
+                          : 'bg-primary-ultralight text-primary border-primary-light'
+                      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400'
                       }`}
                   >
                     {priority.charAt(0).toUpperCase() + priority.slice(1)}
@@ -490,8 +490,8 @@ const AddTaskModal = ({
               onClick={handleSubmit}
               disabled={isSubmitting}
               className={`px-4 py-2 text-xs font-medium text-white rounded-xl transition-all duration-200 ${isSubmitting
-                  ? 'bg-primary/60 cursor-not-allowed'
-                  : 'gradient-primary hover:shadow-md'
+                ? 'bg-primary/60 cursor-not-allowed'
+                : 'gradient-primary hover:shadow-md'
                 }`}
             >
               {isSubmitting ? (
