@@ -86,17 +86,6 @@ const MdImpexAddTaskModal = ({
   const brandOptions = useMemo(() => {
     const allOptions = getAvailableBrandOptions();
 
-    // ✅ FIX: If parent returns no brands but we have allowedBrands from access records,
-    // construct options directly from allowedBrands
-    if (allOptions.length === 0 && allowedBrands.length > 0) {
-      return allowedBrands
-        .filter(Boolean)
-        .map((brand) => ({
-          value: brand.trim(),
-          label: brand.trim(),
-        }));
-    }
-
     const isAdmin =
       currentUserRole === 'admin' ||
       currentUserRole === 'super_admin' ||
@@ -108,14 +97,10 @@ const MdImpexAddTaskModal = ({
     // No specific access means show all brands
     if (!hasSpecificAccess) return allOptions;
 
-    // If allowedBrands is empty, show all brands
-    if (allowedBrands.length === 0) return allOptions;
-
-    // Helper function to normalize strings for comparison
+    // Helper functions
     const normalize = (v: unknown) =>
       String(v || '').trim().toLowerCase().replace(/\s+/g, ' ');
 
-    // Helper to extract brand name from labels like "1544 - Brand Name"
     const extractBrandName = (label: unknown) => {
       const raw = String(label || '').trim();
       if (!raw) return '';
@@ -123,22 +108,29 @@ const MdImpexAddTaskModal = ({
       return match ? match[1].trim() : raw;
     };
 
-    // Create normalized sets for faster lookup
+    // ✅ Build brand options from allowedBrands (md_manager sent brands)
+    const allowedBrandOptions: Array<{ value: string; label: string }> =
+      allowedBrands
+        .filter(Boolean)
+        .map((brand) => ({ value: brand.trim(), label: brand.trim() }));
+
+    // ✅ Filter allOptions to user's own added brands
+    const userOwnBrandOptions = allOptions.filter((opt) => {
+      if (opt.ownerId && currentUserId && String(opt.ownerId) === String(currentUserId)) return true;
+      if (opt.createdBy && currentUserId && String(opt.createdBy) === String(currentUserId)) return true;
+      if (opt.createdBy && currentUserEmail && String(opt.createdBy) === String(currentUserEmail)) return true;
+      return false;
+    });
+
+    // ✅ Also filter allOptions that match allowedBrands (md_manager sent)
     const allowedNormalizedSet = new Set(
       allowedBrands.map((b) => normalize(b)).filter(Boolean)
     );
-
-    // Also create a set with extracted brand names from allowed brands
     const allowedExtractedSet = new Set(
       allowedBrands.map((b) => normalize(extractBrandName(b))).filter(Boolean)
     );
 
-    return allOptions.filter((opt) => {
-      // User's own brands (owner or creator)
-      if (opt.ownerId && currentUserId && String(opt.ownerId) === String(currentUserId)) return true;
-      if (opt.createdBy && currentUserId && String(opt.createdBy) === String(currentUserId)) return true;
-      if (opt.createdBy && currentUserEmail && String(opt.createdBy) === String(currentUserEmail)) return true;
-
+    const matchedFromAll = allOptions.filter((opt) => {
       const valueNorm = normalize(opt?.value);
       const labelNorm = normalize(opt?.label);
       const extractedValue = normalize(extractBrandName(opt?.value));
@@ -152,6 +144,17 @@ const MdImpexAddTaskModal = ({
         (extractedValue && allowedExtractedSet.has(extractedValue)) ||
         (extractedLabel && allowedExtractedSet.has(extractedLabel))
       );
+    });
+
+    // ✅ Merge all three sources: user's own brands + matched from allOptions + md_manager sent brands
+    // Deduplicate by normalized value
+    const merged = [...userOwnBrandOptions, ...matchedFromAll, ...allowedBrandOptions];
+    const seen = new Set<string>();
+    return merged.filter((opt) => {
+      const key = normalize(opt.value);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
     });
   }, [getAvailableBrandOptions, allowedBrands, isMdManager, currentUserRole, hasSpecificAccess, currentUserId, currentUserEmail]);
 

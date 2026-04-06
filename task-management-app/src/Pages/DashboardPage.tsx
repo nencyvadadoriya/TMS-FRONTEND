@@ -64,6 +64,7 @@ import BulkAddCompaniesModal from './DashboardModals/BulkAddCompaniesModal';
 import BulkAddTaskTypesModal from './DashboardModals/BulkAddTaskTypesModal';
 import ManagerAddBrandModal from './DashboardModals/ManagerAddBrandModal';
 import AdminHeadlineManager from '../Components/AdminHeadlineManager';
+
 import type {
     Brand,
     CommentType,
@@ -81,6 +82,7 @@ import { authService } from '../Services/User.Services';
 import { brandService } from '../Services/Brand.service';
 import { companyService } from '../Services/Company.service';
 import { taskTypeService } from '../Services/TaskType.service';
+import mdImpexAccessService from '../Services/MdImpexAccess.services';
 import { companyTaskTypeService } from '../Services/CompanyTaskType.service';
 import { companyBrandTaskTypeService } from '../Services/CompanyBrandTaskType.service';
 import { assignService } from '../Services/Assign.service';
@@ -292,6 +294,9 @@ const DashboardPage = () => {
     const [reviewsMonth, setReviewsMonth] = useState<string>(() => monthKeyOfDate(new Date()));
     const [reviewedTasksForSummary, setReviewedTasksForSummary] = useState<Task[]>([]);
     const [allMdImpexUsers, setAllMdImpexUsers] = useState<any[]>([]);
+    const [, setMdAllowedMembers] = useState<UserType[]>([]);
+    const [mdAllowedTaskTypes, setMdAllowedTaskTypes] = useState<string[]>([]);
+    const [mdAllowedBrands, setMdAllowedBrands] = useState<string[]>([]);
     const [reviewModalTaskId, setReviewModalTaskId] = useState<string | null>(null);
     const [reviewModalStars, setReviewModalStars] = useState<number>(0);
     const [reviewModalComment, setReviewModalComment] = useState<string>('');
@@ -1949,6 +1954,13 @@ const DashboardPage = () => {
         return [...new Set(apiLabels)].sort((a, b) => a.localeCompare(b));
     }, [allowedTaskTypeKeysForManager, currentUser, taskTypes, tasks]);
 
+    const effectiveAvailableTaskTypes = useMemo(() => {
+        const currentUserCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase();
+        const isMdImpexUser = currentUserCompany.includes('mdimpex') || currentUserCompany.includes('md_impex');
+        if (isMdImpexUser && mdAllowedTaskTypes && mdAllowedTaskTypes.length > 0) return mdAllowedTaskTypes;
+        return availableTaskTypes || [];
+    }, [currentUser, mdAllowedTaskTypes, availableTaskTypes]);
+
     const taskTypesByCompanyFromTasks = useMemo(() => {
         const map = new Map<string, Set<string>>();
         (tasks || []).forEach((t: any) => {
@@ -2159,6 +2171,14 @@ const DashboardPage = () => {
             return String(b?.name || b?.brandName || b?.brand || '').trim();
         };
         const role = (currentUser?.role || '').toString().trim().toLowerCase();
+        const currentUserCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase();
+        const isMdImpexUser = currentUserCompany.includes('mdimpex') || currentUserCompany.includes('md_impex');
+        const extractBrandName = (label: unknown) => {
+            const raw = String(label || '').trim();
+            if (!raw) return '';
+            const match = raw.match(/^\d+\s*-\s*(.+)$/);
+            return match ? match[1].trim() : raw;
+        };
         if (role === 'assistant') {
             const companyKey = normalizeCompanyKey(filters.company === 'all' ? '' : filters.company);
             const taskBrands = (assistantScopedTasks || [])
@@ -2172,12 +2192,26 @@ const DashboardPage = () => {
             return Array.from(new Set(taskBrands)).sort((a, b) => a.localeCompare(b));
         }
         if (filters.company === 'all') {
-            return brands
+            const fromApi = brands
                 .map((brand: any) => getBrandName(brand))
-                .filter(Boolean)
-                .sort();
+                .filter(Boolean);
+            let merged = fromApi.slice();
+            try {
+                if (isMdImpexUser && mdAllowedBrands && mdAllowedBrands.length > 0) {
+                    const allowed = mdAllowedBrands.map(b => extractBrandName(b)).filter(Boolean);
+                    merged = [...merged, ...allowed];
+                }
+            } catch (err) {
+                // ignore
+            }
+            return [...new Set(merged)].sort();
         }
         const companyKey = normalizeCompanyKey(filters.company);
+        const mdKey = normalizeCompanyKey(MD_IMPEX_COMPANY_NAME);
+        if (companyKey === mdKey && isMdImpexUser && mdAllowedBrands && mdAllowedBrands.length > 0) {
+            const allowed = mdAllowedBrands.map(b => extractBrandName(b)).filter(Boolean);
+            return Array.from(new Set(allowed)).sort();
+        }
         return brands
             .filter((brand: any) => normalizeCompanyKey(getCompanyName(brand)) === companyKey)
             .map((brand: any) => getBrandName(brand))
@@ -2257,7 +2291,7 @@ const DashboardPage = () => {
         }
         const fromOverrides = Object.values(taskTypeCompanyOverrides || {}).flatMap((arr) => (Array.isArray(arr) ? arr : []));
         const fromTasks = Array.from(taskTypesByCompanyFromTasks.values()).flatMap((set) => Array.from(set));
-        const merged = ensureBrandAssignment(Array.from(new Set([...availableTaskTypes, ...fromOverrides, ...fromTasks])));
+        const merged = ensureBrandAssignment(Array.from(new Set([...effectiveAvailableTaskTypes, ...fromOverrides, ...fromTasks])));
         const canonicalizeTypeLabel = (value: unknown): string => {
             const raw = (value == null ? '' : String(value)).trim();
             if (!raw) return '';
@@ -2289,7 +2323,7 @@ const DashboardPage = () => {
             return Array.from(uniqueByKey.values()).sort((a, b) => a.localeCompare(b));
         }
         return restrictTaskTypesForCompany(filters.company, dedupeByCanonicalKey(merged).sort((a, b) => a.localeCompare(b)));
-    }, [allowedTaskTypeKeysForManager, assistantScopedTasks, availableTaskTypes, currentUser?.email, currentUser?.role, filters.brand, filters.company, getTaskTypesForCompany, getTaskTypesForCompanyBrand, getTaskTypesForCompanyUser, getTaskTypesForCompanyUserBrand, normalizeRoleKey, normalizeText, restrictTaskTypesForCompany, taskTypeCompanyOverrides, taskTypes, taskTypesByCompanyFromTasks]);
+    }, [allowedTaskTypeKeysForManager, assistantScopedTasks, effectiveAvailableTaskTypes, currentUser?.email, currentUser?.role, filters.brand, filters.company, getTaskTypesForCompany, getTaskTypesForCompanyBrand, getTaskTypesForCompanyUser, getTaskTypesForCompanyUserBrand, normalizeRoleKey, normalizeText, restrictTaskTypesForCompany, taskTypeCompanyOverrides, taskTypes, taskTypesByCompanyFromTasks]);
 
     const availableTaskTypesForNewTask = useMemo(() => {
         const role = String((currentUser as any)?.role || '').toString().trim().toLowerCase();
@@ -4914,6 +4948,72 @@ const DashboardPage = () => {
             // ignore
         }
     }, []);
+
+    useEffect(() => {
+        let mounted = true;
+        const fetchMdAccess = async () => {
+            const currentUserCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase();
+            const isMdImpexUser = currentUserCompany.includes('mdimpex') || currentUserCompany.includes('md_impex');
+            if (!isMdImpexUser || !((currentUser as any)?.email)) return;
+
+            try {
+                const [membersRes, accessRes] = await Promise.all([
+                    mdImpexAccessService.getAllMembers(),
+                    mdImpexAccessService.getAllPersonAccess(),
+                ]);
+
+                if (!mounted) return;
+
+                if (membersRes?.success && membersRes.data) {
+                    const allMembers = (membersRes.data || []).map((m: any) => ({
+                        id: String(m.id || m._id || ''),
+                        email: String(m.email || '').trim(),
+                        name: String(m.name || '').trim(),
+                        role: String(m.role || '').trim(),
+                    }));
+
+                    const currentNormalized = String((currentUser as any)?.email || '').trim().toLowerCase();
+                    const accessList = (accessRes?.success && accessRes.data) ? accessRes.data : [];
+                    const myAccess = accessList.find((item: any) => String(item.assignedToEmail || '').trim().toLowerCase() === currentNormalized);
+
+                    const myInfo = allMembers.find((m: any) => String(m.email || '').trim().toLowerCase() === currentNormalized);
+                    const myRoleNormalized = String(myInfo?.role || '').trim().toLowerCase().replace(/\s+/g, '_');
+                    const isAdmin = ['admin', 'super_admin', 'troubleshoot_manager'].includes(String((currentUser as any)?.role || '').trim().toLowerCase());
+
+                    if (myRoleNormalized === 'md_manager' || isAdmin) {
+                        let members: any[] = [];
+                        if (myAccess && myAccess.allowedAssignees && myAccess.allowedAssignees.length > 0) {
+                            const allowedIds = new Set((myAccess.allowedAssignees || []).map((id: any) => String(id)));
+                            members = allMembers.filter((m: any) => allowedIds.has(String(m.id)) || String(m.email || '').trim().toLowerCase() === currentNormalized);
+                        } else {
+                            members = allMembers;
+                        }
+
+                        setMdAllowedMembers(members.map((m: any) => ({ id: m.id, name: m.name, email: m.email, role: m.role || 'user' })));
+                        setMdAllowedTaskTypes(myAccess?.allowedTaskTypes || []);
+                        setMdAllowedBrands(myAccess?.allowedBrands || []);
+                    } else if (myAccess) {
+                        const allowedIds = new Set((myAccess.allowedAssignees || []).map((id: any) => String(id)));
+                        const filteredMembers = allMembers.filter((m: any) => allowedIds.has(String(m.id)) || String(m.email || '').trim().toLowerCase() === currentNormalized);
+                        const members = filteredMembers.map((m: any) => ({ id: m.id, email: m.email, name: m.name }));
+                        setMdAllowedMembers(members.map((m: any) => ({ id: m.id, name: m.name, email: m.email, role: m.role || 'user' })));
+                        setMdAllowedTaskTypes(myAccess.allowedTaskTypes || []);
+                        setMdAllowedBrands(myAccess.allowedBrands || []);
+                    } else {
+                        const me = allMembers.filter((m: any) => String(m.email || '').trim().toLowerCase() === currentNormalized).map((m: any) => ({ id: m.id, email: m.email, name: m.name }));
+                        setMdAllowedMembers(me.map((m: any) => ({ id: m.id, name: m.name, email: m.email, role: m.role || 'user' })));
+                        setMdAllowedTaskTypes([]);
+                        setMdAllowedBrands([]);
+                    }
+                }
+            } catch (err) {
+                console.error('❌ [Dashboard] MD Impex access fetch error:', err);
+            }
+        };
+
+        void fetchMdAccess();
+        return () => { mounted = false; };
+    }, [currentUser]);
 
     const fetchBrands = useCallback(async () => {
         try {
