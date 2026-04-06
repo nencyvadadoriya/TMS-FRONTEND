@@ -85,43 +85,81 @@ const MdImpexAddTaskModal = ({
 
   const brandOptions = useMemo(() => {
     const allOptions = getAvailableBrandOptions();
-    const isAdmin = currentUserRole === 'admin' || currentUserRole === 'super_admin' || currentUserRole === 'troubleshoot_manager';
+
+    // ✅ FIX: If parent returns no brands but we have allowedBrands from access records,
+    // construct options directly from allowedBrands
+    if (allOptions.length === 0 && allowedBrands.length > 0) {
+      return allowedBrands
+        .filter(Boolean)
+        .map((brand) => ({
+          value: brand.trim(),
+          label: brand.trim(),
+        }));
+    }
+
+    const isAdmin =
+      currentUserRole === 'admin' ||
+      currentUserRole === 'super_admin' ||
+      currentUserRole === 'troubleshoot_manager';
+
+    // Admin and MD Manager get all brands
     if (isMdManager || isAdmin) return allOptions;
+
+    // No specific access means show all brands
     if (!hasSpecificAccess) return allOptions;
+
+    // If allowedBrands is empty, show all brands
     if (allowedBrands.length === 0) return allOptions;
 
-    const normalize = (v: unknown) => String(v || '').trim().toLowerCase();
-    const normalizeAllowed = (v: unknown) => normalize(v).replace(/\s+/g, ' ');
-    const cleanLabel = (label: unknown) => {
-      const raw = normalizeAllowed(label);
+    // Helper function to normalize strings for comparison
+    const normalize = (v: unknown) =>
+      String(v || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+    // Helper to extract brand name from labels like "1544 - Brand Name"
+    const extractBrandName = (label: unknown) => {
+      const raw = String(label || '').trim();
       if (!raw) return '';
-      const parts = raw.split(' - ');
-      if (parts.length >= 2 && /^\d+$/.test(parts[0].trim())) {
-        return parts.slice(1).join(' - ').trim();
-      }
-      return raw;
+      const match = raw.match(/^\d+\s*-\s*(.+)$/);
+      return match ? match[1].trim() : raw;
     };
-    const allowedSet = new Set((allowedBrands || []).map((b) => normalizeAllowed(b)).filter(Boolean));
+
+    // Create normalized sets for faster lookup
+    const allowedNormalizedSet = new Set(
+      allowedBrands.map((b) => normalize(b)).filter(Boolean)
+    );
+
+    // Also create a set with extracted brand names from allowed brands
+    const allowedExtractedSet = new Set(
+      allowedBrands.map((b) => normalize(extractBrandName(b))).filter(Boolean)
+    );
+
     return allOptions.filter((opt) => {
-      const valueKey = normalizeAllowed(opt?.value);
-      const labelKey = normalizeAllowed(opt?.label);
-      const cleanedLabelKey = cleanLabel(opt?.label);
+      // User's own brands (owner or creator)
+      if (opt.ownerId && currentUserId && String(opt.ownerId) === String(currentUserId)) return true;
+      if (opt.createdBy && currentUserId && String(opt.createdBy) === String(currentUserId)) return true;
+      if (opt.createdBy && currentUserEmail && String(opt.createdBy) === String(currentUserEmail)) return true;
+
+      const valueNorm = normalize(opt?.value);
+      const labelNorm = normalize(opt?.label);
+      const extractedValue = normalize(extractBrandName(opt?.value));
+      const extractedLabel = normalize(extractBrandName(opt?.label));
+
       return (
-        (opt.ownerId && currentUserId && String(opt.ownerId) === String(currentUserId)) ||
-        (opt.createdBy && currentUserId && String(opt.createdBy) === String(currentUserId)) ||
-        (opt.createdBy && currentUserEmail && String(opt.createdBy) === String(currentUserEmail)) ||
-        (valueKey && allowedSet.has(valueKey)) ||
-        (labelKey && allowedSet.has(labelKey)) ||
-        (cleanedLabelKey && allowedSet.has(cleanedLabelKey))
+        (valueNorm && allowedNormalizedSet.has(valueNorm)) ||
+        (labelNorm && allowedNormalizedSet.has(labelNorm)) ||
+        (extractedValue && allowedNormalizedSet.has(extractedValue)) ||
+        (extractedLabel && allowedNormalizedSet.has(extractedLabel)) ||
+        (extractedValue && allowedExtractedSet.has(extractedValue)) ||
+        (extractedLabel && allowedExtractedSet.has(extractedLabel))
       );
     });
-  }, [getAvailableBrandOptions, newTask.companyName, allowedBrands, isMdManager, currentUserRole, hasSpecificAccess, currentUserId, currentUserEmail]);
+  }, [getAvailableBrandOptions, allowedBrands, isMdManager, currentUserRole, hasSpecificAccess, currentUserId, currentUserEmail]);
 
   useEffect(() => {
     if (open) {
       setLocalTitle(newTask.title);
     }
-  }, [open]);
+  }, [open, newTask.title]);
 
   const handleTitleChange = useCallback((value: string) => {
     setLocalTitle(value);
@@ -136,6 +174,7 @@ const MdImpexAddTaskModal = ({
       hasInitializedRef.current = false;
       setAllowedUsers([]);
       setAllowedTaskTypes([]);
+      setAllowedBrands([]);
       setLocalTitle('');
       return;
     }
@@ -147,7 +186,7 @@ const MdImpexAddTaskModal = ({
     if (newTask.companyName !== MD_IMPEX_COMPANY_NAME) {
       onChange('companyName', MD_IMPEX_COMPANY_NAME);
     }
-  }, [open]);
+  }, [open, MD_IMPEX_COMPANY_NAME, newTask.companyName, newTask.title, onChange]);
 
   useEffect(() => {
     const fetchAccessData = async () => {
@@ -172,7 +211,10 @@ const MdImpexAddTaskModal = ({
           }));
 
           const currentNormalized = normalizeEmail(currentUserEmail);
-          const isAdmin = currentUserRole === 'admin' || currentUserRole === 'super_admin' || currentUserRole === 'troubleshoot_manager';
+          const isAdmin =
+            currentUserRole === 'admin' ||
+            currentUserRole === 'super_admin' ||
+            currentUserRole === 'troubleshoot_manager';
 
           const myInfo = allMembers.find((m: any) => normalizeEmail(m.email) === currentNormalized);
           const myRoleNormalized = myInfo?.role?.toLowerCase()?.replace(/\s+/g, '_') || '';
@@ -189,17 +231,9 @@ const MdImpexAddTaskModal = ({
               const allowedIds = new Set(myAccess.allowedAssignees.map((id: any) => String(id)));
               members = allMembers.filter((m: any) =>
                 allowedIds.has(String(m.id)) || normalizeEmail(m.email) === currentNormalized
-              ).map((m: any) => ({
-                id: m.id,
-                email: m.email,
-                name: m.name
-              }));
+              ).map((m: any) => ({ id: m.id, email: m.email, name: m.name }));
             } else {
-              members = allMembers.map((m: any) => ({
-                id: m.id,
-                email: m.email,
-                name: m.name
-              }));
+              members = allMembers.map((m: any) => ({ id: m.id, email: m.email, name: m.name }));
             }
 
             setAllowedUsers(members);
@@ -216,11 +250,7 @@ const MdImpexAddTaskModal = ({
               allowedIds.has(String(m.id)) || normalizeEmail(m.email) === currentNormalized
             );
 
-            const members = filteredMembers.map((m: any) => ({
-              id: m.id,
-              email: m.email,
-              name: m.name
-            }));
+            const members = filteredMembers.map((m: any) => ({ id: m.id, email: m.email, name: m.name }));
             setAllowedUsers(members);
             setAllowedTaskTypes(myAccess.allowedTaskTypes || []);
             setAllowedBrands(myAccess.allowedBrands || []);
@@ -231,13 +261,10 @@ const MdImpexAddTaskModal = ({
           } else {
             setHasSpecificAccess(false);
             const me = allMembers.filter((m: any) => normalizeEmail(m.email) === currentNormalized);
-            const members = me.map((m: any) => ({
-              id: m.id,
-              email: m.email,
-              name: m.name
-            }));
+            const members = me.map((m: any) => ({ id: m.id, email: m.email, name: m.name }));
             setAllowedUsers(members);
             setAllowedTaskTypes([]);
+            setAllowedBrands([]);
 
             if (!newTask.assignedTo && members.length > 0) {
               onChange('assignedTo', members[0].email);
@@ -245,14 +272,14 @@ const MdImpexAddTaskModal = ({
           }
         }
       } catch (error) {
-        console.error("Error fetching access for MD Impex:", error);
+        console.error("❌ [fetchAccessData] Error fetching access for MD Impex:", error);
       } finally {
         setLoadingUsers(false);
       }
     };
 
     fetchAccessData();
-  }, [open, currentUserEmail, currentUserRole]);
+  }, [open, currentUserEmail, currentUserRole, newTask.assignedTo, onChange]);
 
   const filteredTaskTypes = useMemo(() => {
     const normalizedToOriginal = new Map<string, string>();
@@ -303,11 +330,11 @@ const MdImpexAddTaskModal = ({
 
   useEffect(() => {
     if (!open || !newTask.companyName) return;
-    const brands = getAvailableBrandOptions();
+    const brands = brandOptions;
     if (brands.length === 1 && !newTask.brand) {
       onChange('brand', brands[0].value);
     }
-  }, [open, newTask.companyName]);
+  }, [open, newTask.companyName, brandOptions, newTask.brand, onChange]);
 
   const handleFormSubmit = () => {
     onChange('title', localTitle);
@@ -550,7 +577,9 @@ const MdImpexAddTaskModal = ({
                     </div>
                     <div className="max-h-48 overflow-auto">
                       {filteredBrandOptions.length === 0 ? (
-                        <div className="px-3 py-2 text-center text-xs text-gray-500">No results</div>
+                        <div className="px-3 py-2 text-center text-xs text-gray-500">
+                          No brands available
+                        </div>
                       ) : (
                         filteredBrandOptions.map((opt) => (
                           <button
