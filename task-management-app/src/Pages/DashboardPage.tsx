@@ -1,4 +1,5 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+
+import { useState, useCallback, useRef, useEffect, useMemo, useDeferredValue } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
 import {
@@ -290,6 +291,7 @@ const DashboardPage = () => {
     const [isSpeedEcomReassignSubmitting, setIsSpeedEcomReassignSubmitting] = useState<boolean>(false);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const deferredSearchTerm = useDeferredValue(searchTerm);
     const [taskPage, setTaskPage] = useState(1);
     const [reviewsMonth, setReviewsMonth] = useState<string>(() => monthKeyOfDate(new Date()));
     const [reviewedTasksForSummary, setReviewedTasksForSummary] = useState<Task[]>([]);
@@ -3922,7 +3924,7 @@ const DashboardPage = () => {
             });
         }
         return filtered;
-    }, [canViewAllTasks, currentUser, filters, isOverdue, normalizeCompanyKey, searchTerm, selectedStatFilter, tasks]);
+    }, [canViewAllTasks, currentUser, filters, isOverdue, normalizeCompanyKey, deferredSearchTerm, selectedStatFilter, tasks]);
 
     const displayTasks = useMemo(() => getFilteredTasksByStat(), [getFilteredTasksByStat]);
     const PAGE_SIZE_OPTIONS = [10, 25, 50, 75, 100, 125, 150, 175, 200];
@@ -4086,7 +4088,7 @@ const DashboardPage = () => {
             });
         }
         return filtered;
-    }, [canViewAllTasks, currentUser, filters, isOverdue, normalizeCompanyKey, normalizeRoleKey, searchTerm, tasks, usersRef]);
+    }, [canViewAllTasks, currentUser, filters, isOverdue, normalizeCompanyKey, normalizeRoleKey, deferredSearchTerm, tasks, usersRef]);
 
     const stats: StatMeta[] = useMemo(() => {
         const role = String((currentUser as any)?.role || '').trim().toLowerCase();
@@ -4323,7 +4325,7 @@ const DashboardPage = () => {
                 bgColor: 'bg-rose-50',
             }
         ];
-    }, [canViewAllTasks, currentUser, filters, isOverdue, normalizeCompanyKey, normalizeRoleKey, searchTerm, tasks, usersRef]);
+    }, [canViewAllTasks, currentUser, filters, isOverdue, normalizeCompanyKey, normalizeRoleKey, deferredSearchTerm, tasks, usersRef]);
     const getActiveFilterCount = useCallback(() => {
         let count = 0;
         const isCompanyForced = (availableCompanies || []).length === 1;
