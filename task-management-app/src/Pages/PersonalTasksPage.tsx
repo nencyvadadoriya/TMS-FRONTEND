@@ -409,6 +409,50 @@ export default function PersonalTasksPage({ currentUser }: PersonalTasksPageProp
                   </div>
                 </div>
               )}
+              {/* Weekly - day of week select */}
+              {reminderStyle === 'weekly' && (
+                <select
+                  value={reminderDate} // reminderDate ko weekday store karne ke liye reuse
+                  onChange={(e) => setReminderDate(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-[#3b82f6] outline-none mb-2"
+                >
+                  <option value="">Select Day</option>
+                  <option value="0">Sunday</option>
+                  <option value="1">Monday</option>
+                  <option value="2">Tuesday</option>
+                  <option value="3">Wednesday</option>
+                  <option value="4">Thursday</option>
+                  <option value="5">Friday</option>
+                  <option value="6">Saturday</option>
+                </select>
+              )}
+
+              {/* Once - date picker */}
+              {reminderStyle === 'once' && (
+                <div className="relative mb-2">
+                  <input
+                    type="date"
+                    value={reminderDate}
+                    onChange={(e) => setReminderDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    className="w-full px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#3b82f6] outline-none"
+                  />
+                  <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
+                </div>
+              )}
+
+              {/* Time - once/daily/weekly sab ke liye */}
+              {reminderStyle !== 'none' && (
+                <div className="relative">
+                  <input
+                    type="time"
+                    value={reminderTime}
+                    onChange={(e) => setReminderTime(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#3b82f6] outline-none"
+                  />
+                  <Clock className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between pt-2 border-t border-gray-100">
