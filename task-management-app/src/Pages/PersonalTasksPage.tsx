@@ -52,13 +52,16 @@ export default function PersonalTasksPage({ currentUser }: PersonalTasksPageProp
     if (!normalizeText(title)) return false;
     if (!creatorEmail) return false;
     if (reminderStyle === 'once' && !normalizeText(reminderDate)) return false;
-    return true;
+    if (reminderStyle === 'weekly' && !normalizeText(reminderDate)) return false;
+    if ((reminderStyle === 'daily' || reminderStyle === 'weekly' || reminderStyle === 'once') && !normalizeText(reminderTime)) return false; return true;
   }, [title, creatorEmail, reminderStyle, reminderDate]);
 
   useEffect(() => {
     if (reminderStyle === 'none') {
       setReminderDate('');
       setReminderTime('');
+    } else if (reminderStyle === 'daily') {
+      setReminderDate(''); // daily ko date nahi chahiye
     }
   }, [reminderStyle]);
 
@@ -78,7 +81,7 @@ export default function PersonalTasksPage({ currentUser }: PersonalTasksPageProp
 
     (tasks || []).forEach((t) => {
       if (!t?.id) return;
-      if (t.reminderStyle !== 'once') return;
+      if (!['once', 'daily', 'weekly'].includes(t.reminderStyle)) return;
       if (!t.reminderAt) return;
 
       const target = new Date(t.reminderAt).getTime();
@@ -205,9 +208,27 @@ export default function PersonalTasksPage({ currentUser }: PersonalTasksPageProp
 
     setCreating(true);
     try {
-      const hasDate = Boolean(normalizeText(reminderDate));
-      const timePart = normalizeText(reminderTime) || '00:00';
-      const reminderAtIso = hasDate ? new Date(`${reminderDate}T${timePart}`).toISOString() : null;
+       Boolean(normalizeText(reminderDate)); const timePart = normalizeText(reminderTime) || '00:00';
+      let reminderAtIso: string | null = null;
+
+      if (reminderStyle === 'once' && normalizeText(reminderDate)) {
+        reminderAtIso = new Date(`${reminderDate}T${timePart}`).toISOString();
+      } else if (reminderStyle === 'daily') {
+        // Aaj ki date + selected time
+        const today = new Date().toISOString().split('T')[0];
+        reminderAtIso = new Date(`${today}T${timePart}`).toISOString();
+      } else if (reminderStyle === 'weekly' && normalizeText(reminderDate)) {
+        // reminderDate mein weekday number hai (0-6)
+        // Ab next occurrence nikalo us weekday ka
+        const targetDay = parseInt(reminderDate);
+        const now = new Date();
+        const currentDay = now.getDay();
+        let daysUntil = (targetDay - currentDay + 7) % 7 || 7;
+        const nextDate = new Date(now);
+        nextDate.setDate(now.getDate() + daysUntil);
+        const dateStr = nextDate.toISOString().split('T')[0];
+        reminderAtIso = new Date(`${dateStr}T${timePart}`).toISOString();
+      }
 
       const res = await personalTaskService.update(editingId, {
         title: normalizeText(title),
@@ -242,7 +263,7 @@ export default function PersonalTasksPage({ currentUser }: PersonalTasksPageProp
   }, [fetchMine]);
 
   const getPriorityConfig = (priority: string) => {
-    switch(priority) {
+    switch (priority) {
       case 'high': return { label: 'High', icon: Flag, color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200' };
       case 'medium': return { label: 'Medium', icon: Flag, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' };
       default: return { label: 'Low', icon: Flag, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' };
@@ -250,7 +271,7 @@ export default function PersonalTasksPage({ currentUser }: PersonalTasksPageProp
   };
 
   const getStatusConfig = (status: string) => {
-    switch(status) {
+    switch (status) {
       case 'completed': return { label: 'Done', icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50' };
       case 'in-progress': return { label: 'In Progress', icon: Loader2, color: 'text-blue-600', bg: 'bg-blue-50' };
       default: return { label: 'Pending', icon: Circle, color: 'text-gray-500', bg: 'bg-gray-50' };
@@ -260,7 +281,7 @@ export default function PersonalTasksPage({ currentUser }: PersonalTasksPageProp
 
   return (
     <div className="space-y-5">
-      
+
 
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -302,9 +323,9 @@ export default function PersonalTasksPage({ currentUser }: PersonalTasksPageProp
                       className={`flex-1 py-1.5 text-xs font-medium rounded-lg border transition-all ${priority === p
                         ? p === 'high' ? 'bg-rose-50 text-rose-700 border-rose-200'
                           : p === 'medium' ? 'bg-amber-50 text-amber-700 border-amber-200'
-                          : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                         : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
-                      }`}
+                        }`}
                     >
                       {p.charAt(0).toUpperCase() + p.slice(1)}
                     </button>
@@ -365,6 +386,50 @@ export default function PersonalTasksPage({ currentUser }: PersonalTasksPageProp
                   </div>
                 </div>
               )}
+              {/* Weekly - day of week select */}
+              {reminderStyle === 'weekly' && (
+                <select
+                  value={reminderDate} // reminderDate ko weekday store karne ke liye reuse
+                  onChange={(e) => setReminderDate(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-[#3b82f6] outline-none mb-2"
+                >
+                  <option value="">Select Day</option>
+                  <option value="0">Sunday</option>
+                  <option value="1">Monday</option>
+                  <option value="2">Tuesday</option>
+                  <option value="3">Wednesday</option>
+                  <option value="4">Thursday</option>
+                  <option value="5">Friday</option>
+                  <option value="6">Saturday</option>
+                </select>
+              )}
+
+              {/* Once - date picker */}
+              {reminderStyle === 'once' && (
+                <div className="relative mb-2">
+                  <input
+                    type="date"
+                    value={reminderDate}
+                    onChange={(e) => setReminderDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    className="w-full px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#3b82f6] outline-none"
+                  />
+                  <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
+                </div>
+              )}
+
+              {/* Time - once/daily/weekly sab ke liye */}
+              {reminderStyle !== 'none' && (
+                <div className="relative">
+                  <input
+                    type="time"
+                    value={reminderTime}
+                    onChange={(e) => setReminderTime(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#3b82f6] outline-none"
+                  />
+                  <Clock className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between pt-2 border-t border-gray-100">
@@ -418,7 +483,7 @@ export default function PersonalTasksPage({ currentUser }: PersonalTasksPageProp
                     className={`px-2 py-1 text-[10px] font-medium rounded-md transition-all ${activeFilter === filter
                       ? 'bg-white text-[#3b82f6] shadow-sm'
                       : 'text-gray-500 hover:text-gray-700'
-                    }`}
+                      }`}
                   >
                     {filter === 'all' ? 'All' : filter === 'in-progress' ? 'In Prog' : filter.charAt(0).toUpperCase() + filter.slice(1)}
                   </button>
