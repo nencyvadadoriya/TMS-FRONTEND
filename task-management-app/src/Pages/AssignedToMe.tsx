@@ -8,6 +8,8 @@ import {
   ListTodo,
   ArrowRight,
   TrendingDown,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import type { Brand, CommentType, Task, TaskHistory, UserType } from '../Types/Types';
 import AllTasksPage from './AllTasksPage';
@@ -56,6 +58,8 @@ const AssignedToMe: React.FC<AssignedToMeProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
+  const [showPersonWiseSummary, setShowPersonWiseSummary] = useState(false);
+  const [showOverdueAfterComplete, setShowOverdueAfterComplete] = useState(false);
 
   const dispatch = useAppDispatch();
   const allTasks = useAppSelector(selectAllTasks);
@@ -273,96 +277,121 @@ const AssignedToMe: React.FC<AssignedToMeProps> = ({
             </div>
           </div>
         </div>
+      </div>
 
+      {/* Person Wise Summary Dropdown */}
       {assignedBySummary.filter((u) => u.pending > 0).length > 0 && (
         <div className="bg-white rounded-xl border border-[#dbeafe] shadow-sm overflow-hidden">
-          <div className="px-4 py-3 border-b border-[#dbeafe] bg-gradient-to-r from-[#dbeafe]/30 to-white flex items-center justify-between">
+          <button
+            onClick={() => setShowPersonWiseSummary(!showPersonWiseSummary)}
+            className="w-full px-4 py-3 bg-gradient-to-r from-[#dbeafe]/30 to-white flex items-center justify-between hover:bg-[#dbeafe]/20 transition-colors"
+          >
             <div className="flex items-center gap-2">
               <User className="h-4 w-4 text-[#3b82f6]" />
               <h2 className="text-sm font-semibold text-[#0f2a6e]">Person Wise Summary</h2>
+              <span className="text-[10px] font-medium text-[#3b82f6] bg-[#dbeafe] px-2 py-0.5 rounded-full">
+                Pending by assigner
+              </span>
             </div>
-            <span className="text-[10px] font-medium text-[#3b82f6] bg-[#dbeafe] px-2 py-0.5 rounded-full">
-              Pending by assigner
-            </span>
-          </div>
-          <div className="p-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {assignedBySummary.filter((u) => u.pending > 0).map((u) => (
-                <div key={u.email} className="p-3 rounded-lg border border-gray-100 bg-gray-50 hover:bg-white transition-colors">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="text-xs font-semibold text-gray-900 truncate" title={u.name}>{u.name}</div>
-                      <div className="text-[10px] text-gray-500 truncate" title={u.email}>{u.email}</div>
+            {showPersonWiseSummary ? (
+              <ChevronUp className="h-4 w-4 text-[#3b82f6]" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-[#3b82f6]" />
+            )}
+          </button>
+          
+          {showPersonWiseSummary && (
+            <div className="p-3 border-t border-[#dbeafe]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {assignedBySummary.filter((u) => u.pending > 0).map((u) => (
+                  <div key={u.email} className="p-3 rounded-lg border border-gray-100 bg-gray-50 hover:bg-white transition-colors">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold text-gray-900 truncate" title={u.name}>{u.name}</div>
+                        <div className="text-[10px] text-gray-500 truncate" title={u.email}>{u.email}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[9px] text-gray-500">Total</div>
+                        <div className="text-xs font-bold text-gray-900">{u.total}</div>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-[9px] text-gray-500">Total</div>
-                      <div className="text-xs font-bold text-gray-900">{u.total}</div>
+                    <div className="mt-2 flex items-center justify-between">
+                      <div className="text-[10px] font-semibold text-gray-600">Pending</div>
+                      <div className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-100">
+                        {u.pending}
+                      </div>
                     </div>
                   </div>
-                  <div className="mt-2 flex items-center justify-between">
-                    <div className="text-[10px] font-semibold text-gray-600">Pending</div>
-                    <div className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-100">
-                      {u.pending}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
-      {/* Overdue After Complete Grid */}
+      {/* Overdue After Complete Dropdown */}
       {overdueCompletedStats.length > 0 && (
         <div className="bg-white rounded-xl border border-rose-100 shadow-sm overflow-hidden">
-          <div className="px-4 py-3 border-b border-rose-50 bg-gradient-to-r from-rose-50/50 to-white flex items-center justify-between">
+          <button
+            onClick={() => setShowOverdueAfterComplete(!showOverdueAfterComplete)}
+            className="w-full px-4 py-3 bg-gradient-to-r from-rose-50/50 to-white flex items-center justify-between hover:bg-rose-50/30 transition-colors"
+          >
             <div className="flex items-center gap-2">
               <TrendingDown className="h-4 w-4 text-rose-500" />
               <h2 className="text-sm font-semibold text-[#0f2a6e]">Overdue After Complete</h2>
+              <span className="text-[10px] font-medium text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">
+                Your Late Completions
+              </span>
             </div>
-            <span className="text-[10px] font-medium text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">
-              Your Late Completions
-            </span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-100">
-              <thead className="bg-gray-50/50">
-                <tr>
-                  <th scope="col" className="px-4 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider">User</th>
-                  <th scope="col" className="px-4 py-2 text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Late Completions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-50">
-                {overdueCompletedStats.map((stat) => (
-                  <tr key={stat.email} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <div className="h-7 w-7 rounded-full bg-gradient-to-br from-[#3b82f6] to-[#1e3a8a] flex items-center justify-center text-white text-[10px] font-bold overflow-hidden shadow-sm">
-                          {stat.avatar ? (
-                            <img src={stat.avatar} alt={stat.name} className="h-full w-full object-cover" />
-                          ) : (
-                            stat.name.charAt(0).toUpperCase()
-                          )}
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-xs font-medium text-gray-900">{stat.name}</span>
-                          <span className="text-[10px] text-gray-400">{stat.email}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap text-right">
-                      <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-rose-600 bg-rose-50 rounded-full">
-                        {stat.count}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+            {showOverdueAfterComplete ? (
+              <ChevronUp className="h-4 w-4 text-rose-500" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-rose-500" />
+            )}
+          </button>
+          
+          {showOverdueAfterComplete && (
+            <div className="border-t border-rose-100">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-100">
+                  <thead className="bg-gray-50/50">
+                    <tr>
+                      <th scope="col" className="px-4 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider">User</th>
+                      <th scope="col" className="px-4 py-2 text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Late Completions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-50">
+                    {overdueCompletedStats.map((stat) => (
+                      <tr key={stat.email} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <div className="h-7 w-7 rounded-full bg-gradient-to-br from-[#3b82f6] to-[#1e3a8a] flex items-center justify-center text-white text-[10px] font-bold overflow-hidden shadow-sm">
+                              {stat.avatar ? (
+                                <img src={stat.avatar} alt={stat.name} className="h-full w-full object-cover" />
+                              ) : (
+                                stat.name.charAt(0).toUpperCase()
+                              )}
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-xs font-medium text-gray-900">{stat.name}</span>
+                              <span className="text-[10px] text-gray-400">{stat.email}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-right">
+                          <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-rose-600 bg-rose-50 rounded-full">
+                            {stat.count}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
-      </div>
 
       {/* Tasks Section */}
       <div className="bg-white rounded-xl border border-[#dbeafe] shadow-sm overflow-hidden">
