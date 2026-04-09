@@ -8,17 +8,10 @@ import {
     AlertCircle,
     CheckCircle,
     Clock,
-    Bell,
-    Trash2,
     Grid,
     List,
     Filter,
     BarChart3,
-    CalendarDays,
-    UserCheck,
-    Flag,
-    Layers,
-    Edit,
     User,
     Star,
     Trophy,
@@ -27,7 +20,6 @@ import {
     X,
     Send,
     Loader2,
-    RotateCcw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Sidebar from './Sidebar';
@@ -101,6 +93,13 @@ import {
     tasksAddedMany,
     tasksReset
 } from '../Store/tasksSlice';
+import TaskVirtualList from '../Components/TaskVirtualList';
+import { 
+    stripDeletedEmailSuffix, 
+    monthKeyOfDate, 
+    isOverdueFn
+} from '../utils/dashboardUtils';
+import { useDashboardStats } from '../Hooks/useDashboardStats';
 
 type TaskReminderClientItem = {
     id: string;
@@ -132,26 +131,6 @@ const resolveSocketUrl = () => {
     return trimmed.endsWith('/api') ? trimmed.slice(0, -4) : trimmed;
 };
 
-const stripDeletedEmailSuffix = (value: unknown): string => {
-    const raw = (value == null ? '' : String(value)).trim();
-    if (!raw) return '';
-    const marker = '.deleted.';
-    const idx = raw.indexOf(marker);
-    if (idx === -1) return raw;
-    return raw.slice(0, idx).trim();
-};
-
-const pad2 = (n: number) => String(n).padStart(2, '0');
-const monthKeyOfDate = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
-
-const performanceLevelForAvg = (avgStars: number) => {
-    const v = Number(avgStars);
-    if (!Number.isFinite(v)) return '—';
-    if (v >= 4.5) return 'Excellent';
-    if (v >= 4.0) return 'Very Good';
-    if (v >= 3.0) return 'Good';
-    return 'Improve';
-};
 
 interface NewTaskForm {
     title: string;
@@ -239,15 +218,6 @@ const DashboardPage = () => {
         }).length;
     }, [tasks, currentUser?.email]);
     const seenTaskIdsRef = useRef<Set<string>>(new Set());
-    const normalizeEmailForMatch = useCallback((v: any): string => {
-        if (!v) return '';
-        if (typeof v === 'string') return v.trim().toLowerCase();
-        if (typeof v === 'object' && v !== null) {
-            const candidate = (v as any).email || (v as any).name || '';
-            return String(candidate || '').trim().toLowerCase();
-        }
-        return '';
-    }, []);
     const hasFetchedTasksOnceRef = useRef(false);
     const [selectedStatFilter, setSelectedStatFilter] = useState<string>('all');
     const [showAddTaskModal, setShowAddTaskModal] = useState(false);
@@ -298,6 +268,15 @@ const DashboardPage = () => {
     const [, setMdAllowedMembers] = useState<UserType[]>([]);
     const [mdAllowedTaskTypes, setMdAllowedTaskTypes] = useState<string[]>([]);
     const [mdAllowedBrands, setMdAllowedBrands] = useState<string[]>([]);
+
+    const { employeeOfTheMonth, pendingManagerReviewTasks } = useDashboardStats({
+        tasks,
+        reviewedTasksForSummary,
+        reviewsMonth,
+        users,
+        allMdImpexUsers,
+        currentUser
+    });
     const [reviewModalTaskId, setReviewModalTaskId] = useState<string | null>(null);
     const [reviewModalStars, setReviewModalStars] = useState<number>(0);
     const [reviewModalComment, setReviewModalComment] = useState<string>('');
@@ -382,9 +361,9 @@ const DashboardPage = () => {
     }, [DASHBOARD_SPOTLIGHT_MANAGER_STORAGE_KEY, dashboardSpotlight, isManagerRole]);
 
     const effectiveDashboardSpotlight = dashboardSpotlightOverride || (
-        roleIsAdminLike || 
-        ['assistant', 'sub_assistance', 'assistence', 'sub_assistence'].includes(String((currentUser as any)?.role || '').trim().toLowerCase()) 
-            ? dashboardSpotlight 
+        roleIsAdminLike ||
+            ['assistant', 'sub_assistance', 'assistence', 'sub_assistence'].includes(String((currentUser as any)?.role || '').trim().toLowerCase())
+            ? dashboardSpotlight
             : null
     );
 
@@ -448,7 +427,7 @@ const DashboardPage = () => {
         let mounted = true;
         const fetchReviewedForSummary = async () => {
             try {
-                const res = await taskService.getTaskReviews({});
+                const res = await taskService.getTaskReviews({ reviewed: true });
                 if (!mounted) return;
                 if (res && (res as any).success) {
                     setReviewedTasksForSummary((res as any).data || []);
@@ -463,224 +442,7 @@ const DashboardPage = () => {
         };
     }, []);
 
-    const employeeOfTheMonth = useMemo(() => {
-        const parseMonth = (value: string) => {
-            const [y, m] = String(value || '').split('-').map((x) => Number(x));
-            if (!Number.isFinite(y) || !Number.isFinite(m) || y < 1970 || m < 1 || m > 12) return null;
-            const start = new Date(y, m - 1, 1, 0, 0, 0, 0);
-            const endExclusive = new Date(y, m, 1, 0, 0, 0, 0);
-            return { start, endExclusive };
-        };
-        const monthRange = parseMonth(reviewsMonth);
-        const currentUserCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase();
-        const isMdImpexUser = currentUserCompany.includes('mdimpex') || currentUserCompany.includes('md_impex');
 
-        const reviewedData = reviewedTasksForSummary || [];
-        const reviewed = reviewedData.filter((t) => {
-            const stars = (t as any).reviewStars;
-            const reviewedAtRaw = (t as any).reviewedAt;
-            if (stars == null) return false;
-            if (!reviewedAtRaw) return false;
-            if (!monthRange) return true;
-            const reviewedAt = new Date(reviewedAtRaw);
-            if (Number.isNaN(reviewedAt.getTime())) return false;
-            return reviewedAt >= monthRange.start && reviewedAt < monthRange.endExclusive;
-        });
-        const byAssignee = new Map<string, {
-            email: string;
-            name: string;
-            total: number;
-            starSum: number;
-        }>();
-        reviewed.forEach((t) => {
-            const assignedToUser = (t as any)?.assignedToUser;
-            const email = String(
-                assignedToUser?.email
-                || (typeof (t as any).assignedTo === 'string' ? (t as any).assignedTo : (t as any).assignedTo?.email)
-                || ''
-            ).trim().toLowerCase();
-            if (!email) return;
-            if (email.includes('.deleted.')) return;
-            const name = String(assignedToUser?.name || email);
-            const starsValue = Number((t as any).reviewStars);
-            if (!Number.isFinite(starsValue) || starsValue < 1 || starsValue > 5) return;
-            if (monthRange) {
-                const createdAtRaw = (t as any).createdAt || (t as any).assignedAt;
-                if (!createdAtRaw) return;
-                const createdAt = new Date(createdAtRaw);
-                if (Number.isNaN(createdAt.getTime())) return;
-                if (createdAt < monthRange.start || createdAt >= monthRange.endExclusive) return;
-            }
-            const existing = byAssignee.get(email) || { email, name, total: 0, starSum: 0 };
-            existing.total += 1;
-            existing.starSum += starsValue;
-            byAssignee.set(email, existing);
-        });
-        const rows = Array.from(byAssignee.values()).map((r) => {
-            const avgStars = r.total > 0 ? (r.starSum / r.total) : 0;
-            const ratingPct = r.total > 0 ? (r.starSum / (r.total * 5)) * 100 : 0;
-            return {
-                ...r,
-                avgStars,
-                ratingPct,
-                ratingPctLabel: `${ratingPct.toFixed(1)}%`,
-                avgStarsLabel: `${avgStars.toFixed(1)}`,
-                performance: performanceLevelForAvg(avgStars),
-            };
-        });
-        rows.sort((a, b) => {
-            if (b.total !== a.total) return b.total - a.total;
-            return b.avgStars - a.avgStars;
-        });
-        const top = rows.find((r) => (r.total || 0) >= 30) || rows[0] || null;
-        const summaryRowsBase = rows.slice(0, 10).map((r) => {
-            let avatar = (users || []).find((u: any) => {
-                const uemail = String(u?.email || '').trim().toLowerCase();
-                return uemail && uemail === r.email;
-            })?.avatar;
-            if (!avatar && isMdImpexUser && allMdImpexUsers?.length > 0) {
-                avatar = (allMdImpexUsers || []).find((u: any) => {
-                    const uemail = String(u?.email || '').trim().toLowerCase();
-                    return uemail && uemail === r.email;
-                })?.avatar;
-            }
-            return {
-                email: r.email,
-                name: r.name,
-                avatar: avatar ? String(avatar) : '',
-                avgStarsLabel: r.avgStarsLabel,
-                total: r.total,
-                totalTasksReceived: (reviewedData || []).filter((t: any) => {
-                    const rowEmail = String((r as any)?.email || '').trim().toLowerCase();
-                    const assignedToEmail =
-                        normalizeEmailForMatch((t as any)?.assignedToUser?.email)
-                        || normalizeEmailForMatch((t as any)?.assignedToUser)
-                        || normalizeEmailForMatch((t as any)?.assignedTo?.email)
-                        || normalizeEmailForMatch((t as any)?.assignedTo)
-                        || normalizeEmailForMatch((t as any)?.assignedToId)
-                        || normalizeEmailForMatch((t as any)?.assignedToUserId);
-                    if (!assignedToEmail || !rowEmail || assignedToEmail !== rowEmail) return false;
-                    if (!monthRange) return true;
-                    const createdAtRaw = (t as any).createdAt || (t as any).assignedAt;
-                    if (!createdAtRaw) return false;
-                    const createdAt = new Date(createdAtRaw);
-                    if (Number.isNaN(createdAt.getTime())) return false;
-                    return createdAt >= monthRange.start && createdAt < monthRange.endExclusive;
-                }).length,
-                performance: r.performance,
-            };
-        });
-        const photoUrl = top
-            ? (users || []).find((u: any) => {
-                const uemail = String(u?.email || '').trim().toLowerCase();
-                return uemail && uemail === top.email;
-            })?.avatar
-            : undefined;
-        let finalPhotoUrl = photoUrl;
-        if (top && !finalPhotoUrl && isMdImpexUser && allMdImpexUsers?.length > 0) {
-            const comprehensivePhotoUrl = (allMdImpexUsers || []).find((u: any) => {
-                const uemail = String(u?.email || '').trim().toLowerCase();
-                return uemail && uemail === top.email;
-            })?.avatar;
-            finalPhotoUrl = comprehensivePhotoUrl;
-        }
-        return {
-            name: top?.name || 'Not any yet',
-            email: top?.email || '',
-            rating: top?.avgStars || 0,
-            performance: top?.performance || 'Not any yet',
-            avg: top?.ratingPctLabel || 'Not any yet',
-            photoUrl: finalPhotoUrl ? String(finalPhotoUrl) : undefined,
-            totalReviews: top ? (summaryRowsBase.find(r => r.email === top.email)?.total ?? 0) : (rows[0]?.total ?? 0),
-            totalTasksReceived: top ? (reviewedData || []).filter((t: any) => {
-                const topEmail = String((top as any)?.email || '').trim().toLowerCase();
-                const assignedToEmail =
-                    normalizeEmailForMatch((t as any)?.assignedTo)
-                    || normalizeEmailForMatch((t as any)?.assignedToUser?.email)
-                    || normalizeEmailForMatch((t as any)?.assignedToUser);
-                if (!assignedToEmail || !topEmail || assignedToEmail !== topEmail) return false;
-                if (!monthRange) return true;
-                const createdAtRaw = (t as any).createdAt || (t as any).assignedAt;
-                if (!createdAtRaw) return false;
-                const createdAt = new Date(createdAtRaw);
-                if (Number.isNaN(createdAt.getTime())) return false;
-                return createdAt >= monthRange.start && createdAt < monthRange.endExclusive;
-            }).length : 0,
-            summaryRows: top
-                ? summaryRowsBase
-                : [
-                    {
-                        email: '__top_placeholder__',
-                        name: 'Not any yet',
-                        avatar: '',
-                        avgStarsLabel: '0.0',
-                        total: 0,
-                        performance: 'Not any yet',
-                    },
-                    ...summaryRowsBase,
-                ],
-        };
-    }, [reviewedTasksForSummary, reviewsMonth, users, allMdImpexUsers, tasks, currentUser?.companyName, currentUser?.company]);
-
-    const pendingManagerReviewTasks = useMemo(() => {
-        const normalizeEmailSafe = (v: unknown): string => String(v || '').trim().toLowerCase();
-        const normalizeRoleKey = (v: unknown): string => String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
-        const smartbizReviewerEmails = new Set([
-            'miteshsmartbiz@gmail.com',
-            'mitixasmartbiz@gmail.com',
-            'viralsmartbiz@gmail.com',
-            'smartbizishita@gmail.com',
-        ]);
-        const isAssistantRoleKey = (roleKey: string): boolean => {
-            if (!roleKey) return false;
-            if (roleKey === 'assistant' || roleKey.includes('assistant')) return true;
-            return roleKey === 'sub_assistance' || roleKey === 'sub_assistence' || roleKey === 'sub_assist' || roleKey === 'sub_assistant';
-        };
-        const roleKey = normalizeRoleKey((currentUser as any)?.role);
-        const myEmail = normalizeEmailSafe((currentUser as any)?.email);
-        const isSmartbizReviewer = Boolean(myEmail && smartbizReviewerEmails.has(myEmail));
-        if (!isSmartbizReviewer && roleKey !== 'manager' && roleKey !== 'marketer_manager' && roleKey !== 'md_manager') return [];
-        if (!myEmail) return [];
-        const getAssignedByEmail = (t: any): string => {
-            const raw = (t as any)?.assignedBy;
-            if (typeof raw === 'string') return normalizeEmailSafe(raw);
-            if (raw && typeof raw === 'object') return normalizeEmailSafe((raw as any)?.email);
-            return normalizeEmailSafe((t as any)?.assignedByUser?.email);
-        };
-
-        const getAssignedToEmail = (t: any): string => {
-            const raw = (t as any)?.assignedTo;
-            if (typeof raw === 'string') return normalizeEmailSafe(raw);
-            if (raw && typeof raw === 'object') return normalizeEmailSafe((raw as any)?.email);
-            return normalizeEmailSafe((t as any)?.assignedToUser?.email);
-        };
-        const getAssigneeRoleKey = (t: any): string => {
-            const role = (t as any)?.assignedToUser?.role;
-            const key = normalizeRoleKey(role);
-            if (key) return key;
-            const email = getAssignedToEmail(t);
-            const found = (users || []).find((u: any) => normalizeEmailSafe((u as any)?.email) === email);
-            return normalizeRoleKey((found as any)?.role);
-        };
-        const list = (tasks || [])
-            .filter((t: any) => {
-                if (!t) return false;
-                const status = String((t as any)?.status || '').trim().toLowerCase();
-                if (status !== 'completed') return false;
-                if ((t as any)?.reviewStars != null) return false;
-                const assignedByEmail = getAssignedByEmail(t);
-                if (!assignedByEmail || assignedByEmail !== myEmail) return false;
-                const assigneeRoleKey = getAssigneeRoleKey(t);
-                if (!isAssistantRoleKey(assigneeRoleKey)) return false;
-                return true;
-            })
-            .sort((a: any, b: any) => {
-                const aDate = new Date((a as any)?.statusUpdatedAt || (a as any)?.updatedAt || (a as any)?.createdAt || 0).getTime();
-                const bDate = new Date((b as any)?.statusUpdatedAt || (b as any)?.updatedAt || (b as any)?.createdAt || 0).getTime();
-                return bDate - aDate;
-            });
-        return list;
-    }, [currentUser, tasks, users]);
 
     const reviewModalTask = useMemo(() => {
         if (!reviewModalTaskId) return null;
@@ -1462,6 +1224,44 @@ const DashboardPage = () => {
     const normalizeCompanyKey = useCallback((value: unknown): string => {
         return normalizeText(value).replace(/\s+/g, '');
     }, [normalizeText]);
+
+    // Optimized brand lookup map for fast brand resolution
+    const brandLookupMap = useMemo(() => {
+        const map = new Map<string, any>();
+        brands.forEach((brand: any) => {
+            const brandId = String(brand?.id || brand?._id || '').trim();
+            if (brandId) {
+                map.set(brandId, brand);
+            }
+            // Also index by company+name for fallback lookup
+            const companyKey = normalizeCompanyKey(getBrandCompanyNameSafe(brand));
+            const nameKey = normalizeText(getBrandNameSafe(brand));
+            if (companyKey && nameKey) {
+                const compoundKey = `${companyKey}::${nameKey}`;
+                map.set(compoundKey, brand);
+            }
+        });
+
+        // Also include brandDetails from tasks for immediate availability
+        tasks.forEach((task: any) => {
+            const brandDetails = task?.brandDetails;
+            if (brandDetails) {
+                const brandId = String(brandDetails.id || '').trim();
+                if (brandId) {
+                    map.set(brandId, brandDetails);
+                }
+                // Also index by company+name
+                const companyKey = normalizeCompanyKey(brandDetails.company || task?.companyName || task?.company);
+                const nameKey = normalizeText(brandDetails.name);
+                if (companyKey && nameKey) {
+                    const compoundKey = `${companyKey}::${nameKey}`;
+                    map.set(compoundKey, brandDetails);
+                }
+            }
+        });
+
+        return map;
+    }, [brands, tasks, normalizeCompanyKey, getBrandCompanyNameSafe, getBrandNameSafe, normalizeText]);
 
     const SPEED_E_COM_COMPANY_NAME = 'Speed E Com';
     const SPEED_E_COM_COMPANY_KEY = 'speedecom';
@@ -2836,26 +2636,6 @@ const DashboardPage = () => {
         }
     }, [dispatch, speedEcomReassignTask?.id]);
 
-    const isOverdue = useCallback((dueDate: string, status: string) => {
-        const statusKey = String(status || '').trim().toLowerCase();
-        if (statusKey === 'completed') return false;
-        try {
-            const due = new Date(dueDate);
-            if (Number.isNaN(due.getTime())) return false;
-            const dueEndOfDay = new Date(
-                due.getFullYear(),
-                due.getMonth(),
-                due.getDate(),
-                23,
-                59,
-                59,
-                999
-            );
-            return Date.now() > dueEndOfDay.getTime();
-        } catch {
-            return false;
-        }
-    }, []);
 
     const getTaskBorderColor = useCallback((task: Task): string => {
         const isCompleted = task.status === 'completed' || task.completedApproval;
@@ -2864,7 +2644,7 @@ const DashboardPage = () => {
                 return 'border-l-4 border-l-blue-500';
             }
             return 'border-l-4 border-l-green-500';
-        } else if (isOverdue(task.dueDate, task.status)) {
+        } else if (isOverdueFn(task.dueDate, task.status)) {
             return 'border-l-4 border-l-red-500';
         } else if (task.priority === 'high') {
             return 'border-l-4 border-l-orange-500';
@@ -2875,7 +2655,7 @@ const DashboardPage = () => {
         } else {
             return 'border-l-4 border-l-gray-300';
         }
-    }, [isOverdue]);
+    }, [isOverdueFn]);
 
     const canEditDeleteTask = useCallback(
         (task: Task) => {
@@ -3126,7 +2906,7 @@ const DashboardPage = () => {
         [users],
     );
 
-    const getAvailableBrandOptions = useCallback((): Array<{ value: string; label: string; ownerId?: string; createdBy?: string }> => {
+    const availableBrandOptions = useMemo((): Array<{ value: string; label: string; ownerId?: string; createdBy?: string }> => {
         const company = newTask.companyName;
         if (!company) return [];
         const companyKey = normalizeCompanyKey(company);
@@ -3136,10 +2916,7 @@ const DashboardPage = () => {
             if (!name) return;
             const key = name.toLowerCase();
             if (byNameKey.has(key)) return;
-            const brandDoc: any = (brands || []).find((b: any) => (
-                normalizeCompanyKey(getBrandCompanyNameSafe(b)) === companyKey &&
-                normalizeText(getBrandNameSafe(b)) === normalizeText(name)
-            ));
+            const brandDoc: any = brandLookupMap.get(`${companyKey}::${normalizeText(name)}`);
             const groupNumber = String((brandDoc as any)?.groupNumber || '').trim();
             const label = groupNumber ? `${groupNumber} - ${name}` : name;
 
@@ -3178,9 +2955,11 @@ const DashboardPage = () => {
             .filter(Boolean)
             .forEach(addOption);
         return Array.from(byNameKey.values()).sort((a, b) => a.label.localeCompare(b.label));
-    }, [brandNamesByCompanyUserKey, brands, currentUser?.email, getBrandCompanyNameSafe, getBrandNameSafe, newTask.companyName, normalizeCompanyKey, normalizeText, stripDeletedEmailSuffix]);
+    }, [brandLookupMap, brandNamesByCompanyUserKey, brands, currentUser?.email, getBrandCompanyNameSafe, getBrandNameSafe, newTask.companyName, normalizeCompanyKey, normalizeText, stripDeletedEmailSuffix]);
 
-    const getEditFormBrandOptions = useCallback((): Array<{ value: string; label: string }> => {
+    const getAvailableBrandOptions = useCallback(() => availableBrandOptions, [availableBrandOptions]);
+
+    const editFormBrandOptions = useMemo((): Array<{ value: string; label: string }> => {
         const company = editFormData.companyName;
         if (!company) return [];
         const companyKey = normalizeCompanyKey(company);
@@ -3190,10 +2969,7 @@ const DashboardPage = () => {
             if (!name) return;
             const key = name.toLowerCase();
             if (byNameKey.has(key)) return;
-            const brandDoc: any = (brands || []).find((b: any) => (
-                normalizeCompanyKey(getBrandCompanyNameSafe(b)) === companyKey &&
-                normalizeText(getBrandNameSafe(b)) === normalizeText(name)
-            ));
+            const brandDoc: any = brandLookupMap.get(`${companyKey}::${normalizeText(name)}`);
             const groupNumber = String((brandDoc as any)?.groupNumber || '').trim();
             const label = groupNumber ? `${groupNumber} - ${name}` : name;
             byNameKey.set(key, { value: name, label });
@@ -3217,26 +2993,43 @@ const DashboardPage = () => {
             .filter(Boolean)
             .forEach(addOption);
         return Array.from(byNameKey.values()).sort((a, b) => a.label.localeCompare(b.label));
-    }, [brandNamesByCompanyUserKey, brands, editFormData.assignedTo, editFormData.companyName, getBrandCompanyNameSafe, getBrandNameSafe, normalizeCompanyKey, normalizeText, stripDeletedEmailSuffix]);
+    }, [brandLookupMap, brandNamesByCompanyUserKey, brands, editFormData.assignedTo, editFormData.companyName, getBrandCompanyNameSafe, getBrandNameSafe, normalizeCompanyKey, normalizeText, stripDeletedEmailSuffix]);
+
+    const getEditFormBrandOptions = useCallback(() => editFormBrandOptions, [editFormBrandOptions]);
 
     const _formatBrandWithGroupNumber = useCallback((task: any): string => {
         const plain = String(task?.brand || '').trim();
         if (!plain) return '';
+
+        // First try to use brandDetails from the task (included in API response)
+        const brandDetails = task?.brandDetails;
+        if (brandDetails?.groupNumber) {
+            return `${brandDetails.groupNumber} - ${plain}`;
+        }
+
+        // Fallback to existing brandLookupMap logic
         const company = String(task?.companyName || task?.company || '').trim();
         const brandId = (task?.brandId || '').toString().trim();
-        const byId = brandId
-            ? (brands || []).find((b: any) => String(b?.id || b?._id || '').toString() === brandId)
-            : null;
-        const byCompanyName = !byId
-            ? (brands || []).find((b: any) => (
-                normalizeText(getBrandNameSafe(b)) === normalizeText(plain) &&
-                normalizeCompanyKey(getBrandCompanyNameSafe(b)) === normalizeCompanyKey(company)
-            ))
-            : null;
-        const brandDoc: any = byId || byCompanyName;
+
+        // Fast lookup by brandId
+        let brandDoc: any = null;
+        if (brandId) {
+            brandDoc = brandLookupMap.get(brandId);
+        }
+
+        // Fallback lookup by company+name
+        if (!brandDoc) {
+            const companyKey = normalizeCompanyKey(company);
+            const nameKey = normalizeText(plain);
+            if (companyKey && nameKey) {
+                const compoundKey = `${companyKey}::${nameKey}`;
+                brandDoc = brandLookupMap.get(compoundKey);
+            }
+        }
+
         const groupNumber = String(brandDoc?.groupNumber || '').trim();
         return groupNumber ? `${groupNumber} - ${plain}` : plain;
-    }, [brands, getBrandCompanyNameSafe, getBrandNameSafe, normalizeCompanyKey, normalizeText]);
+    }, [brandLookupMap, normalizeCompanyKey, normalizeText]);
 
     void _formatBrandWithGroupNumber;
 
@@ -3806,7 +3599,7 @@ const DashboardPage = () => {
         } else if (selectedStatFilter === 'pending') {
             filtered = filtered.filter((task) => task.status === 'pending' || task.status === 'in-progress' || task.status === 'reassigned');
         } else if (selectedStatFilter === 'overdue') {
-            filtered = filtered.filter((task) => task.status !== 'completed' && isOverdue(task.dueDate, task.status));
+            filtered = filtered.filter((task) => task.status !== 'completed' && isOverdueFn(task.dueDate, task.status));
         }
         if (filters.status !== 'all') {
             if (filters.status === 'pending') {
@@ -3858,7 +3651,7 @@ const DashboardPage = () => {
                 return taskDate >= today && taskDate <= nextWeek;
             });
         } else if (filters.date === 'overdue') {
-            filtered = filtered.filter((task) => isOverdue(task.dueDate, task.status));
+            filtered = filtered.filter((task) => isOverdueFn(task.dueDate, task.status));
         }
         if (filters.assigned) {
             const assignedFilterValue = filters.assigned;
@@ -3911,7 +3704,7 @@ const DashboardPage = () => {
             });
         }
         return filtered;
-    }, [canViewAllTasks, currentUser, filters, isOverdue, normalizeCompanyKey, deferredSearchTerm, selectedStatFilter, tasks]);
+    }, [canViewAllTasks, currentUser, filters, isOverdueFn, normalizeCompanyKey, deferredSearchTerm, selectedStatFilter, tasks]);
 
     const displayTasks = useMemo(() => getFilteredTasksByStat(), [getFilteredTasksByStat]);
     const PAGE_SIZE_OPTIONS = [10, 25, 50, 75, 100, 125, 150, 175, 200];
@@ -3942,11 +3735,6 @@ const DashboardPage = () => {
             return prev;
         });
     }, [totalTaskPages]);
-
-    const paginatedTasks = useMemo(() => {
-        const start = (taskPage - 1) * tasksPerPage;
-        return displayTasks.slice(start, start + tasksPerPage);
-    }, [displayTasks, taskPage, tasksPerPage]);
 
     const taskPageNumbers = useMemo(() => {
         const pages: number[] = [];
@@ -4057,7 +3845,7 @@ const DashboardPage = () => {
                 return taskDate >= today && taskDate <= nextWeek;
             });
         } else if (filters.date === 'overdue') {
-            filtered = filtered.filter((task) => isOverdue(task.dueDate, task.status));
+            filtered = filtered.filter((task) => isOverdueFn(task.dueDate, task.status));
         }
         if (filters.assigned === 'assigned-to-me') {
             filtered = filtered.filter((task) => task.assignedTo === currentUser.email);
@@ -4075,7 +3863,7 @@ const DashboardPage = () => {
             });
         }
         return filtered;
-    }, [canViewAllTasks, currentUser, filters, isOverdue, normalizeCompanyKey, normalizeRoleKey, deferredSearchTerm, tasks, usersRef]);
+    }, [canViewAllTasks, currentUser, filters, isOverdueFn, normalizeCompanyKey, normalizeRoleKey, deferredSearchTerm, tasks, usersRef]);
 
     const stats: StatMeta[] = useMemo(() => {
         const role = String((currentUser as any)?.role || '').trim().toLowerCase();
@@ -4217,7 +4005,7 @@ const DashboardPage = () => {
                 return taskDate >= today && taskDate <= nextWeek;
             });
         } else if (filters.date === 'overdue') {
-            filtered = filtered.filter((task) => isOverdue(task.dueDate, task.status));
+            filtered = filtered.filter((task) => isOverdueFn(task.dueDate, task.status));
         }
         if (filters.assigned === 'assigned-to-me') {
             filtered = filtered.filter((task) => task.assignedTo === currentUser.email);
@@ -4265,7 +4053,7 @@ const DashboardPage = () => {
         }
         const completedTasks = filtered.filter((t) => t.status === 'completed');
         const pendingTasks = filtered.filter((t) => t.status !== 'completed');
-        const overdueTasks = filtered.filter((t) => t.status !== 'completed' && isOverdue(t.dueDate, t.status));
+        const overdueTasks = filtered.filter((t) => t.status !== 'completed' && isOverdueFn(t.dueDate, t.status));
         return [
             {
                 name: 'Total Tasks',
@@ -4312,7 +4100,7 @@ const DashboardPage = () => {
                 bgColor: 'bg-rose-50',
             }
         ];
-    }, [canViewAllTasks, currentUser, filters, isOverdue, normalizeCompanyKey, normalizeRoleKey, deferredSearchTerm, tasks, usersRef]);
+    }, [canViewAllTasks, currentUser, filters, isOverdueFn, normalizeCompanyKey, normalizeRoleKey, deferredSearchTerm, tasks, usersRef]);
     const getActiveFilterCount = useCallback(() => {
         let count = 0;
         const isCompanyForced = (availableCompanies || []).length === 1;
@@ -4331,32 +4119,32 @@ const DashboardPage = () => {
 
     const handleFilterChange = useCallback((filterType: keyof FilterState, value: string) => {
         setTaskPage(1);
-        setFilters(prev => ({
-            ...prev,
-            [filterType]: value,
-        }));
-        if (filterType === 'company') {
-            setFilters(prev => ({
+        setFilters(prev => {
+            const next = {
                 ...prev,
-                brand: 'all',
-                taskType: 'all'
-            }));
-        }
+                [filterType]: value,
+            };
+            if (filterType === 'company') {
+                next.brand = 'all';
+                next.taskType = 'all';
+            }
+            return next;
+        });
     }, []);
 
     const handleAdvancedFilterChange = useCallback((filterType: string, value: string) => {
         setTaskPage(1);
-        setFilters(prev => ({
-            ...prev,
-            [filterType]: value,
-        }));
-        if (filterType === 'company') {
-            setFilters(prev => ({
+        setFilters(prev => {
+            const next = {
                 ...prev,
-                brand: 'all',
-                taskType: 'all'
-            }));
-        }
+                [filterType]: value,
+            };
+            if (filterType === 'company') {
+                next.brand = 'all';
+                next.taskType = 'all';
+            }
+            return next;
+        });
     }, []);
 
     const resetFilters = useCallback(() => {
@@ -4726,23 +4514,24 @@ const DashboardPage = () => {
     }, [addTaskTypesToCompany, bulkTaskTypeCompany, bulkTaskTypeNames, canBulkAddTaskTypes]);
 
     const handleEditInputChange = useCallback((field: keyof EditTaskForm, value: string) => {
-        setEditFormData(prev => ({
-            ...prev,
-            [field]: value,
-        }));
+        setEditFormData(prev => {
+            const nextState = {
+                ...prev,
+                [field]: value,
+            };
+            if (field === 'companyName') {
+                nextState.brand = '';
+                nextState.taskType = '';
+            }
+            return nextState;
+        });
+
         if (editFormErrors[field]) {
             setEditFormErrors(prev => {
                 const newErrors = { ...prev };
                 delete newErrors[field];
                 return newErrors;
             });
-        }
-        if (field === 'companyName') {
-            setEditFormData(prev => ({
-                ...prev,
-                brand: '',
-                taskType: '',
-            }));
         }
     }, [editFormErrors]);
 
@@ -5251,6 +5040,7 @@ const DashboardPage = () => {
             showAddTaskModal ||
             showEditTaskModal;
         const needsBrands =
+            currentView === 'dashboard' ||
             currentView === 'brands' ||
             currentView === 'brand-detail' ||
             currentView === 'all-tasks' ||
@@ -5351,7 +5141,7 @@ const DashboardPage = () => {
 
     const handleOpenEditModal = useCallback((task: Task) => {
         void ensureUsersLoaded();
-        void ensureBrandsLoaded({ force: true });
+        void ensureBrandsLoaded(); // Remove force: true to avoid unnecessary refetch
         void ensureCompaniesLoaded();
         void ensureTaskTypesLoaded();
         if (!canEditTask(task)) {
@@ -6417,301 +6207,24 @@ const DashboardPage = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    {displayTasks.length === 0 ? (
-                                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
-                                            <div className="max-w-md mx-auto">
-                                                <div className="p-4 bg-gradient-to-r from-[#3b82f6]/10 to-[#3b82f6]/5 rounded-2xl inline-flex mb-6">
-                                                    <ListTodo className="h-12 w-12 text-[#3b82f6]" />
-                                                </div>
-                                                <h3 className="text-xl font-semibold text-black mb-2">
-                                                    No tasks found
-                                                </h3>
-                                                <p className="text-gray-500 mb-6">
-                                                    {searchTerm
-                                                        ? `No tasks match "${searchTerm}"`
-                                                        : getActiveFilterCount() > 0
-                                                            ? 'Try adjusting your filters'
-                                                            : 'Get started by creating your first task'}
-                                                </p>
-                                                {canCreateTasks && (
-                                                    <button
-                                                        onClick={openAddTaskModal}
-                                                        className="inline-flex items-center px-4 py-3 bg-[#3b82f6] text-white rounded-xl hover:bg-[#1e3a8a] shadow-sm transition-all duration-200"
-                                                    >
-                                                        <PlusCircle className="mr-2 h-5 w-5" />
-                                                        Create New Task
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ) : viewMode === 'grid' ? (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                                            {paginatedTasks.map((task: Task) => (
-                                                <div
-                                                    key={task.id}
-                                                    className="group bg-white rounded-xl border border-gray-100 hover:border-[#3b82f6]/30 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden"
-                                                >
-                                                    <div className="p-4">
-                                                        {/* Top Row - Status & Type */}
-                                                        <div className="flex items-center justify-between mb-3">
-                                                            <div className="flex items-center gap-2">
-                                                                <div className={`w-2 h-2 rounded-full ${task.status === 'completed' ? 'bg-emerald-500' : task.status === 'in-progress' ? 'bg-amber-500' : 'bg-blue-500'}`} />
-                                                                <span className={`text-xs font-medium ${task.status === 'completed' ? 'text-emerald-600' : task.status === 'in-progress' ? 'text-amber-600' : 'text-blue-600'}`}>
-                                                                    {task.status === 'completed' ? 'Done' : task.status === 'in-progress' ? 'In Progress' : 'Pending'}
-                                                                </span>
-                                                            </div>
-                                                            <span className="text-[10px] text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">
-                                                                {task.taskType}
-                                                            </span>
-                                                        </div>
-
-                                                        {/* Title */}
-                                                        <h3 className="text-base font-semibold text-black mb-3 group-hover:text-[#3b82f6] transition-colors line-clamp-2">
-                                                            {task.title}
-                                                            {task.completedApproval && (
-                                                                <span className="ml-2 inline-flex items-center gap-1 text-[9px] bg-[#3b82f6]/10 text-[#3b82f6] px-1.5 py-0.5 rounded-full">
-                                                                    <CheckCircle className="h-2.5 w-2.5" />
-                                                                    Approved
-                                                                </span>
-                                                            )}
-                                                        </h3>
-
-                                                        {/* Key Info - Only 3 most important fields */}
-                                                        <div className="space-y-2 mb-4">
-                                                            <div className="flex items-center justify-between text-xs">
-                                                                <div className="flex items-center gap-1.5 text-gray-500">
-                                                                    <UserCheck className="h-3.5 w-3.5" />
-                                                                    <span>Assigned to</span>
-                                                                </div>
-                                                                <span className="text-black font-medium truncate max-w-[60%]">
-                                                                    {(() => {
-                                                                        const info = getAssignedUserInfo(task);
-                                                                        const email = (info as any)?.email ? stripDeletedEmailSuffix(String((info as any).email)) : '';
-                                                                        const name = (info as any)?.name ? String((info as any).name) : '';
-                                                                        return name || (email ? email.split('@')[0] : '') || email || '—';
-                                                                    })()}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center justify-between text-xs">
-                                                                <div className="flex items-center gap-1.5 text-gray-500">
-                                                                    <User className="h-3.5 w-3.5" />
-                                                                    <span>Assigned by</span>
-                                                                </div>
-                                                                <span className="text-black font-medium truncate max-w-[60%]">
-                                                                    {(() => {
-                                                                        const assignedByUser = (task as any)?.assignedByUser;
-                                                                        const assignedBy = (task as any)?.assignedBy;
-                                                                        const rawEmail =
-                                                                            (assignedByUser && typeof assignedByUser === 'object' ? assignedByUser?.email : '') ||
-                                                                            (typeof assignedBy === 'string' ? assignedBy : assignedBy?.email) ||
-                                                                            '';
-                                                                        const rawName =
-                                                                            (assignedByUser && typeof assignedByUser === 'object' ? assignedByUser?.name : '') ||
-                                                                            (typeof assignedBy === 'object' ? assignedBy?.name : '') ||
-                                                                            '';
-                                                                        const email = rawEmail ? stripDeletedEmailSuffix(String(rawEmail)) : '';
-                                                                        const name = rawName ? String(rawName) : '';
-                                                                        return name || (email ? email.split('@')[0] : '') || email || '—';
-                                                                    })()}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center justify-between text-xs">
-                                                                <div className="flex items-center gap-1.5 text-gray-500">
-                                                                    <Layers className="h-3.5 w-3.5" />
-                                                                    <span>Brand</span>
-                                                                </div>
-                                                                <span className="text-black font-medium truncate max-w-[60%]">
-                                                                    {_formatBrandWithGroupNumber(task) || '—'}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center justify-between text-xs">
-                                                                <div className="flex items-center gap-1.5 text-gray-500">
-                                                                    <CalendarDays className="h-3.5 w-3.5" />
-                                                                    <span>Due date</span>
-                                                                </div>
-                                                                <span className={`font-medium ${isOverdue(task.dueDate, task.status) ? 'text-rose-600' : 'text-black'}`}>
-                                                                    {task.dueDate ? formatDate(task.dueDate) : '—'}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center justify-between text-xs">
-                                                                <div className="flex items-center gap-1.5 text-gray-500">
-                                                                    <Flag className="h-3.5 w-3.5" />
-                                                                    <span>Priority</span>
-                                                                </div>
-                                                                <span className={`inline-flex items-center gap-1 text-xs font-medium ${task.priority === 'high' ? 'text-rose-600' : task.priority === 'medium' ? 'text-amber-600' : 'text-emerald-600'}`}>
-                                                                    {task.priority || 'medium'}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Action Buttons - Clean & Minimal */}
-                                                        <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-50">
-                                                            <button
-                                                                onClick={() => handleToggleTaskStatus(task.id, task.status)}
-                                                                disabled={!canMarkTaskDone(task)}
-                                                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 ${canMarkTaskDone(task)
-                                                                    ? task.status === 'completed'
-                                                                        ? 'text-amber-600 hover:bg-amber-50'
-                                                                        : 'text-emerald-600 hover:bg-emerald-50'
-                                                                    : 'text-gray-400 cursor-not-allowed'
-                                                                    }`}
-                                                            >
-                                                                {task.status === 'completed' ? (
-                                                                    <>
-                                                                        <RotateCcw className="h-3 w-3" />
-                                                                        <span>Mark Pending</span>
-                                                                    </>
-                                                                ) : (
-                                                                    <>
-                                                                        <CheckCircle className="h-3 w-3" />
-                                                                        <span>Mark Done</span>
-                                                                    </>
-                                                                )}
-                                                            </button>
-
-                                                            {canEditDeleteTask(task) && (
-                                                                <button
-                                                                    onClick={() => handleDeleteTask(task.id)}
-                                                                    className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-all duration-200"
-                                                                    title="Delete"
-                                                                >
-                                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                                </button>
-                                                            )}
-
-                                                            {canSendReminderForTask(task) && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => handleSendReminder(task)}
-                                                                    disabled={Boolean(sendingReminderByTaskId[String(task.id || '')])}
-                                                                    className={`p-1.5 rounded-lg transition-all duration-200 ${sendingReminderByTaskId[String(task.id || '')]
-                                                                        ? 'text-gray-300 cursor-not-allowed'
-                                                                        : 'text-gray-400 hover:text-[#3b82f6] hover:bg-[#3b82f6]/5'
-                                                                        }`}
-                                                                    title="Send reminder"
-                                                                >
-                                                                    <Bell className="h-3.5 w-3.5" />
-                                                                </button>
-                                                            )}
-
-                                                            {isSbmUser && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => handleOpenTaskCommentSidebar(task)}
-                                                                    className="p-1.5 rounded-lg text-gray-400 hover:text-[#3b82f6] hover:bg-[#3b82f6]/5 transition-all duration-200"
-                                                                    title="Comments"
-                                                                >
-                                                                    <MessageSquare className="h-3.5 w-3.5" />
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : viewMode === 'list' ? (
-                                        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                                            <div className="overflow-x-auto">
-                                                <table className="min-w-full">
-                                                    <thead className="bg-gray-50/50">
-                                                        <tr className="text-left text-xs font-medium text-gray-500">
-                                                            <th className="px-4 py-3">Task</th>
-                                                            <th className="px-4 py-3">Status</th>
-                                                            <th className="px-4 py-3">Priority</th>
-                                                            <th className="px-4 py-3">Due Date</th>
-                                                            <th className="px-4 py-3">Brand</th>
-                                                            <th className="px-4 py-3">Assigned To</th>
-                                                            <th className="px-4 py-3 text-right">Actions</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-gray-50">
-                                                        {paginatedTasks.map((task: Task) => (
-                                                            <tr key={task.id} className="hover:bg-gray-50/50 transition-colors group">
-                                                                <td className="px-4 py-3">
-                                                                    <div className="flex items-center gap-3">
-                                                                        <div className={`w-1.5 h-1.5 rounded-full ${task.status === 'completed' ? 'bg-emerald-500' : task.status === 'in-progress' ? 'bg-amber-500' : 'bg-blue-500'}`} />
-                                                                        <div>
-                                                                            <div className="text-sm font-medium text-black group-hover:text-[#3b82f6] transition-colors">
-                                                                                {task.title}
-                                                                            </div>
-                                                                            {task.completedApproval && (
-                                                                                <span className="inline-flex items-center gap-1 text-[9px] text-[#3b82f6] mt-0.5">
-                                                                                    <CheckCircle className="h-2 w-2" />
-                                                                                    Approved by Admin
-                                                                                </span>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                </td>
-                                                                <td className="px-4 py-3">
-                                                                    <span className={`text-xs font-medium ${task.status === 'completed' ? 'text-emerald-600' : task.status === 'in-progress' ? 'text-amber-600' : 'text-blue-600'}`}>
-                                                                        {task.status === 'completed' ? 'Done' : task.status === 'in-progress' ? 'In Progress' : 'Pending'}
-                                                                    </span>
-                                                                </td>
-                                                                <td className="px-4 py-3">
-                                                                    <span className={`text-xs font-medium ${task.priority === 'high' ? 'text-rose-600' : task.priority === 'medium' ? 'text-amber-600' : 'text-emerald-600'}`}>
-                                                                        {task.priority || 'medium'}
-                                                                    </span>
-                                                                </td>
-                                                                <td className={`px-4 py-3 text-xs ${isOverdue(task.dueDate, task.status) ? 'text-rose-600 font-medium' : 'text-gray-600'}`}>
-                                                                    {task.dueDate ? formatDate(task.dueDate) : '—'}
-                                                                </td>
-                                                                <td className="px-4 py-3 text-xs text-gray-600">
-                                                                    {_formatBrandWithGroupNumber(task) || '—'}
-                                                                </td>
-                                                                <td className="px-4 py-3 text-xs text-gray-600 truncate max-w-[150px]">
-                                                                    {(() => {
-                                                                        const info = getAssignedUserInfo(task);
-                                                                        const email = (info as any)?.email ? stripDeletedEmailSuffix(String((info as any).email)) : '';
-                                                                        const name = (info as any)?.name ? String((info as any).name) : '';
-                                                                        return name || (email ? email.split('@')[0] : '') || email || '—';
-                                                                    })()}
-                                                                </td>
-                                                                <td className="px-4 py-3 text-right">
-                                                                    <div className="flex items-center justify-end gap-1">
-                                                                        {canEditTask(task) && !task?.completedApproval && (
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={() => handleOpenEditModal(task)}
-                                                                                className="p-1.5 rounded-lg text-gray-400 hover:text-[#3b82f6] hover:bg-[#3b82f6]/5 transition-all duration-200"
-                                                                                title="Edit"
-                                                                            >
-                                                                                <Edit className="h-3.5 w-3.5" />
-                                                                            </button>
-                                                                        )}
-                                                                        {canEditDeleteTask(task) && (
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={() => handleDeleteTask(task.id)}
-                                                                                className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-all duration-200"
-                                                                                title="Delete"
-                                                                            >
-                                                                                <Trash2 className="h-3.5 w-3.5" />
-                                                                            </button>
-                                                                        )}
-                                                                        {canSendReminderForTask(task) && (
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={() => handleSendReminder(task)}
-                                                                                disabled={Boolean(sendingReminderByTaskId[String(task.id || '')])}
-                                                                                className={`p-1.5 rounded-lg transition-all duration-200 ${sendingReminderByTaskId[String(task.id || '')]
-                                                                                    ? 'text-gray-300 cursor-not-allowed'
-                                                                                    : 'text-gray-400 hover:text-[#3b82f6] hover:bg-[#3b82f6]/5'
-                                                                                    }`}
-                                                                                title="Send reminder"
-                                                                            >
-                                                                                <Bell className="h-3.5 w-3.5" />
-                                                                            </button>
-                                                                        )}
-                                                                    </div>
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    ) : null}
+                                    <TaskVirtualList
+                                        tasks={displayTasks}
+                                        viewMode={viewMode}
+                                        users={users}
+                                        onToggleStatus={handleToggleTaskStatus}
+                                        onDelete={handleDeleteTask}
+                                        onEdit={handleOpenEditModal}
+                                        onSendReminder={handleSendReminder}
+                                        onOpenComments={handleOpenTaskCommentSidebar}
+                                        formatBrand={_formatBrandWithGroupNumber}
+                                        formatDate={formatDate}
+                                        canEditTask={canEditTask}
+                                        canMarkTaskDone={canMarkTaskDone}
+                                        canEditDeleteTask={canEditDeleteTask}
+                                        canSendReminderForTask={canSendReminderForTask}
+                                        isSbmUser={isSbmUser}
+                                        sendingReminderByTaskId={sendingReminderByTaskId}
+                                    />
 
                                     {displayTasks.length > 0 && totalTaskPages > 1 && (
                                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-4">
@@ -6777,7 +6290,7 @@ const DashboardPage = () => {
                                     currentUser={currentUser as any}
                                     users={users}
                                     tasks={tasks}
-                                    isOverdue={isOverdue}
+                                    isOverdue={isOverdueFn}
                                 />
                             ) : currentView === 'md-impex-manual-strike' ? (
                                 <NewMdImpexStrikePage
@@ -6809,7 +6322,7 @@ const DashboardPage = () => {
                                     }}
                                     onDeleteTask={handleDeleteTask}
                                     formatDate={formatDate}
-                                    isOverdue={isOverdue}
+                                    isOverdue={isOverdueFn}
                                     getTaskBorderColor={getTaskBorderColor}
                                     openMenuId={openMenuId}
                                     setOpenMenuId={setOpenMenuId}
@@ -6847,7 +6360,7 @@ const DashboardPage = () => {
                                     brands={brands as any}
                                     getTaskBorderColor={getTaskBorderColor}
                                     formatDate={formatDate}
-                                    isOverdue={isOverdue}
+                                    isOverdue={isOverdueFn}
                                     onApproveTask={handleApproveTask}
                                     onUpdateTaskApproval={handleUpdateTaskApproval}
                                     advancedFilters={filters}
@@ -6870,7 +6383,7 @@ const DashboardPage = () => {
                                     brands={brands as any}
                                     getTaskBorderColor={getTaskBorderColor}
                                     formatDate={formatDate}
-                                    isOverdue={isOverdue}
+                                    isOverdue={isOverdueFn}
                                     onApproveTask={handleApproveTask}
                                     onUpdateTaskApproval={handleUpdateTaskApproval}
                                     advancedFilters={filters}
@@ -6924,7 +6437,7 @@ const DashboardPage = () => {
                                     canMarkTaskDone={canMarkTaskDone}
                                     getAssignedUserInfo={getAssignedUserInfo}
                                     formatDate={formatDate}
-                                    isOverdue={isOverdue}
+                                    isOverdue={isOverdueFn}
                                     canDeleteTask={(() => {
                                         const role = String((currentUser as any)?.role || '').trim().toLowerCase();
                                         return role !== 'rm' && role !== 'am';
@@ -6944,7 +6457,7 @@ const DashboardPage = () => {
                                     onUpdateUser={handleUpdateUser}
                                     onDeleteUser={handleDeleteUser}
                                     onAddUser={handleCreateUser}
-                                    isOverdue={isOverdue}
+                                    isOverdue={isOverdueFn}
                                     currentUser={currentUser}
                                     onFetchTaskHistory={handleFetchTaskHistory}
                                 />
@@ -7123,7 +6636,7 @@ const DashboardPage = () => {
                         canCreateBrand={canCreateBrand}
                         canBulkAddBrands={canBulkAddBrands}
                         onAddBrand={handleAddBrandClick}
-                        availableBrandOptions={getAvailableBrandOptions()}
+                        availableBrandOptions={availableBrandOptions}
                         canBulkAddTaskTypes={canBulkAddTaskTypes}
                         onBulkAddTaskTypes={handleAddTaskTypeClick}
                         availableTaskTypesForNewTask={availableTaskTypesForNewTask}

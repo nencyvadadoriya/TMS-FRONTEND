@@ -133,6 +133,12 @@ export interface Task {
     company?: string;       // 'acs', 'md inpex', 'tech solutions', 'global inc'
     brand?: string;         // 'chips', 'soy', 'saffola', etc.
     brandId?: string | number;
+    brandDetails?: {
+        id: string;
+        name: string;
+        groupNumber?: string;
+        company?: string;
+    };
     project?: string;       // Project name
     assignedToUser?: UserType;
     assignedByUser?: UserType;

@@ -169,28 +169,33 @@ class ChatService {
     if (this.socket?.connected) return;
 
     if (!this.socket) {
+      console.warn('🔌 Socket not initialized, starting initialization...');
       await this.initialize();
     }
 
     const socket = this.socket;
     if (!socket) {
-      throw new Error('Socket not created');
+      throw new Error('Socket could not be created');
     }
 
     if (socket.connected) return;
 
+    console.log('🔌 Socket not connected, waiting for connection... (State: ' + (socket.active ? 'Active' : 'Inactive') + ')');
+
     await new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => {
         cleanup();
-        reject(new Error('Socket connection timeout'));
+        reject(new Error('Socket connection timeout (12s)'));
       }, 12000);
 
       const onConnect = () => {
+        console.log('🔌 Connected successfully');
         cleanup();
         resolve();
       };
 
       const onError = (error: any) => {
+        console.error('🔌 Connection error during ensureConnected:', error);
         cleanup();
         reject(error instanceof Error ? error : new Error(String(error?.message || error)));
       };
@@ -205,10 +210,12 @@ class ChatService {
       socket.once('connect_error', onError);
 
       if (!socket.active) {
+        console.log('🔌 Socket inactive, calling connect()');
         socket.connect();
       }
     });
   }
+
 
   // Setup socket event listeners
   private setupEventListeners() {
