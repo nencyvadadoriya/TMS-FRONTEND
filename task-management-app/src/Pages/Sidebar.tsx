@@ -190,232 +190,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     restoreScrollPosition();
   });
 
-  const SidebarContent = ({ isMobile = false, onItemClick }: { isMobile?: boolean; onItemClick?: () => void }) => (
-    <div className="flex flex-col h-full bg-white">
-      {/* Logo Section */}
-      <div className={`flex-shrink-0 ${isCollapsed && !isMobile ? 'px-2 py-3' : 'px-4 py-4'} border-b border-gray-100`}>
-        {!isCollapsed || isMobile ? (
-          <div className="flex items-center justify-center">
-            <img 
-              src={CompanyLogo}
-              alt="HM² Solutions LLP" 
-              className="w-full h-auto object-contain"
-              style={{ maxHeight: '55px', minHeight: '45px' }}
-            />
-          </div>
-        ) : (
-          <div className="flex justify-center">
-            <img 
-              src={CompanyLogo}
-              alt="HM²" 
-              className="w-full h-auto object-contain"
-              style={{ maxHeight: '40px', minHeight: '35px' }}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Navigation with Custom Scrollbar */}
-      <div 
-        ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto py-3 custom-scrollbar"
-      >
-        {navigationSections.map((section) => {
-          const visibleItems = section.items.filter(item => item.name);
-          if (visibleItems.length === 0) return null;
-          
-          return (
-            <div key={section.id} className="mb-3">
-              {(!isCollapsed || isMobile) && section.title && (
-                <div className="px-4 mb-1.5">
-                  <p className="text-[9px] font-semibold tracking-wider text-gray-400">{section.title}</p>
-                </div>
-              )}
-              <div className={`${isCollapsed && !isMobile ? 'px-1.5' : 'px-3'} space-y-0.5`}>
-                {visibleItems.map((item) => {
-                  const isActive = currentView === item.id;
-                  
-                  return (
-                    <button
-                      key={item.name}
-                      onClick={() => {
-                        navigateTo(item.id);
-                        onItemClick?.();
-                        saveScrollPosition();
-                      }}
-                      className={`
-                        relative w-full flex items-center rounded-md transition-all duration-300 ease-out
-                        ${isCollapsed && !isMobile ? 'justify-center py-1.5' : 'py-1.5 px-2.5'}
-                        ${isActive ? 'active-menu-item' : ''}
-                      `}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <div className={`flex items-center w-full ${isCollapsed && !isMobile ? 'justify-center' : ''} min-w-0`}>
-                        <item.icon 
-                          className={`h-4 w-4 flex-shrink-0 transition-all duration-300 ease-out ${isCollapsed && !isMobile ? '' : 'mr-2.5'}`}
-                          style={{ 
-                            color: isActive ? 'white' : 'black',
-                            strokeWidth: isActive ? 2 : 1.5
-                          }}
-                        />
-                        {(!isCollapsed || isMobile) && (
-                          <span 
-                            className={`text-[13px] font-medium truncate transition-all duration-300 ease-out ${
-                              isActive ? 'font-semibold' : ''
-                            }`}
-                            style={{ 
-                              color: isActive ? 'white' : 'black',
-                              maxWidth: 'calc(100% - 30px)',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap'
-                            }}
-                            title={item.name}
-                          >
-                            {item.name}
-                          </span>
-                        )}
-                        {!isCollapsed && !isMobile && item.badge > 0 && (
-                          <span 
-                            className="ml-auto text-[9px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 transition-all duration-300 ease-out"
-                            style={{ 
-                              backgroundColor: isActive ? 'white' : 'black',
-                              color: isActive ? 'black' : 'white'
-                            }}
-                          >
-                            {item.badge}
-                          </span>
-                        )}
-                      </div>
-                      {isCollapsed && !isMobile && item.badge > 0 && (
-                        <div className="absolute -top-0.5 -right-0.5 transition-all duration-300 ease-out">
-                          <span 
-                            className="flex h-3 w-3 items-center justify-center rounded-full text-[7px] font-bold"
-                            style={{ 
-                              backgroundColor: isActive ? 'white' : 'black',
-                              color: isActive ? 'black' : 'white'
-                            }}
-                          >
-                            {item.badge}
-                          </span>
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* User Profile Section */}
-      <div className={`flex-shrink-0 border-t border-gray-100 ${isCollapsed && !isMobile ? 'p-2.5' : 'p-3'} bg-white`}>
-        {(!isCollapsed || isMobile) ? (
-          <div className="flex items-center space-x-2.5 min-w-0">
-            <div className="relative flex-shrink-0 transition-all duration-300 ease-out hover:scale-105">
-              <div className="absolute inset-0 rounded-full blur opacity-30" style={{ backgroundColor: logoColor }}></div>
-              <div 
-                className="relative h-8 w-8 rounded-full flex items-center justify-center shadow-sm gradient-primary"
-              >
-                <span className="text-white font-bold text-[11px]">{getDisplayInitial()}</span>
-              </div>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[11px] font-semibold truncate text-black" title={currentUser.name}>
-                {currentUser.name}
-              </p>
-              <p className="text-[9px] truncate text-gray-600" title={currentUser.email}>
-                {currentUser.email}
-              </p>
-              <button
-                onClick={handleLogout}
-                className="text-[9px] flex items-center transition-all duration-300 ease-out mt-0.5 hover:translate-x-0.5 text-black hover:text-gray-700"
-              >
-                <LogOut className="h-2.5 w-2.5 mr-1 transition-transform duration-300 ease-out text-black" />
-                Sign Out
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-1.5">
-            <div className="relative transition-all duration-300 ease-out hover:scale-105">
-              <div className="absolute inset-0 rounded-full blur opacity-30" style={{ backgroundColor: logoColor }}></div>
-              <div 
-                className="relative h-7 w-7 rounded-full flex items-center justify-center shadow-sm gradient-primary"
-              >
-                <span className="text-white font-bold text-[9px]">{getDisplayInitial()}</span>
-              </div>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="p-0.5 rounded-lg transition-all duration-300 ease-out hover:scale-110 text-black hover:text-gray-700"
-              title="Sign out"
-            >
-              <LogOut className="h-3 w-3" />
-            </button>
-          </div>
-        )}
-      </div>
-
-      <style>{`
-        /* Custom Scrollbar Styles */
-        .custom-scrollbar {
-          scrollbar-width: thin;
-          scrollbar-color: var(--color-primary-main);
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 4px;
-          height: 4px;
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: var(--color-primary-main);
-          border-radius: 10px;
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: var(--color-primary-main);
-          border-radius: 10px;
-          transition: background 0.3s ease;
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: var(--color-primary-main);
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar-corner {
-          background: transparent;
-        }
-        
-        /* Active Menu Item Styles */
-        .active-menu-item {
-          position: relative;
-          background: var(--color-primary-main);
-          border-radius: 8px;
-          transform: scale(1);
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        .active-menu-item:hover {
-          background: var(--color-primary-main);
-          transform: scale(1.02);
-        }
-        
-        .active-menu-item::before {
-          display: none;
-        }
-        
-        /* Firefox Scrollbar */
-        .custom-scrollbar {
-          scrollbar-width: thin;
-          scrollbar-color: var(--color-primary-main) var(--color-primary-ultralight);
-        }
-      `}</style>
-    </div>
-  );
-
   return (
     <>
       {/* Mobile Sidebar */}
@@ -430,7 +204,181 @@ const Sidebar: React.FC<SidebarProps> = ({
               <X className="h-3.5 w-3.5 text-gray-600" />
             </button>
           </div>
-          <SidebarContent isMobile onItemClick={() => setSidebarOpen(false)} />
+          <div className="flex flex-col h-full bg-white">
+            {/* Logo Section */}
+            <div className={`flex-shrink-0 px-4 py-4 border-b border-gray-100`}>
+              <div className="flex items-center justify-center">
+                <img 
+                  src={CompanyLogo}
+                  alt="HM² Solutions LLP" 
+                  className="w-full h-auto object-contain"
+                  style={{ maxHeight: '55px', minHeight: '45px' }}
+                />
+              </div>
+            </div>
+
+            {/* Navigation with Custom Scrollbar */}
+            <div 
+              ref={scrollContainerRef}
+              className="flex-1 overflow-y-auto py-3 custom-scrollbar"
+            >
+              {navigationSections.map((section) => {
+                const visibleItems = section.items.filter(item => item.name);
+                if (visibleItems.length === 0) return null;
+                
+                return (
+                  <div key={section.id} className="mb-3">
+                    {section.title && (
+                      <div className="px-4 mb-1.5">
+                        <p className="text-[9px] font-semibold tracking-wider text-gray-400">{section.title}</p>
+                      </div>
+                    )}
+                    <div className="px-3 space-y-0.5">
+                      {visibleItems.map((item) => {
+                        const isActive = currentView === item.id;
+                        
+                        return (
+                          <button
+                            key={item.name}
+                            onClick={() => {
+                              navigateTo(item.id);
+                              setSidebarOpen(false);
+                              saveScrollPosition();
+                            }}
+                            className={`
+                              relative w-full flex items-center rounded-md transition-all duration-300 ease-out
+                              py-1.5 px-2.5
+                              ${isActive ? 'active-menu-item' : ''}
+                            `}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            <div className="flex items-center w-full min-w-0">
+                              <item.icon 
+                                className="h-4 w-4 flex-shrink-0 transition-all duration-300 ease-out mr-2.5"
+                                style={{ 
+                                  color: isActive ? 'white' : 'black',
+                                  strokeWidth: isActive ? 2 : 1.5
+                                }}
+                              />
+                              <span 
+                                className="text-[13px] font-medium truncate transition-all duration-300 ease-out"
+                                style={{ 
+                                  color: isActive ? 'white' : 'black',
+                                  maxWidth: 'calc(100% - 30px)',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap'
+                                }}
+                                title={item.name}
+                              >
+                                {item.name}
+                              </span>
+                              {item.badge > 0 && (
+                                <span 
+                                  className="ml-auto text-[9px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 transition-all duration-300 ease-out"
+                                  style={{ 
+                                    backgroundColor: isActive ? 'white' : 'black',
+                                    color: isActive ? 'black' : 'white'
+                                  }}
+                                >
+                                  {item.badge}
+                                </span>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* User Profile Section */}
+            <div className="flex-shrink-0 border-t border-gray-100 p-3 bg-white">
+              <div className="flex items-center space-x-2.5 min-w-0">
+                <div className="relative flex-shrink-0 transition-all duration-300 ease-out hover:scale-105">
+                  <div className="absolute inset-0 rounded-full blur opacity-30" style={{ backgroundColor: logoColor }}></div>
+                  <div 
+                    className="relative h-8 w-8 rounded-full flex items-center justify-center shadow-sm gradient-primary"
+                  >
+                    <span className="text-white font-bold text-[11px]">{getDisplayInitial()}</span>
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-semibold truncate text-black" title={currentUser.name}>
+                    {currentUser.name}
+                  </p>
+                  <p className="text-[9px] truncate text-gray-600" title={currentUser.email}>
+                    {currentUser.email}
+                  </p>
+                  <button
+                    onClick={handleLogout}
+                    className="text-[9px] flex items-center transition-all duration-300 ease-out mt-0.5 hover:translate-x-0.5 text-black hover:text-gray-700"
+                  >
+                    <LogOut className="h-2.5 w-2.5 mr-1 transition-transform duration-300 ease-out text-black" />
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <style>{`
+              /* Custom Scrollbar Styles */
+              .custom-scrollbar {
+                scrollbar-width: thin;
+                scrollbar-color: var(--color-primary-main);
+              }
+              
+              .custom-scrollbar::-webkit-scrollbar {
+                width: 4px;
+                height: 4px;
+              }
+              
+              .custom-scrollbar::-webkit-scrollbar-track {
+                background: var(--color-primary-main);
+                border-radius: 10px;
+              }
+              
+              .custom-scrollbar::-webkit-scrollbar-thumb {
+                background: var(--color-primary-main);
+                border-radius: 10px;
+                transition: background 0.3s ease;
+              }
+              
+              .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                background: var(--color-primary-main);
+              }
+              
+              .custom-scrollbar::-webkit-scrollbar-corner {
+                background: transparent;
+              }
+              
+              /* Active Menu Item Styles */
+              .active-menu-item {
+                position: relative;
+                background: var(--color-primary-main);
+                border-radius: 8px;
+                transform: scale(1);
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+              }
+              
+              .active-menu-item:hover {
+                background: var(--color-primary-main);
+                transform: scale(1.02);
+              }
+              
+              .active-menu-item::before {
+                display: none;
+              }
+              
+              /* Firefox Scrollbar */
+              .custom-scrollbar {
+                scrollbar-width: thin;
+                scrollbar-color: var(--color-primary-main) var(--color-primary-ultralight);
+              }
+            `}</style>
+          </div>
         </div>
       </div>
 
@@ -454,7 +402,228 @@ const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
         
-        <SidebarContent />
+        <div className="flex flex-col h-full bg-white">
+          {/* Logo Section */}
+          <div className={`flex-shrink-0 ${isCollapsed ? 'px-2 py-3' : 'px-4 py-4'} border-b border-gray-100`}>
+            {!isCollapsed ? (
+              <div className="flex items-center justify-center">
+                <img 
+                  src={CompanyLogo}
+                  alt="HM² Solutions LLP" 
+                  className="w-full h-auto object-contain"
+                  style={{ maxHeight: '55px', minHeight: '45px' }}
+                />
+              </div>
+            ) : (
+              <div className="flex justify-center">
+                <img 
+                  src={CompanyLogo}
+                  alt="HM²" 
+                  className="w-full h-auto object-contain"
+                  style={{ maxHeight: '40px', minHeight: '35px' }}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Navigation with Custom Scrollbar */}
+          <div 
+            ref={scrollContainerRef}
+            className="flex-1 overflow-y-auto py-3 custom-scrollbar"
+          >
+            {navigationSections.map((section) => {
+              const visibleItems = section.items.filter(item => item.name);
+              if (visibleItems.length === 0) return null;
+              
+              return (
+                <div key={section.id} className="mb-3">
+                  {!isCollapsed && section.title && (
+                    <div className="px-4 mb-1.5">
+                      <p className="text-[9px] font-semibold tracking-wider text-gray-400">{section.title}</p>
+                    </div>
+                  )}
+                  <div className={`${isCollapsed ? 'px-1.5' : 'px-3'} space-y-0.5`}>
+                    {visibleItems.map((item) => {
+                      const isActive = currentView === item.id;
+                      
+                      return (
+                        <button
+                          key={item.name}
+                          onClick={() => {
+                            navigateTo(item.id);
+                            saveScrollPosition();
+                          }}
+                          className={`
+                            relative w-full flex items-center rounded-md transition-all duration-300 ease-out
+                            ${isCollapsed ? 'justify-center py-1.5' : 'py-1.5 px-2.5'}
+                            ${isActive ? 'active-menu-item' : ''}
+                          `}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          <div className={`flex items-center w-full ${isCollapsed ? 'justify-center' : ''} min-w-0`}>
+                            <item.icon 
+                              className={`h-4 w-4 flex-shrink-0 transition-all duration-300 ease-out ${isCollapsed ? '' : 'mr-2.5'}`}
+                              style={{ 
+                                color: isActive ? 'white' : 'black',
+                                strokeWidth: isActive ? 2 : 1.5
+                              }}
+                            />
+                            {!isCollapsed && (
+                              <span 
+                                className={`text-[13px] font-medium truncate transition-all duration-300 ease-out ${
+                                  isActive ? 'font-semibold' : ''
+                                }`}
+                                style={{ 
+                                  color: isActive ? 'white' : 'black',
+                                  maxWidth: 'calc(100% - 30px)',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap'
+                                }}
+                                title={item.name}
+                              >
+                                {item.name}
+                              </span>
+                            )}
+                            {!isCollapsed && item.badge > 0 && (
+                              <span 
+                                className="ml-auto text-[9px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 transition-all duration-300 ease-out"
+                                style={{ 
+                                  backgroundColor: isActive ? 'white' : 'black',
+                                  color: isActive ? 'black' : 'white'
+                                }}
+                              >
+                                {item.badge}
+                              </span>
+                            )}
+                          </div>
+                          {isCollapsed && item.badge > 0 && (
+                            <div className="absolute -top-0.5 -right-0.5 transition-all duration-300 ease-out">
+                              <span 
+                                className="flex h-3 w-3 items-center justify-center rounded-full text-[7px] font-bold"
+                                style={{ 
+                                  backgroundColor: isActive ? 'white' : 'black',
+                                  color: isActive ? 'black' : 'white'
+                                }}
+                              >
+                                {item.badge}
+                              </span>
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* User Profile Section */}
+          <div className={`flex-shrink-0 border-t border-gray-100 ${isCollapsed ? 'p-2.5' : 'p-3'} bg-white`}>
+            {!isCollapsed ? (
+              <div className="flex items-center space-x-2.5 min-w-0">
+                <div className="relative flex-shrink-0 transition-all duration-300 ease-out hover:scale-105">
+                  <div className="absolute inset-0 rounded-full blur opacity-30" style={{ backgroundColor: logoColor }}></div>
+                  <div 
+                    className="relative h-8 w-8 rounded-full flex items-center justify-center shadow-sm gradient-primary"
+                  >
+                    <span className="text-white font-bold text-[11px]">{getDisplayInitial()}</span>
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-semibold truncate text-black" title={currentUser.name}>
+                    {currentUser.name}
+                  </p>
+                  <p className="text-[9px] truncate text-gray-600" title={currentUser.email}>
+                    {currentUser.email}
+                  </p>
+                  <button
+                    onClick={handleLogout}
+                    className="text-[9px] flex items-center transition-all duration-300 ease-out mt-0.5 hover:translate-x-0.5 text-black hover:text-gray-700"
+                  >
+                    <LogOut className="h-2.5 w-2.5 mr-1 transition-transform duration-300 ease-out text-black" />
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="relative transition-all duration-300 ease-out hover:scale-105">
+                  <div className="absolute inset-0 rounded-full blur opacity-30" style={{ backgroundColor: logoColor }}></div>
+                  <div 
+                    className="relative h-7 w-7 rounded-full flex items-center justify-center shadow-sm gradient-primary"
+                  >
+                    <span className="text-white font-bold text-[9px]">{getDisplayInitial()}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="p-0.5 rounded-lg transition-all duration-300 ease-out hover:scale-110 text-black hover:text-gray-700"
+                  title="Sign out"
+                >
+                  <LogOut className="h-3 w-3" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          <style>{`
+            /* Custom Scrollbar Styles */
+            .custom-scrollbar {
+              scrollbar-width: thin;
+              scrollbar-color: var(--color-primary-main);
+            }
+            
+            .custom-scrollbar::-webkit-scrollbar {
+              width: 4px;
+              height: 4px;
+            }
+            
+            .custom-scrollbar::-webkit-scrollbar-track {
+              background: var(--color-primary-main);
+              border-radius: 10px;
+            }
+            
+            .custom-scrollbar::-webkit-scrollbar-thumb {
+              background: var(--color-primary-main);
+              border-radius: 10px;
+              transition: background 0.3s ease;
+            }
+            
+            .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+              background: var(--color-primary-main);
+            }
+            
+            .custom-scrollbar::-webkit-scrollbar-corner {
+              background: transparent;
+            }
+            
+            /* Active Menu Item Styles */
+            .active-menu-item {
+              position: relative;
+              background: var(--color-primary-main);
+              border-radius: 8px;
+              transform: scale(1);
+              transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            
+            .active-menu-item:hover {
+              background: var(--color-primary-main);
+              transform: scale(1.02);
+            }
+            
+            .active-menu-item::before {
+              display: none;
+            }
+            
+            /* Firefox Scrollbar */
+            .custom-scrollbar {
+              scrollbar-width: thin;
+              scrollbar-color: var(--color-primary-main) var(--color-primary-ultralight);
+            }
+          `}</style>
+        </div>
       </div>
 
       {/* Mobile Menu Button */}
