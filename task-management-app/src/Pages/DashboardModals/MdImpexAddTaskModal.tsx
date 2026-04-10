@@ -87,16 +87,16 @@ const MdImpexAddTaskModal = ({
     const allOptions = getAvailableBrandOptions();
 
     const isAdmin =
-      currentUserRole === 'admin' ||
-      currentUserRole === 'super_admin' ||
-      currentUserRole === 'troubleshoot_manager';
+      normalizedCurrentUserRole === 'admin' ||
+      normalizedCurrentUserRole === 'super_admin' ||
+      normalizedCurrentUserRole === 'troubleshoot_manager';
 
     const isManagerLike =
-      currentUserRole === 'manager' ||
-      currentUserRole === 'md_manager' ||
-      currentUserRole === 'ob_manager' ||
-      currentUserRole === 'all_manager' ||
-      currentUserRole === 'marketer_manager';
+      normalizedCurrentUserRole === 'manager' ||
+      normalizedCurrentUserRole === 'md_manager' ||
+      normalizedCurrentUserRole === 'ob_manager' ||
+      normalizedCurrentUserRole === 'all_manager' ||
+      normalizedCurrentUserRole === 'marketer_manager';
 
     // Admin and Managers get all brands
     if (isManagerLike || isAdmin) return allOptions;
@@ -236,9 +236,9 @@ const MdImpexAddTaskModal = ({
 
           const currentNormalized = normalizeEmail(currentUserEmail);
           const isAdmin =
-            currentUserRole === 'admin' ||
-            currentUserRole === 'super_admin' ||
-            currentUserRole === 'troubleshoot_manager';
+            normalizedCurrentUserRole === 'admin' ||
+            normalizedCurrentUserRole === 'super_admin' ||
+            normalizedCurrentUserRole === 'troubleshoot_manager';
 
           const myInfo = allMembers.find((m: any) => normalizeEmail(m.email) === currentNormalized);
           const myRoleNormalized = myInfo?.role?.toLowerCase()?.replace(/\s+/g, '_') || '';

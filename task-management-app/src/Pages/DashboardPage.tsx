@@ -4822,8 +4822,8 @@ const DashboardPage = () => {
     const fetchBrands = useCallback(async () => {
         try {
             const role = (currentUser?.role || '').toString().trim().toLowerCase();
-            const isAdminLike = role === 'admin' || role === 'super_admin' || role === 'troubleshoot_manager';
-            const response = isAdminLike
+            const shouldFetchAllBrands = role === 'admin' || role === 'super_admin' || role === 'troubleshoot_manager' || role === 'md_manager' || role === 'manager' || role === 'ob_manager' || role === 'marketer_manager' || role === 'all_manager';
+            const response = shouldFetchAllBrands
                 ? await brandService.getBrands({ includeDeleted: true })
                 : await brandService.getAssignedBrands();
             if (response && response.success && Array.isArray(response.data)) {
@@ -5010,8 +5010,8 @@ const DashboardPage = () => {
 
     useEffect(() => {
         const role = (currentUser?.role || '').toString().trim().toLowerCase();
-        const isAdminLike = role === 'admin' || role === 'super_admin';
-        if (isAdminLike) return;
+        const fetchAllBrandsRole = role === 'admin' || role === 'super_admin';
+        if (fetchAllBrandsRole) return;
         if (!showAddTaskModal && !showEditTaskModal) return;
         const intervalId = window.setInterval(() => {
             void ensureBrandsLoaded({ force: true });
@@ -6563,6 +6563,7 @@ const DashboardPage = () => {
                                     isSidebarCollapsed={isSidebarCollapsed}
                                     currentUser={currentUser}
                                     tasks={tasks}
+                                    socket={socketRef.current}
                                     onSelectBrand={(brandId) => {
                                         const nextId = String(brandId || '').trim();
                                         if (!nextId) return;
@@ -6602,6 +6603,7 @@ const DashboardPage = () => {
                                     isSidebarCollapsed={isSidebarCollapsed}
                                     currentUser={currentUser}
                                     tasks={tasks}
+                                    socket={socketRef.current}
                                     onSelectBrand={(brandId) => {
                                         setSelectedBrandId(brandId);
                                         setCurrentView('brand-detail');

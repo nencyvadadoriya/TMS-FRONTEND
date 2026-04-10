@@ -53,6 +53,7 @@ interface BrandsListPageProps {
     onSelectBrand?: (brandId: string) => void;
     currentUser?: UserType;
     tasks?: Task[];
+    socket?: any;
 }
 
 interface FilterState {
@@ -277,7 +278,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
             return apiBrands.filter(b => {
                 const status = (b?.status || '').toString().toLowerCase();
                 if (status === 'deleted' || status === 'archived') return false;
-                
+
                 // Strictly brands created by the user
                 const creator = String(b?.createdBy || '').trim();
                 const owner = (b as any)?.owner;
@@ -285,13 +286,15 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                 const creatorId = String(ownerId || creator || '').trim();
 
                 if (creatorId && (creatorId === myId || creatorId === myEmail)) return true;
-                
+
                 // Fallback: check if the name matches the user's email prefix if creator is missing (some old data might have this)
                 return false;
             });
         }
 
-        if (role === 'manager' || role === 'marketer_manager') {
+        const isMdImpexRole = role === 'md_manager' || role === 'marketer_manager' || role === 'manager' || role === 'ob_manager' || role === 'troubleshoot_manager';
+
+        if ((role === 'manager' || role === 'marketer_manager') && !isMdImpexRole) {
             const normalize = (v: any) => String(v || '').trim().toLowerCase();
             const myId = String((currentUser as any)?.id || (currentUser as any)?._id || '').trim();
 
@@ -335,9 +338,19 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
             });
         }
 
-        return [...apiBrands].filter(brand =>
+        const filtered = [...apiBrands].filter(brand =>
             brand.status !== 'deleted' && brand.status !== 'archived'
         );
+
+        // De-duplicate by name (case-insensitive) within the visible list
+        const seenNames = new Set<string>();
+        return filtered.filter(brand => {
+            const name = normalize(brand?.name);
+            if (!name) return true;
+            if (seenNames.has(name)) return false;
+            seenNames.add(name);
+            return true;
+        });
     }, [apiBrands, currentUser, role, reportTasks, personAccess]);
 
     const accessibleBrands = brands;
@@ -758,29 +771,6 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
     const fetchBrands = useCallback(async () => {
         try {
             setIsLoading(true);
-            if (role === 'md_manager') {
-                const res = await brandService.getBrands({
-                    includeDeleted: true,
-                    search: filters.search || undefined,
-                    status: filters.status !== 'all' ? filters.status : undefined,
-                    company: filters.company && filters.company !== 'all' ? filters.company : undefined,
-                    page: currentPage,
-                    limit: brandsPerPage,
-                });
-                const raw = Array.isArray((res as any)?.data) ? (res as any).data : [];
-                const sortByRecent = (list: Brand[]) => {
-                    return [...list].sort((a: any, b: any) => {
-                        const dateA = new Date(a?.updatedAt || a?.createdAt || 0).getTime();
-                        const dateB = new Date(b?.updatedAt || b?.createdAt || 0).getTime();
-                        return dateB - dateA;
-                    });
-                };
-
-                setApiBrands(sortByRecent(raw));
-                setDeletedBrands([]);
-                setBrandsTotal(Number((res as any)?.total || raw.length || 0));
-                return;
-            }
             if (canDeleteBrand) {
                 const activeRes = await brandService.getBrands({
                     search: filters.search || undefined,
@@ -1304,11 +1294,19 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         const safeBrands = Array.isArray(accessibleBrands) ? accessibleBrands : [];
         const safeTasks = Array.isArray(reportTasks) ? reportTasks : [];
 
-        const hasActiveFilters = getActiveFilterCount() > 0 || Boolean(filters.search);
-        const totalBrands = hasActiveFilters ? safeBrands.length : Number(brandsTotal || 0);
-        const activeBrands = hasActiveFilters
+        // Always use brandsTotal from the server as it correctly reflects the total for current filters
+        const serverTotal = Number(brandsTotal || 0);
+
+        // ✅ IMPORTANT: If we have all brands on the client (one page), use the de-duplicated count
+        // Otherwise use serverTotal. This solves the "Showing 1-19 of 23" issue when duplicates exist.
+        const totalBrands = (serverTotal > 0 && apiBrands.length === serverTotal)
+            ? safeBrands.length
+            : serverTotal;
+
+        const activeBrands = getActiveFilterCount() > 0 || filters.search
             ? safeBrands.filter((brand) => brand.status === 'active').length
-            : Number(brandsTotal || 0);
+            : totalBrands; // Adjusted to match the unique total if applicable
+
         const totalTasks = safeTasks.length;
         const averageTasksPerBrand = totalBrands > 0 ? totalTasks / totalBrands : 0;
 
@@ -1703,7 +1701,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                                 <div>
                                     <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Brands</p>
                                     <p className="text-xl lg:text-2xl font-bold text-gray-900 mt-1">
-                                        {getActiveFilterCount() > 0 || filters.search ? filteredBrands.length : stats.totalBrands}
+                                        {totalBrands}
                                     </p>
                                 </div>
                                 <div className={`p-2 rounded-lg transition-colors duration-200 ${taskDisplayType === 'total-brands'
@@ -2261,7 +2259,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                         {filteredBrands.length > 0 && (
                             <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-6 mt-4">
                                 <div className="text-sm text-gray-500">
-                                    Showing {startItemIndex}-{endItemIndex} of {filteredBrands.length} brands
+                                    Showing {startItemIndex}-{endItemIndex} of {totalBrands} brands
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <select
