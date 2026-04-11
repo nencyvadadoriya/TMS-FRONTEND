@@ -10,17 +10,6 @@ firebase.initializeApp({
   appId: '1:43652241815:web:06e8b6f15b2782db824cd2'
 });
 
-
-
-
-
-
-
-
-
-
-
-
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
@@ -31,13 +20,22 @@ messaging.onBackgroundMessage((payload) => {
   const body = notification.body || data.body || 'New task assigned';
   const url = data.url || '/';
 
-  self.registration.showNotification(title, {
+  // Required for Android: include icon so notification is not silently dropped
+  const options = {
     body,
+    icon: '/logo (2).png',   // Must be a real file in /public
+    badge: '/logo (2).png',
     data: {
       ...data,
       url
-    }
-  });
+    },
+    // Show even when app is in focus on older Android versions
+    requireInteraction: false,
+    // Unique tag prevents duplicate notifications for same task
+    tag: data.taskId ? `task-${data.taskId}` : `tms-${Date.now()}`
+  };
+
+  self.registration.showNotification(title, options);
 });
 
 self.addEventListener('notificationclick', (event) => {
