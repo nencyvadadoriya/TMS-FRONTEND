@@ -76,7 +76,7 @@ const resolveSocketUrl = () => {
         : 'https://tms-backend-sand.vercel.app/api';
 
   const trimmed = String(apiBase || '').trim().replace(/\/+$/, '');
-  return trimmed.endsWith('/api') ? trimmed.slice(0, -4) : trimmed;
+  return trimmed.endsWith('/api') ? (trimmed.slice(0, -4) || '/') : (trimmed || '/');
 };
 
 export default function App() {
@@ -179,7 +179,7 @@ export default function App() {
   const acknowledgePersonalReminder = useCallback(async (reminderId: string) => {
     const id = String(reminderId || '').trim();
     if (!id) return;
-    
+
     setPersonalReminders((prev) => prev.filter((r) => r.id !== id));
     setActivePersonalReminderId((prev) => {
       if (prev !== id) return prev;
@@ -192,7 +192,7 @@ export default function App() {
     if (!taskId) return;
     try {
       await apiClient.patch(`/personal-tasks/${taskId}/status`, { status: 'completed' });
-      
+
       setPersonalReminders((prev) => prev.filter((r) => r.taskId !== taskId));
       setActivePersonalReminderId((prev) => {
         const active = personalReminders.find((r) => r.id === prev);
@@ -202,7 +202,7 @@ export default function App() {
         }
         return prev;
       });
-      
+
       toast('Task marked as completed!', { icon: '✅' });
     } catch {
       toast('Failed to complete task', { icon: '❌' });

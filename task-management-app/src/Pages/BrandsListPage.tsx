@@ -46,6 +46,15 @@ import EditCompanyModal from './EditCompanyModal';
 import BulkBrandAddModal from './BulkBrandAddModal';
 import mdImpexAccessService from '../Services/MdImpexAccess.services';
 
+import { useAppDispatch, useAppSelector } from '../Store/hooks';
+import {
+    fetchBrands as fetchBrandsThunk,
+    selectAllBrands,
+    brandUpserted,
+    brandRemoved,
+} from '../Store/brandsSlice';
+import { selectAllUsers, usersSetAll } from '../Store/usersSlice';
+
 import { routepath } from '../Routes/route';
 
 interface BrandsListPageProps {
@@ -93,6 +102,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
     tasks: propTasks = [],
 }) => {
     const navigate = useNavigate();
+    const dispatch = useAppDispatch();
     const accessDeniedRef = useRef(false);
 
     const normalizeRoleKey = useCallback((value: unknown): string => {
@@ -153,9 +163,11 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         }
     }, [canViewBrands, currentUser, navigate]);
 
-    const [apiBrands, setApiBrands] = useState<Brand[]>([]);
+    const apiBrands = useAppSelector(selectAllBrands);
+    const allUsers = useAppSelector(selectAllUsers);
+
     const [deletedBrands, setDeletedBrands] = useState<Brand[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
@@ -164,16 +176,17 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
     const [taskDisplayType, setTaskDisplayType] = useState<TaskDisplayType>(null);
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [allTasks, setAllTasks] = useState<Task[]>([]);
-    const [allUsers, setAllUsers] = useState<UserType[]>([]);
     const [companyDocs, setCompanyDocs] = useState<any[]>([]);
     const [deletedCompanyDocs, setDeletedCompanyDocs] = useState<any[]>([]);
     const [showEditCompanyModal, setShowEditCompanyModal] = useState(false);
     const [selectedCompany, setSelectedCompany] = useState<any | null>(null);
     const [showDeletedBrands, setShowDeletedBrands] = useState(false);
-    const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+    const [initialLoadComplete, _setInitialLoadComplete] = useState(false);
+    void _setInitialLoadComplete;
     const [currentPage, setCurrentPage] = useState(1);
     const [brandsPerPage, setBrandsPerPage] = useState<number>(DEFAULT_BRANDS_PER_PAGE);
-    const [brandsTotal, setBrandsTotal] = useState<number>(0);
+    const [brandsTotal, _setBrandsTotal] = useState<number>(0);
+    void _setBrandsTotal;
     const [showBulkAddModal, setShowBulkAddModal] = useState(false);
     const [personAccess, setPersonAccess] = useState<any | null>(null);
 
@@ -771,19 +784,10 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
     const fetchBrands = useCallback(async () => {
         try {
             setIsLoading(true);
+            await dispatch(fetchBrandsThunk({ force: true }));
             if (canDeleteBrand) {
-                const activeRes = await brandService.getBrands({
-                    search: filters.search || undefined,
-                    status: filters.status !== 'all' ? filters.status : undefined,
-                    company: filters.company && filters.company !== 'all' ? filters.company : undefined,
-                    page: currentPage,
-                    limit: brandsPerPage,
-                });
                 const deletedRes = await brandService.getDeletedBrands();
-
-                const rawActive = Array.isArray((activeRes as any)?.data) ? (activeRes as any).data : [];
                 const rawDeleted = Array.isArray((deletedRes as any)?.data) ? (deletedRes as any).data : [];
-
                 const sortByRecent = (list: Brand[]) => {
                     return [...list].sort((a: any, b: any) => {
                         const dateA = new Date(a?.updatedAt || a?.createdAt || 0).getTime();
@@ -791,48 +795,14 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                         return dateB - dateA;
                     });
                 };
-
-                setApiBrands(sortByRecent(rawActive));
                 setDeletedBrands(sortByRecent(rawDeleted));
-                setBrandsTotal(Number((activeRes as any)?.total || rawActive.length || 0));
-            } else {
-                const response = await brandService.getBrands({
-                    search: filters.search || undefined,
-                    status: filters.status !== 'all' ? filters.status : undefined,
-                    company: filters.company && filters.company !== 'all' ? filters.company : undefined,
-                    page: currentPage,
-                    limit: brandsPerPage,
-                });
-                const rawBrands = Array.isArray((response as any)?.data) ? (response as any).data : [];
-                if (rawBrands.length > 0) {
-                    const allBrands = [...rawBrands].sort((a: Brand, b: Brand) => {
-                        const dateA = new Date((a as any).createdAt || (a as any).updatedAt || 0).getTime();
-                        const dateB = new Date((b as any).createdAt || (b as any).updatedAt || 0).getTime();
-                        return dateB - dateA;
-                    });
-
-                    const active = allBrands.filter(brand =>
-                        brand.status !== 'deleted' && brand.status !== 'archived'
-                    );
-
-                    setApiBrands(active);
-                } else {
-                    setApiBrands([]);
-                }
-                setDeletedBrands([]);
-                setBrandsTotal(Number((response as any)?.total || rawBrands.length || 0));
             }
-        } catch (error: any) {
-            console.error('Error fetching brands:', error);
-            toast.error('Failed to load brands');
-            setApiBrands([]);
-            setDeletedBrands([]);
-            setBrandsTotal(0);
+        } catch {
+            // ignore
         } finally {
-            setInitialLoadComplete(true);
+            setIsLoading(false);
         }
-    }, [canDeleteBrand, role, filters, currentPage, brandsPerPage]);
-
+    }, [canDeleteBrand, dispatch]);
     const fetchBrandHistoryFeed = useCallback(async () => {
         if (!canViewBrandHistory) {
             setBrandHistoryItems([]);
@@ -882,7 +852,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
         try {
             const response: any = await authService.getAllUsers();
             if (!response) {
-                setAllUsers([]);
+                dispatch(usersSetAll([]));
                 return;
             }
 
@@ -897,10 +867,10 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                 id: u?.id || u?._id || u?.userId || '',
                 role: u?.role || 'user',
             }));
-            setAllUsers(normalized as any);
+            dispatch(usersSetAll(normalized as any));
         } catch (error) {
             console.error('Error fetching users:', error);
-            setAllUsers([]);
+            dispatch(usersSetAll([]));
         }
     }, [canViewBrandsCompaniesReport]);
 
@@ -969,9 +939,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
             const response = await brandService.deleteBrand(brandIdStr, reason);
 
             if (response && response.success) {
-                setApiBrands(prev => prev.filter(b =>
-                    String(b.id) !== brandIdStr && String(b._id) !== brandIdStr
-                ));
+                dispatch(brandRemoved(brandIdStr));
 
                 if (response?.data) {
                     setDeletedBrands(prev => {
@@ -1519,7 +1487,7 @@ const BrandsListPage: React.FC<BrandsListPageProps> = ({
                     String(b.id) !== brandIdStr && String(b._id) !== brandIdStr
                 ));
 
-                setApiBrands(prev => [...prev, response.data]);
+                dispatch(brandUpserted(response.data));
 
                 toast.success('Brand restored successfully!');
 

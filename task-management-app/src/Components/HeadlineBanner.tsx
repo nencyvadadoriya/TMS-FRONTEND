@@ -21,7 +21,7 @@ const resolveSocketUrl = () => {
         : 'https://tms-backend-sand.vercel.app/api';
 
   const trimmed = String(apiBase || '').trim().replace(/\/+$/, '');
-  return trimmed.endsWith('/api') ? trimmed.slice(0, -4) : trimmed;
+  return trimmed.endsWith('/api') ? (trimmed.slice(0, -4) || '/') : (trimmed || '/');
 };
 
 const HeadlineBanner: React.FC = () => {

@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { MessageCircle, X, Search, User, Users } from 'lucide-react';
 import { authService } from '../Services/User.Services';
-import { chatService } from '../Services/Chat.service';
+import { useAppSelector } from '../Store/hooks';
+import { selectAllUsers } from '../Store/usersSlice';
 
 // Theme colors matching the app
 const theme = {
@@ -45,8 +46,7 @@ const FloatingChat: React.FC<FloatingChatProps> = ({
 }) => {
     const [internalIsOpen, setInternalIsOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [users, setUsers] = useState<CompanyUser[]>([]);
-    const [loading, setLoading] = useState(false);
+    const reduxUsers = useAppSelector(selectAllUsers);
     const [currentUser, setCurrentUser] = useState<any>(null);
 
     const isControlled = controlledIsOpen !== undefined;
@@ -72,59 +72,6 @@ const FloatingChat: React.FC<FloatingChatProps> = ({
         }
     };
 
-    const fetchCompanyUsers = async () => {
-        setLoading(true);
-        try {
-            const currentUserResponse = await authService.getCurrentUser();
-            if (!currentUserResponse?.success || !currentUserResponse?.data) {
-                console.error('Could not fetch current user');
-                return;
-            }
-
-            const currentUserData = currentUserResponse.data;
-            const userCompany = currentUserData.companyName || currentUserData.company;
-            const currentRole = String(currentUserData.role || '').trim().toLowerCase();
-            const isAdminLike = currentRole === 'admin' || currentRole === 'super_admin';
-
-            if (!isAdminLike && !userCompany) {
-                console.warn('Current user has no company specified');
-                setUsers([]);
-                return;
-            }
-
-            const [response, onlineUsersList] = await Promise.all([
-                authService.getAllUsers(),
-                chatService.getOnlineUsers().catch(() => [])
-            ]);
-            const onlineSet = new Set(onlineUsersList);
-
-            if (response?.success && response?.data) {
-                const userList = response.data
-                    .filter((user: any) => {
-                        const role = String(user?.role || '').trim().toLowerCase();
-                        const targetIsAdminLike = role === 'admin' || role === 'super_admin';
-                        if (isAdminLike) return true;
-                        if (targetIsAdminLike) return true;
-                        const userCompanyToCheck = user.companyName || user.company;
-                        return userCompanyToCheck && userCompanyToCheck.toLowerCase() === String(userCompany).toLowerCase();
-                    })
-                    .map((user: any) => ({
-                        id: user._id || user.id,
-                        name: user.name,
-                        email: user.email,
-                        role: user.role,
-                        avatar: user.avatar,
-                        isOnline: onlineSet.has(String(user._id || user.id))
-                    }));
-
-                setUsers(userList);
-            }
-        } catch (error) {
-            console.error('Error fetching users:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const fetchCurrentUser = async () => {
         try {
@@ -137,19 +84,37 @@ const FloatingChat: React.FC<FloatingChatProps> = ({
         }
     };
 
+    const users = useMemo(() => {
+        if (!currentUser) return [];
+        const userCompany = currentUser.companyName || currentUser.company;
+        const currentRole = String(currentUser.role || '').trim().toLowerCase();
+        const isAdminLike = currentRole === 'admin' || currentRole === 'super_admin';
+
+        return reduxUsers
+            .filter((user: any) => {
+                const role = String(user?.role || '').trim().toLowerCase();
+                const targetIsAdminLike = role === 'admin' || role === 'super_admin';
+                if (isAdminLike) return true;
+                if (targetIsAdminLike) return true;
+                const userCompanyToCheck = user.companyName || user.company;
+                return userCompanyToCheck && userCompanyToCheck.toLowerCase() === String(userCompany).toLowerCase();
+            })
+            .map((user: any) => ({
+                id: user._id || user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                avatar: user.avatar,
+                isOnline: user.isActive // Using isActive from Redux
+            }));
+    }, [reduxUsers, currentUser]);
+
     useEffect(() => {
         if (isOpen) {
-            fetchCompanyUsers();
             fetchCurrentUser();
         }
     }, [isOpen]);
 
-    useEffect(() => {
-        const unsub = chatService.onUserStatusChange(({ userId, online }) => {
-            setUsers(prev => prev.map(u => u.id === userId ? { ...u, isOnline: online } : u));
-        });
-        return () => unsub?.();
-    }, []);
 
     const handleToggle = () => {
         if (isControlled && onToggle) {
@@ -167,7 +132,7 @@ const FloatingChat: React.FC<FloatingChatProps> = ({
         handleToggle();
     };
 
-    const filteredUsers = users.filter(user => {
+    const filteredUsers = users.filter((user: CompanyUser) => {
         const query = searchQuery.toLowerCase();
         return (
             user.name.toLowerCase().includes(query) ||
@@ -263,11 +228,7 @@ const FloatingChat: React.FC<FloatingChatProps> = ({
 
                 {/* Users List */}
                 <div className="flex-1 overflow-y-auto">
-                    {loading ? (
-                        <div className="flex items-center justify-center h-24">
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                        </div>
-                    ) : filteredUsers.length === 0 ? (
+                    {filteredUsers.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-24 text-gray-400">
                             <User className="w-6 h-6 mb-1" />
                             <p className="text-[10px]">
@@ -334,7 +295,7 @@ const FloatingChat: React.FC<FloatingChatProps> = ({
                 <div className={`px-2 py-1.5 border-t border-gray-100 bg-[${theme.primaryUltralight}]`}>
                     <p className="text-[8px] text-gray-500 text-center flex items-center justify-center gap-1">
                         <Users className="w-2.5 h-2.5" />
-                        {users.filter(u => u.isOnline).length} online • {users.length} total
+                        {users.filter((u: any) => u.isOnline).length} online • {users.length} total
                     </p>
                 </div>
             </div>

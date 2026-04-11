@@ -119,6 +119,7 @@ export default function AuthPage() {
                         trimmedPayload.email.split('@')[0];
 
                     const userData = {
+                        ...apiUser,
                         id: apiUser.id || apiUser._id || 'user-' + Date.now(),
                         name: userName,
                         email: apiUser.email || apiUser.userEmail || trimmedPayload.email,

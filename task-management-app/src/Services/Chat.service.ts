@@ -53,7 +53,7 @@ class ChatService {
         : 'http://localhost:8100';
 
     const trimmed = String(base || '').trim().replace(/\/+$/, '');
-    return trimmed.endsWith('/api') ? trimmed.slice(0, -4) : trimmed;
+    return trimmed.endsWith('/api') ? (trimmed.slice(0, -4) || '/') : (trimmed || '/');
   }
 
   // Initialize socket connection

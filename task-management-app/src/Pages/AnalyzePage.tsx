@@ -53,6 +53,9 @@ import type { TitleComponentOption } from 'echarts/components';
 import { Trash2, PlusCircle, Filter, Calendar, Building2, BarChart3, CheckCircle2, Clock, AlertCircle, Users, Download, CalendarClock } from 'lucide-react';
 import ManagerAnalysisChart from '../Components/ManagerAnalysisChart';
 import type { Task, UserType } from '../Types/Types';
+import apiClient from '../Services/apiClient';
+import toast from 'react-hot-toast';
+import { Loader2 } from 'lucide-react';
 
 type ChartType =
     | 'bar'
@@ -334,6 +337,62 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, users = [], currentUserEmail
     ]);
     const [showAddMetricModal, setShowAddMetricModal] = useState(false);
     const [newMetricLabel, setNewMetricLabel] = useState(''); // Only display label
+
+    const [remoteTasks, setRemoteTasks] = useState<Task[] | null>(null);
+    const [isFetchingReport, setIsFetchingReport] = useState(false);
+
+    const fetchCustomReport = async () => {
+        if (!globalStartDate || !globalEndDate) {
+            toast.error("Please select both Start Date and End Date");
+            return;
+        }
+        setIsFetchingReport(true);
+        try {
+            const res = await apiClient.post('/task/custom-report', {
+                startDate: globalStartDate,
+                endDate: globalEndDate
+            });
+            if (res.data.success && res.data.jobId) {
+                const jobId = res.data.jobId;
+                const poll = setInterval(async () => {
+                    try {
+                        const statusRes = await apiClient.get(`/task/custom-report/${jobId}`);
+                        if (statusRes.data.status === 'completed') {
+                            clearInterval(poll);
+                            setRemoteTasks(statusRes.data.data?.tasks || []);
+                            setIsFetchingReport(false);
+                            toast.success("Historical data loaded");
+                        } else if (statusRes.data.status === 'failed') {
+                            clearInterval(poll);
+                            setIsFetchingReport(false);
+                            toast.error("Report generation failed");
+                        } else if (statusRes.data.status === 'not_found' || statusRes.data.status === 'empty_scope') {
+                            clearInterval(poll);
+                            setRemoteTasks([]);
+                            setIsFetchingReport(false);
+                            if (statusRes.data.status === 'empty_scope') {
+                                toast.error("No data available for your role scope.");
+                            }
+                        }
+                    } catch (e) {
+                        clearInterval(poll);
+                        setIsFetchingReport(false);
+                        toast.error("Error checking report status");
+                    }
+                }, 2000);
+            } else if (res.data.status === 'empty_scope') {
+                setRemoteTasks([]);
+                setIsFetchingReport(false);
+            } else {
+                setIsFetchingReport(false);
+                toast.error(res.data.message || "Failed to start custom report generation");
+            }
+        } catch (e) {
+            setIsFetchingReport(false);
+            toast.error("Failed to fetch report");
+        }
+    };
+
 
     const getInitialRecommended = () => {
         if (typeof window === 'undefined') return { cols: 2, reason: 'Default' };
@@ -662,8 +721,33 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, users = [], currentUserEmail
         return { start: formatDate(start), end: formatDate(end) };
     }, [globalTimePeriod, globalStartDate, globalEndDate]);
 
+
+    const mergedTasks = useMemo(() => {
+        if (!remoteTasks) return tasks || [];
+
+        // Determine if an update came through the prop
+        const tasksMap = new Map();
+        (tasks || []).forEach(t => tasksMap.set(t.id, t));
+
+        // Update existing remoteTasks with socket-synced versions
+        const updatedRemote = remoteTasks.map(rt => {
+            const rtId = rt.id;
+            if (tasksMap.has(rtId)) {
+                const updated = tasksMap.get(rtId);
+                tasksMap.delete(rtId);
+                return updated;
+            }
+            return rt;
+        }).filter(t => t.isDeleted !== true); // remove explicitly logically deleted
+
+        // Add any brand new tasks coming through websocket that aren't old
+        const newTasks = Array.from(tasksMap.values()).filter((t: any) => t.isDeleted !== true);
+
+        return [...updatedRemote, ...newTasks];
+    }, [remoteTasks, tasks]);
+
     const filteredTasksByGlobalDates = useMemo(() => {
-        let list = tasks || [];
+        let list = mergedTasks;
 
         // Filter by Company
         if (globalCompany !== 'all') {
@@ -813,14 +897,14 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, users = [], currentUserEmail
 
             // Count Pending Approval: strictly match ReviewsPage "Review Pending" logic: (status is completed/done) && (reviewStars is missing)
             const roleKey = (userMap[u].role || '').toLowerCase().replace(/[\s-]+/g, '_');
-            const isReviewableRole = roleKey === 'manager' 
-                || roleKey === 'marketer_manager' 
+            const isReviewableRole = roleKey === 'manager'
+                || roleKey === 'marketer_manager'
                 || roleKey === 'md_manager'
-                || roleKey === 'assistant' 
-                || roleKey === 'assistance' 
-                || roleKey === 'sub_assistance' 
-                || roleKey === 'sub_assistence' 
-                || roleKey === 'sub_assist' 
+                || roleKey === 'assistant'
+                || roleKey === 'assistance'
+                || roleKey === 'sub_assistance'
+                || roleKey === 'sub_assistence'
+                || roleKey === 'sub_assist'
                 || roleKey === 'sub_assistant'
                 || roleKey.includes('assistant')
                 || roleKey.includes('assistence');
@@ -3196,6 +3280,18 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, users = [], currentUserEmail
 
                 <div className="flex-grow" />
 
+
+                {globalTimePeriod === 'custom' && (
+                    <button
+                        onClick={fetchCustomReport}
+                        disabled={isFetchingReport || !globalStartDate || !globalEndDate}
+                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+                    >
+                        {isFetchingReport ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                        Load Custom Report
+                    </button>
+                )}
+
                 <button
                     onClick={() => {
                         setGlobalCompany('all');
@@ -3204,6 +3300,7 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, users = [], currentUserEmail
                         setGlobalEndDate('');
                         setGlobalDateField('createdAt');
                         setGlobalMonth(new Date().toISOString().substring(0, 7));
+                        setRemoteTasks(null);
                     }}
                     className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                 >
@@ -3562,8 +3659,8 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, users = [], currentUserEmail
                                 <button
                                     type="button"
                                     className={`p-2 rounded-lg transition-colors ${isAdminUser
-                                            ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
-                                            : 'text-gray-300 cursor-not-allowed'
+                                        ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                                        : 'text-gray-300 cursor-not-allowed'
                                         }`}
                                     aria-label={isAdminUser ? 'Hide chart' : 'Only admins can hide charts'}
                                     disabled={!isAdminUser}
@@ -3599,8 +3696,8 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, users = [], currentUserEmail
                                 <button
                                     type="button"
                                     className={`p-2 rounded-lg transition-colors ${isAdminUser
-                                            ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
-                                            : 'text-gray-300 cursor-not-allowed'
+                                        ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                                        : 'text-gray-300 cursor-not-allowed'
                                         }`}
                                     aria-label={isAdminUser ? 'Hide chart' : 'Only admins can hide charts'}
                                     disabled={!isAdminUser}
@@ -3637,8 +3734,8 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, users = [], currentUserEmail
                                 <button
                                     type="button"
                                     className={`p-2 rounded-lg transition-colors ${isAdminUser
-                                            ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
-                                            : 'text-gray-300 cursor-not-allowed'
+                                        ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                                        : 'text-gray-300 cursor-not-allowed'
                                         }`}
                                     aria-label={isAdminUser ? 'Hide chart' : 'Only admins can hide charts'}
                                     disabled={!isAdminUser}
@@ -3674,8 +3771,8 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, users = [], currentUserEmail
                                 <button
                                     type="button"
                                     className={`p-2 rounded-lg transition-colors ${isAdminUser
-                                            ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
-                                            : 'text-gray-300 cursor-not-allowed'
+                                        ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                                        : 'text-gray-300 cursor-not-allowed'
                                         }`}
                                     aria-label={isAdminUser ? 'Hide chart' : 'Only admins can hide charts'}
                                     disabled={!isAdminUser}
@@ -3751,8 +3848,8 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, users = [], currentUserEmail
                                 <button
                                     type="button"
                                     className={`p-2 rounded-lg transition-colors ${isAdminUser
-                                            ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
-                                            : 'text-gray-300 cursor-not-allowed'
+                                        ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                                        : 'text-gray-300 cursor-not-allowed'
                                         }`}
                                     aria-label={isAdminUser ? 'Hide chart' : 'Only admins can hide charts'}
                                     disabled={!isAdminUser}
@@ -3831,8 +3928,8 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, users = [], currentUserEmail
                                 <button
                                     type="button"
                                     className={`p-2 rounded-lg transition-colors ${isAdminUser
-                                            ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
-                                            : 'text-gray-300 cursor-not-allowed'
+                                        ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                                        : 'text-gray-300 cursor-not-allowed'
                                         }`}
                                     aria-label={isAdminUser ? 'Hide chart' : 'Only admins can hide charts'}
                                     disabled={!isAdminUser}
@@ -3874,8 +3971,8 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, users = [], currentUserEmail
                                 <button
                                     type="button"
                                     className={`p-2 rounded-lg transition-colors ${isAdminUser
-                                            ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
-                                            : 'text-gray-300 cursor-not-allowed'
+                                        ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                                        : 'text-gray-300 cursor-not-allowed'
                                         }`}
                                     aria-label={isAdminUser ? 'Hide chart' : 'Only admins can hide charts'}
                                     disabled={!isAdminUser}
@@ -3903,8 +4000,8 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks, users = [], currentUserEmail
                             <button
                                 type="button"
                                 className={`p-2 rounded-lg transition-colors ${isAdminUser
-                                        ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
-                                        : 'text-gray-300 cursor-not-allowed'
+                                    ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                                    : 'text-gray-300 cursor-not-allowed'
                                     }`}
                                 aria-label={isAdminUser ? 'Hide chart' : 'Only admins can hide charts'}
                                 disabled={!isAdminUser}

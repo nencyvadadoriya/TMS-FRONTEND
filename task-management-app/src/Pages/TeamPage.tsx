@@ -28,6 +28,9 @@ import mdImpexAccessService from '../Services/MdImpexAccess.services';
 import { userAvatarUrl } from '../utils/avatar';
 import { companyService, type Company } from '../Services/Company.service';
 import { routepath } from '../Routes/route';
+import { useAppSelector } from '../Store/hooks';
+import { selectAllUsers } from '../Store/usersSlice';
+import { selectAllTasks } from '../Store/tasksSlice';
 
 interface TeamPageProps {
     users?: UserType[];
@@ -173,13 +176,20 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
         fetchStandaloneTasks();
     }, [hasExternalTasks]);
 
+    const reduxUsers = useAppSelector(selectAllUsers);
+    const reduxTasks = useAppSelector(selectAllTasks);
+
     const users = useMemo(() => {
-        return hasExternalUsers ? (usersProp || []) : internalUsers;
-    }, [hasExternalUsers, internalUsers, usersProp]);
+        if (hasExternalUsers) return usersProp || [];
+        if (reduxUsers.length > 0) return reduxUsers;
+        return internalUsers;
+    }, [hasExternalUsers, internalUsers, reduxUsers, usersProp]);
 
     const tasks = useMemo(() => {
-        return hasExternalTasks ? (tasksProp || []) : internalTasks;
-    }, [hasExternalTasks, internalTasks, tasksProp]);
+        if (hasExternalTasks) return tasksProp || [];
+        if (reduxTasks.length > 0) return reduxTasks;
+        return internalTasks;
+    }, [hasExternalTasks, internalTasks, reduxTasks, tasksProp]);
 
     const currentUser = useMemo(() => {
         return hasExternalCurrentUser ? (currentUserProp as UserType) : (internalCurrentUser || ({} as UserType));
@@ -1478,6 +1488,8 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
             lg: 'h-12 w-12 text-base'
         };
 
+        const isOnline = user.isActive;
+
         if (avatarUrl) {
             const imgSizeClasses = {
                 sm: 'h-8 w-8',
@@ -1485,22 +1497,24 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
                 lg: 'h-12 w-12'
             };
             return (
-                <div className="flex-shrink-0">
+                <div className="flex-shrink-0 relative">
                     <img
                         src={avatarUrl}
                         alt={user?.name || 'User'}
                         className={`rounded-full object-cover border border-gray-200 ${imgSizeClasses[size]}`}
                         loading="lazy"
                     />
+                    <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white ${isOnline ? 'bg-green-500' : 'bg-gray-300'}`} title={isOnline ? 'Online' : 'Offline'}></div>
                 </div>
             );
         }
 
         return (
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 relative">
                 <div className={`rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white font-semibold ${sizeClasses[size]}`}>
                     {initials}
                 </div>
+                <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white ${isOnline ? 'bg-green-500' : 'bg-gray-300'}`} title={isOnline ? 'Online' : 'Offline'}></div>
             </div>
         );
     };
