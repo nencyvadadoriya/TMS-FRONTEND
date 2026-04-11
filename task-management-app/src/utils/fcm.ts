@@ -169,16 +169,24 @@ export const registerPushDevice = async ({ prompt, userEmail }: { prompt: boolea
   return { deviceId, token };
 };
 
-export const linkPushDeviceToUser = async ({ deviceId, token }: { deviceId?: string; token?: string }) => {
+export const linkPushDeviceToUser = async ({ deviceId, token, userEmail }: { deviceId?: string; token?: string; userEmail?: string }) => {
   const resolvedDeviceId = normalizeText(deviceId) || getOrCreateDeviceId();
   const resolvedToken = normalizeText(token) || normalizeText(localStorage.getItem('fcmToken'));
 
   if (!resolvedDeviceId && !resolvedToken) return;
 
-  await apiClient.post('/push/link', {
+  const body: Record<string, string> = {
     deviceId: resolvedDeviceId,
     token: resolvedToken
-  });
+  };
+
+  // Stamp the email so push token lookups by email work immediately after login
+  const resolvedEmail = normalizeText(userEmail).toLowerCase();
+  if (resolvedEmail) {
+    body.userEmail = resolvedEmail;
+  }
+
+  await apiClient.post('/push/link', body);
 };
 
 export const getNotificationPermission = () => {
