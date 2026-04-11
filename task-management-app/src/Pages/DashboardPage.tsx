@@ -92,6 +92,21 @@ import {
     taskUpserted,
     tasksAddedMany,
 } from '../Store/tasksSlice';
+import {
+    fetchUsers as fetchUsersThunk,
+    selectAllUsers,
+    userUpserted,
+    userRemoved,
+    userOnlineStatusChanged,
+    usersSetAll,
+} from '../Store/usersSlice';
+import {
+    fetchBrands as fetchBrandsThunk,
+    selectAllBrands,
+    brandUpserted,
+    brandRemoved,
+    brandsSetAll,
+} from '../Store/brandsSlice';
 import TaskVirtualList from '../Components/TaskVirtualList';
 import {
     stripDeletedEmailSuffix,
@@ -127,7 +142,7 @@ const resolveSocketUrl = () => {
             ? envBaseUrl
             : (isDev ? 'http://localhost:8100/api' : 'https://tms-backend-sand.vercel.app/api');
     const trimmed = String(apiBase || '').trim().replace(/\/+$/, '');
-    return trimmed.endsWith('/api') ? trimmed.slice(0, -4) : trimmed;
+    return trimmed.endsWith('/api') ? (trimmed.slice(0, -4) || '/') : (trimmed || '/');
 };
 
 
@@ -210,6 +225,8 @@ const DashboardPage = () => {
         } as any;
     });
     const tasks = useAppSelector(selectAllTasks);
+    const users = useAppSelector(selectAllUsers);
+    const apiBrands = useAppSelector(selectAllBrands);
     const assignedByMePendingCount = useMemo(() => {
         if (!currentUser?.email) return 0;
         return tasks.filter(t => {
@@ -240,19 +257,7 @@ const DashboardPage = () => {
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [showLogout, setShowLogout] = useState(false);
-    const [users, setUsers] = useState<UserType[]>(() => {
-        try {
-            const stored = localStorage.getItem('users_cache');
-            return stored ? JSON.parse(stored) : [];
-        } catch { return []; }
-    });
     const usersRef = useRef<UserType[]>([]);
-    const [apiBrands, setApiBrands] = useState<Brand[]>(() => {
-        try {
-            const stored = localStorage.getItem('apiBrands_cache');
-            return stored ? JSON.parse(stored) : [];
-        } catch { return []; }
-    });
     const [sendingReminderByTaskId, setSendingReminderByTaskId] = useState<Record<string, boolean>>({});
     const [sendReminderTask, setSendReminderTask] = useState<Task | null>(null);
     const [sendReminderOpen, setSendReminderOpen] = useState(false);
@@ -541,6 +546,8 @@ const DashboardPage = () => {
             .finally(() => {
                 setLoading(false);
             });
+        void dispatch(fetchUsersThunk({ force: true }));
+        void dispatch(fetchBrandsThunk({ force: true }));
     }, [currentUser?.email, dispatch]);
 
     useEffect(() => {
@@ -567,7 +574,17 @@ const DashboardPage = () => {
         });
         socketRef.current = socket;
         socket.on('connect', () => {
-            // connection established
+            console.log('📡 [socket] Connected successfully. socketId:', socket.id);
+        });
+        socket.on('connect_error', (err) => {
+            console.warn('📡 [socket] Connection error:', err.message);
+        });
+        socket.on('disconnect', (reason) => {
+            console.warn('📡 [socket] Disconnected. Reason:', reason);
+            // If the server forcibly disconnected, try to reconnect
+            if (reason === 'io server disconnect') {
+                socket.connect();
+            }
         });
         const normalizeIncomingTask = (task: any) => {
             if (!task) return task;
@@ -614,16 +631,7 @@ const DashboardPage = () => {
                 const next = normalizeIncomingBrand(payload?.brand);
                 const nextId = String((next as any)?.id || (next as any)?._id || '').trim();
                 if (!nextId) return;
-                setApiBrands((prev) => {
-                    const list = Array.isArray(prev) ? prev : [];
-                    const idx = list.findIndex((b: any) => String((b as any)?.id || (b as any)?._id || '').trim() === nextId);
-                    if (idx >= 0) {
-                        const clone = [...list];
-                        clone[idx] = { ...(clone[idx] as any), ...(next as any) };
-                        return clone;
-                    }
-                    return [next as Brand, ...list];
-                });
+                dispatch(brandUpserted(next as Brand));
                 brandsFetchedAtRef.current = Date.now();
                 try {
                     window.dispatchEvent(new CustomEvent('brandUpdated', { detail: { brandId: nextId } }));
@@ -638,10 +646,7 @@ const DashboardPage = () => {
             try {
                 const brandId = String(payload?.brandId || '').trim();
                 if (!brandId) return;
-                setApiBrands((prev) => {
-                    const list = Array.isArray(prev) ? prev : [];
-                    return list.filter((b: any) => String((b as any)?.id || (b as any)?._id || '').trim() !== brandId);
-                });
+                dispatch(brandRemoved(brandId));
                 brandsFetchedAtRef.current = Date.now();
                 try {
                     window.dispatchEvent(new CustomEvent('brandUpdated', { detail: { brandId } }));
@@ -666,16 +671,7 @@ const DashboardPage = () => {
                 const next = normalizeIncomingUser(payload?.user);
                 const nextId = String((next as any)?.id || (next as any)?._id || '').trim();
                 if (!nextId) return;
-                setUsers((prev) => {
-                    const list = Array.isArray(prev) ? prev : [];
-                    const idx = list.findIndex((u: any) => String((u as any)?.id || (u as any)?._id || '').trim() === nextId);
-                    if (idx >= 0) {
-                        const clone = [...list];
-                        clone[idx] = { ...(clone[idx] as any), ...(next as any) };
-                        return clone as any;
-                    }
-                    return [next as UserType, ...list];
-                });
+                dispatch(userUpserted(next as UserType));
                 usersFetchedAtRef.current = Date.now();
                 try {
                     window.dispatchEvent(new CustomEvent('userUpdated', { detail: { userId: nextId } }));
@@ -690,10 +686,7 @@ const DashboardPage = () => {
             try {
                 const userIdToDelete = String(payload?.userId || '').trim();
                 if (!userIdToDelete) return;
-                setUsers((prev) => {
-                    const list = Array.isArray(prev) ? prev : [];
-                    return list.filter((u: any) => String((u as any)?.id || (u as any)?._id || '').trim() !== userIdToDelete);
-                });
+                dispatch(userRemoved(userIdToDelete));
                 usersFetchedAtRef.current = Date.now();
                 try {
                     window.dispatchEvent(new CustomEvent('userUpdated', { detail: { userId: userIdToDelete } }));
@@ -788,6 +781,14 @@ const DashboardPage = () => {
         socket.on('assignment:bulk-upserted', onAssignmentChanged);
         socket.on('comment:added', onCommentAdded);
         socket.on('reminder:new', onReminderNew);
+        socket.on('user_online', (data: any) => {
+            const uid = String(data?.userId || '').trim();
+            if (uid) dispatch(userOnlineStatusChanged({ userId: uid, isOnline: true }));
+        });
+        socket.on('user_offline', (data: any) => {
+            const uid = String(data?.userId || '').trim();
+            if (uid) dispatch(userOnlineStatusChanged({ userId: uid, isOnline: false }));
+        });
         return () => {
             try {
                 socket.off('task:upserted', onUpserted);
@@ -799,6 +800,8 @@ const DashboardPage = () => {
                 socket.off('assignment:bulk-upserted', onAssignmentChanged);
                 socket.off('comment:added', onCommentAdded);
                 socket.off('reminder:new', onReminderNew);
+                socket.off('user_online');
+                socket.off('user_offline');
                 socket.disconnect();
             } catch {
                 // ignore
@@ -2789,10 +2792,8 @@ const DashboardPage = () => {
         try {
             const response = await authService.updateUser(userId, updatedData);
             if (response.success) {
-                setUsers(prev => prev.map(user => {
-                    const uid = user.id || (user as any)._id;
-                    return uid === userId ? { ...user, ...updatedData } : user;
-                }));
+                const existingUser = (usersRef.current || []).find((u: any) => (u.id || u._id) === userId) || {};
+                dispatch(userUpserted({ ...existingUser, ...updatedData, id: userId } as UserType));
                 return;
             } else {
                 throw new Error(response.message || 'Failed to update user');
@@ -2839,7 +2840,7 @@ const DashboardPage = () => {
             };
             const response = await authService.createUser(payload as any);
             if (response.success && response.data) {
-                setUsers(prev => [...prev, response.data as UserType]);
+                dispatch(userUpserted(response.data as UserType));
             } else {
                 throw new Error(response.message || 'Failed to create user');
             }
@@ -2879,7 +2880,7 @@ const DashboardPage = () => {
             const response = await authService.deleteUser(userId);
             const isSuccess = response && (response.success === true || !response.error);
             if (isSuccess) {
-                setUsers(prev => prev.filter(user => (user.id || (user as any)._id) !== userId));
+                dispatch(userRemoved(userId));
             } else {
                 throw new Error(response?.message || 'Failed to delete user');
             }
@@ -4436,7 +4437,7 @@ const DashboardPage = () => {
                         toast.success('Brands added. Assignment is processing on server.');
                     }
                 }
-                setApiBrands(prev => [...prev, ...(res.data as any)]);
+                dispatch(brandsSetAll([...apiBrands, ...res.data] as Brand[]));
                 setBulkBrandForm({ company: '', brandNames: '', groupNumber: '', groupName: '', rmEmail: '', amEmail: '' });
                 setShowBulkBrandModal(false);
                 const event = new CustomEvent('brandUpdated', { detail: { brands: res.data } });
@@ -4741,7 +4742,7 @@ const DashboardPage = () => {
             if (isMdImpexUser) {
                 setAllMdImpexUsers(normalizedUsers);
             }
-            setUsers(normalizedUsers);
+            dispatch(usersSetAll(normalizedUsers));
             usersFetchedAtRef.current = Date.now();
             try {
                 localStorage.setItem('users_cache', JSON.stringify(normalizedUsers));
@@ -4827,7 +4828,7 @@ const DashboardPage = () => {
                 ? await brandService.getBrands({ includeDeleted: true })
                 : await brandService.getAssignedBrands();
             if (response && response.success && Array.isArray(response.data)) {
-                setApiBrands(response.data);
+                dispatch(brandsSetAll(response.data as Brand[]));
                 brandsFetchedAtRef.current = Date.now();
                 try {
                     localStorage.setItem('apiBrands_cache', JSON.stringify(response.data));
@@ -5574,15 +5575,7 @@ const DashboardPage = () => {
                 status: 'active',
             } as any);
             if (res.success && res.data) {
-                setApiBrands(prev => {
-                    const list = Array.isArray(prev) ? prev : [];
-                    const exists = list.some(b => (
-                        (b?.name || '').toString().trim().toLowerCase() === (res.data.name || '').toString().trim().toLowerCase() &&
-                        (b?.company || '').toString().trim().toLowerCase() === (res.data.company || '').toString().trim().toLowerCase()
-                    ));
-                    if (exists) return list;
-                    return [...list, res.data];
-                });
+                dispatch(brandUpserted(res.data as Brand));
                 handleInputChange('brand', res.data.name);
                 setShowManagerAddBrandModal(false);
                 setManagerBrandName('');
@@ -6502,18 +6495,9 @@ const DashboardPage = () => {
                                         }
                                         try {
                                             const nextId = (next as any)?.id || (next as any)?._id;
-                                            const nextEmail = String((next as any)?.email || '').trim().toLowerCase();
-                                            setUsers((prev) => {
-                                                const list = Array.isArray(prev) ? prev : [];
-                                                return list.map((u: any) => {
-                                                    const uid = (u?.id || u?._id || '').toString();
-                                                    const uemail = String(u?.email || '').trim().toLowerCase();
-                                                    const matchById = nextId && uid && uid === String(nextId);
-                                                    const matchByEmail = nextEmail && uemail && uemail === nextEmail;
-                                                    if (!matchById && !matchByEmail) return u;
-                                                    return { ...u, ...next, id: (next as any)?.id || (next as any)?._id || u?.id || uid };
-                                                });
-                                            });
+                                            if (next) {
+                                                dispatch(userUpserted({ ...next, id: nextId } as UserType));
+                                            }
                                         } catch {
                                             // ignore
                                         }
