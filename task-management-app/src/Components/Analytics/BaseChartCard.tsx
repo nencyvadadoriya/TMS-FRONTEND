@@ -21,7 +21,7 @@ const BaseChartCard: React.FC<BaseChartCardProps> = ({
     return (
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-4 lg:p-6 flex flex-col h-full hover:shadow-md transition-shadow">
             <div className="flex flex-wrap items-center justify-between mb-4 gap-3">
-                <div className="flex items-center gap-2 min-w-fit">
+                <div className="flex items-center gap-2 min-w-0">
                     {typeof title === 'string' ? (
                         <h2 className="text-lg font-semibold text-gray-900 truncate max-w-[200px]" title={title}>{title}</h2>
                     ) : (

@@ -364,7 +364,9 @@ const ManagerAnalysisChart = ({ tasks, canDelete = false, onDelete }: ManagerAna
     return (
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 flex flex-col h-full hover:shadow-md transition-shadow">
             <div className="flex flex-wrap items-center justify-between mb-4 gap-3">
-                <h2 className="text-lg font-semibold text-gray-900 truncate">Manager analysis</h2>
+                <div className="min-w-0">
+                    <h2 className="text-lg font-semibold text-gray-900 truncate">Manager analysis</h2>
+                </div>
                 <div className="flex items-center gap-2 flex-wrap justify-end flex-grow">
                     <select
                         className="border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white text-xs outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm"
