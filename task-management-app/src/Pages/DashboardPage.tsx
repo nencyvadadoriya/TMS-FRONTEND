@@ -339,7 +339,7 @@ const DashboardPage = () => {
 
     const roleIsAdminLike = useMemo(() => {
         const roleKey = String((currentUser as any)?.role || '').trim().toLowerCase();
-        return ['admin', 'super_admin', 'manager', 'md_manager', 'ob_manager', 'all_manager', 'marketer_manager'].includes(roleKey);
+        return ['admin', 'super_admin', 'manager', 'md_manager', 'ob_manager', 'all_manager', 'marketer_manager', 'software_developer', 'soft_ware_deloper'].includes(roleKey);
     }, [currentUser]);
 
     const isManagerRole = useMemo(() => {
@@ -814,7 +814,7 @@ const DashboardPage = () => {
         if (moduleId === 'user_management') return role === 'super_admin' || role === 'admin';
         if (moduleId === 'access_management' && (role === 'am' || role === 'rm')) return false;
         if (role === 'super_admin' || role === 'admin') return true;
-        if (['sbm', 'rm', 'am', 'ar', 'troubleshoot_manager'].includes(role) && moduleId === 'create_task') return true;
+        if (['sbm', 'rm', 'am', 'ar', 'troubleshoot_manager', 'software_developer', 'soft_ware_deloper'].includes(role) && moduleId === 'create_task') return true;
         if (role === 'troubleshoot_manager' && moduleId === 'strike_page') return true;
         if (!isAuthReady) return true;
         const perms = (currentUser as any)?.permissions;
@@ -2714,7 +2714,7 @@ const DashboardPage = () => {
         if (role === 'super_admin' || role === 'admin') return true;
         const normalizeCompanyKey = (v: unknown): string => String(v || '').trim().toLowerCase().replace(/\s+/g, '');
         const isMdImpexTask = normalizeCompanyKey(task?.companyName || (task as any)?.company) === 'mdimpex';
-        if (isMdImpexTask && (role === 'md_manager' || role === 'ob_manager' || role === 'manager' || role === 'marketer_manager')) return true;
+        if (isMdImpexTask && (role === 'md_manager' || role === 'ob_manager' || role === 'manager' || role === 'marketer_manager' || role === 'software_developer' || role === 'soft_ware_deloper')) return true;
         if (role === 'rm' || role === 'am') return true;
         const myEmail = normalizeEmailSafe(currentUser?.email);
         const assignedByEmail =
