@@ -24,37 +24,37 @@ import {
 import toast from 'react-hot-toast';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
-import AllTasksPage from './AllTasksPage';
-import CalendarView from './CalendarView';
-import TeamPage from './TeamPage';
-import UserProfilePage from './UserProfilePage';
-import BrandsListPage from './BrandsListPage';
-import BrandDetailPage from './BrandDetailPage';
-import AccessPage from './AccessPage';
-import CompanyBrandTaskTypePage from './CompanyBrandTaskTypePage';
-import AssignPage from './AssignPage';
-import ReviewsPage from './ReviewsPage';
-import OtherWorkPage from './OtherWorkPage';
-import MdImpexStrikePage from './MdImpexStrikePage';
-import NewMdImpexStrikePage from './NewMdImpexStrikePage';
-import MdImpexAccessPage from './MdImpexAccessPage';
-import ManagerMonthlyRankingPage from './ManagerMonthlyRankingPage';
-import PowerStarOfTheMonthPage from './PowerStarOfTheMonthPage';
-import SpeedEcomReassignPage from './SpeedEcomReassignPage';
-import AdvancedFilters from './AdvancedFilters';
+const AllTasksPage = lazy(() => import('./AllTasksPage'));
+const CalendarView = lazy(() => import('./CalendarView'));
+const TeamPage = lazy(() => import('./TeamPage'));
+const UserProfilePage = lazy(() => import('./UserProfilePage'));
+const BrandsListPage = lazy(() => import('./BrandsListPage'));
+const BrandDetailPage = lazy(() => import('./BrandDetailPage'));
+const AccessPage = lazy(() => import('./AccessPage'));
+const CompanyBrandTaskTypePage = lazy(() => import('./CompanyBrandTaskTypePage'));
+const AssignPage = lazy(() => import('./AssignPage'));
+const ReviewsPage = lazy(() => import('./ReviewsPage'));
+const OtherWorkPage = lazy(() => import('./OtherWorkPage'));
+const MdImpexStrikePage = lazy(() => import('./MdImpexStrikePage'));
+const NewMdImpexStrikePage = lazy(() => import('./NewMdImpexStrikePage'));
+const MdImpexAccessPage = lazy(() => import('./MdImpexAccessPage'));
+const ManagerMonthlyRankingPage = lazy(() => import('./ManagerMonthlyRankingPage'));
+const PowerStarOfTheMonthPage = lazy(() => import('./PowerStarOfTheMonthPage'));
+const SpeedEcomReassignPage = lazy(() => import('./SpeedEcomReassignPage'));
+const AdvancedFilters = lazy(() => import('./AdvancedFilters'));
 const AnalyzePage = lazy(() => import('./AnalyzePage'));
 import { DashboardPageSkeleton } from '../Components/LoadingSkeletons';
 import EmployeeOfTheMonthCard from '../Components/EmployeeOfTheMonthCard';
 import TaskReminderCard from '../Components/TaskReminderCard';
-import AddTaskModal from './DashboardModals/AddTaskModal';
-import MdImpexAddTaskModal from './DashboardModals/MdImpexAddTaskModal';
-import EditTaskModal from './DashboardModals/EditTaskModal';
-import MdImpexEditTaskModal from './DashboardModals/MdImpexEditTaskModal';
-import SendReminderModal from './DashboardModals/SendReminderModal';
-import BulkAddBrandsModal from './DashboardModals/BulkAddBrandsModal';
-import BulkAddCompaniesModal from './DashboardModals/BulkAddCompaniesModal';
-import BulkAddTaskTypesModal from './DashboardModals/BulkAddTaskTypesModal';
-import ManagerAddBrandModal from './DashboardModals/ManagerAddBrandModal';
+const AddTaskModal = lazy(() => import('./DashboardModals/AddTaskModal'));
+const MdImpexAddTaskModal = lazy(() => import('./DashboardModals/MdImpexAddTaskModal'));
+const EditTaskModal = lazy(() => import('./DashboardModals/EditTaskModal'));
+const MdImpexEditTaskModal = lazy(() => import('./DashboardModals/MdImpexEditTaskModal'));
+const SendReminderModal = lazy(() => import('./DashboardModals/SendReminderModal'));
+const BulkAddBrandsModal = lazy(() => import('./DashboardModals/BulkAddBrandsModal'));
+const BulkAddCompaniesModal = lazy(() => import('./DashboardModals/BulkAddCompaniesModal'));
+const BulkAddTaskTypesModal = lazy(() => import('./DashboardModals/BulkAddTaskTypesModal'));
+const ManagerAddBrandModal = lazy(() => import('./DashboardModals/ManagerAddBrandModal'));
 import AdminHeadlineManager from '../Components/AdminHeadlineManager';
 
 import type {
@@ -79,9 +79,10 @@ import { companyTaskTypeService } from '../Services/CompanyTaskType.service';
 import { companyBrandTaskTypeService } from '../Services/CompanyBrandTaskType.service';
 import { assignService } from '../Services/Assign.service';
 import { routepath } from '../Routes/route';
-import PersonalTasksPage from './PersonalTasksPage';
-import AssignedByMe from './AssignedByMe';
-import AssignedToMe from './AssignedToMe';
+import { useTaskFiltering } from '../Hooks/useTaskFiltering';
+const PersonalTasksPage = lazy(() => import('./PersonalTasksPage'));
+const AssignedByMe = lazy(() => import('./AssignedByMe'));
+const AssignedToMe = lazy(() => import('./AssignedToMe'));
 import { useAppDispatch, useAppSelector } from '../Store/hooks';
 import { getDashboardSpotlightOverrideForEmail } from '../utils/dashboardSpotlightAccess';
 import {
@@ -1287,7 +1288,6 @@ const DashboardPage = () => {
 
     const SPEED_E_COM_COMPANY_NAME = 'Speed E Com';
     const SPEED_E_COM_COMPANY_KEY = 'speedecom';
-    const SPEED_E_COM_FIXED_TASK_TYPES = ['Meeting Pending', 'CP Pending', 'Recharge Negative'];
 
     const isSpeedEcomUser = useMemo(() => {
         const key = normalizeCompanyKey((currentUser as any)?.companyName || (currentUser as any)?.company);
@@ -1310,23 +1310,41 @@ const DashboardPage = () => {
         return stripDeletedEmailSuffix(email).trim().toLowerCase();
     }, []);
 
+    const canonicalizeTypeLabel = useCallback((value: unknown): string => {
+        const raw = (value == null ? '' : String(value)).trim();
+        if (!raw) return '';
+        const key = raw.toLowerCase().replace(/[\s-]+/g, ' ').trim();
+        if (key === 'troubleshoot' || key === 'trouble shoot' || key === 'trubbleshot' || key === 'trubble shoot') {
+            return 'Troubleshoot';
+        }
+        return raw;
+    }, []);
+
+    const dedupeByCanonicalKey = useCallback((items: string[]): string[] => {
+        const map = new Map<string, string>();
+        (items || []).forEach((x) => {
+            const label = canonicalizeTypeLabel(x);
+            if (!label) return;
+            const key = label.toLowerCase();
+            if (!map.has(key)) map.set(key, label);
+        });
+        return Array.from(map.values());
+    }, [canonicalizeTypeLabel]);
+
     const restrictTaskTypesForCompany = useCallback((companyName: unknown, list: string[]): string[] => {
         const companyKey = normalizeCompanyKey(companyName);
         if (companyKey === SPEED_E_COM_COMPANY_KEY) {
-            const safe = Array.isArray(list) ? list.filter(Boolean) : [];
-            return Array.from(new Set([...safe, ...SPEED_E_COM_FIXED_TASK_TYPES]));
+            return dedupeByCanonicalKey(list || []);
         }
         const currentUserCompanyKey = normalizeCompanyKey((currentUser as any)?.companyName || (currentUser as any)?.company);
         if (!companyKey && currentUserCompanyKey === SPEED_E_COM_COMPANY_KEY) {
-            const safe = Array.isArray(list) ? list.filter(Boolean) : [];
-            return safe.length > 0 ? safe : [...SPEED_E_COM_FIXED_TASK_TYPES];
+            return dedupeByCanonicalKey(list || []);
         }
         if (companyKey === 'all' && currentUserCompanyKey === SPEED_E_COM_COMPANY_KEY) {
-            const safe = Array.isArray(list) ? list.filter(Boolean) : [];
-            return safe.length > 0 ? safe : [...SPEED_E_COM_FIXED_TASK_TYPES];
+            return dedupeByCanonicalKey(list || []);
         }
         return list;
-    }, [currentUser, normalizeCompanyKey]);
+    }, [currentUser, normalizeCompanyKey, dedupeByCanonicalKey]);
 
     const [taskTypeCompanyOverrides, setTaskTypeCompanyOverrides] = useState<Record<string, string[]>>({});
 
@@ -2103,25 +2121,7 @@ const DashboardPage = () => {
         const fromOverrides = Object.values(taskTypeCompanyOverrides || {}).flatMap((arr) => (Array.isArray(arr) ? arr : []));
         const fromTasks = Array.from(taskTypesByCompanyFromTasks.values()).flatMap((set) => Array.from(set));
         const merged = ensureBrandAssignment(Array.from(new Set([...effectiveAvailableTaskTypes, ...fromOverrides, ...fromTasks])));
-        const canonicalizeTypeLabel = (value: unknown): string => {
-            const raw = (value == null ? '' : String(value)).trim();
-            if (!raw) return '';
-            const key = raw.toLowerCase().replace(/[\s-]+/g, ' ').trim();
-            if (key === 'troubleshoot' || key === 'trouble shoot' || key === 'trubbleshot' || key === 'trubble shoot') {
-                return 'Troubleshoot';
-            }
-            return raw;
-        };
-        const dedupeByCanonicalKey = (items: string[]): string[] => {
-            const map = new Map<string, string>();
-            (items || []).forEach((x) => {
-                const label = canonicalizeTypeLabel(x);
-                if (!label) return;
-                const key = label.toLowerCase();
-                if (!map.has(key)) map.set(key, label);
-            });
-            return Array.from(map.values());
-        };
+        
         if (roleKey === 'manager' || roleKey === 'md_manager' || roleKey === 'ob_manager') {
             const fixed = ['Other Work', 'Troubleshoot', 'Regular', 'goggle']
                 .map((x) => (x || '').toString().trim())
@@ -2151,50 +2151,60 @@ const DashboardPage = () => {
             return [...(list || []), 'Other Work'];
         };
         if (role === 'admin' || role === 'super_admin' || normalizeCompanyKey(company) === SPEED_E_COM_COMPANY_KEY) {
-            return ensureManagerOtherWork(baseCompany());
+            return dedupeByCanonicalKey(ensureManagerOtherWork(baseCompany()));
         }
         const effectiveEmail = (currentUser?.email || newTask.assignedTo || '').toString();
         if (effectiveEmail && newTask.brand) {
             const specific = restrictTaskTypesForCompany(company, getTaskTypesForCompanyUserBrand(company, newTask.brand, effectiveEmail));
-            if (specific.length > 0) return ensureManagerOtherWork(specific);
+            if (specific.length > 0) return dedupeByCanonicalKey(ensureManagerOtherWork(specific));
             const brandLevel = restrictTaskTypesForCompany(company, getTaskTypesForCompanyBrand(company, newTask.brand));
-            if (brandLevel.length > 0) return ensureManagerOtherWork(brandLevel);
-            return ensureManagerOtherWork(baseCompany());
+            if (brandLevel.length > 0) return dedupeByCanonicalKey(ensureManagerOtherWork(brandLevel));
+            return dedupeByCanonicalKey(ensureManagerOtherWork(baseCompany()));
         }
         if (effectiveEmail) {
             const userLevel = restrictTaskTypesForCompany(company, getTaskTypesForCompanyUser(company, effectiveEmail));
-            if (userLevel.length > 0) return ensureManagerOtherWork(userLevel);
-            return ensureManagerOtherWork(baseCompany());
+            if (userLevel.length > 0) return dedupeByCanonicalKey(ensureManagerOtherWork(userLevel));
+            return dedupeByCanonicalKey(ensureManagerOtherWork(baseCompany()));
         }
         if (newTask.brand) {
             const brandLevel = restrictTaskTypesForCompany(company, getTaskTypesForCompanyBrand(company, newTask.brand));
-            if (brandLevel.length > 0) return ensureManagerOtherWork(brandLevel);
-            return ensureManagerOtherWork(baseCompany());
+            if (brandLevel.length > 0) return dedupeByCanonicalKey(ensureManagerOtherWork(brandLevel));
+            return dedupeByCanonicalKey(ensureManagerOtherWork(baseCompany()));
         }
-        return ensureManagerOtherWork(baseCompany());
-    }, [currentUser, currentUser?.email, getTaskTypesForCompany, getTaskTypesForCompanyBrand, getTaskTypesForCompanyUser, getTaskTypesForCompanyUserBrand, newTask.brand, newTask.companyName, restrictTaskTypesForCompany]);
+        return dedupeByCanonicalKey(ensureManagerOtherWork(baseCompany()));
+    }, [currentUser, currentUser?.email, getTaskTypesForCompany, getTaskTypesForCompanyBrand, getTaskTypesForCompanyUser, getTaskTypesForCompanyUserBrand, newTask.brand, newTask.companyName, restrictTaskTypesForCompany, dedupeByCanonicalKey]);
 
     const availableTaskTypesForEditTask = useMemo(() => {
         if (!editFormData.companyName) return availableTaskTypesForFilters;
+        let list: string[] = [];
         if (editFormData.brand && editFormData.assignedTo) {
             const fromPerson = restrictTaskTypesForCompany(editFormData.companyName, getTaskTypesForCompanyUserBrand(editFormData.companyName, editFormData.brand, editFormData.assignedTo));
             const current = (editFormData.taskType || '').toString().trim();
-            if (!current) return fromPerson;
-            const exists = fromPerson.some((t) => (t || '').toString().trim().toLowerCase() === current.toLowerCase());
-            if (exists) return fromPerson;
-            return [...fromPerson, current];
+            if (!current) {
+                list = fromPerson;
+            } else {
+                const exists = fromPerson.some((t) => (t || '').toString().trim().toLowerCase() === current.toLowerCase());
+                list = exists ? fromPerson : [...fromPerson, current];
+            }
         }
-        if (editFormData.assignedTo) {
+        else if (editFormData.assignedTo) {
             const fromUser = restrictTaskTypesForCompany(editFormData.companyName, getTaskTypesForCompanyUser(editFormData.companyName, editFormData.assignedTo));
             const current = (editFormData.taskType || '').toString().trim();
-            if (!current) return fromUser;
-            const exists = fromUser.some((t) => (t || '').toString().trim().toLowerCase() === current.toLowerCase());
-            if (exists) return fromUser;
-            return [...fromUser, current];
+            if (!current) {
+                list = fromUser;
+            } else {
+                const exists = fromUser.some((t) => (t || '').toString().trim().toLowerCase() === current.toLowerCase());
+                list = exists ? fromUser : [...fromUser, current];
+            }
         }
-        if (editFormData.brand) return restrictTaskTypesForCompany(editFormData.companyName, getTaskTypesForCompanyBrand(editFormData.companyName, editFormData.brand));
-        return restrictTaskTypesForCompany(editFormData.companyName, getTaskTypesForCompany(editFormData.companyName));
-    }, [availableTaskTypesForFilters, editFormData.assignedTo, editFormData.brand, editFormData.companyName, editFormData.taskType, getTaskTypesForCompany, getTaskTypesForCompanyBrand, getTaskTypesForCompanyUser, getTaskTypesForCompanyUserBrand, restrictTaskTypesForCompany]);
+        else if (editFormData.brand) {
+            list = restrictTaskTypesForCompany(editFormData.companyName, getTaskTypesForCompanyBrand(editFormData.companyName, editFormData.brand));
+        }
+        else {
+            list = restrictTaskTypesForCompany(editFormData.companyName, getTaskTypesForCompany(editFormData.companyName));
+        }
+        return dedupeByCanonicalKey(list);
+    }, [availableTaskTypesForFilters, editFormData.assignedTo, editFormData.brand, editFormData.companyName, editFormData.taskType, getTaskTypesForCompany, getTaskTypesForCompanyBrand, getTaskTypesForCompanyUser, getTaskTypesForCompanyUserBrand, restrictTaskTypesForCompany, dedupeByCanonicalKey]);
 
     const fetchCompanyBrandTaskTypeMapping = useCallback(async (companyName: string, brandName: string) => {
         try {
@@ -3527,208 +3537,17 @@ const DashboardPage = () => {
         await handleFetchTaskHistory(String(task.id));
     }, [handleFetchTaskHistory]);
 
-    const getFilteredTasksByStat = useCallback(() => {
-        if (!currentUser?.email) return [];
-        const role = String((currentUser as any)?.role || '').trim().toLowerCase();
-        const myEmail = (currentUser.email || '').toString().trim().toLowerCase();
-        const normalizeTaskTypeKey = (t: any) => String(t?.taskType || t?.type || '').trim().toLowerCase();
-        const isOtherWorkTask = (t: any) => normalizeTaskTypeKey(t) === 'other work';
-        const normalizeRoleKey = (v: unknown) => String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
-        const resolveAssigneeRoleKey = (t: any): string => {
-            const direct = normalizeRoleKey((t as any)?.assignedToUser?.role);
-            if (direct) return direct;
-            const candidate = (t as any)?.assignedToUser || (t as any)?.assignedTo;
-            const idOrEmail = typeof candidate === 'string'
-                ? candidate
-                : (candidate?.id || candidate?._id || candidate?.email || '');
-            const key = String(idOrEmail || '').trim().toLowerCase();
-            if (!key) return '';
-            const found = (usersRef.current || []).find((u: any) => {
-                const id = String(u?.id || u?._id || '').trim().toLowerCase();
-                const email = String(u?.email || '').trim().toLowerCase();
-                return (id && id === key) || (email && email === key);
-            });
-            return normalizeRoleKey((found as any)?.role);
-        };
-        const isAssistantAssignee = (t: any): boolean => {
-            const r = resolveAssigneeRoleKey(t);
-            return r === 'assistant' || r === 'assistance' || r === 'sub_assistance' || r.includes('assistant');
-        };
-        const isAssignedToMe = (t: any): boolean => {
-            const email = String((t as any)?.assignedToUser?.email || (t as any)?.assignedTo || '').trim().toLowerCase();
-            return Boolean(myEmail && email && email === myEmail);
-        };
-        let filtered = tasks.filter((task) => {
-            if (role === 'ob_manager') {
-                const assignedByMe = String((task as any)?.assignedByUser?.email || (task as any)?.assignedBy || '').trim().toLowerCase() === myEmail;
-                return assignedByMe || isAssignedToMe(task) || isAssistantAssignee(task);
-            }
-            if (role === 'manager' || role === 'marketer_manager') {
-                if (isOtherWorkTask(task)) return false;
-                const assignedToMe = String(task.assignedTo || '').trim().toLowerCase() === myEmail;
-                const assignedByMe = String(task.assignedBy || '').trim().toLowerCase() === myEmail;
-                if (assignedByMe) return true;
-                if (!assignedToMe) return false;
-                return true;
-            }
-            if (canViewAllTasks || role === 'rm' || role === 'am') return true;
-            return task.assignedTo === currentUser.email || task.assignedBy === currentUser.email;
-        });
-        if (normalizeRoleKey(role) === 'sbm') {
-            const selectedRm = String((filters as any)?.rm || '').trim().toLowerCase();
-            if (selectedRm && selectedRm !== 'all') {
-                const rmTeamRaw = String((filters as any)?.rmTeam || '').trim();
-                const list: any[] = Array.isArray(usersRef.current) ? (usersRef.current as any[]) : (users as any[]);
-                const selectedRmDoc: any = (list || []).find((u: any) => String(u?.email || '').trim().toLowerCase() === selectedRm);
-                const selectedRmId = String(selectedRmDoc?.id || selectedRmDoc?._id || '').trim();
-                const teamEmails = rmTeamRaw
-                    ? rmTeamRaw
-                        .split(',')
-                        .map((s) => String(s || '').trim().toLowerCase())
-                        .filter(Boolean)
-                    : (selectedRmId
-                        ? (list || [])
-                            .filter((u: any) => String(u?.managerId || '').trim() === selectedRmId)
-                            .filter((u: any) => {
-                                const r = normalizeRoleKey(u?.role);
-                                return r === 'am' || r === 'ar';
-                            })
-                            .map((u: any) => String(u?.email || '').trim().toLowerCase())
-                            .filter(Boolean)
-                        : []);
-                const getAssignedToEmail = (t: any) => {
-                    const assignedTo = (t as any)?.assignedTo;
-                    const assignedToUser = (t as any)?.assignedToUser;
-                    const email =
-                        (typeof assignedTo === 'string' && assignedTo.includes('@') ? assignedTo : assignedTo?.email) ||
-                        (typeof assignedToUser === 'string' && assignedToUser.includes('@') ? assignedToUser : assignedToUser?.email) ||
-                        (typeof assignedTo === 'string' ? assignedTo : '') ||
-                        '';
-                    return String(email || '').trim().toLowerCase();
-                };
-                filtered = filtered.filter((t: any) => {
-                    const assignedToEmail = getAssignedToEmail(t);
-                    const allowed = Array.from(new Set([
-                        selectedRm,
-                        ...(teamEmails || []),
-                    ].map((s) => String(s || '').trim().toLowerCase()).filter(Boolean)));
-                    return Boolean(assignedToEmail && allowed.includes(assignedToEmail));
-                });
-            }
-        }
-        if (selectedStatFilter === 'completed') {
-            filtered = filtered.filter((task) => task.status === 'completed');
-        } else if (selectedStatFilter === 'pending') {
-            filtered = filtered.filter((task) => task.status === 'pending' || task.status === 'in-progress' || task.status === 'reassigned');
-        } else if (selectedStatFilter === 'overdue') {
-            filtered = filtered.filter((task) => task.status !== 'completed' && isOverdueFn(task.dueDate, task.status));
-        }
-        if (filters.status !== 'all') {
-            if (filters.status === 'pending') {
-                filtered = filtered.filter((task) => task.status === 'pending' || task.status === 'in-progress' || task.status === 'reassigned');
-            } else {
-                filtered = filtered.filter((task) => task.status === filters.status);
-            }
-        }
-        if (filters.priority !== 'all') {
-            filtered = filtered.filter((task) => task.priority === filters.priority);
-        }
-        if (filters.taskType !== 'all') {
-            const canonicalizeTypeKey = (value: unknown): string => {
-                const raw = (value == null ? '' : String(value)).trim();
-                if (!raw) return '';
-                const key = raw.toLowerCase().replace(/[\s-]+/g, ' ').trim();
-                if (key === 'troubleshoot' || key === 'trouble shoot' || key === 'trubbleshot' || key === 'trubble shoot') return 'troubleshoot';
-                return raw.toLowerCase();
-            };
-            const filterTypeKey = canonicalizeTypeKey(filters.taskType);
-            filtered = filtered.filter((task) => {
-                const taskTypeKey = canonicalizeTypeKey(task.taskType || (task as any).type || '');
-                if (!filterTypeKey || !taskTypeKey) return false;
-                return taskTypeKey === filterTypeKey;
-            });
-        }
-        if (filters.company !== 'all') {
-            const filterCompanyKey = normalizeCompanyKey(filters.company);
-            filtered = filtered.filter((task) => {
-                const taskCompany = (task.companyName || (task as any).company || '');
-                return normalizeCompanyKey(taskCompany) === filterCompanyKey;
-            });
-        }
-        if (filters.brand !== 'all') {
-            const filterBrand = filters.brand.toLowerCase();
-            filtered = filtered.filter((task) => {
-                const taskBrand = (task.brand || '').toLowerCase();
-                return taskBrand === filterBrand;
-            });
-        }
-        if (filters.date === 'today') {
-            filtered = filtered.filter((task) => new Date(task.dueDate).toDateString() === new Date().toDateString());
-        } else if (filters.date === 'week') {
-            filtered = filtered.filter((task) => {
-                const taskDate = new Date(task.dueDate);
-                const today = new Date();
-                const nextWeek = new Date(today);
-                nextWeek.setDate(today.getDate() + 7);
-                return taskDate >= today && taskDate <= nextWeek;
-            });
-        } else if (filters.date === 'overdue') {
-            filtered = filtered.filter((task) => isOverdueFn(task.dueDate, task.status));
-        }
-        if (filters.assigned) {
-            const assignedFilterValue = filters.assigned;
-            if (assignedFilterValue === 'assigned-to-me') {
-                filtered = filtered.filter((task) => task.assignedTo === currentUser.email);
-            } else if (assignedFilterValue === 'assigned-by-me') {
-                filtered = filtered.filter((task) => task.assignedBy === currentUser.email);
-            } else if (assignedFilterValue.startsWith('assigned-to:')) {
-                const assignedToEmail = assignedFilterValue.split(':')[1];
-                filtered = filtered.filter((task) => task.assignedTo === assignedToEmail);
-            }
-        }
-        if (searchTerm) {
-            const term = searchTerm.toLowerCase();
-            filtered = filtered.filter((task) => {
-                const title = (task.title || '').toLowerCase();
-                const company = (task.companyName || (task as any).company || '').toLowerCase();
-                const brand = (task.brand || '').toLowerCase();
-                const typeVal = (task.taskType || (task as any).type || '').toLowerCase();
-                const assignedToUser = (task as any).assignedToUser;
-                const assignedByUser = (task as any).assignedByUser;
-                const assignedToEmail = String(
-                    assignedToUser?.email ||
-                    (typeof (task as any).assignedTo === 'string' ? (task as any).assignedTo : (task as any).assignedTo?.email) ||
-                    ''
-                ).toLowerCase();
-                const assignedToName = String(
-                    assignedToUser?.name ||
-                    ''
-                ).toLowerCase();
-                const assignedByEmail = String(
-                    assignedByUser?.email ||
-                    (typeof (task as any).assignedBy === 'string' ? (task as any).assignedBy : (task as any).assignedBy?.email) ||
-                    ''
-                ).toLowerCase();
-                const assignedByName = String(
-                    assignedByUser?.name ||
-                    ''
-                ).toLowerCase();
-                return (
-                    title.includes(term) ||
-                    company.includes(term) ||
-                    brand.includes(term) ||
-                    typeVal.includes(term) ||
-                    assignedToEmail.includes(term) ||
-                    assignedToName.includes(term) ||
-                    assignedByEmail.includes(term) ||
-                    assignedByName.includes(term)
-                );
-            });
-        }
-        return filtered;
-    }, [canViewAllTasks, currentUser, filters, isOverdueFn, normalizeCompanyKey, deferredSearchTerm, selectedStatFilter, tasks]);
-
-    const displayTasks = useMemo(() => getFilteredTasksByStat(), [getFilteredTasksByStat]);
+    // Use optimized task filtering hook
+    const displayTasks = useTaskFiltering({
+        tasks,
+        users,
+        currentUser,
+        filters,
+        searchTerm: deferredSearchTerm,
+        selectedStatFilter,
+        canViewAllTasks,
+        isOverdueFn
+    });
     const PAGE_SIZE_OPTIONS = [10, 25, 50, 75, 100, 125, 150, 175, 200];
     const [tasksPerPage, setTasksPerPage] = useState<number>(10);
     const totalTaskPages = useMemo(() => {
@@ -5699,6 +5518,7 @@ const DashboardPage = () => {
                 <main className="flex-1 overflow-auto pb-24 sm:pb-0">
                     <div className="py-0 sm:py-8">
                         <div className={dashboardContainerClasses}>
+                        <Suspense fallback={<DashboardPageSkeleton />}>
                             {currentView === 'dashboard' ? (
                                 <>
                                     <div className="mb-6 sm:mb-10 px-4 sm:px-0">
@@ -6614,10 +6434,12 @@ const DashboardPage = () => {
                                     tasks={tasks}
                                 />
                             ) : null}
+                        </Suspense>
                         </div>
                     </div>
                 </main>
             </div>
+            <Suspense fallback={null}>
             {(() => {
                 const currentUserCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase();
                 const currentUserRole = String((currentUser as any)?.role || '').trim().toLowerCase();
@@ -6750,6 +6572,7 @@ const DashboardPage = () => {
                 onSubmit={() => handleManagerCreateBrand()}
                 onClose={() => setShowManagerAddBrandModal(false)}
             />
+            </Suspense>
 
             {/* Mobile Bottom Navigation - "Beast" UX */}
             <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-gray-200 px-6 py-2.5 flex items-center justify-between z-40 pb-safe">
