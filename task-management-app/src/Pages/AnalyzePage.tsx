@@ -134,15 +134,27 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks: tasksProp, users = [], apiCo
 
     // Data Processing Helpers
     const companies = useMemo(() => {
-        if (apiCompanies && apiCompanies.length > 0) return apiCompanies;
         const map = new Map<string, string>();
+        
+        // 1. If apiCompanies provided, deduplicate them case-insensitively
+        if (apiCompanies && apiCompanies.length > 0) {
+            apiCompanies.forEach(c => {
+                const raw = String(c || '').trim();
+                if (!raw) return;
+                const key = raw.toLowerCase();
+                if (!map.has(key)) map.set(key, raw);
+            });
+        } 
+        
+        // 2. Also incorporate companies from tasks to ensure full coverage (deduplicated)
         (tasks || []).forEach((t: any) => {
             const raw = (t.companyName || t.company || '').toString().trim();
             if (!raw) return;
             const key = raw.toLowerCase();
             if (!map.has(key)) map.set(key, raw);
         });
-        return Array.from(map.values()).sort();
+        
+        return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
     }, [tasks, apiCompanies]);
 
     const effectiveDateRange = useMemo(() => {
@@ -404,10 +416,10 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks: tasksProp, users = [], apiCo
 
         return { 
             assignees: Array.from(assigneesMap.values()).sort(), 
-            companies: apiCompanies && apiCompanies.length > 0 ? ['all', ...apiCompanies] : Array.from(companiesMap.values()).sort(), 
+            companies: ['all', ...companies], 
             brands: Array.from(brandsMap.values()).sort() 
         };
-    }, [tasks, apiCompanies]);
+    }, [tasks, companies]);
 
     const completionTrendsData = useMemo(() => {
         let list = tasks;
