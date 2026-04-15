@@ -155,8 +155,19 @@ const CalendarView: React.FC<CalendarViewProps> = (props) => {
   const fetchAllUsers = useCallback(async () => {
     try {
       const res = await authService.getAllUsers();
-      if (res && Array.isArray(res.result)) {
-        setAllUsers(res.result);
+      if (!res) return;
+      
+      let users: UserType[] = [];
+      if (Array.isArray(res.data)) {
+        users = res.data;
+      } else if (Array.isArray(res.result)) {
+        users = res.result;
+      } else if (Array.isArray(res)) {
+        users = res;
+      }
+      
+      if (users.length > 0) {
+        setAllUsers(users);
       }
     } catch (err) {
       console.error('Failed to fetch all users:', err);

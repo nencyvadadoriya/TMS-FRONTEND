@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, ArrowLeft, MoreVertical, User, CheckCheck, Check } from 'lucide-react';
+import { Send, ArrowLeft, MoreVertical, CheckCheck, Check } from 'lucide-react';
 import { chatService } from '../Services/Chat.service';
 import type { ChatMessage } from '../Services/Chat.service';
 import { userAvatarUrl } from '../utils/avatar';

@@ -38,6 +38,15 @@ const ScheduleMeetingModal = ({
   const [participantsOpen, setParticipantsOpen] = useState(false);
   const [participantSearch, setParticipantSearch] = useState('');
   const participantsDropdownRef = useRef<HTMLDivElement | null>(null);
+  const nowStr = useMemo(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const mins = String(d.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${mins}`;
+  }, [open]);
 
   useEffect(() => {
     if (open) {
@@ -76,11 +85,37 @@ const ScheduleMeetingModal = ({
   }, [participantsOpen]);
 
   const handleFieldChange = (field: keyof MeetingForm, value: any) => {
-    setLocalMeeting((prev) => ({ ...prev, [field]: value }));
+    setLocalMeeting((prev) => {
+      const updated = { ...prev, [field]: value };
+
+      // Convenience: If start time is set, suggest an end time (+1 hour) 
+      // if end time is empty or if start time is now after the current end time.
+      if (field === 'startTime' && value) {
+        const start = new Date(value);
+        if (!isNaN(start.getTime())) {
+          const currentEnd = prev.endTime ? new Date(prev.endTime) : null;
+          if (!currentEnd || isNaN(currentEnd.getTime()) || start >= currentEnd) {
+            const end = new Date(start.getTime() + 60 * 60 * 1000); // default +1 hour
+
+            // Format to YYYY-MM-DDTHH:mm for datetime-local
+            const year = end.getFullYear();
+            const month = String(end.getMonth() + 1).padStart(2, '0');
+            const day = String(end.getDate()).padStart(2, '0');
+            const hours = String(end.getHours()).padStart(2, '0');
+            const mins = String(end.getMinutes()).padStart(2, '0');
+            updated.endTime = `${year}-${month}-${day}T${hours}:${mins}`;
+          }
+        }
+      }
+      return updated;
+    });
+
     if (formErrors[field]) {
       setFormErrors((prev) => {
         const next = { ...prev };
         delete next[field];
+        // If we adjusted endTime automatically by changing startTime, also clear its error
+        if (field === 'startTime') delete next.endTime;
         return next;
       });
     }
@@ -100,6 +135,13 @@ const ScheduleMeetingModal = ({
     if (!localMeeting.meetingName.trim()) errors.meetingName = 'Meeting name is required';
     if (!localMeeting.startTime) errors.startTime = 'Start time is required';
     if (!localMeeting.endTime) errors.endTime = 'End time is required';
+
+    if (localMeeting.startTime) {
+      const start = new Date(localMeeting.startTime);
+      if (start < new Date(new Date().getTime() - 60000)) { // Allow 1 min buffer
+        errors.startTime = 'Start time cannot be in the past';
+      }
+    }
 
     if (localMeeting.startTime && localMeeting.endTime) {
       const start = new Date(localMeeting.startTime);
@@ -179,6 +221,7 @@ const ScheduleMeetingModal = ({
                 </label>
                 <input
                   type="datetime-local"
+                  min={nowStr}
                   className={`w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${formErrors.startTime ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'
                     }`}
                   value={localMeeting.startTime}
@@ -193,7 +236,11 @@ const ScheduleMeetingModal = ({
                 </label>
                 <input
                   type="datetime-local"
-                  className={`w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${formErrors.endTime ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'
+                  min={localMeeting.startTime}
+                  disabled={!localMeeting.startTime}
+                  className={`w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${!localMeeting.startTime
+                      ? 'opacity-50 cursor-not-allowed bg-gray-100'
+                      : formErrors.endTime ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'
                     }`}
                   value={localMeeting.endTime}
                   onChange={(e) => handleFieldChange('endTime', e.target.value)}

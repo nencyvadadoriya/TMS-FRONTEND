@@ -2121,7 +2121,7 @@ const DashboardPage = () => {
         const fromOverrides = Object.values(taskTypeCompanyOverrides || {}).flatMap((arr) => (Array.isArray(arr) ? arr : []));
         const fromTasks = Array.from(taskTypesByCompanyFromTasks.values()).flatMap((set) => Array.from(set));
         const merged = ensureBrandAssignment(Array.from(new Set([...effectiveAvailableTaskTypes, ...fromOverrides, ...fromTasks])));
-        
+
         if (roleKey === 'manager' || roleKey === 'md_manager' || roleKey === 'ob_manager') {
             const fixed = ['Other Work', 'Troubleshoot', 'Regular', 'goggle']
                 .map((x) => (x || '').toString().trim())
@@ -5518,1060 +5518,1060 @@ const DashboardPage = () => {
                 <main className="flex-1 overflow-auto pb-24 sm:pb-0">
                     <div className="py-0 sm:py-8">
                         <div className={dashboardContainerClasses}>
-                        <Suspense fallback={<DashboardPageSkeleton />}>
-                            {currentView === 'dashboard' ? (
-                                <>
-                                    <div className="mb-6 sm:mb-10 px-4 sm:px-0">
-                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-                                            <div>
-                                                <div className="flex items-center gap-3 mb-1">
-                                                    <h1 className="text-4xl sm:text-2xl font-bold text-gray-900">
-                                                        Dashboard
-                                                    </h1>
+                            <Suspense fallback={<DashboardPageSkeleton />}>
+                                {currentView === 'dashboard' ? (
+                                    <>
+                                        <div className="mb-6 sm:mb-10 px-4 sm:px-0">
+                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+                                                <div>
+                                                    <div className="flex items-center gap-3 mb-1">
+                                                        <h1 className="text-4xl sm:text-2xl font-bold text-gray-900">
+                                                            Dashboard
+                                                        </h1>
+                                                    </div>
+                                                    <p className="text-gray-600 ">
+                                                        {canViewAllTasks
+                                                            ? `Welcome ${currentUser.name}. Manage all tasks.`
+                                                            : `Welcome back, ${currentUser.name}. Here are your tasks.`
+                                                        }
+                                                    </p>
                                                 </div>
-                                                <p className="text-gray-600 ">
-                                                    {canViewAllTasks
-                                                        ? `Welcome ${currentUser.name}. Manage all tasks.`
-                                                        : `Welcome back, ${currentUser.name}. Here are your tasks.`
-                                                    }
-                                                </p>
-                                            </div>
-                                            <div className="flex flex-wrap gap-3">
-                                                <button
-                                                    onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                                                    className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
-                                                >
-                                                    <Filter className="mr-2 h-4 w-4" />
-                                                    Advanced Filters
-                                                    {getActiveFilterCount() > 0 && (
-                                                        <span className="ml-2 bg-blue-100 text-blue-600 text-xs font-semibold px-2 py-0.5 rounded-full">
-                                                            {getActiveFilterCount()}
-                                                        </span>
-                                                    )}
-                                                </button>
-                                                <button
-                                                    onClick={() => setCurrentView('all-tasks')}
-                                                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-lg shadow-sm text-white bg-primary hover:bg-primary-dark"
-                                                >
-                                                    <ListTodo className="mr-2 h-4 w-4" />
-                                                    View All Tasks
-                                                </button>
-                                                {canCreateTasks && (
+                                                <div className="flex flex-wrap gap-3">
                                                     <button
-                                                        onClick={() => openAddTaskModal()}
-                                                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-lg shadow-sm text-white bg-primary-light hover:bg-primary"
+                                                        onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                                                        className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
                                                     >
-                                                        <PlusCircle className="mr-2 h-4 w-4" />
-                                                        Add Task
+                                                        <Filter className="mr-2 h-4 w-4" />
+                                                        Advanced Filters
+                                                        {getActiveFilterCount() > 0 && (
+                                                            <span className="ml-2 bg-blue-100 text-blue-600 text-xs font-semibold px-2 py-0.5 rounded-full">
+                                                                {getActiveFilterCount()}
+                                                            </span>
+                                                        )}
                                                     </button>
-                                                )}
+                                                    <button
+                                                        onClick={() => setCurrentView('all-tasks')}
+                                                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-lg shadow-sm text-white bg-primary hover:bg-primary-dark"
+                                                    >
+                                                        <ListTodo className="mr-2 h-4 w-4" />
+                                                        View All Tasks
+                                                    </button>
+                                                    {canCreateTasks && (
+                                                        <button
+                                                            onClick={() => openAddTaskModal()}
+                                                            className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-lg shadow-sm text-white bg-primary-light hover:bg-primary"
+                                                        >
+                                                            <PlusCircle className="mr-2 h-4 w-4" />
+                                                            Add Task
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <AdvancedFilters
-                                        filters={filters}
-                                        availableCompanies={availableCompanies}
-                                        availableTaskTypes={availableTaskTypesForFilters}
-                                        availableBrands={availableBrands}
-                                        availableRms={availableRmUsersForFilters}
-                                        getBrandLabel={getBrandLabelForFilter}
-                                        users={users}
-                                        currentUser={currentUser}
-                                        onFilterChange={handleAdvancedFilterChange}
-                                        onResetFilters={resetFilters}
-                                        showFilters={showAdvancedFilters}
-                                        onToggleFilters={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                                    />
-                                    {showTaskCommentSidebar && commentSidebarTask ? (
-                                        <div className="fixed inset-0 z-50">
-                                            <div
-                                                className="absolute inset-0 bg-black/20 backdrop-blur-sm"
-                                                onClick={handleCloseTaskCommentSidebar}
-                                            />
-                                            <div className="absolute inset-0 right-0">
-                                                <div className="h-full bg-white shadow-xl overflow-y-auto w-full md:w-[500px]">
-                                                    <div className="sticky top-0 bg-white border-b z-10">
-                                                        <div className="px-4 py-4">
-                                                            <div className="flex items-center justify-between">
-                                                                <div>
-                                                                    <h2 className="text-lg font-bold text-gray-900">Comments</h2>
-                                                                    <p className="text-gray-600 text-sm mt-1">{commentSidebarTask.title}</p>
+                                        <AdvancedFilters
+                                            filters={filters}
+                                            availableCompanies={availableCompanies}
+                                            availableTaskTypes={availableTaskTypesForFilters}
+                                            availableBrands={availableBrands}
+                                            availableRms={availableRmUsersForFilters}
+                                            getBrandLabel={getBrandLabelForFilter}
+                                            users={users}
+                                            currentUser={currentUser}
+                                            onFilterChange={handleAdvancedFilterChange}
+                                            onResetFilters={resetFilters}
+                                            showFilters={showAdvancedFilters}
+                                            onToggleFilters={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                                        />
+                                        {showTaskCommentSidebar && commentSidebarTask ? (
+                                            <div className="fixed inset-0 z-50">
+                                                <div
+                                                    className="absolute inset-0 bg-black/20 backdrop-blur-sm"
+                                                    onClick={handleCloseTaskCommentSidebar}
+                                                />
+                                                <div className="absolute inset-0 right-0">
+                                                    <div className="h-full bg-white shadow-xl overflow-y-auto w-full md:w-[500px]">
+                                                        <div className="sticky top-0 bg-white border-b z-10">
+                                                            <div className="px-4 py-4">
+                                                                <div className="flex items-center justify-between">
+                                                                    <div>
+                                                                        <h2 className="text-lg font-bold text-gray-900">Comments</h2>
+                                                                        <p className="text-gray-600 text-sm mt-1">{commentSidebarTask.title}</p>
+                                                                    </div>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={handleCloseTaskCommentSidebar}
+                                                                        className="p-2 hover:bg-gray-100 rounded-lg"
+                                                                    >
+                                                                        <X className="h-5 w-5 text-gray-500" />
+                                                                    </button>
                                                                 </div>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={handleCloseTaskCommentSidebar}
-                                                                    className="p-2 hover:bg-gray-100 rounded-lg"
-                                                                >
-                                                                    <X className="h-5 w-5 text-gray-500" />
-                                                                </button>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                    <div className="p-4">
-                                                        <div className="mb-4">
-                                                            <h4 className="font-medium text-gray-900 mb-2">Add Comment</h4>
-                                                            <textarea
-                                                                value={commentDraft}
-                                                                onChange={(e) => setCommentDraft(e.target.value)}
-                                                                placeholder="Type your comment here..."
-                                                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[90px] resize-none"
-                                                                rows={3}
-                                                            />
-                                                            <div className="flex justify-end mt-3">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={handleSubmitTaskComment}
-                                                                    disabled={!commentDraft.trim() || commentSidebarLoading}
-                                                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2 transition-colors"
-                                                                >
-                                                                    {commentSidebarLoading ? (
-                                                                        <>
-                                                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                                                            Sending...
-                                                                        </>
-                                                                    ) : (
-                                                                        <>
-                                                                            <Send className="h-4 w-4" />
-                                                                            Add Comment
-                                                                        </>
-                                                                    )}
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                        <div className="border-t pt-4">
-                                                            <div className="flex items-center justify-between mb-3">
-                                                                <h4 className="font-medium text-gray-900">All Comments</h4>
-                                                                <span className="text-xs text-gray-500">
-                                                                    {getCommentSidebarComments(String(commentSidebarTask.id)).length} total
-                                                                </span>
-                                                            </div>
-                                                            {commentSidebarLoadingComments ? (
-                                                                <div className="text-center py-8">
-                                                                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-gray-400" />
-                                                                    <p className="mt-2 text-gray-500">Loading comments...</p>
+                                                        <div className="p-4">
+                                                            <div className="mb-4">
+                                                                <h4 className="font-medium text-gray-900 mb-2">Add Comment</h4>
+                                                                <textarea
+                                                                    value={commentDraft}
+                                                                    onChange={(e) => setCommentDraft(e.target.value)}
+                                                                    placeholder="Type your comment here..."
+                                                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[90px] resize-none"
+                                                                    rows={3}
+                                                                />
+                                                                <div className="flex justify-end mt-3">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={handleSubmitTaskComment}
+                                                                        disabled={!commentDraft.trim() || commentSidebarLoading}
+                                                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2 transition-colors"
+                                                                    >
+                                                                        {commentSidebarLoading ? (
+                                                                            <>
+                                                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                                                Sending...
+                                                                            </>
+                                                                        ) : (
+                                                                            <>
+                                                                                <Send className="h-4 w-4" />
+                                                                                Add Comment
+                                                                            </>
+                                                                        )}
+                                                                    </button>
                                                                 </div>
-                                                            ) : getCommentSidebarComments(String(commentSidebarTask.id)).length === 0 ? (
-                                                                <div className="text-center py-8">
-                                                                    <MessageSquare className="h-10 w-10 mx-auto text-gray-300" />
-                                                                    <p className="mt-2 text-gray-500">No comments yet</p>
+                                                            </div>
+                                                            <div className="border-t pt-4">
+                                                                <div className="flex items-center justify-between mb-3">
+                                                                    <h4 className="font-medium text-gray-900">All Comments</h4>
+                                                                    <span className="text-xs text-gray-500">
+                                                                        {getCommentSidebarComments(String(commentSidebarTask.id)).length} total
+                                                                    </span>
                                                                 </div>
-                                                            ) : (
-                                                                <div className="space-y-3">
-                                                                    {getCommentSidebarComments(String(commentSidebarTask.id)).map((c) => (
-                                                                        <div key={c.id} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                                                                            <div className="flex items-center justify-between gap-3 mb-1">
-                                                                                <div className="text-xs font-semibold text-gray-700 truncate" title={c.userEmail}>
-                                                                                    {c.userName || c.userEmail}
+                                                                {commentSidebarLoadingComments ? (
+                                                                    <div className="text-center py-8">
+                                                                        <Loader2 className="h-8 w-8 animate-spin mx-auto text-gray-400" />
+                                                                        <p className="mt-2 text-gray-500">Loading comments...</p>
+                                                                    </div>
+                                                                ) : getCommentSidebarComments(String(commentSidebarTask.id)).length === 0 ? (
+                                                                    <div className="text-center py-8">
+                                                                        <MessageSquare className="h-10 w-10 mx-auto text-gray-300" />
+                                                                        <p className="mt-2 text-gray-500">No comments yet</p>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="space-y-3">
+                                                                        {getCommentSidebarComments(String(commentSidebarTask.id)).map((c) => (
+                                                                            <div key={c.id} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                                                                <div className="flex items-center justify-between gap-3 mb-1">
+                                                                                    <div className="text-xs font-semibold text-gray-700 truncate" title={c.userEmail}>
+                                                                                        {c.userName || c.userEmail}
+                                                                                    </div>
+                                                                                    <div className="text-[11px] text-gray-500 shrink-0">
+                                                                                        {c.createdAt ? formatDate(c.createdAt) : ''}
+                                                                                    </div>
                                                                                 </div>
-                                                                                <div className="text-[11px] text-gray-500 shrink-0">
-                                                                                    {c.createdAt ? formatDate(c.createdAt) : ''}
+                                                                                <div className="text-sm text-gray-800 whitespace-pre-wrap break-words">
+                                                                                    {(c.content || '').trim()}
                                                                                 </div>
                                                                             </div>
-                                                                            <div className="text-sm text-gray-800 whitespace-pre-wrap break-words">
-                                                                                {(c.content || '').trim()}
-                                                                            </div>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            )}
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ) : null}
-                                    <div className="hidden sm:block mb-10 px-4 sm:px-0">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-                                            {stats.map((stat) => (
-                                                <button
-                                                    key={stat.name}
-                                                    onClick={() => handleStatClick(stat.id)}
-                                                    type="button"
-                                                    role="radio"
-                                                    aria-checked={selectedStatFilter === stat.id}
-                                                    className={`
+                                        ) : null}
+                                        <div className="hidden sm:block mb-10 px-4 sm:px-0">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                                                {stats.map((stat) => (
+                                                    <button
+                                                        key={stat.name}
+                                                        onClick={() => handleStatClick(stat.id)}
+                                                        type="button"
+                                                        role="radio"
+                                                        aria-checked={selectedStatFilter === stat.id}
+                                                        className={`
                     bg-white p-4 rounded-xl shadow-sm border-2 cursor-pointer 
                     transition-all duration-300 ease-out hover:shadow-md hover:-translate-y-0.5 
                     relative group
                     ${selectedStatFilter === stat.id
-                                                            ? 'border-[#1e3a8a] shadow-md'
-                                                            : 'border-gray-100 hover:border-[#1e3a8a]'
-                                                        }
+                                                                ? 'border-[#1e3a8a] shadow-md'
+                                                                : 'border-gray-100 hover:border-[#1e3a8a]'
+                                                            }
                 `}
-                                                >
-                                                    {/* Selection Indicator */}
-                                                    <div
-                                                        className={`
+                                                    >
+                                                        {/* Selection Indicator */}
+                                                        <div
+                                                            className={`
                         absolute top-3 right-3 h-4 w-4 rounded-full border-2 
                         transition-all duration-200 ease-out
                         ${selectedStatFilter === stat.id
-                                                                ? 'border-[#1e3a8a] bg-[#3b82f6] scale-100'
-                                                                : 'border-gray-200 bg-white group-hover:border-[#1e3a8a] group-hover:scale-110'
-                                                            }
+                                                                    ? 'border-[#1e3a8a] bg-[#3b82f6] scale-100'
+                                                                    : 'border-gray-200 bg-white group-hover:border-[#1e3a8a] group-hover:scale-110'
+                                                                }
                     `}
-                                                    >
-                                                        {selectedStatFilter === stat.id && (
-                                                            <div className="h-full w-full flex items-center justify-center">
-                                                                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                                        >
+                                                            {selectedStatFilter === stat.id && (
+                                                                <div className="h-full w-full flex items-center justify-center">
+                                                                    <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                                                </div>
+                                                            )}
+                                                        </div>
 
-                                                    <div className="flex items-start">
-                                                        <div className="flex-1">
-                                                            {/* Icon and Value Row */}
-                                                            <div className="flex items-center gap-3 mb-2">
-                                                                <div
-                                                                    className={`
+                                                        <div className="flex items-start">
+                                                            <div className="flex-1">
+                                                                {/* Icon and Value Row */}
+                                                                <div className="flex items-center gap-3 mb-2">
+                                                                    <div
+                                                                        className={`
                                     p-2 rounded-lg transition-all duration-200
                                     ${selectedStatFilter === stat.id
-                                                                            ? 'bg-[#3b82f6]/10 ring-1 ring-[#3b82f6]/20'
-                                                                            : 'bg-gray-50 group-hover:bg-[#3b82f6]/5'
-                                                                        }
+                                                                                ? 'bg-[#3b82f6]/10 ring-1 ring-[#3b82f6]/20'
+                                                                                : 'bg-gray-50 group-hover:bg-[#3b82f6]/5'
+                                                                            }
                                 `}
-                                                                >
-                                                                    <stat.icon
-                                                                        className={`
+                                                                    >
+                                                                        <stat.icon
+                                                                            className={`
                                         h-5 w-5 transition-colors duration-200
                                         ${selectedStatFilter === stat.id
-                                                                                ? 'text-[#3b82f6]'
-                                                                                : 'text-gray-400 group-hover:text-[#3b82f6]'
-                                                                            }
+                                                                                    ? 'text-[#3b82f6]'
+                                                                                    : 'text-gray-400 group-hover:text-[#3b82f6]'
+                                                                                }
                                     `}
-                                                                    />
-                                                                </div>
-                                                                <div className="text-left">
-                                                                    <p className="text-xs font-medium text-black tracking-wide">
-                                                                        {stat.name}
-                                                                    </p>
-                                                                    <div className="flex items-baseline gap-2 mt-0.5">
-                                                                        <p className="text-2xl font-bold text-black">{stat.value}</p>
+                                                                        />
+                                                                    </div>
+                                                                    <div className="text-left">
+                                                                        <p className="text-xs font-medium text-black tracking-wide">
+                                                                            {stat.name}
+                                                                        </p>
+                                                                        <div className="flex items-baseline gap-2 mt-0.5">
+                                                                            <p className="text-2xl font-bold text-black">{stat.value}</p>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
-                                                            </div>
 
-                                                            {/* Footer */}
-                                                            <div className="flex items-center justify-between mt-2 pt-1 border-t border-gray-50">
-                                                                <span className={`
+                                                                {/* Footer */}
+                                                                <div className="flex items-center justify-between mt-2 pt-1 border-t border-gray-50">
+                                                                    <span className={`
                                 text-[10px] font-medium px-2 py-0.5 rounded-full 
                                 transition-all duration-200
                                 ${selectedStatFilter === stat.id
-                                                                        ? 'bg-[#3b82f6]/10 text-[#3b82f6]'
-                                                                        : 'bg-gray-50 text-gray-400 group-hover:bg-[#3b82f6]/5 group-hover:text-[#3b82f6]'
-                                                                    }
+                                                                            ? 'bg-[#3b82f6]/10 text-[#3b82f6]'
+                                                                            : 'bg-gray-50 text-gray-400 group-hover:bg-[#3b82f6]/5 group-hover:text-[#3b82f6]'
+                                                                        }
                             `}>
-                                                                    {selectedStatFilter === stat.id ? '✓ Selected' : 'Filter'}
-                                                                </span>
+                                                                        {selectedStatFilter === stat.id ? '✓ Selected' : 'Filter'}
+                                                                    </span>
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                    </div>
 
-                                                    {/* Hover Effect Overlay - Thin border (ring-1) */}
-                                                    <div className={`
+                                                        {/* Hover Effect Overlay - Thin border (ring-1) */}
+                                                        <div className={`
                     absolute inset-0 rounded-xl pointer-events-none transition-all duration-300
                     ${selectedStatFilter === stat.id
-                                                            ? 'ring-1 ring-[#1e3a8a] ring-inset'
-                                                            : 'group-hover:ring-1 group-hover:ring-[#1e3a8a] ring-inset'
-                                                        }
+                                                                ? 'ring-1 ring-[#1e3a8a] ring-inset'
+                                                                : 'group-hover:ring-1 group-hover:ring-[#1e3a8a] ring-inset'
+                                                            }
                 `} />
-                                                </button>
-                                            ))}
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
-                                    {(!isSpeedEcomUser || String((currentUser as any)?.role || '').trim().toLowerCase() === 'admin' || String((currentUser as any)?.role || '').trim().toLowerCase() === 'super_admin') ? (
-                                        String((currentUser as any)?.role || '').trim().toLowerCase() !== 'troubleshoot_manager' ? (
-                                            <>
-                                                {roleIsAdminLike ? (
-                                                    <div className="mb-6 px-4 sm:px-0">
-                                                        {String((currentUser as any)?.role || '').trim().toLowerCase() === 'manager' ? null : (
-                                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => setDashboardSpotlight('employee-of-month')}
-                                                                    className={`
+                                        {(!isSpeedEcomUser || String((currentUser as any)?.role || '').trim().toLowerCase() === 'admin' || String((currentUser as any)?.role || '').trim().toLowerCase() === 'super_admin') ? (
+                                            String((currentUser as any)?.role || '').trim().toLowerCase() !== 'troubleshoot_manager' ? (
+                                                <>
+                                                    {roleIsAdminLike ? (
+                                                        <div className="mb-6 px-4 sm:px-0">
+                                                            {String((currentUser as any)?.role || '').trim().toLowerCase() === 'manager' ? null : (
+                                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setDashboardSpotlight('employee-of-month')}
+                                                                        className={`
         bg-white p-4 rounded-xl shadow-sm border-2 cursor-pointer 
         transition-all duration-300 ease-out hover:shadow-md hover:-translate-y-0.5 
         relative group
         ${dashboardSpotlight === 'employee-of-month'
-                                                                            ? 'border-[#1e3a8a] shadow-md'
-                                                                            : 'border-gray-100 hover:border-[#1e3a8a]'
-                                                                        }
+                                                                                ? 'border-[#1e3a8a] shadow-md'
+                                                                                : 'border-gray-100 hover:border-[#1e3a8a]'
+                                                                            }
     `}
-                                                                >
-                                                                    <div className="flex items-start justify-between">
-                                                                        <div>
-                                                                            <h2 className="text-xs font-medium text-black tracking-wide">
-                                                                                <span className="inline-flex items-center gap-2">
-                                                                                    <span className={`
+                                                                    >
+                                                                        <div className="flex items-start justify-between">
+                                                                            <div>
+                                                                                <h2 className="text-xs font-medium text-black tracking-wide">
+                                                                                    <span className="inline-flex items-center gap-2">
+                                                                                        <span className={`
                             inline-flex items-center justify-center w-6 h-6 rounded-lg 
                             transition-all duration-200
                             ${dashboardSpotlight === 'employee-of-month'
-                                                                                            ? 'bg-[#3b82f6]/10 ring-1 ring-[#3b82f6]/20'
-                                                                                            : 'bg-gray-50 group-hover:bg-[#3b82f6]/5'
-                                                                                        }
+                                                                                                ? 'bg-[#3b82f6]/10 ring-1 ring-[#3b82f6]/20'
+                                                                                                : 'bg-gray-50 group-hover:bg-[#3b82f6]/5'
+                                                                                            }
                         `}>
-                                                                                        <Crown className={`
+                                                                                            <Crown className={`
                                         h-3.5 w-3.5 transition-colors duration-200
                                         ${dashboardSpotlight === 'employee-of-month'
-                                                                                                ? 'text-[#3b82f6]'
-                                                                                                : 'text-gray-400 group-hover:text-[#3b82f6]'
-                                                                                            }
+                                                                                                    ? 'text-[#3b82f6]'
+                                                                                                    : 'text-gray-400 group-hover:text-[#3b82f6]'
+                                                                                                }
                                     `} />
+                                                                                        </span>
+                                                                                        <span>Employee of the Month</span>
                                                                                     </span>
-                                                                                    <span>Employee of the Month</span>
-                                                                                </span>
-                                                                            </h2>
-                                                                            <p className="text-[10px] text-gray-500 mt-1">Based on manager reviews</p>
-                                                                        </div>
-                                                                        <span className={`
+                                                                                </h2>
+                                                                                <p className="text-[10px] text-gray-500 mt-1">Based on manager reviews</p>
+                                                                            </div>
+                                                                            <span className={`
                 text-[10px] font-medium px-2 py-0.5 rounded-full 
                 transition-all duration-200
                 ${dashboardSpotlight === 'employee-of-month'
-                                                                                ? 'bg-[#3b82f6]/10 text-[#3b82f6]'
-                                                                                : 'bg-gray-50 text-gray-400 group-hover:bg-[#3b82f6]/5 group-hover:text-[#3b82f6]'
-                                                                            }
+                                                                                    ? 'bg-[#3b82f6]/10 text-[#3b82f6]'
+                                                                                    : 'bg-gray-50 text-gray-400 group-hover:bg-[#3b82f6]/5 group-hover:text-[#3b82f6]'
+                                                                                }
             `}>
-                                                                            {dashboardSpotlight === 'employee-of-month' ? '✓ Selected' : 'Filter'}
-                                                                        </span>
-                                                                    </div>
+                                                                                {dashboardSpotlight === 'employee-of-month' ? '✓ Selected' : 'Filter'}
+                                                                            </span>
+                                                                        </div>
 
-                                                                    <div className={`
+                                                                        <div className={`
             absolute inset-0 rounded-xl pointer-events-none transition-all duration-300
             ${dashboardSpotlight === 'employee-of-month'
-                                                                            ? 'ring-1 ring-[#1e3a8a] ring-inset'
-                                                                            : 'group-hover:ring-1 group-hover:ring-[#1e3a8a] ring-inset'
-                                                                        }
+                                                                                ? 'ring-1 ring-[#1e3a8a] ring-inset'
+                                                                                : 'group-hover:ring-1 group-hover:ring-[#1e3a8a] ring-inset'
+                                                                            }
         `} />
-                                                                </button>
+                                                                    </button>
 
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => setDashboardSpotlight('manager-monthly-ranking')}
-                                                                    className={`
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setDashboardSpotlight('manager-monthly-ranking')}
+                                                                        className={`
         bg-white p-4 rounded-xl shadow-sm border-2 cursor-pointer 
         transition-all duration-300 ease-out hover:shadow-md hover:-translate-y-0.5 
         relative group
         ${dashboardSpotlight === 'manager-monthly-ranking'
-                                                                            ? 'border-[#1e3a8a] shadow-md'
-                                                                            : 'border-gray-100 hover:border-[#1e3a8a]'
-                                                                        }
+                                                                                ? 'border-[#1e3a8a] shadow-md'
+                                                                                : 'border-gray-100 hover:border-[#1e3a8a]'
+                                                                            }
     `}
-                                                                >
-                                                                    <div className="flex items-start justify-between">
-                                                                        <div>
-                                                                            <h2 className="text-xs font-medium text-black tracking-wide">
-                                                                                <span className="inline-flex items-center gap-2">
-                                                                                    <span className={`
+                                                                    >
+                                                                        <div className="flex items-start justify-between">
+                                                                            <div>
+                                                                                <h2 className="text-xs font-medium text-black tracking-wide">
+                                                                                    <span className="inline-flex items-center gap-2">
+                                                                                        <span className={`
                             inline-flex items-center justify-center w-6 h-6 rounded-lg 
                             transition-all duration-200
                             ${dashboardSpotlight === 'manager-monthly-ranking'
-                                                                                            ? 'bg-[#3b82f6]/10 ring-1 ring-[#3b82f6]/20'
-                                                                                            : 'bg-gray-50 group-hover:bg-[#3b82f6]/5'
-                                                                                        }
+                                                                                                ? 'bg-[#3b82f6]/10 ring-1 ring-[#3b82f6]/20'
+                                                                                                : 'bg-gray-50 group-hover:bg-[#3b82f6]/5'
+                                                                                            }
                         `}>
-                                                                                        <Trophy className={`
+                                                                                            <Trophy className={`
                                         h-3.5 w-3.5 transition-colors duration-200
                                         ${dashboardSpotlight === 'manager-monthly-ranking'
-                                                                                                ? 'text-[#3b82f6]'
-                                                                                                : 'text-gray-400 group-hover:text-[#3b82f6]'
-                                                                                            }
+                                                                                                    ? 'text-[#3b82f6]'
+                                                                                                    : 'text-gray-400 group-hover:text-[#3b82f6]'
+                                                                                                }
                                     `} />
+                                                                                        </span>
+                                                                                        <span>Employee of the Month Marketer</span>
                                                                                     </span>
-                                                                                    <span>Employee of the Month Marketer</span>
-                                                                                </span>
-                                                                            </h2>
-                                                                            <p className="text-[10px] text-gray-500 mt-1">Assign vs Achieved</p>
-                                                                        </div>
-                                                                        <span className={`
+                                                                                </h2>
+                                                                                <p className="text-[10px] text-gray-500 mt-1">Assign vs Achieved</p>
+                                                                            </div>
+                                                                            <span className={`
                 text-[10px] font-medium px-2 py-0.5 rounded-full 
                 transition-all duration-200
                 ${dashboardSpotlight === 'manager-monthly-ranking'
-                                                                                ? 'bg-[#3b82f6]/10 text-[#3b82f6]'
-                                                                                : 'bg-gray-50 text-gray-400 group-hover:bg-[#3b82f6]/5 group-hover:text-[#3b82f6]'
-                                                                            }
+                                                                                    ? 'bg-[#3b82f6]/10 text-[#3b82f6]'
+                                                                                    : 'bg-gray-50 text-gray-400 group-hover:bg-[#3b82f6]/5 group-hover:text-[#3b82f6]'
+                                                                                }
             `}>
-                                                                            {dashboardSpotlight === 'manager-monthly-ranking' ? '✓ Selected' : 'Filter'}
-                                                                        </span>
-                                                                    </div>
+                                                                                {dashboardSpotlight === 'manager-monthly-ranking' ? '✓ Selected' : 'Filter'}
+                                                                            </span>
+                                                                        </div>
 
-                                                                    <div className={`
+                                                                        <div className={`
                 absolute inset-0 rounded-xl pointer-events-none transition-all duration-300
                 ${dashboardSpotlight === 'manager-monthly-ranking'
-                                                                            ? 'ring-1 ring-[#1e3a8a] ring-inset'
-                                                                            : 'group-hover:ring-1 group-hover:ring-[#1e3a8a] ring-inset'
-                                                                        }
+                                                                                ? 'ring-1 ring-[#1e3a8a] ring-inset'
+                                                                                : 'group-hover:ring-1 group-hover:ring-[#1e3a8a] ring-inset'
+                                                                            }
             `} />
-                                                                </button>
+                                                                    </button>
 
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => setDashboardSpotlight('power-star-of-month')}
-                                                                    className={`
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setDashboardSpotlight('power-star-of-month')}
+                                                                        className={`
         bg-white p-4 rounded-xl shadow-sm border-2 cursor-pointer 
         transition-all duration-300 ease-out hover:shadow-md hover:-translate-y-0.5 
         relative group
         ${dashboardSpotlight === 'power-star-of-month'
-                                                                            ? 'border-[#1e3a8a] shadow-md'
-                                                                            : 'border-gray-100 hover:border-[#1e3a8a]'
-                                                                        }
+                                                                                ? 'border-[#1e3a8a] shadow-md'
+                                                                                : 'border-gray-100 hover:border-[#1e3a8a]'
+                                                                            }
     `}
-                                                                >
-                                                                    <div className="flex items-start justify-between">
-                                                                        <div>
-                                                                            <h2 className="text-xs font-medium text-black tracking-wide">
-                                                                                <span className="inline-flex items-center gap-2">
-                                                                                    <span className={`
+                                                                    >
+                                                                        <div className="flex items-start justify-between">
+                                                                            <div>
+                                                                                <h2 className="text-xs font-medium text-black tracking-wide">
+                                                                                    <span className="inline-flex items-center gap-2">
+                                                                                        <span className={`
                                 inline-flex items-center justify-center w-6 h-6 rounded-lg 
                                 transition-all duration-200
                                 ${dashboardSpotlight === 'power-star-of-month'
-                                                                                            ? 'bg-[#3b82f6]/10 ring-1 ring-[#3b82f6]/20'
-                                                                                            : 'bg-gray-50 group-hover:bg-[#3b82f6]/5'
-                                                                                        }
+                                                                                                ? 'bg-[#3b82f6]/10 ring-1 ring-[#3b82f6]/20'
+                                                                                                : 'bg-gray-50 group-hover:bg-[#3b82f6]/5'
+                                                                                            }
                             `}>
-                                                                                        <Star className={`
+                                                                                            <Star className={`
                                             h-3.5 w-3.5 transition-colors duration-200
                                             ${dashboardSpotlight === 'power-star-of-month'
-                                                                                                ? 'text-[#3b82f6]'
-                                                                                                : 'text-gray-400 group-hover:text-[#3b82f6]'
-                                                                                            }
+                                                                                                    ? 'text-[#3b82f6]'
+                                                                                                    : 'text-gray-400 group-hover:text-[#3b82f6]'
+                                                                                                }
                                         `} />
+                                                                                        </span>
+                                                                                        <span>Power Star of the Month</span>
                                                                                     </span>
-                                                                                    <span>Power Star of the Month</span>
-                                                                                </span>
-                                                                            </h2>
-                                                                            <p className="text-[10px] text-gray-500 mt-1">Week wise performance</p>
-                                                                        </div>
-                                                                        <span className={`
+                                                                                </h2>
+                                                                                <p className="text-[10px] text-gray-500 mt-1">Week wise performance</p>
+                                                                            </div>
+                                                                            <span className={`
                 text-[10px] font-medium px-2 py-0.5 rounded-full 
                 transition-all duration-200
                 ${dashboardSpotlight === 'power-star-of-month'
-                                                                                ? 'bg-[#3b82f6]/10 text-[#3b82f6]'
-                                                                                : 'bg-gray-50 text-gray-400 group-hover:bg-[#3b82f6]/5 group-hover:text-[#3b82f6]'
-                                                                            }
+                                                                                    ? 'bg-[#3b82f6]/10 text-[#3b82f6]'
+                                                                                    : 'bg-gray-50 text-gray-400 group-hover:bg-[#3b82f6]/5 group-hover:text-[#3b82f6]'
+                                                                                }
             `}>
-                                                                            {dashboardSpotlight === 'power-star-of-month' ? '✓ Selected' : 'Filter'}
-                                                                        </span>
-                                                                    </div>
+                                                                                {dashboardSpotlight === 'power-star-of-month' ? '✓ Selected' : 'Filter'}
+                                                                            </span>
+                                                                        </div>
 
-                                                                    <div className={`
+                                                                        <div className={`
                 absolute inset-0 rounded-xl pointer-events-none transition-all duration-300
                 ${dashboardSpotlight === 'power-star-of-month'
-                                                                            ? 'ring-1 ring-[#1e3a8a] ring-inset'
-                                                                            : 'group-hover:ring-1 group-hover:ring-[#1e3a8a] ring-inset'
-                                                                        }
+                                                                                ? 'ring-1 ring-[#1e3a8a] ring-inset'
+                                                                                : 'group-hover:ring-1 group-hover:ring-[#1e3a8a] ring-inset'
+                                                                            }
             `} />
-                                                                </button>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ) : null}
-                                                {String((currentUser as any)?.role || '').trim().toLowerCase() === 'manager' && effectiveDashboardSpotlight ? (
-                                                    <div className="flex items-center mb-4 px-4 sm:px-0">
-                                                        <select
-                                                            value={dashboardSpotlight}
-                                                            onChange={(e) => setDashboardSpotlight(e.target.value as any)}
-                                                            className=" w-[260px] px-3 py-2 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-all"
-                                                        >
-                                                            <option value="employee-of-month">Employee of the Month</option>
-                                                            <option value="manager-monthly-ranking">Employee of the Month Marketer</option>
-                                                            <option value="power-star-of-month">Power Star of the Month</option>
-                                                        </select>
-                                                    </div>
-                                                ) : null}
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ) : null}
+                                                    {String((currentUser as any)?.role || '').trim().toLowerCase() === 'manager' && effectiveDashboardSpotlight ? (
+                                                        <div className="flex items-center mb-4 px-4 sm:px-0">
+                                                            <select
+                                                                value={dashboardSpotlight}
+                                                                onChange={(e) => setDashboardSpotlight(e.target.value as any)}
+                                                                className=" w-[260px] px-3 py-2 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-all"
+                                                            >
+                                                                <option value="employee-of-month">Employee of the Month</option>
+                                                                <option value="manager-monthly-ranking">Employee of the Month Marketer</option>
+                                                                <option value="power-star-of-month">Power Star of the Month</option>
+                                                            </select>
+                                                        </div>
+                                                    ) : null}
 
-                                                {effectiveDashboardSpotlight ? (
-                                                    effectiveDashboardSpotlight === 'employee-of-month' ? (
-                                                        <>
-                                                            <EmployeeOfTheMonthCard
-                                                                name={employeeOfTheMonth?.name || 'Not any yet'}
-                                                                rating={employeeOfTheMonth?.rating || 0}
-                                                                performance={employeeOfTheMonth?.performance || 'Not any yet'}
-                                                                avg={employeeOfTheMonth?.avg || 'Not any yet'}
-                                                                photoUrl={employeeOfTheMonth?.photoUrl}
-                                                                totalReviews={employeeOfTheMonth?.totalReviews}
-                                                                totalTasksReceived={employeeOfTheMonth?.totalTasksReceived}
-                                                                summaryRows={employeeOfTheMonth?.summaryRows}
-                                                                monthValue={reviewsMonth}
-                                                                onMonthChange={setReviewsMonth}
-                                                                headerLeftSlot={null}
-                                                            />
-                                                        </>
-                                                    ) : effectiveDashboardSpotlight === 'manager-monthly-ranking' ? (
-                                                        <ManagerMonthlyRankingPage currentUser={currentUser} />
-                                                    ) : (
-                                                        <PowerStarOfTheMonthPage currentUser={currentUser} />
-                                                    )
-                                                ) : null}
-                                            </>
-                                        ) : null
-                                    ) : null}
-                                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4 mt-5">
-                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                                            <div>
-                                                <div className="flex items-center gap-2 mb-1.5">
-                                                    <ListTodo className="h-4 w-4 text-[#3b82f6]" />
-                                                    <h2 className="text-base font-semibold text-black">
-                                                        {displayTasks.length} Tasks
-                                                    </h2>
-                                                    <span className="text-xs text-gray-500">
-                                                        • {selectedStatFilter !== 'all' ? `${getActiveFilterCount()} active filter(s)` : 'All tasks'}
-                                                    </span>
+                                                    {effectiveDashboardSpotlight ? (
+                                                        effectiveDashboardSpotlight === 'employee-of-month' ? (
+                                                            <>
+                                                                <EmployeeOfTheMonthCard
+                                                                    name={employeeOfTheMonth?.name || 'Not any yet'}
+                                                                    rating={employeeOfTheMonth?.rating || 0}
+                                                                    performance={employeeOfTheMonth?.performance || 'Not any yet'}
+                                                                    avg={employeeOfTheMonth?.avg || 'Not any yet'}
+                                                                    photoUrl={employeeOfTheMonth?.photoUrl}
+                                                                    totalReviews={employeeOfTheMonth?.totalReviews}
+                                                                    totalTasksReceived={employeeOfTheMonth?.totalTasksReceived}
+                                                                    summaryRows={employeeOfTheMonth?.summaryRows}
+                                                                    monthValue={reviewsMonth}
+                                                                    onMonthChange={setReviewsMonth}
+                                                                    headerLeftSlot={null}
+                                                                />
+                                                            </>
+                                                        ) : effectiveDashboardSpotlight === 'manager-monthly-ranking' ? (
+                                                            <ManagerMonthlyRankingPage currentUser={currentUser} />
+                                                        ) : (
+                                                            <PowerStarOfTheMonthPage currentUser={currentUser} />
+                                                        )
+                                                    ) : null}
+                                                </>
+                                            ) : null
+                                        ) : null}
+                                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4 mt-5">
+                                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                                <div>
+                                                    <div className="flex items-center gap-2 mb-1.5">
+                                                        <ListTodo className="h-4 w-4 text-[#3b82f6]" />
+                                                        <h2 className="text-base font-semibold text-black">
+                                                            {displayTasks.length} Tasks
+                                                        </h2>
+                                                        <span className="text-xs text-gray-500">
+                                                            • {selectedStatFilter !== 'all' ? `${getActiveFilterCount()} active filter(s)` : 'All tasks'}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-xs text-gray-500">
+                                                        {selectedStatFilter === 'overdue'
+                                                            ? 'Tasks that require immediate attention'
+                                                            : selectedStatFilter === 'high-priority'
+                                                                ? 'High priority tasks requiring focus'
+                                                                : 'Your current tasks at a glance'}
+                                                    </p>
                                                 </div>
-                                                <p className="text-xs text-gray-500">
-                                                    {selectedStatFilter === 'overdue'
-                                                        ? 'Tasks that require immediate attention'
-                                                        : selectedStatFilter === 'high-priority'
-                                                            ? 'High priority tasks requiring focus'
-                                                            : 'Your current tasks at a glance'}
-                                                </p>
-                                            </div>
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
-                                                    <button
-                                                        onClick={() => setViewMode('grid')}
-                                                        className={`px-2.5 py-1.5 rounded-md transition-colors ${viewMode === 'grid'
-                                                            ? 'bg-white text-[#3b82f6] shadow-sm'
-                                                            : 'text-gray-600 hover:text-black'
-                                                            }`}
-                                                    >
-                                                        <Grid className="h-3.5 w-3.5" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setViewMode('list')}
-                                                        className={`px-2.5 py-1.5 rounded-md transition-colors ${viewMode === 'list'
-                                                            ? 'bg-white text-[#3b82f6] shadow-sm'
-                                                            : 'text-gray-600 hover:text-black'
-                                                            }`}
-                                                    >
-                                                        <List className="h-3.5 w-3.5" />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <TaskVirtualList
-                                        tasks={displayTasks}
-                                        viewMode={viewMode}
-                                        users={users}
-                                        onToggleStatus={handleToggleTaskStatus}
-                                        onDelete={handleDeleteTask}
-                                        onEdit={handleOpenEditModal}
-                                        onSendReminder={handleSendReminder}
-                                        onOpenComments={handleOpenTaskCommentSidebar}
-                                        formatBrand={_formatBrandWithGroupNumber}
-                                        formatDate={formatDate}
-                                        canEditTask={canEditTask}
-                                        canMarkTaskDone={canMarkTaskDone}
-                                        canEditDeleteTask={canEditDeleteTask}
-                                        canSendReminderForTask={canSendReminderForTask}
-                                        isSbmUser={isSbmUser}
-                                        sendingReminderByTaskId={sendingReminderByTaskId}
-                                    />
-
-                                    {displayTasks.length > 0 && totalTaskPages > 1 && (
-                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-4">
-                                            <div className="text-xs text-gray-500">
-                                                <div className="flex items-center gap-2">
-                                                    <span>Page {taskPage} of {totalTaskPages}</span>
-                                                    <select
-                                                        value={String(tasksPerPage)}
-                                                        onChange={(e) => {
-                                                            const next = Number(e.target.value);
-                                                            if (!Number.isFinite(next)) return;
-                                                            setTasksPerPage(next);
-                                                            setTaskPage(1);
-                                                        }}
-                                                        className="px-2 py-1 text-xs rounded-md border border-gray-200 bg-white hover:bg-gray-50 text-black focus:outline-none focus:ring-2 focus:ring-[#3b82f6]"
-                                                    >
-                                                        {PAGE_SIZE_OPTIONS.map((n) => (
-                                                            <option key={n} value={String(n)}>
-                                                                {n}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-1.5">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setTaskPage((p) => Math.max(1, p - 1))}
-                                                    disabled={taskPage <= 1}
-                                                    className="px-2.5 py-1 text-xs font-medium bg-white border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-50 text-black transition-colors"
-                                                >
-                                                    Previous
-                                                </button>
-                                                <div className="flex items-center gap-1">
-                                                    {taskPageNumbers.map((p) => (
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
                                                         <button
-                                                            key={p}
-                                                            type="button"
-                                                            onClick={() => setTaskPage(p)}
-                                                            className={`w-6 h-6 text-xs font-medium rounded-md border transition-colors ${p === taskPage
-                                                                ? 'bg-[#3b82f6] text-white border-[#3b82f6]'
-                                                                : 'bg-white text-black border-gray-200 hover:bg-gray-50'
+                                                            onClick={() => setViewMode('grid')}
+                                                            className={`px-2.5 py-1.5 rounded-md transition-colors ${viewMode === 'grid'
+                                                                ? 'bg-white text-[#3b82f6] shadow-sm'
+                                                                : 'text-gray-600 hover:text-black'
                                                                 }`}
                                                         >
-                                                            {p}
+                                                            <Grid className="h-3.5 w-3.5" />
                                                         </button>
-                                                    ))}
+                                                        <button
+                                                            onClick={() => setViewMode('list')}
+                                                            className={`px-2.5 py-1.5 rounded-md transition-colors ${viewMode === 'list'
+                                                                ? 'bg-white text-[#3b82f6] shadow-sm'
+                                                                : 'text-gray-600 hover:text-black'
+                                                                }`}
+                                                        >
+                                                            <List className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setTaskPage((p) => Math.min(totalTaskPages, p + 1))}
-                                                    disabled={taskPage >= totalTaskPages}
-                                                    className="px-2.5 py-1 text-xs font-medium bg-white border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-50 text-black transition-colors"
-                                                >
-                                                    Next
-                                                </button>
                                             </div>
                                         </div>
-                                    )}
-                                </>
-                            ) : currentView === 'md-impex-strike' ? (
-                                <MdImpexStrikePage
-                                    currentUser={currentUser as any}
-                                    users={users}
-                                    tasks={tasks}
-                                    isOverdue={isOverdueFn}
-                                />
-                            ) : currentView === 'md-impex-manual-strike' ? (
-                                <NewMdImpexStrikePage
-                                    currentUser={currentUser as any}
-                                    users={users}
-                                />
-                            ) : currentView === 'md-impex-access' ? (
-                                <MdImpexAccessPage
-                                    allBrands={apiBrands}
-                                    allTaskTypes={taskTypes}
-                                />
-                            ) : currentView === 'all-tasks' ? (
-                                <AllTasksPage
-                                    tasks={tasks}
-                                    filter={filters.status}
-                                    setFilter={(value) => handleFilterChange('status', value)}
-                                    dateFilter={filters.date}
-                                    setDateFilter={(value) => handleFilterChange('date', value)}
-                                    assignedFilter={filters.assigned}
-                                    setAssignedFilter={(value) => handleFilterChange('assigned', value)}
-                                    advancedFilters={filters}
-                                    onAdvancedFilterChange={(filterType: string, value: string) =>
-                                        handleFilterChange(filterType as keyof FilterState, value)
-                                    }
-                                    onResetFilters={resetFilters}
-                                    searchTerm={searchTerm}
-                                    setSearchTerm={setSearchTerm}
-                                    currentUser={currentUser}
-                                    users={users}
-                                    onEditTask={async (taskId: string, updatedTask: Partial<Task>) => {
-                                        return await handleUpdateTask(taskId, updatedTask);
-                                    }}
-                                    onDeleteTask={handleDeleteTask}
-                                    formatDate={formatDate}
-                                    isOverdue={isOverdueFn}
-                                    getTaskBorderColor={getTaskBorderColor}
-                                    openMenuId={openMenuId}
-                                    setOpenMenuId={setOpenMenuId}
-                                    onToggleTaskStatus={handleToggleTaskStatus}
-                                    onCreateTask={async () => {
-                                        if (!canCreateTasks) {
-                                            toast.error('You do not have permission to create tasks');
-                                            return undefined;
-                                        }
-                                        openAddTaskModal();
-                                        return undefined;
-                                    }}
-                                    onSaveComment={handleSaveComment}
-                                    onDeleteComment={handleDeleteComment}
-                                    onFetchTaskComments={handleFetchTaskComments}
-                                    onReassignTask={handleReassignTask}
-                                    onMdImpexReassignTask={handleMdImpexReassignTask}
-                                    onAddTaskHistory={handleAddTaskHistory}
-                                    onApproveTask={handleApproveTask}
-                                    onUpdateTaskApproval={handleUpdateTaskApproval}
-                                    onFetchTaskHistory={handleFetchTaskHistory}
-                                    onBulkCreateTasks={handleBulkCreateTasks}
-                                    isSidebarCollapsed={isSidebarCollapsed}
-                                    brands={brands}
-                                    showEditModal={showEditTaskModal}
-                                    editingTask={editingTask}
-                                    onOpenEditModal={handleOpenEditModal}
-                                    onCloseEditModal={() => setShowEditTaskModal(false)}
-                                    onSaveEditedTask={handleSaveEditedTask}
-                                />
-                            ) : currentView === 'assigned-by-me' ? (
-                                <AssignedByMe
-                                    currentUser={currentUser as any}
-                                    users={users as any}
-                                    brands={brands as any}
-                                    getTaskBorderColor={getTaskBorderColor}
-                                    formatDate={formatDate}
-                                    isOverdue={isOverdueFn}
-                                    onApproveTask={handleApproveTask}
-                                    onUpdateTaskApproval={handleUpdateTaskApproval}
-                                    advancedFilters={filters}
-                                    onAdvancedFilterChange={(filterType: string, value: string) =>
-                                        handleFilterChange(filterType as keyof FilterState, value)
-                                    }
-                                    onEditTask={handleOpenEditModal}
-                                    onViewHistory={handleOpenTaskHistorySidebar}
-                                    onOpenComments={handleOpenTaskCommentSidebar}
-                                    onSaveComment={handleSaveComment}
-                                    onDeleteComment={handleDeleteComment}
-                                    onFetchTaskComments={handleFetchTaskComments}
-                                    onFetchTaskHistory={handleFetchTaskHistory}
-                                    onToggleTaskStatus={handleToggleTaskStatus}
-                                />
-                            ) : currentView === 'assigned-to-me' ? (
-                                <AssignedToMe
-                                    currentUser={currentUser as any}
-                                    users={users as any}
-                                    brands={brands as any}
-                                    getTaskBorderColor={getTaskBorderColor}
-                                    formatDate={formatDate}
-                                    isOverdue={isOverdueFn}
-                                    onApproveTask={handleApproveTask}
-                                    onUpdateTaskApproval={handleUpdateTaskApproval}
-                                    advancedFilters={filters}
-                                    onAdvancedFilterChange={(filterType: string, value: string) =>
-                                        handleFilterChange(filterType as keyof FilterState, value)
-                                    }
-                                    onEditTask={handleOpenEditModal}
-                                    onViewHistory={handleOpenTaskHistorySidebar}
-                                    onOpenComments={handleOpenTaskCommentSidebar}
-                                    onSaveComment={handleSaveComment}
-                                    onDeleteComment={handleDeleteComment}
-                                    onFetchTaskComments={handleFetchTaskComments}
-                                    onFetchTaskHistory={handleFetchTaskHistory}
-                                    onToggleTaskStatus={handleToggleTaskStatus}
-                                />
-                            ) : currentView === 'personal-tasks' ? (
-                                <PersonalTasksPage currentUser={currentUser} />
-                            ) : currentView === 'calendar' ? (
-                                <CalendarView
-                                    tasks={tasks}
-                                    currentUser={{
-                                        id: currentUser.id || '',
-                                        name: currentUser.name || 'User',
-                                        email: currentUser.email || '',
-                                        role: currentUser.role || 'user',
-                                        avatar: currentUser.avatar || 'U'
-                                    }}
-                                    handleToggleTaskStatus={async (taskId: string, currentStatus: TaskStatus) => {
-                                        try {
-                                            await handleToggleTaskStatus(taskId, currentStatus, false);
-                                        } catch (error) {
-                                            toast.error('Failed to update task status');
-                                        }
-                                    }}
-                                    handleDeleteTask={async (taskId: string) => {
-                                        try {
-                                            await handleDeleteTask(taskId);
-                                        } catch (error) {
-                                            toast.error('Failed to delete task');
-                                        }
-                                    }}
-                                    handleUpdateTask={async (taskId: string, updatedData: Partial<Task>) => {
-                                        try {
-                                            await handleUpdateTask(taskId, updatedData);
-                                        } catch (error) {
-                                            toast.error('Failed to update task');
-                                        }
-                                    }}
-                                    canEditTask={canEditTask}
-                                    canDeleteTaskForTask={canEditDeleteTask}
-                                    canMarkTaskDone={canMarkTaskDone}
-                                    getAssignedUserInfo={getAssignedUserInfo}
-                                    formatDate={formatDate}
-                                    isOverdue={isOverdueFn}
-                                    canDeleteTask={(() => {
-                                        const role = String((currentUser as any)?.role || '').trim().toLowerCase();
-                                        return role !== 'rm' && role !== 'am';
-                                    })()}
-                                />
-                            ) : currentView === 'analyze' ? (
-                                <Suspense fallback={
-                                    <div className="flex items-center justify-center p-12">
-                                        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                                        <span className="ml-3 text-gray-600 font-medium">Loading Analytics...</span>
-                                    </div>
-                                }>
-                                    <AnalyzePage
-                                        tasks={tasks}
+                                        <TaskVirtualList
+                                            tasks={displayTasks}
+                                            viewMode={viewMode}
+                                            users={users}
+                                            onToggleStatus={handleToggleTaskStatus}
+                                            onDelete={handleDeleteTask}
+                                            onEdit={handleOpenEditModal}
+                                            onSendReminder={handleSendReminder}
+                                            onOpenComments={handleOpenTaskCommentSidebar}
+                                            formatBrand={_formatBrandWithGroupNumber}
+                                            formatDate={formatDate}
+                                            canEditTask={canEditTask}
+                                            canMarkTaskDone={canMarkTaskDone}
+                                            canEditDeleteTask={canEditDeleteTask}
+                                            canSendReminderForTask={canSendReminderForTask}
+                                            isSbmUser={isSbmUser}
+                                            sendingReminderByTaskId={sendingReminderByTaskId}
+                                        />
+
+                                        {displayTasks.length > 0 && totalTaskPages > 1 && (
+                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-4">
+                                                <div className="text-xs text-gray-500">
+                                                    <div className="flex items-center gap-2">
+                                                        <span>Page {taskPage} of {totalTaskPages}</span>
+                                                        <select
+                                                            value={String(tasksPerPage)}
+                                                            onChange={(e) => {
+                                                                const next = Number(e.target.value);
+                                                                if (!Number.isFinite(next)) return;
+                                                                setTasksPerPage(next);
+                                                                setTaskPage(1);
+                                                            }}
+                                                            className="px-2 py-1 text-xs rounded-md border border-gray-200 bg-white hover:bg-gray-50 text-black focus:outline-none focus:ring-2 focus:ring-[#3b82f6]"
+                                                        >
+                                                            {PAGE_SIZE_OPTIONS.map((n) => (
+                                                                <option key={n} value={String(n)}>
+                                                                    {n}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setTaskPage((p) => Math.max(1, p - 1))}
+                                                        disabled={taskPage <= 1}
+                                                        className="px-2.5 py-1 text-xs font-medium bg-white border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-50 text-black transition-colors"
+                                                    >
+                                                        Previous
+                                                    </button>
+                                                    <div className="flex items-center gap-1">
+                                                        {taskPageNumbers.map((p) => (
+                                                            <button
+                                                                key={p}
+                                                                type="button"
+                                                                onClick={() => setTaskPage(p)}
+                                                                className={`w-6 h-6 text-xs font-medium rounded-md border transition-colors ${p === taskPage
+                                                                    ? 'bg-[#3b82f6] text-white border-[#3b82f6]'
+                                                                    : 'bg-white text-black border-gray-200 hover:bg-gray-50'
+                                                                    }`}
+                                                            >
+                                                                {p}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setTaskPage((p) => Math.min(totalTaskPages, p + 1))}
+                                                        disabled={taskPage >= totalTaskPages}
+                                                        className="px-2.5 py-1 text-xs font-medium bg-white border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-50 text-black transition-colors"
+                                                    >
+                                                        Next
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </>
+                                ) : currentView === 'md-impex-strike' ? (
+                                    <MdImpexStrikePage
+                                        currentUser={currentUser as any}
                                         users={users}
-                                        apiCompanies={availableCompanies}
-                                        currentUserEmail={currentUser?.email}
-                                        currentUserRole={currentUser?.role}
+                                        tasks={tasks}
+                                        isOverdue={isOverdueFn}
                                     />
-                                </Suspense>
-                            ) : currentView === 'team' ? (
-                                <TeamPage
-                                    users={users}
-                                    tasks={tasks}
-                                    onUpdateUser={handleUpdateUser}
-                                    onDeleteUser={handleDeleteUser}
-                                    onAddUser={handleCreateUser}
-                                    isOverdue={isOverdueFn}
-                                    currentUser={currentUser}
-                                    onFetchTaskHistory={handleFetchTaskHistory}
-                                />
-                            ) : currentView === 'profile' ? (
-                                <UserProfilePage
-                                    user={currentUser}
-                                    formatDate={formatDate}
-                                    onUserUpdated={(next) => {
-                                        try {
-                                            setCurrentUser(next);
-                                        } catch {
-                                            // ignore
+                                ) : currentView === 'md-impex-manual-strike' ? (
+                                    <NewMdImpexStrikePage
+                                        currentUser={currentUser as any}
+                                        users={users}
+                                    />
+                                ) : currentView === 'md-impex-access' ? (
+                                    <MdImpexAccessPage
+                                        allBrands={apiBrands}
+                                        allTaskTypes={taskTypes}
+                                    />
+                                ) : currentView === 'all-tasks' ? (
+                                    <AllTasksPage
+                                        tasks={tasks}
+                                        filter={filters.status}
+                                        setFilter={(value) => handleFilterChange('status', value)}
+                                        dateFilter={filters.date}
+                                        setDateFilter={(value) => handleFilterChange('date', value)}
+                                        assignedFilter={filters.assigned}
+                                        setAssignedFilter={(value) => handleFilterChange('assigned', value)}
+                                        advancedFilters={filters}
+                                        onAdvancedFilterChange={(filterType: string, value: string) =>
+                                            handleFilterChange(filterType as keyof FilterState, value)
                                         }
-                                        try {
-                                            const nextId = (next as any)?.id || (next as any)?._id;
-                                            if (next) {
-                                                dispatch(userUpserted({ ...next, id: nextId } as UserType));
+                                        onResetFilters={resetFilters}
+                                        searchTerm={searchTerm}
+                                        setSearchTerm={setSearchTerm}
+                                        currentUser={currentUser}
+                                        users={users}
+                                        onEditTask={async (taskId: string, updatedTask: Partial<Task>) => {
+                                            return await handleUpdateTask(taskId, updatedTask);
+                                        }}
+                                        onDeleteTask={handleDeleteTask}
+                                        formatDate={formatDate}
+                                        isOverdue={isOverdueFn}
+                                        getTaskBorderColor={getTaskBorderColor}
+                                        openMenuId={openMenuId}
+                                        setOpenMenuId={setOpenMenuId}
+                                        onToggleTaskStatus={handleToggleTaskStatus}
+                                        onCreateTask={async () => {
+                                            if (!canCreateTasks) {
+                                                toast.error('You do not have permission to create tasks');
+                                                return undefined;
                                             }
-                                        } catch {
-                                            // ignore
+                                            openAddTaskModal();
+                                            return undefined;
+                                        }}
+                                        onSaveComment={handleSaveComment}
+                                        onDeleteComment={handleDeleteComment}
+                                        onFetchTaskComments={handleFetchTaskComments}
+                                        onReassignTask={handleReassignTask}
+                                        onMdImpexReassignTask={handleMdImpexReassignTask}
+                                        onAddTaskHistory={handleAddTaskHistory}
+                                        onApproveTask={handleApproveTask}
+                                        onUpdateTaskApproval={handleUpdateTaskApproval}
+                                        onFetchTaskHistory={handleFetchTaskHistory}
+                                        onBulkCreateTasks={handleBulkCreateTasks}
+                                        isSidebarCollapsed={isSidebarCollapsed}
+                                        brands={brands}
+                                        showEditModal={showEditTaskModal}
+                                        editingTask={editingTask}
+                                        onOpenEditModal={handleOpenEditModal}
+                                        onCloseEditModal={() => setShowEditTaskModal(false)}
+                                        onSaveEditedTask={handleSaveEditedTask}
+                                    />
+                                ) : currentView === 'assigned-by-me' ? (
+                                    <AssignedByMe
+                                        currentUser={currentUser as any}
+                                        users={users as any}
+                                        brands={brands as any}
+                                        getTaskBorderColor={getTaskBorderColor}
+                                        formatDate={formatDate}
+                                        isOverdue={isOverdueFn}
+                                        onApproveTask={handleApproveTask}
+                                        onUpdateTaskApproval={handleUpdateTaskApproval}
+                                        advancedFilters={filters}
+                                        onAdvancedFilterChange={(filterType: string, value: string) =>
+                                            handleFilterChange(filterType as keyof FilterState, value)
                                         }
-                                        try {
-                                            localStorage.setItem('currentUser', JSON.stringify(next));
-                                        } catch {
-                                            // ignore
+                                        onEditTask={handleOpenEditModal}
+                                        onViewHistory={handleOpenTaskHistorySidebar}
+                                        onOpenComments={handleOpenTaskCommentSidebar}
+                                        onSaveComment={handleSaveComment}
+                                        onDeleteComment={handleDeleteComment}
+                                        onFetchTaskComments={handleFetchTaskComments}
+                                        onFetchTaskHistory={handleFetchTaskHistory}
+                                        onToggleTaskStatus={handleToggleTaskStatus}
+                                    />
+                                ) : currentView === 'assigned-to-me' ? (
+                                    <AssignedToMe
+                                        currentUser={currentUser as any}
+                                        users={users as any}
+                                        brands={brands as any}
+                                        getTaskBorderColor={getTaskBorderColor}
+                                        formatDate={formatDate}
+                                        isOverdue={isOverdueFn}
+                                        onApproveTask={handleApproveTask}
+                                        onUpdateTaskApproval={handleUpdateTaskApproval}
+                                        advancedFilters={filters}
+                                        onAdvancedFilterChange={(filterType: string, value: string) =>
+                                            handleFilterChange(filterType as keyof FilterState, value)
                                         }
-                                    }}
-                                />
-                            ) : currentView === 'access' ? (
-                                <AccessPage
-                                    currentUser={currentUser}
-                                    users={users}
-                                    onAddUser={handleCreateUser}
-                                    onRefreshCurrentUser={fetchCurrentUser}
-                                />
-                            ) : currentView === 'company-brand-task-types' ? (
-                                <CompanyBrandTaskTypePage
-                                    currentUser={currentUser}
-                                />
-                            ) : currentView === 'assign' ? (
-                                <AssignPage
-                                    currentUser={currentUser}
-                                />
-                            ) : currentView === 'speed-ecom-reassign' ? (
-                                <SpeedEcomReassignPage
-                                    task={speedEcomReassignTask}
-                                    currentUser={currentUser}
-                                    users={users}
-                                    onSubmit={handleSpeedEcomReassignSubmit}
-                                    isSubmitting={isSpeedEcomReassignSubmitting}
-                                />
-                            ) : currentView === 'reviews' ? (
-                                <ReviewsPage
-                                    currentUser={currentUser}
-                                    users={users}
-                                />
-                            ) : currentView === 'other-work' ? (
-                                <OtherWorkPage
-                                    currentUser={currentUser}
-                                    tasks={tasks}
-                                    onRefreshTasks={fetchTasks}
-                                />
-                            ) : currentView === 'brands' ? (
-                                <BrandsListPage
-                                    isSidebarCollapsed={isSidebarCollapsed}
-                                    currentUser={currentUser}
-                                    tasks={tasks}
-                                    socket={socketRef.current}
-                                    onSelectBrand={(brandId) => {
-                                        const nextId = String(brandId || '').trim();
-                                        if (!nextId) return;
-                                        setSelectedBrandId(nextId);
-                                        setCurrentView('brand-detail');
-                                        try {
-                                            navigate(`/brands/${encodeURIComponent(nextId)}`);
-                                        } catch {
-                                            // ignore
-                                        }
-                                    }}
-                                />
-                            ) : currentView === 'brand-detail' ? (
-                                <BrandDetailPage
-                                    brandId={selectedBrandId || ''}
-                                    brands={apiBrands}
-                                    currentUser={currentUser}
-                                    isSidebarCollapsed={isSidebarCollapsed}
-                                    onBack={() => {
-                                        setCurrentView('brands');
-                                        setSelectedBrandId(null);
-                                        try {
-                                            navigate(routepath.brands);
-                                        } catch {
-                                            // ignore
-                                        }
-                                    }}
-                                    tasks={tasks}
-                                    availableUsers={users}
-                                />
-                            ) : currentView === 'headline' ? (
-                                <AdminHeadlineManager />
-                            ) : currentView === 'manager-monthly-rankings' ? (
-                                <ManagerMonthlyRankingPage currentUser={currentUser} />
-                            ) : currentView === 'brands' ? (
-                                <BrandsListPage
-                                    isSidebarCollapsed={isSidebarCollapsed}
-                                    currentUser={currentUser}
-                                    tasks={tasks}
-                                    socket={socketRef.current}
-                                    onSelectBrand={(brandId) => {
-                                        setSelectedBrandId(brandId);
-                                        setCurrentView('brand-detail');
-                                    }}
-                                />
-                            ) : currentView === 'brand-detail' ? (
-                                <BrandDetailPage
-                                    brandId={selectedBrandId || ''}
-                                    brands={apiBrands}
-                                    currentUser={currentUser}
-                                    isSidebarCollapsed={isSidebarCollapsed}
-                                    onBack={() => setCurrentView('brands')}
-                                    tasks={tasks}
-                                />
-                            ) : null}
-                        </Suspense>
+                                        onEditTask={handleOpenEditModal}
+                                        onViewHistory={handleOpenTaskHistorySidebar}
+                                        onOpenComments={handleOpenTaskCommentSidebar}
+                                        onSaveComment={handleSaveComment}
+                                        onDeleteComment={handleDeleteComment}
+                                        onFetchTaskComments={handleFetchTaskComments}
+                                        onFetchTaskHistory={handleFetchTaskHistory}
+                                        onToggleTaskStatus={handleToggleTaskStatus}
+                                    />
+                                ) : currentView === 'personal-tasks' ? (
+                                    <PersonalTasksPage currentUser={currentUser} />
+                                ) : currentView === 'calendar' ? (
+                                    <CalendarView
+                                        tasks={tasks}
+                                        currentUser={{
+                                            id: currentUser.id || '',
+                                            name: currentUser.name || 'User',
+                                            email: currentUser.email || '',
+                                            role: currentUser.role || 'user',
+                                            avatar: currentUser.avatar || 'U'
+                                        }}
+                                        handleToggleTaskStatus={async (taskId: string, currentStatus: TaskStatus) => {
+                                            try {
+                                                await handleToggleTaskStatus(taskId, currentStatus, false);
+                                            } catch (error) {
+                                                toast.error('Failed to update task status');
+                                            }
+                                        }}
+                                        handleDeleteTask={async (taskId: string) => {
+                                            try {
+                                                await handleDeleteTask(taskId);
+                                            } catch (error) {
+                                                toast.error('Failed to delete task');
+                                            }
+                                        }}
+                                        handleUpdateTask={async (taskId: string, updatedData: Partial<Task>) => {
+                                            try {
+                                                await handleUpdateTask(taskId, updatedData);
+                                            } catch (error) {
+                                                toast.error('Failed to update task');
+                                            }
+                                        }}
+                                        canEditTask={canEditTask}
+                                        canDeleteTaskForTask={canEditDeleteTask}
+                                        canMarkTaskDone={canMarkTaskDone}
+                                        getAssignedUserInfo={getAssignedUserInfo}
+                                        formatDate={formatDate}
+                                        isOverdue={isOverdueFn}
+                                        canDeleteTask={(() => {
+                                            const role = String((currentUser as any)?.role || '').trim().toLowerCase();
+                                            return role !== 'rm' && role !== 'am';
+                                        })()}
+                                    />
+                                ) : currentView === 'analyze' ? (
+                                    <Suspense fallback={
+                                        <div className="flex items-center justify-center p-12">
+                                            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                                            <span className="ml-3 text-gray-600 font-medium">Loading Analytics...</span>
+                                        </div>
+                                    }>
+                                        <AnalyzePage
+                                            tasks={tasks}
+                                            users={users}
+                                            apiCompanies={availableCompanies}
+                                            currentUserEmail={currentUser?.email}
+                                            currentUserRole={currentUser?.role}
+                                        />
+                                    </Suspense>
+                                ) : currentView === 'team' ? (
+                                    <TeamPage
+                                        users={users}
+                                        tasks={tasks}
+                                        onUpdateUser={handleUpdateUser}
+                                        onDeleteUser={handleDeleteUser}
+                                        onAddUser={handleCreateUser}
+                                        isOverdue={isOverdueFn}
+                                        currentUser={currentUser}
+                                        onFetchTaskHistory={handleFetchTaskHistory}
+                                    />
+                                ) : currentView === 'profile' ? (
+                                    <UserProfilePage
+                                        user={currentUser}
+                                        formatDate={formatDate}
+                                        onUserUpdated={(next) => {
+                                            try {
+                                                setCurrentUser(next);
+                                            } catch {
+                                                // ignore
+                                            }
+                                            try {
+                                                const nextId = (next as any)?.id || (next as any)?._id;
+                                                if (next) {
+                                                    dispatch(userUpserted({ ...next, id: nextId } as UserType));
+                                                }
+                                            } catch {
+                                                // ignore
+                                            }
+                                            try {
+                                                localStorage.setItem('currentUser', JSON.stringify(next));
+                                            } catch {
+                                                // ignore
+                                            }
+                                        }}
+                                    />
+                                ) : currentView === 'access' ? (
+                                    <AccessPage
+                                        currentUser={currentUser}
+                                        users={users}
+                                        onAddUser={handleCreateUser}
+                                        onRefreshCurrentUser={fetchCurrentUser}
+                                    />
+                                ) : currentView === 'company-brand-task-types' ? (
+                                    <CompanyBrandTaskTypePage
+                                        currentUser={currentUser}
+                                    />
+                                ) : currentView === 'assign' ? (
+                                    <AssignPage
+                                        currentUser={currentUser}
+                                    />
+                                ) : currentView === 'speed-ecom-reassign' ? (
+                                    <SpeedEcomReassignPage
+                                        task={speedEcomReassignTask}
+                                        currentUser={currentUser}
+                                        users={users}
+                                        onSubmit={handleSpeedEcomReassignSubmit}
+                                        isSubmitting={isSpeedEcomReassignSubmitting}
+                                    />
+                                ) : currentView === 'reviews' ? (
+                                    <ReviewsPage
+                                        currentUser={currentUser}
+                                        users={users}
+                                    />
+                                ) : currentView === 'other-work' ? (
+                                    <OtherWorkPage
+                                        currentUser={currentUser}
+                                        tasks={tasks}
+                                        onRefreshTasks={fetchTasks}
+                                    />
+                                ) : currentView === 'brands' ? (
+                                    <BrandsListPage
+                                        isSidebarCollapsed={isSidebarCollapsed}
+                                        currentUser={currentUser}
+                                        tasks={tasks}
+                                        socket={socketRef.current}
+                                        onSelectBrand={(brandId) => {
+                                            const nextId = String(brandId || '').trim();
+                                            if (!nextId) return;
+                                            setSelectedBrandId(nextId);
+                                            setCurrentView('brand-detail');
+                                            try {
+                                                navigate(`/brands/${encodeURIComponent(nextId)}`);
+                                            } catch {
+                                                // ignore
+                                            }
+                                        }}
+                                    />
+                                ) : currentView === 'brand-detail' ? (
+                                    <BrandDetailPage
+                                        brandId={selectedBrandId || ''}
+                                        brands={apiBrands}
+                                        currentUser={currentUser}
+                                        isSidebarCollapsed={isSidebarCollapsed}
+                                        onBack={() => {
+                                            setCurrentView('brands');
+                                            setSelectedBrandId(null);
+                                            try {
+                                                navigate(routepath.brands);
+                                            } catch {
+                                                // ignore
+                                            }
+                                        }}
+                                        tasks={tasks}
+                                        availableUsers={users}
+                                    />
+                                ) : currentView === 'headline' ? (
+                                    <AdminHeadlineManager />
+                                ) : currentView === 'manager-monthly-rankings' ? (
+                                    <ManagerMonthlyRankingPage currentUser={currentUser} />
+                                ) : currentView === 'brands' ? (
+                                    <BrandsListPage
+                                        isSidebarCollapsed={isSidebarCollapsed}
+                                        currentUser={currentUser}
+                                        tasks={tasks}
+                                        socket={socketRef.current}
+                                        onSelectBrand={(brandId) => {
+                                            setSelectedBrandId(brandId);
+                                            setCurrentView('brand-detail');
+                                        }}
+                                    />
+                                ) : currentView === 'brand-detail' ? (
+                                    <BrandDetailPage
+                                        brandId={selectedBrandId || ''}
+                                        brands={apiBrands}
+                                        currentUser={currentUser}
+                                        isSidebarCollapsed={isSidebarCollapsed}
+                                        onBack={() => setCurrentView('brands')}
+                                        tasks={tasks}
+                                    />
+                                ) : null}
+                            </Suspense>
                         </div>
                     </div>
                 </main>
             </div>
             <Suspense fallback={null}>
-            {(() => {
-                const currentUserCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase();
-                const currentUserRole = String((currentUser as any)?.role || '').trim().toLowerCase();
-                const isMdImpexUser = (currentUserCompany.includes('mdimpex') ||
-                    currentUserCompany.includes('md_impex') ||
-                    currentUserCompany.includes('md impex') ||
-                    currentUserRole === 'md_manager' ||
-                    currentUserRole === 'assistant' ||
-                    currentUserRole === 'assistance') && 
-                    currentUserRole !== 'admin' && 
-                    currentUserRole !== 'super_admin';
-                if (isMdImpexUser) {
+                {(() => {
+                    const currentUserCompany = String((currentUser as any)?.companyName || (currentUser as any)?.company || '').trim().toLowerCase();
+                    const currentUserRole = String((currentUser as any)?.role || '').trim().toLowerCase();
+                    const isMdImpexUser = (currentUserCompany.includes('mdimpex') ||
+                        currentUserCompany.includes('md_impex') ||
+                        currentUserCompany.includes('md impex') ||
+                        currentUserRole === 'md_manager' ||
+                        currentUserRole === 'assistant' ||
+                        currentUserRole === 'assistance') &&
+                        currentUserRole !== 'admin' &&
+                        currentUserRole !== 'super_admin';
+                    if (isMdImpexUser) {
+                        return (
+                            <MdImpexAddTaskModal
+                                open={showAddTaskModal}
+                                onClose={() => setShowAddTaskModal(false)}
+                                newTask={newTask}
+                                formErrors={formErrors}
+                                onChange={handleInputChange}
+                                availableCompanies={availableCompaniesForSbm}
+                                getAvailableBrandOptions={getAvailableBrandOptions}
+                                availableTaskTypesForNewTask={availableTaskTypesForNewTask}
+                                onSubmit={handleSaveTaskFromModal}
+                                isSubmitting={isCreatingTask}
+                                currentUserEmail={String(currentUser?.email || '')}
+                                currentUserRole={String(currentUser?.role || '')}
+                                currentUserId={String((currentUser as any)?.id || (currentUser as any)?._id || '')}
+                                canBulkAddTaskTypes={canBulkAddTaskTypes}
+                                onBulkAddTaskTypes={handleAddTaskTypeClick}
+                            />
+                        );
+                    }
                     return (
-                        <MdImpexAddTaskModal
+                        <AddTaskModal
                             open={showAddTaskModal}
                             onClose={() => setShowAddTaskModal(false)}
                             newTask={newTask}
                             formErrors={formErrors}
-                            onChange={handleInputChange}
+                            onFieldChange={handleInputChange}
+                            users={usersForAddTaskModal}
                             availableCompanies={availableCompaniesForSbm}
-                            getAvailableBrandOptions={getAvailableBrandOptions}
+                            canBulkAddCompanies={canBulkAddCompanies}
+                            onBulkAddCompanies={handleAddCompanyClick}
+                            canCreateBrand={canCreateBrand}
+                            canBulkAddBrands={canBulkAddBrands}
+                            onAddBrand={handleAddBrandClick}
+                            availableBrandOptions={availableBrandOptions}
+                            canBulkAddTaskTypes={canBulkAddTaskTypes}
+                            onBulkAddTaskTypes={handleAddTaskTypeClick}
                             availableTaskTypesForNewTask={availableTaskTypesForNewTask}
                             onSubmit={handleSaveTaskFromModal}
                             isSubmitting={isCreatingTask}
-                            currentUserEmail={String(currentUser?.email || '')}
-                            currentUserRole={String(currentUser?.role || '')}
-                            currentUserId={String((currentUser as any)?.id || (currentUser as any)?._id || '')}
-                            canBulkAddTaskTypes={canBulkAddTaskTypes}
-                            onBulkAddTaskTypes={handleAddTaskTypeClick}
+                            isSbmUser={isSbmUser}
+                            showCompanyDropdownIcon={true}
                         />
                     );
-                }
-                return (
-                    <AddTaskModal
-                        open={showAddTaskModal}
-                        onClose={() => setShowAddTaskModal(false)}
-                        newTask={newTask}
-                        formErrors={formErrors}
-                        onFieldChange={handleInputChange}
-                        users={usersForAddTaskModal}
-                        availableCompanies={availableCompaniesForSbm}
-                        canBulkAddCompanies={canBulkAddCompanies}
-                        onBulkAddCompanies={handleAddCompanyClick}
-                        canCreateBrand={canCreateBrand}
-                        canBulkAddBrands={canBulkAddBrands}
-                        onAddBrand={handleAddBrandClick}
-                        availableBrandOptions={availableBrandOptions}
-                        canBulkAddTaskTypes={canBulkAddTaskTypes}
-                        onBulkAddTaskTypes={handleAddTaskTypeClick}
-                        availableTaskTypesForNewTask={availableTaskTypesForNewTask}
-                        onSubmit={handleSaveTaskFromModal}
-                        isSubmitting={isCreatingTask}
-                        isSbmUser={isSbmUser}
-                        showCompanyDropdownIcon={true}
-                    />
-                );
-            })()}
-            <EditTaskModal
-                open={showEditTaskModal}
-                editingTask={editingTask}
-                onClose={() => setShowEditTaskModal(false)}
-                editFormData={editFormData}
-                editFormErrors={editFormErrors}
-                onChange={handleEditInputChange}
-                users={users}
-                availableTaskTypesForEditTask={availableTaskTypesForEditTask}
-                availableCompanies={availableCompanies}
-                getEditFormBrandOptions={getEditFormBrandOptions}
-                onSubmit={handleSaveEditedTask}
-                isSubmitting={isUpdatingTask}
-                disableDueDate={true}
-                currentUserEmail={(currentUser as any)?.email || ''}
-                currentUser={currentUser as any}
-            />
-            <MdImpexEditTaskModal
-                open={showMdImpexEditModal}
-                editingTask={editingTask}
-                currentUser={currentUser as any}
-                currentUserEmail={(currentUser as any)?.email || ''}
-                onClose={() => setShowMdImpexEditModal(false)}
-                onSubmit={handleSaveEditedTask}
-                users={users}
-                editFormData={editFormData}
-                editFormErrors={editFormErrors}
-                onChange={handleEditInputChange}
-                availableTaskTypesForEditTask={availableTaskTypesForEditTask}
-                availableCompanies={availableCompanies}
-                getEditFormBrandOptions={getEditFormBrandOptions}
-                isSubmitting={isUpdatingTask}
-                disableDueDate={false}
-            />
-            <BulkAddBrandsModal
-                open={canBulkAddBrands && showBulkBrandModal}
-                onClose={() => setShowBulkBrandModal(false)}
-                bulkBrandForm={bulkBrandForm}
-                setBulkBrandForm={(next) => setBulkBrandForm(next)}
-                availableCompanies={availableCompaniesForSbm}
-                companyUsers={companyUsers}
-                currentUserRole={(currentUser as any)?.role}
-                onSubmit={handleSubmitBulkBrands}
-                isSubmitting={isCreatingBulkBrands}
-            />
-            <BulkAddCompaniesModal
-                open={canBulkAddCompanies && showBulkCompanyModal}
-                onClose={() => setShowBulkCompanyModal(false)}
-                bulkCompanyNames={bulkCompanyNames}
-                setBulkCompanyNames={(next) => setBulkCompanyNames(next)}
-                onSubmit={handleSubmitBulkCompanies}
-                isSubmitting={isCreatingBulkCompanies}
-            />
-            <BulkAddTaskTypesModal
-                open={canBulkAddTaskTypes && showBulkTaskTypeModal}
-                onClose={() => {
-                    setShowBulkTaskTypeModal(false);
-                    setBulkTaskTypeCompany('');
-                }}
-                bulkTaskTypeCompany={bulkTaskTypeCompany}
-                setBulkTaskTypeCompany={(next) => setBulkTaskTypeCompany(next)}
-                bulkTaskTypeNames={bulkTaskTypeNames}
-                setBulkTaskTypeNames={(next) => setBulkTaskTypeNames(next)}
-                availableCompanies={availableCompaniesForSbm}
-                onSubmit={handleSubmitBulkTaskTypes}
-                isSubmitting={isCreatingBulkTaskTypes}
-            />
-            <ManagerAddBrandModal
-                open={showManagerAddBrandModal}
-                managerBrandName={managerBrandName}
-                setManagerBrandName={(next) => setManagerBrandName(next)}
-                isSubmitting={isCreatingManagerBrand}
-                onSubmit={() => handleManagerCreateBrand()}
-                onClose={() => setShowManagerAddBrandModal(false)}
-            />
+                })()}
+                <EditTaskModal
+                    open={showEditTaskModal}
+                    editingTask={editingTask}
+                    onClose={() => setShowEditTaskModal(false)}
+                    editFormData={editFormData}
+                    editFormErrors={editFormErrors}
+                    onChange={handleEditInputChange}
+                    users={users}
+                    availableTaskTypesForEditTask={availableTaskTypesForEditTask}
+                    availableCompanies={availableCompanies}
+                    getEditFormBrandOptions={getEditFormBrandOptions}
+                    onSubmit={handleSaveEditedTask}
+                    isSubmitting={isUpdatingTask}
+                    disableDueDate={true}
+                    currentUserEmail={(currentUser as any)?.email || ''}
+                    currentUser={currentUser as any}
+                />
+                <MdImpexEditTaskModal
+                    open={showMdImpexEditModal}
+                    editingTask={editingTask}
+                    currentUser={currentUser as any}
+                    currentUserEmail={(currentUser as any)?.email || ''}
+                    onClose={() => setShowMdImpexEditModal(false)}
+                    onSubmit={handleSaveEditedTask}
+                    users={users}
+                    editFormData={editFormData}
+                    editFormErrors={editFormErrors}
+                    onChange={handleEditInputChange}
+                    availableTaskTypesForEditTask={availableTaskTypesForEditTask}
+                    availableCompanies={availableCompanies}
+                    getEditFormBrandOptions={getEditFormBrandOptions}
+                    isSubmitting={isUpdatingTask}
+                    disableDueDate={false}
+                />
+                <BulkAddBrandsModal
+                    open={canBulkAddBrands && showBulkBrandModal}
+                    onClose={() => setShowBulkBrandModal(false)}
+                    bulkBrandForm={bulkBrandForm}
+                    setBulkBrandForm={(next) => setBulkBrandForm(next)}
+                    availableCompanies={availableCompaniesForSbm}
+                    companyUsers={companyUsers}
+                    currentUserRole={(currentUser as any)?.role}
+                    onSubmit={handleSubmitBulkBrands}
+                    isSubmitting={isCreatingBulkBrands}
+                />
+                <BulkAddCompaniesModal
+                    open={canBulkAddCompanies && showBulkCompanyModal}
+                    onClose={() => setShowBulkCompanyModal(false)}
+                    bulkCompanyNames={bulkCompanyNames}
+                    setBulkCompanyNames={(next) => setBulkCompanyNames(next)}
+                    onSubmit={handleSubmitBulkCompanies}
+                    isSubmitting={isCreatingBulkCompanies}
+                />
+                <BulkAddTaskTypesModal
+                    open={canBulkAddTaskTypes && showBulkTaskTypeModal}
+                    onClose={() => {
+                        setShowBulkTaskTypeModal(false);
+                        setBulkTaskTypeCompany('');
+                    }}
+                    bulkTaskTypeCompany={bulkTaskTypeCompany}
+                    setBulkTaskTypeCompany={(next) => setBulkTaskTypeCompany(next)}
+                    bulkTaskTypeNames={bulkTaskTypeNames}
+                    setBulkTaskTypeNames={(next) => setBulkTaskTypeNames(next)}
+                    availableCompanies={availableCompaniesForSbm}
+                    onSubmit={handleSubmitBulkTaskTypes}
+                    isSubmitting={isCreatingBulkTaskTypes}
+                />
+                <ManagerAddBrandModal
+                    open={showManagerAddBrandModal}
+                    managerBrandName={managerBrandName}
+                    setManagerBrandName={(next) => setManagerBrandName(next)}
+                    isSubmitting={isCreatingManagerBrand}
+                    onSubmit={() => handleManagerCreateBrand()}
+                    onClose={() => setShowManagerAddBrandModal(false)}
+                />
             </Suspense>
 
             {/* Mobile Bottom Navigation - "Beast" UX */}
