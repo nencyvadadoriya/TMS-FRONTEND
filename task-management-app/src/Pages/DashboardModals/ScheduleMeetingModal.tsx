@@ -1,5 +1,5 @@
 import { useState, useEffect, memo, useMemo, useRef } from 'react';
-import { X, ChevronDown, Search, Calendar, Clock, Users, AlignLeft } from 'lucide-react';
+import { X, ChevronDown, Search, Calendar, Clock, Users, AlignLeft, Video } from 'lucide-react';
 import type { UserType } from '../../Types/Types';
 
 interface MeetingForm {
@@ -8,6 +8,7 @@ interface MeetingForm {
   endTime: string;
   participants: string[]; // array of user IDs
   description: string;
+  isZoomMeeting: boolean;
 }
 
 type FormErrors = Record<string, string>;
@@ -33,6 +34,7 @@ const ScheduleMeetingModal = ({
     endTime: '',
     participants: [],
     description: '',
+    isZoomMeeting: false,
   });
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [participantsOpen, setParticipantsOpen] = useState(false);
@@ -56,6 +58,7 @@ const ScheduleMeetingModal = ({
         endTime: '',
         participants: [],
         description: '',
+        isZoomMeeting: false,
       });
       setFormErrors({});
       setParticipantsOpen(false);
@@ -95,7 +98,7 @@ const ScheduleMeetingModal = ({
         if (!isNaN(start.getTime())) {
           const currentEnd = prev.endTime ? new Date(prev.endTime) : null;
           if (!currentEnd || isNaN(currentEnd.getTime()) || start >= currentEnd) {
-            const end = new Date(start.getTime() + 60 * 60 * 1000); // default +1 hour
+            const end = new Date(start.getTime() + 40 * 60 * 1000); // default +40 minutes
 
             // Format to YYYY-MM-DDTHH:mm for datetime-local
             const year = end.getFullYear();
@@ -351,6 +354,28 @@ const ScheduleMeetingModal = ({
                 value={localMeeting.description}
                 onChange={(e) => handleFieldChange('description', e.target.value)}
               />
+            </div>
+
+            {/* Zoom Meeting Toggle */}
+            <div className="flex items-center justify-between p-4 bg-blue-50/50 rounded-xl border border-blue-100">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-500 rounded-lg">
+                  <Video className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-gray-800">Zoom Meeting</h4>
+                  <p className="text-xs text-gray-500">Generate a Zoom link automatically</p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={localMeeting.isZoomMeeting}
+                  onChange={(e) => handleFieldChange('isZoomMeeting', e.target.checked)}
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
             </div>
           </form>
         </div>
