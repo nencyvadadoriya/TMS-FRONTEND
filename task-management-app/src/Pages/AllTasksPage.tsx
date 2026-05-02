@@ -4721,8 +4721,12 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
       company: 'all',
       brand: 'all',
       rm: 'all',
-      rmTeam: ''
+      rmTeam: '',   
+      sort: 'desc'
     };
+
+
+    
 
     // Reset both local and DashboardPage filters
     if (onAdvancedFilterChange) {
