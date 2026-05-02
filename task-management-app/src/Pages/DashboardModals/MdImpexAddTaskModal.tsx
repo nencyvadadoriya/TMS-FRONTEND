@@ -98,12 +98,6 @@ const MdImpexAddTaskModal = ({
       normalizedCurrentUserRole === 'all_manager' ||
       normalizedCurrentUserRole === 'marketer_manager';
 
-    // Admin and Managers get all brands
-    if (isManagerLike || isAdmin) return allOptions;
-
-    // No specific access means show all brands
-    if (!hasSpecificAccess) return allOptions;
-
     // Helper functions
     const normalize = (v: unknown) =>
       String(v || '').trim().toLowerCase().replace(/\s+/g, ' ');
@@ -120,6 +114,30 @@ const MdImpexAddTaskModal = ({
       allowedBrands
         .filter(Boolean)
         .map((brand) => ({ value: extractBrandName(brand), label: brand.trim() }));
+
+    // Admin and Managers get all brands, but we should also include explicitly allowed brands if any
+    if (isManagerLike || isAdmin) {
+      const mergedAdmin = [...allOptions, ...allowedBrandOptions];
+      const seenAdmin = new Set<string>();
+      return mergedAdmin.filter((opt) => {
+        const key = normalize(opt.value);
+        if (seenAdmin.has(key)) return false;
+        seenAdmin.add(key);
+        return true;
+      });
+    }
+
+    // No specific access means show all brands, but merge allowed brands just in case
+    if (!hasSpecificAccess) {
+      const mergedNoAccess = [...allOptions, ...allowedBrandOptions];
+      const seenNoAccess = new Set<string>();
+      return mergedNoAccess.filter((opt) => {
+        const key = normalize(opt.value);
+        if (seenNoAccess.has(key)) return false;
+        seenNoAccess.add(key);
+        return true;
+      });
+    }
 
     // ✅ Filter allOptions to user's own added brands
     const userOwnBrandOptions = allOptions.filter((opt) => {
