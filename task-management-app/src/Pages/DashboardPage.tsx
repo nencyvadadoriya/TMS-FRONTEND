@@ -188,7 +188,7 @@ interface FilterState {
     company: string;
     brand: string;
     rm: string;
-    sort?: string;
+    sort: string;
 }
 
 const DashboardPage = () => {
@@ -2772,7 +2772,7 @@ const DashboardPage = () => {
                 || rk === 'sub_assistant'
                 || rk.includes('assistant');
             if (requesterRoleKey === 'md_manager') {
-                if (targetRoleKey !== 'manager' && !isAssistantLike(targetRoleKey)) throw new Error('Only administrators can edit users');
+                if (targetRoleKey === 'super_admin') throw new Error('Only administrators can edit users');
             } else if (requesterRoleKey === 'ob_manager') {
                 if (!isAssistantLike(targetRoleKey)) throw new Error('Only administrators can edit users');
             } else if (requesterRoleKey === 'manager') {
@@ -2856,7 +2856,7 @@ const DashboardPage = () => {
             const target = (usersRef.current || []).find((u: any) => (u?.id || u?._id || '').toString() === userId?.toString());
             const targetRole = (target?.role || '').toString().trim().toLowerCase();
             if (requesterRole === 'md_manager') {
-                if (targetRole !== 'manager' && targetRole !== 'assistant' && targetRole !== 'sub_assistance') throw new Error('Only administrators can delete users');
+                if (targetRole === 'super_admin') throw new Error('Only administrators can delete users');
             } else if (requesterRole === 'ob_manager') {
                 if (targetRole !== 'assistant' && targetRole !== 'sub_assistance') throw new Error('Only administrators can delete users');
             } else if (requesterRole === 'manager') {

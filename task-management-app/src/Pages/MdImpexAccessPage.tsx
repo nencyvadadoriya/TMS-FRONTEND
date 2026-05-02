@@ -242,7 +242,11 @@ export default function MdImpexAccessPage({ allBrands, allTaskTypes }: { allBran
 
     const filteredMembers = useMemo(() => {
         if (!selectedRole) return [];
-        return members.filter(m => m.role.toLowerCase() === selectedRole.toLowerCase());
+        const targetKey = selectedRole.toLowerCase().replace(/[\s_-]+/g, '_');
+        return members.filter(m => {
+            const memberRoleKey = (m.role || '').toLowerCase().replace(/[\s_-]+/g, '_');
+            return memberRoleKey === targetKey;
+        });
     }, [members, selectedRole]);
 
     const sortedMarketerMembers = useMemo(() => {

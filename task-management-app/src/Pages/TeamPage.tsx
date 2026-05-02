@@ -686,10 +686,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
         if (requester === 'super_admin') return true;
         if (requester === 'admin') return target !== 'admin' && target !== 'super_admin';
         if (requester === 'md_manager') {
-            const baseRoles = ['manager', 'assistant', 'sub_assistance'];
-            const customRoles = (availableRoles || []).map((r) => normalizeRole(r.key));
-            const allowedRoles = [...baseRoles, ...customRoles];
-            return allowedRoles.includes(target);
+            return target !== 'super_admin';
         }
         if (requester === 'ob_manager') return target === 'assistant';
         if (requester === 'manager') return target === 'assistant';
@@ -799,7 +796,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
     }, [canViewTeamPage, isCurrentUserAdmin, isCurrentUserMdManager, loadCompanies, loadRoles]);
 
     const effectiveRoleOptions = useMemo(() => {
-        if (!isCurrentUserAdmin) return [];
+        if (!isCurrentUserAdmin && !isCurrentUserMdManager) return [];
         const filtered = (availableRoles || []).filter((r) => canAssignRole(r.key));
         const order = ['admin', 'md_manager', 'ob_manager', 'manager', 'sbm', 'rm', 'am', 'assistant'];
         const sorted = filtered.sort((a, b) => {
@@ -815,20 +812,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
         const role = normalizeRole(currentUserRole);
         if (isCurrentUserAdmin) return effectiveRoleOptions;
         if (role === 'md_manager') {
-            const baseOptions = [
-                { key: 'md_manager', name: 'MD Manager' },
-                { key: 'ob_manager', name: 'OB Manager' },
-                { key: 'manager', name: 'Manager' },
-                { key: 'assistant', name: 'Assistant' },
-                { key: 'sub_assistance', name: 'Sub Assistance' },
-                { key: 'troubleshoot_manager', name: 'Troubleshoot Manager' },
-            ];
-            const speedEComKeywords = ['speed', 'ecom', 'speed_ecom', 'speedecom', 'speed-ecom'];
-            const customRoles = (availableRoles || [])
-                .filter((r: RoleItem) => !baseOptions.some((b) => b.key === r.key))
-                .filter((r: RoleItem) => !speedEComKeywords.some(keyword => r.key.toLowerCase().includes(keyword) || r.name.toLowerCase().includes(keyword)))
-                .map((r: RoleItem) => ({ key: r.key, name: r.name }));
-            return [...baseOptions, ...customRoles];
+            return effectiveRoleOptions;
         }
         if (role === 'ob_manager') {
             return [
@@ -981,20 +965,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
             ];
         }
         if (isCurrentUserMdManager) {
-            const baseOptions = [
-                { key: 'md_manager', name: 'MD Manager' },
-                { key: 'ob_manager', name: 'OB Manager' },
-                { key: 'manager', name: 'Manager' },
-                { key: 'assistant', name: 'Assistant' },
-                { key: 'sub_assistance', name: 'Sub Assistance' },
-                { key: 'troubleshoot_manager', name: 'Troubleshoot Manager' },
-            ];
-            const speedEComKeywords = ['speed', 'ecom', 'speed_ecom', 'speedecom', 'speed-ecom'];
-            const customRoles = (availableRoles || [])
-                .filter((r: RoleItem) => !baseOptions.some((b) => b.key === r.key))
-                .filter((r: RoleItem) => !speedEComKeywords.some(keyword => r.key.toLowerCase().includes(keyword) || r.name.toLowerCase().includes(keyword)))
-                .map((r: RoleItem) => ({ key: r.key, name: r.name }));
-            return [...baseOptions, ...customRoles];
+            return effectiveRoleOptions;
         }
         const currentRoleKey = normalizeRole((editingUser as any)?.role || '');
         return currentRoleKey ? [{ key: currentRoleKey, name: currentRoleKey.toUpperCase() }] : [];
@@ -1311,7 +1282,7 @@ const TeamPage: React.FC<TeamPageProps> = (props) => {
 
             const roleChanged = normalizeRole((usersById.get(userId) as any)?.role) !== normalizeRole((editingUser as any)?.role);
             if (roleChanged && canEditRoleForUser(editingUser)) {
-                payload.role = normalizeRole((editingUser as any)?.role) as any;
+                payload.role = (editingUser as any)?.role;
             }
 
             if (nextManagerId !== prevManagerId && !isAmUser) {
