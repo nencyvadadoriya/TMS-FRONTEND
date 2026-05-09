@@ -12,6 +12,7 @@ interface NewTaskForm {
   taskType: string;
   companyName: string;
   brand: string;
+  overdueType?: string;
 }
 
 type FormErrors = Record<string, string>;
@@ -696,6 +697,20 @@ const MdImpexAddTaskModal = ({
               {filteredTaskTypes.length === 0 && canBulkAddTaskTypes && (
                 <p className="mt-1 text-xs text-amber-600">Add task types to continue</p>
               )}
+            </div>
+
+            {/* Overdue Type */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 no-dark:text-gray-300 mb-1.5">Overdue Field</label>
+              <select
+                className="w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 border-gray-200 no-dark:border-gray-700 bg-gray-50 no-dark:bg-gray-800/50"
+                value={newTask.overdueType || ''}
+                onChange={(e) => onChange('overdueType', e.target.value)}
+              >
+                <option value="">Select Overdue Type</option>
+                <option value="custom">Custom Overdue Date</option>
+                <option value="24hours">24 Hours</option>
+              </select>
             </div>
 
             {/* Priority */}
