@@ -485,16 +485,43 @@ const MdImpexAddTaskModal = ({
             {/* Due Date */}
             <div>
               <label className="block text-xs font-medium text-gray-700 no-dark:text-gray-300 mb-1.5">Due Date *</label>
-              <input
-                type="date"
-                className={`w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 ${formErrors.dueDate
-                  ? 'border-red-500 bg-red-50 no-dark:bg-red-900/10'
-                  : 'border-gray-200 no-dark:border-gray-700 bg-gray-50 no-dark:bg-gray-800/50'
-                  }`}
-                value={newTask.dueDate}
-                onChange={(e) => onChange('dueDate', e.target.value)}
-                min={new Date().toISOString().split('T')[0]} // prevent select past dates
-              />
+              <div className="flex flex-col gap-2">
+                <select
+                  className={`w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 ${formErrors.dueDate && !newTask.overdueType
+                    ? 'border-red-500 bg-red-50 no-dark:bg-red-900/10'
+                    : 'border-gray-200 no-dark:border-gray-700 bg-gray-50 no-dark:bg-gray-800/50'
+                    }`}
+                  value={newTask.overdueType || ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    onChange('overdueType', val);
+                    if (val === '24hours') {
+                      const tomorrow = new Date();
+                      tomorrow.setDate(tomorrow.getDate() + 1);
+                      onChange('dueDate', tomorrow.toISOString().split('T')[0]);
+                    } else {
+                      onChange('dueDate', ''); // clear when custom is selected to force them to pick
+                    }
+                  }}
+                >
+                  <option value="">Select Due Date Type</option>
+                  <option value="24hours">24 Hours</option>
+                  <option value="custom">Custom Due Date</option>
+                </select>
+
+                {newTask.overdueType === 'custom' && (
+                  <input
+                    type="date"
+                    className={`w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 ${formErrors.dueDate
+                      ? 'border-red-500 bg-red-50 no-dark:bg-red-900/10'
+                      : 'border-gray-200 no-dark:border-gray-700 bg-gray-50 no-dark:bg-gray-800/50'
+                      }`}
+                    value={newTask.dueDate}
+                    onChange={(e) => onChange('dueDate', e.target.value)}
+                    min={new Date().toISOString().split('T')[0]} // prevent select past dates
+                  />
+                )}
+              </div>
               {formErrors.dueDate && <p className="mt-1 text-xs text-red-600">{formErrors.dueDate}</p>}
             </div>
 
@@ -699,19 +726,6 @@ const MdImpexAddTaskModal = ({
               )}
             </div>
 
-            {/* Overdue Type */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 no-dark:text-gray-300 mb-1.5">Overdue Field</label>
-              <select
-                className="w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 border-gray-200 no-dark:border-gray-700 bg-gray-50 no-dark:bg-gray-800/50"
-                value={newTask.overdueType || ''}
-                onChange={(e) => onChange('overdueType', e.target.value)}
-              >
-                <option value="">Select Overdue Type</option>
-                <option value="custom">Custom Overdue Date</option>
-                <option value="24hours">24 Hours</option>
-              </select>
-            </div>
 
             {/* Priority */}
             <div className="md:col-span-1">
