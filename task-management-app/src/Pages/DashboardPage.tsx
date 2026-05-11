@@ -155,6 +155,7 @@ interface NewTaskForm {
     taskType: string;
     companyName: string;
     brand: string;
+    overdueType?: string;
 }
 
 interface EditTaskForm {
