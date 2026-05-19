@@ -291,10 +291,24 @@ const AnalyzePage: FC<AnalyzePageProps> = ({ tasks: tasksProp, users = [], apiCo
             if (isReviewableRole && isCompleted && !(t as any).reviewStars) userMap[u].pendingApproval++;
             if (getCompletionStatus(t) === 'Overdue') userMap[u].overdue++;
             if (isCompleted) {
-                const due = new Date(normalizeText((t as any)?.dueDate));
-                const cmp = new Date(normalizeText((t as any)?.completedAt || (t as any)?.updatedAt));
-                if (!isNaN(due.getTime()) && !isNaN(cmp.getTime()) && cmp > due) userMap[u].overdueCompleted++;
-                if (!isNaN(due.getTime()) && !isNaN(cmp.getTime()) && cmp <= due) userMap[u].completedBeforeOverdue++;
+                const dueRaw = normalizeText((t as any)?.dueDate);
+                const due = new Date(dueRaw);
+                const cmpRaw = normalizeText((t as any)?.statusUpdatedAt || (t as any)?.completedAt || (t as any)?.updatedAt);
+                const cmp = new Date(cmpRaw);
+                
+                if (!isNaN(due.getTime()) && !isNaN(cmp.getTime())) {
+                    let finalDueTime = due.getTime();
+                    // If dueDate is just a date without specific time (e.g., YYYY-MM-DD or ends with T00:00:00.000Z), default to end of the day.
+                    if (dueRaw.length === 10 || dueRaw.includes('T00:00:00.000Z')) {
+                        const dueEndOfDay = new Date(due.getFullYear(), due.getMonth(), due.getDate(), 23, 59, 59, 999);
+                        finalDueTime = dueEndOfDay.getTime();
+                    }
+                    if (cmp.getTime() > finalDueTime) {
+                        userMap[u].overdueCompleted++;
+                    } else {
+                        userMap[u].completedBeforeOverdue++;
+                    }
+                }
             }
         });
         return Object.values(userMap).map(u => ({

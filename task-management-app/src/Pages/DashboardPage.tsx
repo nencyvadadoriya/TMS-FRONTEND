@@ -5076,6 +5076,7 @@ const DashboardPage = () => {
                 status: 'pending' as TaskStatus,
                 assignedBy: currentUser.email,
                 assignedToUser: users.find(u => u.email === dataToValidate.assignedTo),
+                overdueType: (dataToValidate as any).overdueType || 'none',
             };
             const response = await taskService.createTask(taskData);
             if (response.success && response.data) {
@@ -5128,6 +5129,7 @@ const DashboardPage = () => {
                         status: 'pending' as TaskStatus,
                         assignedBy: currentUser.email,
                         assignedToUser: users.find(u => u.email === payload.assignedTo),
+                        overdueType: (payload as any).overdueType || 'none',
                     };
                     const response = await taskService.createTask(taskData);
                     if (response.success && response.data) {

@@ -130,6 +130,11 @@ const MdImpexStrikePage = ({
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
 
+  const [timeFilter, setTimeFilter] = useState<'month' | '24h' | 'custom'>('month');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+  const [taskTypeFilter, setTaskTypeFilter] = useState<string>('all');
+
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
@@ -144,7 +149,8 @@ const MdImpexStrikePage = ({
       try {
         setIsLoading(true);
         setLoadError('');
-        const res = await strikeService.getMdImpexStrike(selectedMonth);
+        const monthParam = timeFilter === 'month' ? selectedMonth : '';
+        const res = await strikeService.getMdImpexStrike(monthParam);
         if (!isMounted) return;
         if (!res.success) {
           setLoadError(res.message || 'Failed to load strike data');
@@ -165,7 +171,16 @@ const MdImpexStrikePage = ({
     return () => {
       isMounted = false;
     };
-  }, [selectedMonth]);
+  }, [selectedMonth, timeFilter]);
+
+  const availableTaskTypes = useMemo(() => {
+    const types = new Set<string>();
+    (strikeRecords || []).forEach((r: any) => {
+      const type = (r.task?.taskType || r.task?.type || '').toString().trim();
+      if (type) types.add(type);
+    });
+    return Array.from(types).sort((a, b) => a.localeCompare(b));
+  }, [strikeRecords]);
 
   const managerUsers = useMemo(() => {
     const list = Array.isArray(users) ? users : [];
@@ -249,30 +264,47 @@ const MdImpexStrikePage = ({
   }, [managerUsers, strikeRecords, currentUser, roleKey]);
 
   const filteredRows = useMemo(() => {
-    if (!selectedMonth) return rows;
+    let year = 0;
+    let month = 0;
+    if (timeFilter === 'month' && selectedMonth) {
+      [year, month] = selectedMonth.split('-').map(Number);
+    }
+    
+    const now = new Date();
+    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const customStart = customStartDate ? new Date(customStartDate) : null;
+    const customEnd = customEndDate ? new Date(customEndDate) : null;
+    if (customEnd) {
+      customEnd.setHours(23, 59, 59, 999);
+    }
 
-    const [year, month] = selectedMonth.split('-').map(Number);
+    const isTaskInTimeAndType = (task: any) => {
+      if (taskTypeFilter !== 'all') {
+        const type = (task.taskType || task.type || '').toString().trim();
+        if (type !== taskTypeFilter) return false;
+      }
+      
+      const taskDate = new Date(task.dueDate || task.createdAt);
+      if (timeFilter === 'month') {
+        return taskDate.getFullYear() === year && taskDate.getMonth() + 1 === month;
+      } else if (timeFilter === '24h') {
+        return taskDate >= twentyFourHoursAgo && taskDate <= now;
+      } else if (timeFilter === 'custom') {
+        if (customStart && taskDate < customStart) return false;
+        if (customEnd && taskDate > customEnd) return false;
+        return true;
+      }
+      return true;
+    };
 
     return rows.map(r => ({
       ...r,
-      strike: r.strikeTasks.filter((task: any) => {
-        const taskDate = new Date(task.dueDate || task.createdAt);
-        return taskDate.getFullYear() === year && taskDate.getMonth() + 1 === month;
-      }).length,
-      removedStrike: r.removedStrikeTasks.filter((task: any) => {
-        const taskDate = new Date(task.dueDate || task.createdAt);
-        return taskDate.getFullYear() === year && taskDate.getMonth() + 1 === month;
-      }).length,
-      strikeTasks: r.strikeTasks.filter((task: any) => {
-        const taskDate = new Date(task.dueDate || task.createdAt);
-        return taskDate.getFullYear() === year && taskDate.getMonth() + 1 === month;
-      }),
-      removedStrikeTasks: r.removedStrikeTasks.filter((task: any) => {
-        const taskDate = new Date(task.dueDate || task.createdAt);
-        return taskDate.getFullYear() === year && taskDate.getMonth() + 1 === month;
-      }),
+      strike: r.strikeTasks.filter(isTaskInTimeAndType).length,
+      removedStrike: r.removedStrikeTasks.filter(isTaskInTimeAndType).length,
+      strikeTasks: r.strikeTasks.filter(isTaskInTimeAndType),
+      removedStrikeTasks: r.removedStrikeTasks.filter(isTaskInTimeAndType),
     }));
-  }, [rows, selectedMonth]);
+  }, [rows, selectedMonth, timeFilter, customStartDate, customEndDate, taskTypeFilter]);
 
   const removalHistory = useMemo(() => {
     const out: Array<{
@@ -370,7 +402,8 @@ const MdImpexStrikePage = ({
   const refreshStrike = async () => {
     setIsLoading(true);
     setLoadError('');
-    const res = await strikeService.getMdImpexStrike(selectedMonth);
+    const monthParam = timeFilter === 'month' ? selectedMonth : '';
+    const res = await strikeService.getMdImpexStrike(monthParam);
     setIsLoading(false);
     if (!res.success) {
       setLoadError(res.message || 'Failed to load strike data');
@@ -456,16 +489,55 @@ const MdImpexStrikePage = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className={`flex items-center gap-1.5 bg-gray-50 px-2 py-1.5 rounded-lg border border-gray-200`}>
-              <Calendar className="w-3.5 h-3.5 text-gray-500" />
-              <input
-                type="month"
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="bg-transparent text-xs font-medium text-gray-700 outline-none"
-              />
-            </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={taskTypeFilter}
+              onChange={(e) => setTaskTypeFilter(e.target.value)}
+              className="bg-gray-50 px-2 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 outline-none"
+            >
+              <option value="all">All Task Types</option>
+              {availableTaskTypes.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+
+            <select
+              value={timeFilter}
+              onChange={(e) => setTimeFilter(e.target.value as any)}
+              className="bg-gray-50 px-2 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 outline-none"
+            >
+              <option value="month">Monthly</option>
+              <option value="24h">Last 24 Hours</option>
+              <option value="custom">Custom Range</option>
+            </select>
+
+            {timeFilter === 'month' && (
+              <div className={`flex items-center gap-1.5 bg-gray-50 px-2 py-1.5 rounded-lg border border-gray-200`}>
+                <Calendar className="w-3.5 h-3.5 text-gray-500" />
+                <input
+                  type="month"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="bg-transparent text-xs font-medium text-gray-700 outline-none"
+                />
+              </div>
+            )}
+
+            {timeFilter === 'custom' && (
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="bg-gray-50 px-2 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 outline-none"
+                />
+                <span className="text-xs text-gray-500">to</span>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="bg-gray-50 px-2 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 outline-none"
+                />
+              </div>
+            )}
           </div>
         </div>
         {isLoading && (

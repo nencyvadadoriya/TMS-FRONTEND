@@ -1710,6 +1710,34 @@ const MobileTaskItem = memo(({
                     <Calendar className="h-3 w-3" />
                     {formatDate(task.dueDate)}
                   </span>
+                  {((task as any).overdueType === '24hours' || (task as any).overdueType === 'custom') && (
+                    <span className="inline-flex items-center gap-1">
+                      <span className="text-[9px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded uppercase">
+                        {(task as any).overdueType === '24hours' ? '24 Hours' : 'Custom'}
+                      </span>
+                    </span>
+                  )}
+                  {isCompleted && (
+                    <span className="inline-flex items-center gap-1">
+                      <Check className="h-3 w-3 text-green-500" />
+                      <span className="text-gray-400">Done:</span>
+                      {(() => {
+                        const raw = (task as any)?.statusUpdatedAt || (task as any)?.completedAt;
+                        if (!raw) return '—';
+                        try {
+                          const anyGlobal = globalThis as any;
+                          if (typeof (anyGlobal as any).formatDateTime === 'function') {
+                            return (anyGlobal as any).formatDateTime(raw);
+                          }
+                          const asDate = new Date(raw);
+                          if (!Number.isFinite(asDate.getTime())) return '—';
+                          return asDate.toLocaleDateString();
+                        } catch {
+                          return '—';
+                        }
+                      })()}
+                    </span>
+                  )}
                   <span className={`px-2 py-0.5 rounded-full ${task.priority === 'high' ? 'bg-red-100 text-red-800' : task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'}`}>
                     {task.priority}
                   </span>
@@ -1913,6 +1941,22 @@ const DesktopTaskItem = memo(({
       return '—';
     }
   })();
+  const completedAtRaw = (task as any)?.statusUpdatedAt || (task as any)?.completedAt || '';
+  const completedAtText = (() => {
+    if (!isCompleted) return '—';
+    try {
+      if (!completedAtRaw) return '—';
+      const anyGlobal = globalThis as any;
+      if (typeof (anyGlobal as any).formatDateTime === 'function') {
+        return (anyGlobal as any).formatDateTime(completedAtRaw);
+      }
+      const asDate = new Date(completedAtRaw);
+      if (!Number.isFinite(asDate.getTime())) return '—';
+      return asDate.toLocaleString();
+    } catch {
+      return '—';
+    }
+  })();
   const brandLabelText = useMemo(() => {
     if (brandLabel) return String(brandLabel || '');
 
@@ -1946,7 +1990,7 @@ const DesktopTaskItem = memo(({
             'bg-primary-light'
         }`} />
 
-      <div className="grid grid-cols-11 gap-0.5 p-2.5 items-center pl-2">
+      <div className="grid grid-cols-12 gap-0.5 p-2.5 items-center pl-2">
         {/* Index + Status Column */}
         <div className="col-span-1 flex items-center justify-center gap-1">
           <span className="text-xs font-semibold text-primary-dark tabular-nums w-4 text-right">
@@ -2046,6 +2090,15 @@ const DesktopTaskItem = memo(({
           </div>
         </div>
 
+        {/* Completed At Column */}
+        <div className="col-span-1 flex items-center justify-center">
+          <div className="text-center">
+            <span className="text-[10px] text-gray-600 font-medium block leading-tight" title={completedAtText}>
+              {completedAtText}
+            </span>
+          </div>
+        </div>
+
         {/* Due Date + Priority Column - Side by Side */}
         <div className="col-span-1 flex items-center justify-center">
           <div className="text-center">
@@ -2063,6 +2116,13 @@ const DesktopTaskItem = memo(({
                 </span>
               )}
             </div>
+            {((task as any).overdueType === '24hours' || (task as any).overdueType === 'custom') && (
+              <div className="mt-0.5">
+                <span className="text-[8px] font-bold text-indigo-600 bg-indigo-50 px-1 py-0.5 rounded uppercase block w-fit mx-auto">
+                  {(task as any).overdueType === '24hours' ? '24 Hours' : 'Custom'}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -5958,13 +6018,14 @@ const AllTasksPage: React.FC<AllTasksPageProps> = memo(({
         ) : (
           <div className="space-y-4">
             {/* Table Header - Desktop */}
-            <div className="hidden md:grid grid-cols-11 gap-1.5 px-4 py-2.5 bg-primary-ultralight rounded-lg border border-primary-light/20 text-xs font-semibold text-primary-dark items-center">
+            <div className="hidden md:grid grid-cols-12 gap-1.5 px-4 py-2.5 bg-primary-ultralight rounded-lg border border-primary-light/20 text-xs font-semibold text-primary-dark items-center">
               <div className="col-span-1 text-center">#/Status</div>
               <div className="col-span-1 text-center">Brand</div>
               <div className={hideAssignBy ? "col-span-3" : "col-span-2"}>Task Title</div>
               {assignedFilter !== 'assigned-to-me' && <div className="col-span-1 text-center">Assign To</div>}
               {!hideAssignBy && <div className="col-span-1 text-center">Assign By</div>}
               <div className="col-span-1 text-center">Created</div>
+              <div className="col-span-1 text-center">Completed</div>
               <div className="col-span-1 text-center">Due Date</div>
               <div className="col-span-2 pl-2.5 border-l border-primary-light/30">Last Comment</div>
               <div className="col-span-1 text-right">Actions</div>
